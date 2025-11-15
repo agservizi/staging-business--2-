@@ -4,7 +4,7 @@ assets/uploads/*
 !assets/uploads/branding/
 assets/uploads/branding/*
 !assets/uploads/branding/sidebar-logo.png
-vendor/
+/vendor/
 node_modules/
 .idea/
 .vscode/
