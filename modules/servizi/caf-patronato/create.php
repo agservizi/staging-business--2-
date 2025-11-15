@@ -448,7 +448,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
                     <div class="col-lg-3 col-md-6">
                         <label class="form-label" for="codice_fiscale">Codice fiscale</label>
-                        <input class="form-control" id="codice_fiscale" name="codice_fiscale" value="<?php echo sanitize_output($data['codice_fiscale']); ?>" maxlength="16" placeholder="RSSMRA80A01H501Z">
+                        <input class="form-control" id="codice_fiscale" name="codice_fiscale" value="<?php echo sanitize_output($data['codice_fiscale']); ?>" maxlength="16" placeholder="RSSMRA80A01H501Z" autocomplete="off" data-client-lookup>
                     </div>
 
                     <div class="col-lg-3 col-md-6">
@@ -535,6 +535,30 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         </div>
     </main>
+</div>
+
+<div class="modal fade" id="cafClientLookupModal" tabindex="-1" aria-labelledby="cafClientLookupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="cafClientLookupModalLabel">Cliente già registrato</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">Abbiamo trovato un cliente con il codice fiscale <span class="fw-semibold" data-client-cf></span>.</p>
+                <div class="bg-light rounded p-3 mb-3">
+                    <div class="fw-semibold" data-client-name></div>
+                    <div class="small text-muted" data-client-email></div>
+                    <div class="small text-muted" data-client-phone></div>
+                </div>
+                <p class="mb-0">Vuoi collegarlo automaticamente a questa pratica?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Chiudi</button>
+                <button type="button" class="btn btn-warning text-dark" id="cafClientLookupConfirm">Collega cliente</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -760,6 +784,197 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     // initialize with current type
     ensureCurrentOptions();
     filterList(input.value);
+})();
+
+(function () {
+    const cfInput = document.getElementById('codice_fiscale');
+    const clienteSelect = document.getElementById('cliente_id');
+    const modalElement = document.getElementById('cafClientLookupModal');
+    const confirmButton = document.getElementById('cafClientLookupConfirm');
+
+    if (!cfInput || !clienteSelect || !modalElement || !confirmButton) {
+        return;
+    }
+
+    if (typeof window.fetch !== 'function' || !window.bootstrap || typeof window.bootstrap.Modal !== 'function') {
+        return;
+    }
+
+    const nameTarget = modalElement.querySelector('[data-client-name]');
+    const cfTarget = modalElement.querySelector('[data-client-cf]');
+    const emailTarget = modalElement.querySelector('[data-client-email]');
+    const phoneTarget = modalElement.querySelector('[data-client-phone]');
+    let modalInstance = null;
+    let pendingClient = null;
+    let lastLookupValue = '';
+    let lastRequestId = 0;
+
+    const sanitizeCf = function (value) {
+        if (typeof value !== 'string') {
+            return '';
+        }
+        return value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    };
+
+    const debounce = function (callback, delay) {
+        let timerId = null;
+        return function () {
+            if (timerId) {
+                window.clearTimeout(timerId);
+            }
+            const args = arguments;
+            timerId = window.setTimeout(function () {
+                callback.apply(null, args);
+            }, delay);
+        };
+    };
+
+    const updateModalContent = function (client) {
+        if (!client) {
+            return;
+        }
+        if (cfTarget) {
+            cfTarget.textContent = client.cf || '';
+        }
+        if (nameTarget) {
+            nameTarget.textContent = client.display_name || client.nominativo_suggestion || 'Cliente trovato';
+        }
+        if (emailTarget) {
+            emailTarget.textContent = client.email ? ('Email: ' + client.email) : 'Email non presente';
+        }
+        if (phoneTarget) {
+            phoneTarget.textContent = client.telefono ? ('Telefono: ' + client.telefono) : 'Telefono non presente';
+        }
+    };
+
+    const ensureClientOption = function (clientId, label) {
+        const targetValue = String(clientId ?? '');
+        if (targetValue === '') {
+            return null;
+        }
+        let option = null;
+        for (let index = 0; index < clienteSelect.options.length; index += 1) {
+            if (clienteSelect.options[index].value === targetValue) {
+                option = clienteSelect.options[index];
+                break;
+            }
+        }
+        if (!option) {
+            option = document.createElement('option');
+            option.value = targetValue;
+            option.textContent = label || ('Cliente #' + targetValue);
+            clienteSelect.appendChild(option);
+        }
+        return option;
+    };
+
+    const applyClientSelection = function (client) {
+        if (!client) {
+            return;
+        }
+        const targetId = client.id != null ? String(client.id) : '';
+        if (targetId) {
+            const option = ensureClientOption(targetId, client.display_name || client.nominativo_suggestion);
+            if (option) {
+                option.selected = true;
+                clienteSelect.value = targetId;
+                clienteSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
+        const nominativoField = document.getElementById('nominativo');
+        if (nominativoField && (!nominativoField.value || nominativoField.value.trim() === '')) {
+            const suggestion = client.nominativo_suggestion || client.display_name || '';
+            if (suggestion) {
+                nominativoField.value = suggestion;
+            }
+        }
+
+        const emailField = document.getElementById('email');
+        if (emailField && (!emailField.value || emailField.value.trim() === '') && client.email) {
+            emailField.value = client.email;
+        }
+
+        const phoneField = document.getElementById('telefono');
+        if (phoneField && (!phoneField.value || phoneField.value.trim() === '') && client.telefono) {
+            phoneField.value = client.telefono;
+        }
+
+        if (client.cf) {
+            cfInput.value = client.cf.toUpperCase();
+        }
+    };
+
+    const showModal = function (client) {
+        pendingClient = client;
+        updateModalContent(client);
+        if (!modalInstance) {
+            modalInstance = new bootstrap.Modal(modalElement, { backdrop: 'static' });
+        }
+        modalInstance.show();
+    };
+
+    confirmButton.addEventListener('click', function () {
+        if (!pendingClient) {
+            return;
+        }
+        applyClientSelection(pendingClient);
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+    });
+
+    modalElement.addEventListener('hidden.bs.modal', function () {
+        pendingClient = null;
+        lastLookupValue = '';
+    });
+
+    const performLookup = function (rawValue) {
+        const normalized = sanitizeCf(rawValue);
+        if (normalized.length < 11) {
+            if (normalized === '') {
+                lastLookupValue = '';
+            }
+            return;
+        }
+        if (normalized === lastLookupValue) {
+            return;
+        }
+        lastLookupValue = normalized;
+        const requestId = ++lastRequestId;
+
+        fetch('lookup-client.php?cf=' + encodeURIComponent(normalized), {
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-store',
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            return response.json();
+        }).then(function (payload) {
+            if (requestId !== lastRequestId) {
+                return;
+            }
+            if (!payload || payload.found !== true || !payload.client) {
+                return;
+            }
+            showModal(payload.client);
+        }).catch(function (error) {
+            console.warn('Ricerca cliente non disponibile', error);
+        });
+    };
+
+    const debouncedLookup = debounce(function (value) {
+        performLookup(value);
+    }, 450);
+
+    cfInput.addEventListener('input', function () {
+        debouncedLookup(cfInput.value);
+    });
+
+    cfInput.addEventListener('blur', function () {
+        performLookup(cfInput.value);
+    });
 })();
 </script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
