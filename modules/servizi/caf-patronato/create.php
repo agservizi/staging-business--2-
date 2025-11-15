@@ -980,12 +980,26 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         }, 450);
 
         cfInput.addEventListener('input', function () {
+            const current = cfInput.value;
+            const uppercased = current.toUpperCase();
+            if (current !== uppercased) {
+                const selectionStart = cfInput.selectionStart;
+                const selectionEnd = cfInput.selectionEnd;
+                cfInput.value = uppercased;
+                if (typeof selectionStart === 'number' && typeof selectionEnd === 'number') {
+                    cfInput.setSelectionRange(selectionStart, selectionEnd);
+                }
+            }
             debouncedLookup(cfInput.value);
         });
 
         cfInput.addEventListener('blur', function () {
             performLookup(cfInput.value);
         });
+
+        if (cfInput.value) {
+            cfInput.value = cfInput.value.toUpperCase();
+        }
     };
 
     if (document.readyState === 'complete') {
