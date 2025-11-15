@@ -1,0 +1,10 @@
+[2025-10-27T23:52:42+01:00][RESEND] Mail fallita verso ag.servizi16@gmail.com (oggetto: Codice di accesso - Pickup Portal) - Errore cURL: SSL certificate problem: unable to get local issuer certificate
+[2025-10-27T23:52:44+01:00][MAIL] Mail fallita verso ag.servizi16@gmail.com (oggetto: Codice di accesso - Pickup Portal) - La funzione mail() ha restituito false.
+[2025-10-27T23:54:18+01:00][RESEND] Mail fallita verso ag.servizi16@gmail.com (oggetto: Codice di accesso - Pickup Portal) - Errore cURL: SSL certificate problem: unable to get local issuer certificate
+[2025-10-27T23:54:20+01:00][MAIL] Mail fallita verso ag.servizi16@gmail.com (oggetto: Codice di accesso - Pickup Portal) - La funzione mail() ha restituito false.
+[2025-10-27T23:54:44+01:00][RESEND] Mail fallita verso ag.servizi16@gmail.com (oggetto: Codice di accesso - Pickup Portal) - ATTENZIONE: verifica SSL disabilitata tramite configurazione.
+[2025-10-27T23:54:45+01:00][RESEND] Mail fallita verso ag.servizi16@gmail.com (oggetto: Codice di accesso - Pickup Portal) - Status HTTP 403 - The coresuite.it domain is not verified. Please, add and verify your domain on https://resend.com/domains
+[2025-10-27T23:54:47+01:00][MAIL] Mail fallita verso ag.servizi16@gmail.com (oggetto: Codice di accesso - Pickup Portal) - La funzione mail() ha restituito false.
+[2025-10-27T23:55:57+01:00][RESEND] Mail fallita verso ag.servizi16@gmail.com (oggetto: Codice di accesso - Pickup Portal) - ATTENZIONE: verifica SSL disabilitata tramite configurazione.
+[2025-10-27T23:55:58+01:00][RESEND] Mail fallita verso ag.servizi16@gmail.com (oggetto: Codice di accesso - Pickup Portal) - Status HTTP 403 - The coresuite.it domain is not verified. Please, add and verify your domain on https://resend.com/domains
+[2025-10-27T23:56:00+01:00][MAIL] Mail fallita verso ag.servizi16@gmail.com (oggetto: Codice di accesso - Pickup Portal) - La funzione mail() ha restituito false.

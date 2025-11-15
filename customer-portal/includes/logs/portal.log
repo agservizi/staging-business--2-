@@ -1,0 +1,82 @@
+[2025-10-27 21:01:12] [DEBUG] Database connection established for portal
+[2025-10-27 21:01:13] [ERROR] Database query failed: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'u427445037_coresuitebusin.pickup_customers' doesn't exist {"sql":"INSERT INTO pickup_customers (email, phone, name, status, created_at, updated_at) VALUES (:email, :phone, :name, :status, :created_at, :updated_at)","params":{"email":"test@example.com","phone":"+39123456789","name":"Cliente Test","status":"active","created_at":"2025-10-27 21:01:13","updated_at":"2025-10-27 21:01:13"}}
+[2025-10-27 21:02:18] [DEBUG] Database connection established for portal
+[2025-10-27 21:02:34] [DEBUG] Database connection established for portal
+[2025-10-27 22:28:36] [DEBUG] Database connection established for portal
+[2025-10-27 22:28:37] [ERROR] Database query failed: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry 'test@example.com' for key 'uq_pickup_customers_email' {"sql":"INSERT INTO pickup_customers (email, phone, name, status, created_at, updated_at) VALUES (:email, :phone, :name, :status, :created_at, :updated_at)","params":{"email":"test@example.com","phone":"+39123456789","name":"Cliente Test","status":"active","created_at":"2025-10-27 22:28:37","updated_at":"2025-10-27 22:28:37"}}
+[2025-10-27 23:09:57] [ERROR] Database connection failed: SQLSTATE[HY000]: General error: 1298 Unknown or incorrect time zone: 'Europe/Rome'
+[2025-10-27 23:13:10] [DEBUG] Database connection established for portal
+[2025-10-27 23:13:12] [ERROR] Database query failed: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry 'test@example.com' for key 'uq_pickup_customers_email' {"sql":"INSERT INTO pickup_customers (email, phone, name, status, created_at, updated_at) VALUES (:email, :phone, :name, :status, :created_at, :updated_at)","params":{"email":"test@example.com","phone":"+39123456789","name":"Cliente Test","status":"active","created_at":"2025-10-27 23:13:12","updated_at":"2025-10-27 23:13:12"}}
+[2025-10-27 23:52:41] [DEBUG] Database connection established for portal
+[2025-10-27 23:52:44] [ERROR] Failed to send OTP: Impossibile inviare OTP {"customer_id":4,"method":"email"}
+[2025-10-27 23:54:18] [DEBUG] Database connection established for portal
+[2025-10-27 23:54:20] [ERROR] Failed to send OTP: Impossibile inviare OTP {"customer_id":4,"method":"email"}
+[2025-10-27 23:54:44] [DEBUG] Database connection established for portal
+[2025-10-27 23:54:47] [ERROR] Failed to send OTP: Impossibile inviare OTP {"customer_id":4,"method":"email"}
+[2025-10-27 23:55:56] [DEBUG] Database connection established for portal
+[2025-10-27 23:56:00] [ERROR] Failed to send OTP: Impossibile inviare OTP {"customer_id":4,"method":"email"}
+[2025-10-28 00:00:09] [DEBUG] Database connection established for portal
+[2025-10-28 00:00:10] [ERROR] Database query failed: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry 'test@example.com' for key 'uq_pickup_customers_email' {"sql":"INSERT INTO pickup_customers (email, phone, name, status, created_at, updated_at) VALUES (:email, :phone, :name, :status, :created_at, :updated_at)","params":{"email":"test@example.com","phone":"+39123456789","name":"Cliente Test","status":"active","created_at":"2025-10-28 00:00:10","updated_at":"2025-10-28 00:00:10"}}
+[2025-11-09 11:36:10] [ERROR] Impossibile trovare bootstrap/autoload.php per il portale pickup. Percorsi verificati: /home/u427445037/domains/coresuite.it/public_html/bootstrap/autoload.php, /home/u427445037/domains/coresuite.it/public_html/bootstrap/autoload.php, /home/u427445037/domains/coresuite.it/bootstrap/autoload.php
+[2025-11-09 11:44:08] [ERROR] Impossibile trovare bootstrap/autoload.php per il portale pickup. Percorsi verificati: /home/u427445037/domains/coresuite.it/public_html/bootstrap/autoload.php, /home/u427445037/domains/coresuite.it/public_html/bootstrap/autoload.php, /home/u427445037/domains/coresuite.it/bootstrap/autoload.php
+[2025-11-09 11:44:12] [ERROR] Impossibile trovare bootstrap/autoload.php per il portale pickup. Percorsi verificati: /home/u427445037/domains/coresuite.it/public_html/bootstrap/autoload.php, /home/u427445037/domains/coresuite.it/public_html/bootstrap/autoload.php, /home/u427445037/domains/coresuite.it/bootstrap/autoload.php
+[2025-11-09 12:06:26] [ERROR] Database connection failed: Class "App\Infrastructure\Database\ConnectionFactory" not found
+[2025-11-09 12:06:26] [ERROR] Rate limiting error: Errore di connessione al database
+[2025-11-09 12:06:26] [ERROR] Database connection failed: Class "App\Infrastructure\Database\ConnectionFactory" not found
+[2025-11-09 12:06:26] [ERROR] Login API error: Errore di connessione al database {"email":"ag.servizi16@gmail.com","method":null}
+[2025-11-09 12:08:14] [ERROR] Database connection failed: Class "App\Infrastructure\Database\ConnectionFactory" not found
+[2025-11-09 12:08:14] [ERROR] Rate limiting error: Errore di connessione al database
+[2025-11-09 12:08:14] [ERROR] Database connection failed: Class "App\Infrastructure\Database\ConnectionFactory" not found
+[2025-11-09 12:08:14] [ERROR] Login API error: Errore di connessione al database {"email":"ag.servizi16@gmail.com","method":null}
+[2025-11-09 12:15:50] [ERROR] Database connection failed: Class "App\Infrastructure\Database\ConnectionFactory" not found
+[2025-11-09 12:15:50] [ERROR] Rate limiting error: Errore di connessione al database
+[2025-11-09 12:15:50] [ERROR] Database connection failed: Class "App\Infrastructure\Database\ConnectionFactory" not found
+[2025-11-09 12:15:50] [ERROR] Login API error: Errore di connessione al database {"email":"ag.servizi16@gmail.com","method":null}
+[2025-11-09 12:20:46] [ERROR] Database connection failed: Class "App\Infrastructure\Database\ConnectionFactory" not found
+[2025-11-09 12:20:46] [ERROR] Rate limiting error: Errore di connessione al database: Class "App\Infrastructure\Database\ConnectionFactory" not found
+[2025-11-09 12:20:46] [ERROR] Database connection failed: Class "App\Infrastructure\Database\ConnectionFactory" not found
+[2025-11-09 12:20:46] [ERROR] Login API error: Errore di connessione al database: Class "App\Infrastructure\Database\ConnectionFactory" not found {"email":"ag.servizi16@gmail.com","method":null}
+[2025-11-09 12:22:53] [ERROR] Impossibile trovare bootstrap/autoload.php per il portale pickup. Percorsi verificati: /home/u427445037/domains/coresuite.it/public_html/bootstrap/autoload.php, /home/u427445037/domains/coresuite.it/public_html/bootstrap/autoload.php, /home/u427445037/domains/coresuite.it/bootstrap/autoload.php
+[2025-11-09 12:23:16] [ERROR] Impossibile trovare bootstrap/autoload.php per il portale pickup. Percorsi verificati: /home/u427445037/domains/coresuite.it/public_html/bootstrap/autoload.php, /home/u427445037/domains/coresuite.it/public_html/bootstrap/autoload.php, /home/u427445037/domains/coresuite.it/bootstrap/autoload.php
+[2025-11-09 12:23:42] [ERROR] Impossibile trovare bootstrap/autoload.php per il portale pickup. Percorsi verificati: /home/u427445037/domains/coresuite.it/public_html/bootstrap/autoload.php, /home/u427445037/domains/coresuite.it/public_html/bootstrap/autoload.php, /home/u427445037/domains/coresuite.it/bootstrap/autoload.php
+[2025-11-09 21:22:18] [DEBUG] Bootstrap autoloader resolved {"path":"C:\/Users\/ASUS\/Coresuite-Business-3\/bootstrap\/autoload.php"}
+[2025-11-09 21:27:02] [DEBUG] Bootstrap autoloader resolved {"path":"C:\/Users\/ASUS\/Coresuite-Business-3\/bootstrap\/autoload.php"}
+[2025-11-09 21:27:02] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:49:48] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:49:48] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:49:48] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:49:48] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:49:49] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:49:49] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:49:49] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:49:49] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:49:49] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:49:49] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:49:58] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:49:58] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:49:58] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:49:58] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:49:58] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:49:58] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:49:59] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:49:59] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:49:59] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:49:59] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:50:02] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:50:02] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:50:02] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:50:02] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:50:02] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:50:02] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:50:02] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:50:02] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:50:14] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:50:14] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:50:14] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:50:14] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:50:14] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:50:14] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-11 22:50:14] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-11 22:50:14] [DEBUG] Database connection established for portal {"mode":"dedicated"}
+[2025-11-12 03:42:24] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2025-11-12 03:42:24] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}

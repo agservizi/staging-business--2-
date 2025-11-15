@@ -1,0 +1,134 @@
+/* Coresuite Pickup module custom styles */
+:root {
+    --pickup-blue: #1d4ed8;
+    --pickup-green: #0a7c48;
+    --pickup-yellow: #c78800;
+    --pickup-red: #d94848;
+}
+
+.pickup-module .card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+}
+
+.pickup-module .card-header {
+    border-bottom-color: #edf2f7;
+}
+
+.pickup-module .badge-status {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-radius: 999px;
+    padding: 0.42rem 0.8rem;
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+.pickup-module .badge-status[data-status="in_arrivo"] {
+    color: #0f62fe;
+    background: rgba(15, 98, 254, 0.12);
+}
+
+.pickup-module .badge-status[data-status="consegnato"] {
+    color: var(--pickup-yellow);
+    background: rgba(199, 136, 0, 0.15);
+}
+
+.pickup-module .badge-status[data-status="ritirato"] {
+    color: var(--pickup-green);
+    background: rgba(10, 124, 72, 0.15);
+}
+
+.pickup-module .badge-status[data-status="in_giacenza"] {
+    color: var(--pickup-red);
+    background: rgba(217, 72, 72, 0.15);
+}
+
+.pickup-module .stats-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.pickup-module .stat-card {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0));
+    border-radius: 16px;
+    padding: 1.2rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.pickup-module .stat-card-title {
+    font-size: 0.88rem;
+    letter-spacing: 0.05em;
+    color: #475569;
+    text-transform: uppercase;
+}
+
+.pickup-module .stat-card-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.pickup-module .table td,
+.pickup-module .table th {
+    vertical-align: middle;
+}
+
+.pickup-module .table thead th {
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    color: #64748b;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.pickup-module .table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.pickup-module .filters .form-label {
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    color: #64748b;
+}
+
+.pickup-module .action-buttons .btn {
+    border-radius: 999px;
+}
+
+.pickup-module .modal-content {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+}
+
+.pickup-module .modal-header,
+.pickup-module .modal-footer {
+    border-color: #e2e8f0;
+}
+
+.pickup-module .form-control,
+.pickup-module .form-select {
+    background: #ffffff;
+    border-color: #cbd5f5;
+    color: #0f172a;
+}
+
+.pickup-module .form-control:focus,
+.pickup-module .form-select:focus {
+    border-color: var(--pickup-blue);
+    box-shadow: 0 0 0 0.1rem rgba(29, 78, 216, 0.25);
+}
+
+@media (max-width: 768px) {
+    .pickup-module .action-buttons {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+}

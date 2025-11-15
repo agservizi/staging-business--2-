@@ -1,0 +1,15 @@
+backups/
+assets/uploads/*
+!assets/uploads/.gitkeep
+!assets/uploads/branding/
+assets/uploads/branding/*
+!assets/uploads/branding/sidebar-logo.png
+vendor/
+node_modules/
+.idea/
+.vscode/
+.DS_Store
+.env
+.env.*
+customer-portal/cache/
+docs/
