@@ -786,202 +786,213 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     filterList(input.value);
 })();
 
+
 (function () {
-    const cfInput = document.getElementById('codice_fiscale');
-    const clienteSelect = document.getElementById('cliente_id');
-    const modalElement = document.getElementById('cafClientLookupModal');
-    const confirmButton = document.getElementById('cafClientLookupConfirm');
+    const initClientLookup = function () {
+        const cfInput = document.getElementById('codice_fiscale');
+        const clienteSelect = document.getElementById('cliente_id');
+        const modalElement = document.getElementById('cafClientLookupModal');
+        const confirmButton = document.getElementById('cafClientLookupConfirm');
 
-    if (!cfInput || !clienteSelect || !modalElement || !confirmButton) {
-        return;
-    }
-
-    if (typeof window.fetch !== 'function') {
-        return;
-    }
-
-    const bootstrapNs = window.bootstrap || window.Bootstrap || window?.bootstrap5 || null;
-    if (!bootstrapNs || typeof bootstrapNs.Modal !== 'function') {
-        console.warn('Bootstrap Modal non disponibile: carica bootstrap.bundle.js per abilitare il collegamento cliente.');
-        return;
-    }
-
-    const nameTarget = modalElement.querySelector('[data-client-name]');
-    const cfTarget = modalElement.querySelector('[data-client-cf]');
-    const emailTarget = modalElement.querySelector('[data-client-email]');
-    const phoneTarget = modalElement.querySelector('[data-client-phone]');
-    let modalInstance = null;
-    let pendingClient = null;
-    let lastLookupValue = '';
-    let lastRequestId = 0;
-
-    const sanitizeCf = function (value) {
-        if (typeof value !== 'string') {
-            return '';
+        if (!cfInput || !clienteSelect || !modalElement || !confirmButton) {
+            return;
         }
-        return value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    };
 
-    const debounce = function (callback, delay) {
-        let timerId = null;
-        return function () {
-            if (timerId) {
-                window.clearTimeout(timerId);
+        if (typeof window.fetch !== 'function') {
+            return;
+        }
+
+        const bootstrapNs = window.bootstrap || window.Bootstrap || (window.bootstrap5 ?? null);
+        if (!bootstrapNs || typeof bootstrapNs.Modal !== 'function') {
+            console.warn('Bootstrap Modal non disponibile: carica bootstrap.bundle.js per abilitare il collegamento cliente.');
+            return;
+        }
+
+        const nameTarget = modalElement.querySelector('[data-client-name]');
+        const cfTarget = modalElement.querySelector('[data-client-cf]');
+        const emailTarget = modalElement.querySelector('[data-client-email]');
+        const phoneTarget = modalElement.querySelector('[data-client-phone]');
+        let modalInstance = null;
+        let pendingClient = null;
+        let lastLookupValue = '';
+        let lastRequestId = 0;
+
+        const sanitizeCf = function (value) {
+            if (typeof value !== 'string') {
+                return '';
             }
-            const args = arguments;
-            timerId = window.setTimeout(function () {
-                callback.apply(null, args);
-            }, delay);
+            return value.toUpperCase().replace(/[^A-Z0-9]/g, '');
         };
-    };
 
-    const updateModalContent = function (client) {
-        if (!client) {
-            return;
-        }
-        if (cfTarget) {
-            cfTarget.textContent = client.cf || '';
-        }
-        if (nameTarget) {
-            nameTarget.textContent = client.display_name || client.nominativo_suggestion || 'Cliente trovato';
-        }
-        if (emailTarget) {
-            emailTarget.textContent = client.email ? ('Email: ' + client.email) : 'Email non presente';
-        }
-        if (phoneTarget) {
-            phoneTarget.textContent = client.telefono ? ('Telefono: ' + client.telefono) : 'Telefono non presente';
-        }
-    };
+        const debounce = function (callback, delay) {
+            let timerId = null;
+            return function () {
+                if (timerId) {
+                    window.clearTimeout(timerId);
+                }
+                const args = arguments;
+                timerId = window.setTimeout(function () {
+                    callback.apply(null, args);
+                }, delay);
+            };
+        };
 
-    const ensureClientOption = function (clientId, label) {
-        const targetValue = String(clientId ?? '');
-        if (targetValue === '') {
-            return null;
-        }
-        let option = null;
-        for (let index = 0; index < clienteSelect.options.length; index += 1) {
-            if (clienteSelect.options[index].value === targetValue) {
-                option = clienteSelect.options[index];
-                break;
-            }
-        }
-        if (!option) {
-            option = document.createElement('option');
-            option.value = targetValue;
-            option.textContent = label || ('Cliente #' + targetValue);
-            clienteSelect.appendChild(option);
-        }
-        return option;
-    };
-
-    const applyClientSelection = function (client) {
-        if (!client) {
-            return;
-        }
-        const targetId = client.id != null ? String(client.id) : '';
-        if (targetId) {
-            const option = ensureClientOption(targetId, client.display_name || client.nominativo_suggestion);
-            if (option) {
-                option.selected = true;
-                clienteSelect.value = targetId;
-                clienteSelect.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        }
-
-        const nominativoField = document.getElementById('nominativo');
-        if (nominativoField && (!nominativoField.value || nominativoField.value.trim() === '')) {
-            const suggestion = client.nominativo_suggestion || client.display_name || '';
-            if (suggestion) {
-                nominativoField.value = suggestion;
-            }
-        }
-
-        const emailField = document.getElementById('email');
-        if (emailField && (!emailField.value || emailField.value.trim() === '') && client.email) {
-            emailField.value = client.email;
-        }
-
-        const phoneField = document.getElementById('telefono');
-        if (phoneField && (!phoneField.value || phoneField.value.trim() === '') && client.telefono) {
-            phoneField.value = client.telefono;
-        }
-
-        if (client.cf) {
-            cfInput.value = client.cf.toUpperCase();
-        }
-    };
-
-    const showModal = function (client) {
-        pendingClient = client;
-        updateModalContent(client);
-        if (!modalInstance) {
-            modalInstance = bootstrapNs.Modal.getOrCreateInstance ? bootstrapNs.Modal.getOrCreateInstance(modalElement, { backdrop: 'static' }) : new bootstrapNs.Modal(modalElement, { backdrop: 'static' });
-        }
-        modalInstance.show();
-    };
-
-    confirmButton.addEventListener('click', function () {
-        if (!pendingClient) {
-            return;
-        }
-        applyClientSelection(pendingClient);
-        if (modalInstance) {
-            modalInstance.hide();
-        }
-    });
-
-    modalElement.addEventListener('hidden.bs.modal', function () {
-        pendingClient = null;
-        lastLookupValue = '';
-    });
-
-    const performLookup = function (rawValue) {
-        const normalized = sanitizeCf(rawValue);
-        if (normalized.length < 11) {
-            if (normalized === '') {
-                lastLookupValue = '';
-            }
-            return;
-        }
-        if (normalized === lastLookupValue) {
-            return;
-        }
-        lastLookupValue = normalized;
-        const requestId = ++lastRequestId;
-
-        fetch('lookup-client.php?cf=' + encodeURIComponent(normalized), {
-            headers: { 'Accept': 'application/json' },
-            cache: 'no-store',
-        }).then(function (response) {
-            if (!response.ok) {
-                throw new Error('HTTP ' + response.status);
-            }
-            return response.json();
-        }).then(function (payload) {
-            if (requestId !== lastRequestId) {
+        const updateModalContent = function (client) {
+            if (!client) {
                 return;
             }
-            if (!payload || payload.found !== true || !payload.client) {
-                lastLookupValue = '';
+            if (cfTarget) {
+                cfTarget.textContent = client.cf || '';
+            }
+            if (nameTarget) {
+                nameTarget.textContent = client.display_name || client.nominativo_suggestion || 'Cliente trovato';
+            }
+            if (emailTarget) {
+                emailTarget.textContent = client.email ? ('Email: ' + client.email) : 'Email non presente';
+            }
+            if (phoneTarget) {
+                phoneTarget.textContent = client.telefono ? ('Telefono: ' + client.telefono) : 'Telefono non presente';
+            }
+        };
+
+        const ensureClientOption = function (clientId, label) {
+            const targetValue = String(clientId ?? '');
+            if (targetValue === '') {
+                return null;
+            }
+            let option = null;
+            for (let index = 0; index < clienteSelect.options.length; index += 1) {
+                if (clienteSelect.options[index].value === targetValue) {
+                    option = clienteSelect.options[index];
+                    break;
+                }
+            }
+            if (!option) {
+                option = document.createElement('option');
+                option.value = targetValue;
+                option.textContent = label || ('Cliente #' + targetValue);
+                clienteSelect.appendChild(option);
+            }
+            return option;
+        };
+
+        const applyClientSelection = function (client) {
+            if (!client) {
                 return;
             }
-            showModal(payload.client);
-        }).catch(function (error) {
-            console.warn('Ricerca cliente non disponibile', error);
+            const targetId = client.id != null ? String(client.id) : '';
+            if (targetId) {
+                const option = ensureClientOption(targetId, client.display_name || client.nominativo_suggestion);
+                if (option) {
+                    option.selected = true;
+                    clienteSelect.value = targetId;
+                    clienteSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+
+            const nominativoField = document.getElementById('nominativo');
+            if (nominativoField && (!nominativoField.value || nominativoField.value.trim() === '')) {
+                const suggestion = client.nominativo_suggestion || client.display_name || '';
+                if (suggestion) {
+                    nominativoField.value = suggestion;
+                }
+            }
+
+            const emailField = document.getElementById('email');
+            if (emailField && (!emailField.value || emailField.value.trim() === '') && client.email) {
+                emailField.value = client.email;
+            }
+
+            const phoneField = document.getElementById('telefono');
+            if (phoneField && (!phoneField.value || phoneField.value.trim() === '') && client.telefono) {
+                phoneField.value = client.telefono;
+            }
+
+            if (client.cf) {
+                cfInput.value = client.cf.toUpperCase();
+            }
+        };
+
+        const showModal = function (client) {
+            pendingClient = client;
+            updateModalContent(client);
+            if (!modalInstance) {
+                modalInstance = typeof bootstrapNs.Modal.getOrCreateInstance === 'function'
+                    ? bootstrapNs.Modal.getOrCreateInstance(modalElement, { backdrop: 'static' })
+                    : new bootstrapNs.Modal(modalElement, { backdrop: 'static' });
+            }
+            modalInstance.show();
+        };
+
+        confirmButton.addEventListener('click', function () {
+            if (!pendingClient) {
+                return;
+            }
+            applyClientSelection(pendingClient);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        });
+
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            pendingClient = null;
+            lastLookupValue = '';
+        });
+
+        const performLookup = function (rawValue) {
+            const normalized = sanitizeCf(rawValue);
+            if (normalized.length < 11) {
+                if (normalized === '') {
+                    lastLookupValue = '';
+                }
+                return;
+            }
+            if (normalized === lastLookupValue) {
+                return;
+            }
+            lastLookupValue = normalized;
+            const requestId = ++lastRequestId;
+
+            fetch('lookup-client.php?cf=' + encodeURIComponent(normalized), {
+                headers: { 'Accept': 'application/json' },
+                cache: 'no-store',
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                return response.json();
+            }).then(function (payload) {
+                if (requestId !== lastRequestId) {
+                    return;
+                }
+                if (!payload || payload.found !== true || !payload.client) {
+                    lastLookupValue = '';
+                    return;
+                }
+                showModal(payload.client);
+            }).catch(function (error) {
+                console.warn('Ricerca cliente non disponibile', error);
+            });
+        };
+
+        const debouncedLookup = debounce(function (value) {
+            performLookup(value);
+        }, 450);
+
+        cfInput.addEventListener('input', function () {
+            debouncedLookup(cfInput.value);
+        });
+
+        cfInput.addEventListener('blur', function () {
+            performLookup(cfInput.value);
         });
     };
 
-    const debouncedLookup = debounce(function (value) {
-        performLookup(value);
-    }, 450);
-
-    cfInput.addEventListener('input', function () {
-        debouncedLookup(cfInput.value);
-    });
-
-    cfInput.addEventListener('blur', function () {
-        performLookup(cfInput.value);
-    });
+    if (document.readyState === 'complete') {
+        initClientLookup();
+    } else {
+        window.addEventListener('load', initClientLookup, { once: true });
+    }
 })();
 </script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
