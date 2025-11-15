@@ -755,49 +755,95 @@ SQL;
         $metadata = isset($practice['metadati']) && is_array($practice['metadati']) ? $practice['metadati'] : [];
         $metadataRows = $this->formatMetadataRows($metadata, $fieldDefinitions);
 
-        $summaryTable = $this->renderEmailKeyValueTable($summaryRows);
+        $insightKeys = ['Cliente associato', 'Operatore di riferimento', 'Scadenza prevista'];
+        $insightItems = [];
+        foreach ($insightKeys as $key) {
+            if (!empty($summaryRows[$key])) {
+                $insightItems[$key] = $summaryRows[$key];
+                unset($summaryRows[$key]);
+            }
+        }
+
+        $summaryTable = $this->renderEmailKeyValueTable($summaryRows, $theme['accent']);
         $metadataSection = '';
         if ($metadataRows) {
-            $metadataTable = $this->renderEmailKeyValueTable($metadataRows);
-            $metadataSection = '<div style="margin:28px 0 0;"><h2 style="margin:0 0 12px;font-size:17px;color:' . $theme['accent'] . ';">Informazioni aggiuntive</h2>' . $metadataTable . '</div>';
+            $metadataTable = $this->renderEmailKeyValueTable($metadataRows, $theme['accent']);
+            $metadataSection = '<div style="margin:36px 0 0;"><h2 style="margin:0 0 16px;font-size:17px;color:' . htmlspecialchars($theme['accent'], ENT_QUOTES, 'UTF-8') . ';">Dettagli personalizzati</h2>' . $metadataTable . '</div>';
         }
 
         $categoryLabel = htmlspecialchars($theme['label'], ENT_QUOTES, 'UTF-8');
         $trackingLabel = htmlspecialchars($trackingCode !== '' ? $trackingCode : 'In generazione', ENT_QUOTES, 'UTF-8');
         $statusLabelEscaped = htmlspecialchars($statusLabel, ENT_QUOTES, 'UTF-8');
         $typeName = isset($practice['tipo']['nome']) ? trim((string) $practice['tipo']['nome']) : '';
+
+        $accent = htmlspecialchars($theme['accent'], ENT_QUOTES, 'UTF-8');
+        $accentGradient = htmlspecialchars($theme['accentGradient'], ENT_QUOTES, 'UTF-8');
+        $accentSoft = htmlspecialchars($theme['accentSoft'], ENT_QUOTES, 'UTF-8');
+        $surface = htmlspecialchars($theme['surface'], ENT_QUOTES, 'UTF-8');
+        $chipBg = htmlspecialchars($theme['chipBg'], ENT_QUOTES, 'UTF-8');
+        $chipText = htmlspecialchars($theme['chipText'], ENT_QUOTES, 'UTF-8');
+        $muted = htmlspecialchars($theme['muted'], ENT_QUOTES, 'UTF-8');
+        $divider = htmlspecialchars($theme['divider'], ENT_QUOTES, 'UTF-8');
+
+        $categoryChip = '<span style="display:inline-block;padding:6px 16px;border-radius:999px;background:' . $chipBg . ';color:' . $chipText . ';font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">' . $categoryLabel . '</span>';
         $typeMarkup = $typeName !== ''
-            ? '<div style="font-size:12px;margin-top:4px;opacity:0.7;">Tipologia: ' . htmlspecialchars($typeName, ENT_QUOTES, 'UTF-8') . '</div>'
+            ? '<span style="display:inline-block;margin-left:12px;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,0.16);color:#ffffff;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;">' . htmlspecialchars($typeName, ENT_QUOTES, 'UTF-8') . '</span>'
             : '';
-        $taglineMarkup = $theme['tagline'] !== ''
-            ? '<p style="margin:18px 0 0;font-size:13px;opacity:0.85;">' . htmlspecialchars($theme['tagline'], ENT_QUOTES, 'UTF-8') . '</p>'
-            : '';
+        $statusPill = '<span style="display:inline-block;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,0.2);color:#ffffff;font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;">' . $statusLabelEscaped . '</span>';
 
-        $card = '<div style="margin:0 0 24px;padding:20px;border-radius:18px;background:' . $theme['cardBackground'] . ';border:1px solid ' . $theme['cardBorder'] . ';color:' . $theme['cardText'] . ';box-shadow:0 10px 26px rgba(9, 32, 74, 0.08);">'
-            . '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px;">'
-            . '<span style="display:inline-block;padding:6px 14px;border-radius:999px;background:' . $theme['badgeBackground'] . ';color:' . $theme['badgeText'] . ';font-size:12px;letter-spacing:0.08em;text-transform:uppercase;">' . $categoryLabel . '</span>'
-            . '<div style="flex:1;min-width:220px;">'
-            . '<div style="font-size:13px;opacity:0.72;margin-bottom:4px;">Codice pratica</div>'
-            . '<div style="font-size:24px;font-weight:700;letter-spacing:0.04em;">' . $trackingLabel . '</div>'
-            . '</div>'
-            . '<div style="flex:1;min-width:200px;text-align:right;">'
-            . '<div style="font-size:13px;opacity:0.72;margin-bottom:4px;">Stato attuale</div>'
-            . '<div style="font-size:16px;font-weight:600;">' . $statusLabelEscaped . '</div>'
-            . $typeMarkup
-            . '</div>'
-            . '</div>'
-            . $taglineMarkup
-            . '</div>';
-
-        $trackingButtonBlock = '';
+        $ctaMarkup = '';
         if ($trackingLink !== '') {
             $safeLink = htmlspecialchars($trackingLink, ENT_QUOTES, 'UTF-8');
-            $trackingButtonBlock = '<div style="margin:24px 0 20px;">'
-                . '<a href="' . $safeLink . '" style="display:inline-block;background:' . $theme['accent'] . ';color:#ffffff;padding:12px 24px;border-radius:999px;font-weight:600;text-decoration:none;">Apri il portale di tracking</a>'
-                . '<p style="margin:12px 0 0;font-size:12px;color:#516070;">Se il pulsante non dovesse funzionare, copia e incolla questo link nel tuo browser:<br><span style="word-break:break-all;"><a href="' . $safeLink . '" style="color:' . $theme['accent'] . ';">' . $safeLink . '</a></span></p>'
+            $ctaMarkup = '<div style="margin-top:32px;">'
+                . '<a href="' . $safeLink . '" style="display:inline-block;padding:14px 30px;border-radius:999px;background:#ffffff;color:' . $accent . ';font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 18px 28px rgba(0,0,0,0.16);">Monitora lo stato della pratica</a>'
+                . '<div style="margin-top:12px;font-size:12px;color:rgba(255,255,255,0.85);line-height:1.6;">Se il pulsante non dovesse funzionare copia e incolla questo link nel tuo browser:<br><a href="' . $safeLink . '" style="color:#ffffff;font-weight:600;">' . $safeLink . '</a></div>'
                 . '</div>';
         }
 
+        $taglineMarkup = trim((string) $theme['tagline']) !== ''
+            ? '<p style="margin:28px 0 0;font-size:14px;color:' . $accentSoft . ';opacity:0.9;letter-spacing:0.02em;">' . htmlspecialchars($theme['tagline'], ENT_QUOTES, 'UTF-8') . '</p>'
+            : '';
+
+        $hero = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 32px;">'
+            . '<tr>'
+            . '<td style="padding:0;">'
+            . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:' . $accentGradient . ';border-radius:28px;overflow:hidden;box-shadow:0 24px 48px rgba(12, 23, 42, 0.28);">'
+            . '<tr><td style="padding:36px;">'
+            . $categoryChip
+            . '<div style="font-size:26px;font-weight:700;color:#ffffff;margin:16px 0 18px;letter-spacing:-0.01em;">La tua pratica è stata registrata con successo</div>'
+            . '<div style="font-size:12px;letter-spacing:0.28em;color:rgba(255,255,255,0.74);text-transform:uppercase;">Codice pratica</div>'
+            . '<div style="margin-top:10px;font-size:34px;font-weight:800;color:#ffffff;letter-spacing:0.08em;">' . $trackingLabel . '</div>'
+            . '<div style="margin-top:24px;">' . $statusPill . $typeMarkup . '</div>'
+            . $ctaMarkup
+            . $taglineMarkup
+            . '</td></tr></table>'
+            . '</td>'
+            . '</tr>'
+            . '</table>';
+
+        $insightMarkup = '';
+        if ($insightItems) {
+            $count = count($insightItems);
+            $colWidth = $count > 0 ? number_format(100 / $count, 2, '.', '') : '100';
+            $cells = '';
+            $index = 0;
+            foreach ($insightItems as $label => $value) {
+                $index++;
+                $safeLabel = htmlspecialchars((string) $label, ENT_QUOTES, 'UTF-8');
+                $safeValue = htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+                $borderStyle = $index === $count ? 'border-right:0;' : 'border-right:1px solid ' . $divider . ';';
+                $cells .= '<td style="width:' . $colWidth . '%;padding:20px 24px;vertical-align:top;' . $borderStyle . '">'
+                    . '<div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:' . $accent . ';font-weight:700;">' . $safeLabel . '</div>'
+                    . '<div style="margin-top:10px;font-size:18px;line-height:1.5;color:#1a2433;font-weight:700;">' . $safeValue . '</div>'
+                    . '</td>';
+            }
+
+            $insightMarkup = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 32px;border-radius:22px;overflow:hidden;background:' . $surface . ';border:1px solid ' . $divider . ';box-shadow:0 20px 38px rgba(15, 23, 42, 0.12);">'
+                . '<tr>' . $cells . '</tr>'
+                . '</table>';
+        }
+
+        $summarySection = '<div style="margin:36px 0 0;"><h2 style="margin:0 0 16px;font-size:17px;color:' . $accent . ';">Riepilogo pratica</h2>' . $summaryTable . '</div>';
         $timelineHtml = $this->buildTimelinePreviewSection(is_array($practice['tracking_steps'] ?? null) ? $practice['tracking_steps'] : [], $theme['accent']);
 
         $customerName = $this->resolveCustomerDisplayName($practice);
@@ -806,19 +852,21 @@ SQL;
             : 'Gentile cliente,';
 
         $parts = [];
-        $parts[] = '<p style="margin:0 0 16px;">' . $greeting . '</p>';
-        $parts[] = '<p style="margin:0 0 20px;color:#1c2534;">ti confermiamo la registrazione della tua pratica presso il servizio ' . $categoryLabel . '. Di seguito trovi il riepilogo aggiornato e i prossimi passi utili.</p>';
-        $parts[] = $card;
-        $parts[] = $trackingButtonBlock;
-        $parts[] = '<div style="margin:28px 0 0;"><h2 style="margin:0 0 12px;font-size:17px;color:' . $theme['accent'] . ';">Riepilogo pratica</h2>' . $summaryTable . '</div>';
+        $parts[] = '<p style="margin:0 0 20px;color:#1a2433;font-size:15px;line-height:1.6;">' . $greeting . '</p>';
+        $parts[] = '<p style="margin:0 0 24px;color:' . $muted . ';font-size:15px;line-height:1.7;">ti confermiamo la registrazione della tua pratica presso il servizio ' . $categoryLabel . '. Di seguito trovi un recap completo e gli strumenti per monitorarne l\'avanzamento.</p>';
+        $parts[] = $hero;
+        if ($insightMarkup !== '') {
+            $parts[] = $insightMarkup;
+        }
+        $parts[] = $summarySection;
         if ($metadataSection !== '') {
             $parts[] = $metadataSection;
         }
         if ($timelineHtml !== '') {
             $parts[] = $timelineHtml;
         }
-        $parts[] = '<p style="margin:32px 0 0;color:#1c2534;">Per qualsiasi necessità puoi rispondere a questa email o contattare il tuo referente dedicato.</p>';
-        $parts[] = '<p style="margin:12px 0 0;color:#1c2534;">Cordiali saluti,<br><strong>Coresuite Business</strong></p>';
+        $parts[] = '<p style="margin:36px 0 0;color:' . $muted . ';font-size:15px;line-height:1.7;">Per ulteriori chiarimenti puoi rispondere a questa email oppure contattare il tuo referente dedicato.</p>';
+        $parts[] = '<p style="margin:16px 0 0;color:#1a2433;font-size:15px;line-height:1.6;">Cordiali saluti,<br><strong>Coresuite Business</strong></p>';
 
         return implode('', $parts);
     }
@@ -826,25 +874,29 @@ SQL;
     /**
      * @param array<string,string> $rows
      */
-    private function renderEmailKeyValueTable(array $rows): string
+    private function renderEmailKeyValueTable(array $rows, string $accentColor): string
     {
+        $safeAccent = htmlspecialchars($accentColor, ENT_QUOTES, 'UTF-8');
         $tableRows = '';
+        $index = 0;
         foreach ($rows as $label => $value) {
             $valueString = trim((string) $value);
             if ($valueString === '') {
                 continue;
             }
-            $tableRows .= '<tr>'
-                . '<th align="left" style="padding:10px 16px;background:#f4f6fb;font-size:13px;width:220px;color:#274060;">' . htmlspecialchars((string) $label, ENT_QUOTES, 'UTF-8') . '</th>'
-                . '<td style="padding:10px 16px;font-size:15px;color:#1c2534;background:#ffffff;border-bottom:1px solid #eef1f6;">' . htmlspecialchars($valueString, ENT_QUOTES, 'UTF-8') . '</td>'
+            $index++;
+            $background = $index % 2 === 0 ? '#f5f8ff' : '#ffffff';
+            $tableRows .= '<tr style="background:' . $background . ';">'
+                . '<th align="left" style="padding:14px 18px;width:220px;text-transform:uppercase;font-size:11px;letter-spacing:0.14em;color:' . $safeAccent . ';border-right:1px solid rgba(12,23,42,0.08);">' . htmlspecialchars((string) $label, ENT_QUOTES, 'UTF-8') . '</th>'
+                . '<td style="padding:14px 20px;font-size:15px;color:#1a2433;font-weight:600;">' . htmlspecialchars($valueString, ENT_QUOTES, 'UTF-8') . '</td>'
                 . '</tr>';
         }
 
         if ($tableRows === '') {
-            $tableRows = '<tr><td style="padding:12px 16px;font-size:14px;color:#516070;">Dati non disponibili.</td></tr>';
+            $tableRows = '<tr><td style="padding:16px 18px;font-size:14px;color:#516070;">Dati non disponibili.</td></tr>';
         }
 
-        return '<table cellspacing="0" cellpadding="0" style="width:100%;border-collapse:separate;border-spacing:0;background:#ffffff;border:1px solid #dde2eb;border-radius:12px;overflow:hidden;">'
+        return '<table cellspacing="0" cellpadding="0" style="width:100%;border-collapse:separate;border-spacing:0;background:#ffffff;border:1px solid rgba(12,23,42,0.08);border-radius:20px;overflow:hidden;box-shadow:0 18px 38px rgba(15,23,42,0.08);">'
             . $tableRows
             . '</table>';
     }
@@ -875,6 +927,7 @@ SQL;
             return '';
         }
 
+        $safeAccent = htmlspecialchars($accentColor, ENT_QUOTES, 'UTF-8');
         $latest = array_slice(array_reverse($normalized), 0, 3);
         $items = '';
         foreach ($latest as $entry) {
@@ -883,13 +936,14 @@ SQL;
                 $dateLabel = 'Aggiornamento';
             }
             $authorLabel = $this->resolveTimelineAuthorLabel($entry['autore'] ?? null);
-            $items .= '<li style="list-style:none;margin:0 0 12px;padding:12px 16px;background:#f7f9fc;border-radius:10px;border:1px solid #e3e9f5;">'
-                . '<div style="font-size:13px;color:#516070;font-weight:600;">' . htmlspecialchars($dateLabel, ENT_QUOTES, 'UTF-8') . ' · ' . htmlspecialchars($authorLabel, ENT_QUOTES, 'UTF-8') . '</div>'
-                . '<div style="font-size:15px;color:#1c2534;margin-top:4px;">' . htmlspecialchars($entry['descrizione'], ENT_QUOTES, 'UTF-8') . '</div>'
+            $items .= '<li style="list-style:none;margin:0 0 16px;padding:18px 20px;border-radius:18px;border:1px solid rgba(12,23,42,0.08);background:#ffffff;box-shadow:0 14px 32px rgba(15,23,42,0.12);">'
+                . '<div style="font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:' . $safeAccent . ';font-weight:700;">' . htmlspecialchars($dateLabel, ENT_QUOTES, 'UTF-8') . '</div>'
+                . '<div style="font-size:13px;color:#6a7689;font-weight:600;margin-top:6px;">' . htmlspecialchars($authorLabel, ENT_QUOTES, 'UTF-8') . '</div>'
+                . '<div style="font-size:16px;color:#1a2433;margin-top:10px;line-height:1.6;">' . htmlspecialchars($entry['descrizione'], ENT_QUOTES, 'UTF-8') . '</div>'
                 . '</li>';
         }
 
-        return '<div style="margin:28px 0 0;"><h2 style="margin:0 0 12px;font-size:17px;color:' . htmlspecialchars($accentColor, ENT_QUOTES, 'UTF-8') . ';">Ultimi aggiornamenti</h2><ul style="margin:0;padding:0;">' . $items . '</ul></div>';
+        return '<div style="margin:36px 0 0;"><h2 style="margin:0 0 16px;font-size:17px;color:' . $safeAccent . ';">Ultimi aggiornamenti</h2><ul style="margin:0;padding:0;">' . $items . '</ul></div>';
     }
 
     private function resolveTimelineAuthorLabel($author): string
@@ -934,24 +988,28 @@ SQL;
         if ($normalized === 'PATRONATO') {
             return [
                 'label' => 'Patronato',
-                'accent' => '#0b6b53',
-                'cardBackground' => 'linear-gradient(135deg, #f6fff9, #e4fff3)',
-                'cardBorder' => '#bfe8d4',
-                'cardText' => '#0b4632',
-                'badgeBackground' => '#0b6b53',
-                'badgeText' => '#ffffff',
+                'accent' => '#0a6c59',
+                'accentGradient' => 'linear-gradient(120deg, #086650, #34c49b)',
+                'accentSoft' => '#d6f7ec',
+                'surface' => '#ffffff',
+                'chipBg' => 'rgba(8, 102, 80, 0.18)',
+                'chipText' => '#0a6c59',
+                'muted' => '#114939',
+                'divider' => '#bfe8d4',
                 'tagline' => 'Tutela previdenziale e assistenza dedicata.',
             ];
         }
 
         return [
             'label' => 'CAF',
-            'accent' => '#0b2f6b',
-            'cardBackground' => 'linear-gradient(135deg, #f7f9ff, #eef3ff)',
-            'cardBorder' => '#d5e1f8',
-            'cardText' => '#0b2f6b',
-            'badgeBackground' => '#0b2f6b',
-            'badgeText' => '#ffffff',
+            'accent' => '#0b3d91',
+            'accentGradient' => 'linear-gradient(120deg, #0b3d91, #1f8bfd)',
+            'accentSoft' => '#dbe6ff',
+            'surface' => '#ffffff',
+            'chipBg' => 'rgba(11, 61, 145, 0.18)',
+            'chipText' => '#0b3d91',
+            'muted' => '#1c2c5c',
+            'divider' => '#c9d7f7',
             'tagline' => 'Assistenza fiscale personalizzata e gestione documentale.',
         ];
     }
