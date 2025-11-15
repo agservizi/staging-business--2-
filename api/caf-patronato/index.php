@@ -9,6 +9,7 @@ use Throwable;
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../includes/db_connect.php';
+require_once __DIR__ . '/../../includes/mailer.php';
 require_once __DIR__ . '/../../modules/servizi/caf-patronato/functions.php';
 
 header('Content-Type: application/json; charset=utf-8');
