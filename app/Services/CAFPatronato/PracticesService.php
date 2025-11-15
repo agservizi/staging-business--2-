@@ -587,12 +587,23 @@ SQL;
         $recipient = null;
         if ($recipientOverride !== null) {
             $recipient = $this->normalizeEmailCandidate($recipientOverride);
+            if ($recipient === null) {
+                throw new RuntimeException('Indirizzo email cliente non valido.', 422);
+            }
         }
+
         if ($recipient === null) {
             $recipient = $this->resolvePracticeCustomerEmail($practice);
         }
-        if ($recipient === null || !function_exists('send_system_mail')) {
-            return false;
+
+        if ($recipient === null) {
+            throw new RuntimeException('Nessun indirizzo email del cliente disponibile per questa pratica.', 422);
+        }
+
+        $this->cachePracticeCustomerEmail($practice, $recipient);
+
+        if (!function_exists('send_system_mail')) {
+            throw new RuntimeException('Servizio email non disponibile sul server.', 503);
         }
 
         $trackingCode = (string) ($practice['tracking_code'] ?? '');
@@ -611,11 +622,11 @@ SQL;
             $sent = send_system_mail($recipient, $subject, $htmlBody);
         } catch (Throwable $exception) {
             error_log('CAF/Patronato customer mail dispatch error: ' . $exception->getMessage());
-            return false;
+            throw new RuntimeException('Invio email al cliente non riuscito. Verifica i log del servizio email.', 502, $exception);
         }
 
         if (!$sent) {
-            return false;
+            throw new RuntimeException('Invio email al cliente non riuscito. Verifica la configurazione del servizio email.', 502);
         }
 
         $payload = array_filter([
@@ -1067,7 +1078,7 @@ SQL;
         return $date->format($format);
     }
 
-    private function resolvePracticeCustomerEmail(array $practice): ?string
+    private function resolvePracticeCustomerEmail(array &$practice): ?string
     {
         $candidates = [];
 
@@ -1143,23 +1154,9 @@ SQL;
         return [];
     }
 
-    private function fetchLegacyModuleEmail(array $practice): ?string
+    private function fetchLegacyModuleEmail(array &$practice): ?string
     {
-        $metadata = $practice['metadati'] ?? null;
-        if (!is_array($metadata)) {
-            return null;
-        }
-
-        $sourceId = null;
-        foreach (['caf_patronato_pratica_id', 'caf_pratica_id'] as $key) {
-            if (isset($metadata[$key]) && is_numeric($metadata[$key])) {
-                $candidate = (int) $metadata[$key];
-                if ($candidate > 0) {
-                    $sourceId = $candidate;
-                    break;
-                }
-            }
-        }
+        [$sourceId, $sourceCode] = $this->extractLegacyIdentifiers($practice);
 
         $email = null;
 
@@ -1173,34 +1170,140 @@ SQL;
             }
         }
 
-        if (!is_string($email) || trim($email) === '') {
-            $sourceCode = null;
-            foreach (['caf_patronato_code', 'caf_pratica_code'] as $key) {
-                if (!empty($metadata[$key]) && is_string($metadata[$key])) {
-                    $sourceCode = trim((string) $metadata[$key]);
-                    break;
-                }
-            }
-            if ($sourceCode === null && !empty($practice['tracking_code']) && is_string($practice['tracking_code'])) {
-                $sourceCode = trim((string) $practice['tracking_code']);
-            }
-
-            if ($sourceCode !== null && $sourceCode !== '') {
-                try {
-                    $stmt = $this->pdo->prepare('SELECT email FROM caf_patronato_pratiche WHERE pratica_code = :code LIMIT 1');
-                    $stmt->execute([':code' => $sourceCode]);
-                    $email = $stmt->fetchColumn() ?: null;
-                } catch (Throwable $exception) {
-                    error_log('CAF/Patronato legacy email lookup failed: ' . $exception->getMessage());
-                }
+        if ((!is_string($email) || trim((string) $email) === '') && $sourceCode !== null && $sourceCode !== '') {
+            try {
+                $stmt = $this->pdo->prepare('SELECT email FROM caf_patronato_pratiche WHERE pratica_code = :code LIMIT 1');
+                $stmt->execute([':code' => $sourceCode]);
+                $email = $stmt->fetchColumn() ?: null;
+            } catch (Throwable $exception) {
+                error_log('CAF/Patronato legacy email lookup failed: ' . $exception->getMessage());
             }
         }
 
-        if (!is_string($email) || trim($email) === '') {
+        if (!is_string($email) || trim((string) $email) === '') {
             return null;
         }
 
-        return $this->normalizeEmailCandidate((string) $email);
+        $normalized = $this->normalizeEmailCandidate((string) $email);
+        if ($normalized === null) {
+            return null;
+        }
+
+        $this->cachePracticeCustomerEmail($practice, $normalized);
+
+        return $normalized;
+    }
+
+    /**
+     * @return array{0: ?int, 1: ?string}
+     */
+    private function extractLegacyIdentifiers(array $practice): array
+    {
+        $sourceId = null;
+        $sourceCode = null;
+
+        $metadata = $practice['metadati'] ?? null;
+        if (is_array($metadata)) {
+            foreach (['caf_patronato_pratica_id', 'caf_pratica_id', 'legacy_practice_id'] as $key) {
+                if (isset($metadata[$key]) && is_numeric($metadata[$key])) {
+                    $candidate = (int) $metadata[$key];
+                    if ($candidate > 0) {
+                        $sourceId = $candidate;
+                        break;
+                    }
+                }
+            }
+
+            foreach (['caf_patronato_code', 'caf_pratica_code', 'legacy_pratica_code', 'legacy_practice_code'] as $key) {
+                if (!empty($metadata[$key]) && is_string($metadata[$key])) {
+                    $candidate = trim((string) $metadata[$key]);
+                    if ($candidate !== '') {
+                        $sourceCode = $candidate;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($sourceCode === null && !empty($practice['tracking_code']) && is_string($practice['tracking_code'])) {
+            $sourceCode = trim((string) $practice['tracking_code']);
+        }
+
+        if (($sourceId === null || $sourceCode === null) && isset($practice['eventi']) && is_array($practice['eventi'])) {
+            foreach ($practice['eventi'] as $event) {
+                if (!is_array($event)) {
+                    continue;
+                }
+                $payload = $event['payload'] ?? null;
+                if (!is_array($payload)) {
+                    continue;
+                }
+                if ($sourceId === null) {
+                    foreach (['caf_pratica_id', 'caf_patronato_pratica_id', 'legacy_practice_id'] as $key) {
+                        if (isset($payload[$key]) && is_numeric($payload[$key])) {
+                            $candidate = (int) $payload[$key];
+                            if ($candidate > 0) {
+                                $sourceId = $candidate;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if ($sourceCode === null) {
+                    foreach (['caf_pratica_code', 'caf_patronato_code', 'legacy_pratica_code', 'legacy_practice_code'] as $key) {
+                        if (!empty($payload[$key]) && is_string($payload[$key])) {
+                            $candidate = trim((string) $payload[$key]);
+                            if ($candidate !== '') {
+                                $sourceCode = $candidate;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if ($sourceId !== null && $sourceCode !== null) {
+                    break;
+                }
+            }
+        }
+
+        return [$sourceId, $sourceCode];
+    }
+
+    private function cachePracticeCustomerEmail(array &$practice, string $email): void
+    {
+        $practice['customer_email'] = $email;
+
+        $practiceId = isset($practice['id']) ? (int) $practice['id'] : 0;
+        if ($practiceId <= 0) {
+            return;
+        }
+
+        $metadata = $practice['metadati'] ?? null;
+        if (!is_array($metadata)) {
+            $metadata = [];
+        }
+
+        $currentEmail = isset($metadata['email']) && is_string($metadata['email']) ? trim($metadata['email']) : '';
+        $currentCustomerEmail = isset($metadata['customer_email']) && is_string($metadata['customer_email']) ? trim($metadata['customer_email']) : '';
+        if ($currentEmail === $email && $currentCustomerEmail === $email) {
+            return;
+        }
+
+        $metadata['email'] = $email;
+        $metadata['customer_email'] = $email;
+
+        try {
+            $encoded = json_encode($metadata, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $stmt = $this->pdo->prepare('UPDATE pratiche SET metadati = :metadati WHERE id = :id');
+            $stmt->execute([
+                ':metadati' => $encoded,
+                ':id' => $practiceId,
+            ]);
+            $practice['metadati'] = $metadata;
+        } catch (Throwable $exception) {
+            error_log('CAF/Patronato customer email cache failed: ' . $exception->getMessage());
+        }
     }
 
     private function buildTrackingStep(string $description, string $authorRole, ?DateTimeImmutable $timestamp = null, bool $isPublic = false): array

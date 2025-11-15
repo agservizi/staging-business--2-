@@ -331,7 +331,11 @@ try {
             respondWithError('Azione non riconosciuta: ' . $action, 404);
     }
 } catch (RuntimeException $exception) {
-    respondWithError($exception->getMessage(), 400);
+    $status = (int) $exception->getCode();
+    if ($status < 400 || $status > 599) {
+        $status = 400;
+    }
+    respondWithError($exception->getMessage(), $status);
 } catch (Throwable $exception) {
     error_log('CAF/Patronato API error: ' . $exception->getMessage());
     respondWithError('Errore interno al server.', 500);
