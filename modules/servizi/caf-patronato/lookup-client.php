@@ -39,15 +39,39 @@ if ($normalized === '' || strlen($normalized) < 11) {
 }
 
 try {
-    $stmt = $pdo->prepare(
+    $client = null;
+    $likeSliceLength = max(3, min(8, strlen($normalized)));
+    $likePattern = '%' . substr($normalized, 0, $likeSliceLength) . '%';
+
+    $lookupStmt = $pdo->prepare(
         "SELECT id, nome, cognome, ragione_sociale, cf_piva, email, telefono
          FROM clienti
-         WHERE cf_piva IS NOT NULL
-           AND REPLACE(REPLACE(REPLACE(REPLACE(UPPER(cf_piva), ' ', ''), '-', ''), '.', ''), '/', '') = :cf
-         LIMIT 1"
+         WHERE cf_piva IS NOT NULL AND cf_piva <> ''
+           AND UPPER(cf_piva) LIKE :pattern
+         LIMIT 100"
     );
-    $stmt->execute([':cf' => $normalized]);
-    $client = $stmt->fetch(PDO::FETCH_ASSOC);
+    $lookupStmt->execute([':pattern' => $likePattern]);
+    $candidates = $lookupStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    if (!$candidates) {
+        $fallbackStmt = $pdo->query(
+            "SELECT id, nome, cognome, ragione_sociale, cf_piva, email, telefono
+             FROM clienti
+             WHERE cf_piva IS NOT NULL AND cf_piva <> ''
+             ORDER BY updated_at DESC
+             LIMIT 200"
+        );
+        $candidates = $fallbackStmt ? $fallbackStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+    }
+
+    foreach ($candidates as $candidate) {
+        $candidateCf = strtoupper(trim((string) ($candidate['cf_piva'] ?? '')));
+        $candidateNormalized = preg_replace('/[^A-Z0-9]/', '', $candidateCf ?: '');
+        if ($candidateNormalized === $normalized) {
+            $client = $candidate;
+            break;
+        }
+    }
 
     if (!$client) {
         echo json_encode([
