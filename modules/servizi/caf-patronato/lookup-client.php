@@ -65,9 +65,14 @@ try {
     }
 
     foreach ($candidates as $candidate) {
-        $candidateCf = strtoupper(trim((string) ($candidate['cf_piva'] ?? '')));
+        $candidateCfRaw = (string) ($candidate['cf_piva'] ?? '');
+        $candidateCf = strtoupper(trim($candidateCfRaw));
         $candidateNormalized = preg_replace('/[^A-Z0-9]/', '', $candidateCf ?: '');
-        if ($candidateNormalized === $normalized) {
+        if ($candidateNormalized === '') {
+            continue;
+        }
+        if ($candidateNormalized === $normalized || strpos($candidateNormalized, $normalized) !== false || strpos($normalized, $candidateNormalized) !== false) {
+            $candidate['_matched_cf'] = $candidateCfRaw;
             $client = $candidate;
             break;
         }
@@ -95,7 +100,7 @@ try {
         $nominativoSuggestion = $displayName;
     }
 
-    $cfValue = strtoupper(trim((string) ($client['cf_piva'] ?? '')));
+    $cfValue = strtoupper(trim((string) ($client['_matched_cf'] ?? $client['cf_piva'] ?? '')));
 
     echo json_encode([
         'found' => true,

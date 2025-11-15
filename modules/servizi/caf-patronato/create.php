@@ -956,6 +956,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 return;
             }
             if (!payload || payload.found !== true || !payload.client) {
+                lastLookupValue = '';
                 return;
             }
             showModal(payload.client);
