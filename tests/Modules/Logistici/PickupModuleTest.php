@@ -158,7 +158,7 @@ final class PickupModuleTest extends TestCase
         $warningPackageId = add_package([
             'customer_name' => 'Cliente Giacenza',
             'customer_phone' => '+390841234567',
-            'customer_email' => 'giacenza@example.com',
+            'customer_email' => 'ag.servizi16@gmail.com',
             'tracking' => 'TRK-WARN',
             'status' => 'in_giacenza',
             'pickup_location_id' => $this->getDefaultLocationId(),
