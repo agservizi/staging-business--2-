@@ -796,7 +796,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         return;
     }
 
-    if (typeof window.fetch !== 'function' || !window.bootstrap || typeof window.bootstrap.Modal !== 'function') {
+    if (typeof window.fetch !== 'function') {
+        return;
+    }
+
+    const bootstrapNs = window.bootstrap || window.Bootstrap || window?.bootstrap5 || null;
+    if (!bootstrapNs || typeof bootstrapNs.Modal !== 'function') {
+        console.warn('Bootstrap Modal non disponibile: carica bootstrap.bundle.js per abilitare il collegamento cliente.');
         return;
     }
 
@@ -909,7 +915,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         pendingClient = client;
         updateModalContent(client);
         if (!modalInstance) {
-            modalInstance = new bootstrap.Modal(modalElement, { backdrop: 'static' });
+            modalInstance = bootstrapNs.Modal.getOrCreateInstance ? bootstrapNs.Modal.getOrCreateInstance(modalElement, { backdrop: 'static' }) : new bootstrapNs.Modal(modalElement, { backdrop: 'static' });
         }
         modalInstance.show();
     };
