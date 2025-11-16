@@ -173,6 +173,25 @@ final class PracticesServiceTest extends TestCase
                 FOREIGN KEY (pratica_id) REFERENCES pratiche(id) ON DELETE CASCADE,
                 FOREIGN KEY (destinatario_user_id) REFERENCES users(id) ON DELETE SET NULL,
                 FOREIGN KEY (destinatario_operatore_id) REFERENCES utenti_caf_patronato(id) ON DELETE SET NULL
+            )',
+            'CREATE TABLE entrate_uscite (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cliente_id INTEGER NULL,
+                descrizione TEXT NOT NULL,
+                riferimento TEXT,
+                metodo TEXT,
+                stato TEXT,
+                tipo_movimento TEXT,
+                importo TEXT NOT NULL DEFAULT "0",
+                quantita INTEGER NOT NULL DEFAULT 1,
+                prezzo_unitario TEXT NOT NULL DEFAULT "0",
+                data_scadenza TEXT,
+                data_pagamento TEXT,
+                note TEXT,
+                allegato_path TEXT,
+                allegato_hash TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )'
         ];
 
@@ -195,6 +214,9 @@ final class PracticesServiceTest extends TestCase
 
         // Insert practice types with custom fields schema
         $cafFields = json_encode([
+            ['slug' => 'servizio', 'label' => 'Servizio richiesto', 'type' => 'text'],
+            ['slug' => 'nominativo', 'label' => 'Nominativo', 'type' => 'text'],
+            ['slug' => 'importo', 'label' => 'Importo', 'type' => 'number'],
             ['slug' => 'email_contatto', 'label' => 'Email contatto', 'type' => 'text'],
             ['slug' => 'note_interne', 'label' => 'Note interne', 'type' => 'textarea'],
             ['slug' => 'privacy_consenso', 'label' => 'Consenso privacy', 'type' => 'checkbox'],
@@ -267,6 +289,42 @@ final class PracticesServiceTest extends TestCase
         self::assertEquals('in_lavorazione', $practice['stato']);
         self::assertEquals(1, $practice['cliente']['id']);
         self::assertEquals(1, $practice['assegnatario']['id']);
+    }
+
+    public function testCreatePracticeRegistersFinancialMovement(): void
+    {
+        $practiceData = [
+            'titolo' => 'Mario Rossi - ISEE',
+            'tipo_pratica' => 1,
+            'categoria' => 'CAF',
+            'cliente_id' => 1,
+            'metadati' => [
+                'servizio' => 'ISEE',
+                'nominativo' => 'Mario Rossi',
+                'importo' => '120,50',
+            ],
+        ];
+
+        $practice = $this->service->createPractice($practiceData, 1);
+
+        $stmt = $this->pdo->query('SELECT * FROM entrate_uscite');
+        $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        self::assertCount(1, $entries);
+        $entry = $entries[0];
+
+        self::assertEquals($practice['tracking_code'], $entry['riferimento']);
+        self::assertEquals('Entrata', $entry['tipo_movimento']);
+        self::assertEquals('In lavorazione', $entry['stato']);
+        self::assertEquals('Bonifico', $entry['metodo']);
+        self::assertEquals(1, (int) $entry['cliente_id']);
+        self::assertEquals(1, (int) $entry['quantita']);
+        self::assertEquals(120.5, (float) $entry['importo']);
+        self::assertEquals(120.5, (float) $entry['prezzo_unitario']);
+        self::assertNull($entry['data_scadenza']);
+        self::assertStringContainsString('ISEE', $entry['descrizione']);
+        self::assertStringContainsString('Mario Rossi', $entry['descrizione']);
+        self::assertStringContainsString((string) $practice['id'], (string) $entry['note']);
     }
 
     public function testCreatePracticeSendsCustomerMail(): void
