@@ -47,7 +47,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/production'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/production'
     
     steps:
       - name: Checkout repository
@@ -56,10 +56,17 @@ jobs:
       - name: Set target directory based on branch
         id: vars
         run: |
-          if [[ "${GITHUB_REF##*/}" == "staging" ]]; then
-            echo "target=/public_html/staging-business" >> $GITHUB_OUTPUT
-          else
-            echo "target=/public_html/business" >> $GITHUB_OUTPUT
+          case "${GITHUB_REF##*/}" in
+            main|staging)
+              echo "target=/public_html/staging-business" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "target=/public_html/business" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "target=/public_html/staging-business" >> $GITHUB_OUTPUT
+              ;;
+          esac
 
       - name: Upload files via FTP
         uses: SamKirkland/FTP-Deploy-Action@4.3.3
