@@ -327,6 +327,84 @@ final class PracticesServiceTest extends TestCase
         self::assertStringContainsString((string) $practice['id'], (string) $entry['note']);
     }
 
+    public function testEnsureFinancialMovementForExistingPractice(): void
+    {
+        $metadata = json_encode([
+            'servizio' => 'ISEE',
+            'nominativo' => 'Carmine Cavaliere',
+            'importo' => '5,00€',
+        ], JSON_THROW_ON_ERROR);
+
+        $stmt = $this->pdo->prepare('INSERT INTO pratiche (
+            titolo,
+            descrizione,
+            tipo_pratica,
+            categoria,
+            stato,
+            data_creazione,
+            data_aggiornamento,
+            scadenza,
+            id_admin,
+            id_utente_caf_patronato,
+            cliente_id,
+            allegati,
+            note,
+            metadati,
+            tracking_code,
+            tracking_steps
+        ) VALUES (
+            :titolo,
+            :descrizione,
+            :tipo_pratica,
+            :categoria,
+            :stato,
+            :data_creazione,
+            :data_aggiornamento,
+            :scadenza,
+            :id_admin,
+            NULL,
+            :cliente_id,
+            :allegati,
+            NULL,
+            :metadati,
+            :tracking_code,
+            :tracking_steps
+        )');
+
+        $stmt->execute([
+            ':titolo' => 'Carmine Cavaliere - ISEE',
+            ':descrizione' => 'Pratica creata dal modulo legacy',
+            ':tipo_pratica' => 1,
+            ':categoria' => 'CAF',
+            ':stato' => 'in_lavorazione',
+            ':data_creazione' => '2025-01-01 10:00:00',
+            ':data_aggiornamento' => '2025-01-01 10:00:00',
+            ':scadenza' => '2025-12-31',
+            ':id_admin' => 1,
+            ':cliente_id' => 1,
+            ':allegati' => json_encode([], JSON_THROW_ON_ERROR),
+            ':metadati' => $metadata,
+            ':tracking_code' => 'CAFTEST-123',
+            ':tracking_steps' => json_encode([], JSON_THROW_ON_ERROR),
+        ]);
+
+        $practiceId = (int) $this->pdo->lastInsertId();
+
+        $this->service->ensureFinancialMovementForPractice($practiceId);
+        $this->service->ensureFinancialMovementForPractice($practiceId);
+
+        $entries = $this->pdo->query('SELECT * FROM entrate_uscite')->fetchAll(PDO::FETCH_ASSOC);
+        self::assertCount(1, $entries);
+
+        $entry = $entries[0];
+        self::assertEquals('CAFTEST-123', $entry['riferimento']);
+        self::assertEquals('Entrata', $entry['tipo_movimento']);
+        self::assertEquals(1, (int) $entry['cliente_id']);
+        self::assertEquals(5.0, (float) $entry['importo']);
+        self::assertStringContainsString('Carmine Cavaliere', $entry['descrizione']);
+        self::assertStringContainsString('ISEE', $entry['descrizione']);
+    }
+
     public function testCreatePracticeSendsCustomerMail(): void
     {
         $practiceData = [

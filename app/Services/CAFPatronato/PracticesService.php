@@ -1518,6 +1518,37 @@ SQL;
         return $practice;
     }
 
+    public function ensureFinancialMovementForPractice(int $practiceId): void
+    {
+        if ($practiceId <= 0) {
+            return;
+        }
+
+        $stmt = $this->pdo->prepare('SELECT id, categoria, cliente_id, tracking_code, metadati, scadenza, titolo, tipo_pratica, stato FROM pratiche WHERE id = :id LIMIT 1');
+        $stmt->execute([':id' => $practiceId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return;
+        }
+
+        $payload = [
+            'categoria' => $row['categoria'] ?? null,
+            'cliente_id' => $row['cliente_id'] ?? null,
+            'scadenza' => $row['scadenza'] ?? null,
+            'titolo' => $row['titolo'] ?? null,
+            'tipo_pratica' => $row['tipo_pratica'] ?? null,
+            'stato' => $row['stato'] ?? null,
+            'metadati' => $this->decodeJson($row['metadati'] ?? null),
+        ];
+
+        if (!is_array($payload['metadati'])) {
+            $payload['metadati'] = [];
+        }
+
+        $trackingCode = isset($row['tracking_code']) ? (string) $row['tracking_code'] : '';
+        $this->registerFinancialMovement($practiceId, $payload, $trackingCode);
+    }
+
     public function sendCustomerConfirmationMail(int $practiceId, int $requestUserId, ?string $recipientOverride = null): bool
     {
         $practice = $this->getPractice($practiceId, true, null);

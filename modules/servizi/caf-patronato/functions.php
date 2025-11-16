@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use App\Services\CAFPatronato\PracticesService;
 use App\Services\SettingsService;
 use Mpdf\Mpdf;
 use Mpdf\MpdfException;
@@ -1259,6 +1260,14 @@ function caf_patronato_sync_legacy_pratica(PDO $pdo, array $payload, int $cafPra
         } catch (Throwable $exception) {
             error_log('CAF/Patronato legacy event log failed: ' . $exception->getMessage());
         }
+    }
+
+    try {
+        $rootPath = function_exists('project_root_path') ? project_root_path() : dirname(__DIR__, 3);
+        $service = new PracticesService($pdo, $rootPath);
+        $service->ensureFinancialMovementForPractice($legacyId);
+    } catch (Throwable $exception) {
+        error_log('CAF/Patronato movement sync failed: ' . $exception->getMessage());
     }
 
     return $legacyId;
