@@ -1802,7 +1802,6 @@ function renderPracticesTable(container, practices, options = {}) {
             return selected.trim();
         })();
 
-        const serializedTitle = JSON.stringify(String(practice?.titolo ?? ''));
         const actions = [`
             <button class="btn btn-icon btn-soft-accent btn-sm" type="button" onclick="viewPractice(${practice.id})" title="Visualizza">
                 <i class="fa-solid fa-eye"></i>
@@ -1821,8 +1820,11 @@ function renderPracticesTable(container, practices, options = {}) {
                     <i class="fa-solid fa-envelope"></i>
                 </button>
             `);
+        }
+        if (cafContext.canManagePractices) {
+            const encodedTitle = encodeURIComponent(String(practice?.titolo ?? ''));
             actions.push(`
-                <button class="btn btn-icon btn-outline-danger btn-sm" type="button" onclick="deletePractice(${practice.id}, ${serializedTitle})" title="Elimina pratica">
+                <button class="btn btn-icon btn-outline-danger btn-sm" type="button" data-practice-title="${encodedTitle}" onclick="deletePractice(${practice.id}, this.dataset.practiceTitle)" title="Elimina pratica">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             `);
@@ -2565,7 +2567,7 @@ function resendCustomerMail(practiceId, defaultRecipient = '') {
 }
 
 function deletePractice(practiceId, practiceTitle = '') {
-    if (!cafContext.canCreatePractices) {
+    if (!cafContext.canManagePractices) {
         window.CS?.showToast?.('Non hai i permessi per eliminare pratiche.', 'warning');
         return;
     }
@@ -2575,9 +2577,17 @@ function deletePractice(practiceId, practiceTitle = '') {
         return;
     }
 
-    const label = typeof practiceTitle === 'string' && practiceTitle.trim() !== ''
-        ? practiceTitle.trim()
-        : `Pratica #${targetId}`;
+    let resolvedTitle = '';
+    if (typeof practiceTitle === 'string' && practiceTitle.trim() !== '') {
+        const trimmed = practiceTitle.trim();
+        try {
+            resolvedTitle = decodeURIComponent(trimmed);
+        } catch (error) {
+            resolvedTitle = trimmed;
+        }
+    }
+
+    const label = resolvedTitle !== '' ? resolvedTitle : `Pratica #${targetId}`;
 
     showConfirmDialog({
         title: 'Elimina pratica',
