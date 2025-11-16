@@ -1,0 +1,34 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches:
+      - staging
+      - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set target directory based on branch
+        id: vars
+        run: |
+          if [[ "${GITHUB_REF##*/}" == "staging" ]]; then
+            echo "target=/public_html/staging-business" >> $GITHUB_OUTPUT
+          else
+            echo "target=/public_html/business" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload files via FTP
+        uses: SamKirkland/FTP-Deploy-Action@4.3.3
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASS }}
+          local-dir: .
+          server-dir: ${{ steps.vars.outputs.target }}
+          dry-run: false
