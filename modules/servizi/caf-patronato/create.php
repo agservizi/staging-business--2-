@@ -48,16 +48,27 @@ foreach ($serviceOptionMap as $mapType => $mapValues) {
     }
     $clean = [];
     foreach ($mapValues as $mapValue) {
-        if (!is_string($mapValue)) {
+        if (!is_array($mapValue)) {
             continue;
         }
-        $trimmed = trim($mapValue);
-        if ($trimmed === '') {
+        $name = trim((string) ($mapValue['name'] ?? ''));
+        if ($name === '') {
             continue;
         }
-        $clean[] = $trimmed;
+        $hash = mb_strtolower($name, 'UTF-8');
+        if (isset($clean[$hash])) {
+            continue;
+        }
+        $price = $mapValue['price'] ?? null;
+        if ($price !== null && !is_numeric($price)) {
+            $price = null;
+        }
+        $clean[$hash] = [
+            'name' => $name,
+            'price' => $price !== null ? round((float) $price, 2) : null,
+        ];
     }
-    $serviceOptionMapForJs[$typeKey] = array_values(array_unique($clean));
+    $serviceOptionMapForJs[$typeKey] = array_values($clean);
 }
 
 $data = [
@@ -439,6 +450,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <div class="list-group position-absolute w-100 d-none shadow-sm border bg-white" id="cafPatronatoServiceList" data-service-list role="listbox" style="z-index: 1055; max-height: 240px; overflow-y: auto;"></div>
                         </div>
                         <div class="form-text">Elenco alimentato dalle impostazioni &ldquo;Servizi richiesti&rdquo;. Puoi indicare anche valori personalizzati.</div>
+                        <div class="d-flex justify-content-between align-items-center small text-muted mt-1">
+                            <span>Prezzo consigliato</span>
+                            <span class="fw-semibold" data-service-price>—</span>
+                        </div>
                     </div>
 
                     <div class="col-lg-6">
@@ -570,6 +585,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     const selector = document.querySelector('[data-service-selector]');
     const list = selector ? selector.querySelector('[data-service-list]') : null;
     const toggle = selector ? selector.querySelector('[data-service-toggle]') : null;
+    const priceTarget = document.querySelector('[data-service-price]');
+    const euroFormatter = (typeof Intl !== 'undefined' && typeof Intl.NumberFormat === 'function')
+        ? new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' })
+        : null;
 
     if (!typeSelect || !input || !selector || !list) {
         return;
@@ -578,6 +597,26 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     let currentOptions = [];
     let visibleOptions = [];
     let activeIndex = -1;
+
+    const buildServiceNames = function (entries) {
+        if (!Array.isArray(entries)) {
+            return [];
+        }
+        const names = [];
+        entries.forEach(function (entry) {
+            let label = '';
+            if (typeof entry === 'string') {
+                label = entry;
+            } else if (entry && typeof entry === 'object' && typeof entry.name === 'string') {
+                label = entry.name;
+            }
+            const trimmed = label.trim();
+            if (trimmed !== '') {
+                names.push(trimmed);
+            }
+        });
+        return names;
+    };
 
     const uniqueNormalize = function (values) {
         const unique = [];
@@ -600,10 +639,82 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         return unique;
     };
 
+    const normalizeServiceName = function (value) {
+        if (typeof value !== 'string') {
+            return '';
+        }
+        return value.trim().toLowerCase();
+    };
+
+    const resolveServicePrice = function (typeKey, serviceName) {
+        const normalizedType = (typeKey || '').toUpperCase();
+        const normalizedName = normalizeServiceName(serviceName || '');
+        if (!normalizedType || !normalizedName) {
+            return null;
+        }
+
+        const entries = Array.isArray(serviceMap[normalizedType]) ? serviceMap[normalizedType] : [];
+        const hasOwn = Object.prototype.hasOwnProperty;
+
+        for (let index = 0; index < entries.length; index += 1) {
+            const entry = entries[index];
+            let label = '';
+            if (typeof entry === 'string') {
+                label = entry;
+            } else if (entry && typeof entry === 'object' && typeof entry.name === 'string') {
+                label = entry.name;
+            }
+
+            if (normalizeServiceName(label) !== normalizedName) {
+                continue;
+            }
+
+            if (!entry || typeof entry !== 'object' || !hasOwn.call(entry, 'price')) {
+                return null;
+            }
+
+            const priceValue = entry.price;
+            if (priceValue === null || priceValue === '') {
+                return null;
+            }
+
+            const numericPrice = typeof priceValue === 'number' ? priceValue : parseFloat(String(priceValue));
+            if (!isFinite(numericPrice) || numericPrice < 0) {
+                return null;
+            }
+
+            return numericPrice;
+        }
+
+        return null;
+    };
+
+    const renderPriceHint = function (price) {
+        if (!priceTarget) {
+            return;
+        }
+        if (price === null) {
+            priceTarget.textContent = '—';
+            priceTarget.classList.add('text-muted');
+            return;
+        }
+        const formatted = euroFormatter ? euroFormatter.format(price) : ('\u20AC ' + price.toFixed(2));
+        priceTarget.textContent = formatted;
+        priceTarget.classList.remove('text-muted');
+    };
+
+    const updatePriceHint = function () {
+        if (!priceTarget) {
+            return;
+        }
+        const resolvedPrice = resolveServicePrice(typeSelect.value, input.value);
+        renderPriceHint(resolvedPrice);
+    };
+
     const ensureCurrentOptions = function () {
         const typeKey = (typeSelect.value || '').toUpperCase();
         const options = Array.isArray(serviceMap[typeKey]) && serviceMap[typeKey].length > 0
-            ? serviceMap[typeKey]
+            ? buildServiceNames(serviceMap[typeKey])
             : initialServices;
         currentOptions = uniqueNormalize(options);
     };
@@ -692,6 +803,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         input.value = value;
         closeList();
         input.focus();
+        updatePriceHint();
     };
 
     input.addEventListener('focus', function () {
@@ -700,6 +812,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         if (visibleOptions.length) {
             openList();
         }
+        updatePriceHint();
     });
 
     input.addEventListener('input', function () {
@@ -710,6 +823,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         } else {
             closeList();
         }
+        updatePriceHint();
     });
 
     input.addEventListener('keydown', function (event) {
@@ -779,11 +893,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         } else {
             closeList();
         }
+        updatePriceHint();
     });
 
     // initialize with current type
     ensureCurrentOptions();
     filterList(input.value);
+    updatePriceHint();
 })();
 
 

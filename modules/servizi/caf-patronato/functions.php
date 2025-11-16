@@ -199,6 +199,10 @@ function caf_patronato_type_config(): array
         }
     }
 
+    if (!$cache) {
+        $cache = caf_patronato_prepare_service_map(SettingsService::defaultCafPatronatoServices());
+    }
+
     return $cache;
 }
 
@@ -261,7 +265,7 @@ function caf_patronato_type_label(string $key): string
 }
 
 /**
- * @return array<string, array<int,string>>
+ * @return array<string, array<int, array{name:string,price:float|null}>>
  */
 function caf_patronato_service_config(): array
 {
@@ -270,7 +274,7 @@ function caf_patronato_service_config(): array
         return $cache;
     }
 
-    $cache = SettingsService::defaultCafPatronatoServices();
+    $cache = caf_patronato_prepare_service_map(SettingsService::defaultCafPatronatoServices());
 
     global $pdo;
     if ($pdo instanceof PDO) {
@@ -279,7 +283,7 @@ function caf_patronato_service_config(): array
             $service = new SettingsService($pdo, $root);
             $config = $service->getCafPatronatoServices();
             if ($config) {
-                $cache = $config;
+                $cache = caf_patronato_prepare_service_map($config);
             }
         } catch (Throwable $exception) {
             error_log('CAF/Patronato services config fallback: ' . $exception->getMessage());
@@ -289,62 +293,109 @@ function caf_patronato_service_config(): array
     return $cache;
 }
 
+/**
+ * @param array<string,mixed> $payload
+ * @return array<string, array<int, array{name:string,price:float|null}>>
+ */
+function caf_patronato_prepare_service_map($payload): array
+{
+    if (!is_array($payload)) {
+        return [];
+    }
+
+    $normalized = [];
+    foreach ($payload as $typeKey => $entries) {
+        $key = strtoupper((string) $typeKey);
+        if ($key === '') {
+            continue;
+        }
+        if (!is_array($entries)) {
+            $entries = [$entries];
+        }
+
+        $seen = [];
+        $prepared = [];
+        foreach ($entries as $entry) {
+            if (is_array($entry)) {
+                $name = (string) ($entry['name'] ?? ($entry['label'] ?? ($entry['value'] ?? '')));
+                $price = $entry['price'] ?? null;
+            } elseif (is_string($entry)) {
+                $name = $entry;
+                $price = null;
+            } else {
+                continue;
+            }
+
+            $name = trim($name);
+            if ($name === '') {
+                continue;
+            }
+
+            $hash = mb_strtolower($name, 'UTF-8');
+            if (isset($seen[$hash])) {
+                continue;
+            }
+
+            $seen[$hash] = true;
+            $prepared[] = [
+                'name' => mb_substr($name, 0, 120),
+                'price' => is_numeric($price) ? round((float) $price, 2) : null,
+            ];
+        }
+
+        if ($prepared) {
+            usort($prepared, static function (array $a, array $b): int {
+                return strcasecmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
+            });
+        }
+
+        $normalized[$key] = $prepared;
+    }
+
+    return $normalized;
+}
+
 function caf_patronato_service_options(?string $typeKey = null): array
 {
     $config = caf_patronato_service_config();
+    $extractNames = static function ($list): array {
+        $names = [];
+        if (!is_array($list)) {
+            return $names;
+        }
+        foreach ($list as $entry) {
+            if (is_array($entry)) {
+                $name = (string) ($entry['name'] ?? '');
+            } elseif (is_string($entry)) {
+                $name = $entry;
+            } else {
+                continue;
+            }
+            $name = trim($name);
+            if ($name === '') {
+                continue;
+            }
+            $names[] = $name;
+        }
+        return $names;
+    };
+
     if ($typeKey !== null) {
         $normalizedKey = strtoupper($typeKey);
-        $list = $config[$normalizedKey] ?? [];
-        if (!is_array($list)) {
-            return [];
-        }
-
-        $filtered = [];
-        foreach ($list as $entry) {
-            if (!is_string($entry)) {
-                continue;
-            }
-            $trimmed = trim($entry);
-            if ($trimmed === '') {
-                continue;
-            }
-            $filtered[] = $trimmed;
-        }
-
-        return $filtered;
+        return $extractNames($config[$normalizedKey] ?? []);
     }
 
     $merged = [];
     foreach ($config as $list) {
-        if (!is_array($list)) {
-            continue;
-        }
-        foreach ($list as $entry) {
-            if (!is_string($entry)) {
-                continue;
-            }
-            $trimmed = trim($entry);
-            if ($trimmed === '') {
-                continue;
-            }
-            $merged[$trimmed] = $trimmed;
+        foreach ($extractNames($list) as $name) {
+            $merged[$name] = $name;
         }
     }
 
     if (!$merged) {
         foreach (SettingsService::defaultCafPatronatoServices() as $list) {
-            if (!is_array($list)) {
-                continue;
-            }
-            foreach ($list as $entry) {
-                if (!is_string($entry)) {
-                    continue;
-                }
-                $trimmed = trim($entry);
-                if ($trimmed === '') {
-                    continue;
-                }
-                $merged[$trimmed] = $trimmed;
+            foreach ($extractNames($list) as $name) {
+                $merged[$name] = $name;
             }
         }
     }

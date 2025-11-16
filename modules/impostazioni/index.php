@@ -28,12 +28,18 @@ if (!function_exists('settings_filter_service_suggestions')) {
                 continue;
             }
             foreach ($serviceList as $serviceValue) {
-                if (!is_string($serviceValue)) {
+                if (is_array($serviceValue)) {
+                    $trimmed = trim((string) ($serviceValue['name'] ?? ($serviceValue['label'] ?? ($serviceValue['value'] ?? ''))));
+                } elseif (is_string($serviceValue)) {
+                    $trimmed = trim($serviceValue);
+                } else {
                     continue;
                 }
-                $trimmed = trim($serviceValue);
                 if ($trimmed === '') {
                     continue;
+                }
+                if (!isset($existing[$typeKey])) {
+                    $existing[$typeKey] = [];
                 }
                 $existing[$typeKey][mb_strtolower($trimmed, 'UTF-8')] = true;
             }
@@ -88,17 +94,26 @@ if (!function_exists('settings_build_service_form')) {
             }
 
             foreach ($servicesForType as $serviceEntry) {
-                if (!is_string($serviceEntry)) {
-                    continue;
+                $serviceValue = '';
+                $priceValue = '';
+                if (is_array($serviceEntry)) {
+                    $serviceValue = (string) ($serviceEntry['name'] ?? '');
+                    $rawPrice = $serviceEntry['price'] ?? null;
+                    if (is_numeric($rawPrice)) {
+                        $priceValue = number_format((float) $rawPrice, 2, '.', '');
+                    }
+                } elseif (is_string($serviceEntry)) {
+                    $serviceValue = $serviceEntry;
                 }
-                $trimmed = trim($serviceEntry);
+
+                $trimmed = trim($serviceValue);
                 if ($trimmed === '') {
                     continue;
                 }
-                $rows[] = ['name' => $trimmed];
+                $rows[] = ['name' => $trimmed, 'price' => $priceValue];
             }
 
-            $rows[] = ['name' => ''];
+            $rows[] = ['name' => '', 'price' => ''];
             $form[$typeKey] = $rows;
         }
 
@@ -1396,14 +1411,17 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     <tr>
                                                         <th style="width: 60px;">#</th>
                                                         <th>Servizio</th>
+                                                        <th style="width: 200px;">Prezzo consigliato (&euro;)</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     <?php foreach ($servicesRows as $rowIndex => $serviceEntry): ?>
                                                         <?php
                                                             $serviceValue = '';
+                                                            $priceValue = '';
                                                             if (is_array($serviceEntry)) {
                                                                 $serviceValue = (string) ($serviceEntry['name'] ?? '');
+                                                                $priceValue = (string) ($serviceEntry['price'] ?? '');
                                                             } elseif (is_string($serviceEntry)) {
                                                                 $serviceValue = (string) $serviceEntry;
                                                             }
@@ -1412,6 +1430,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                             <td class="text-muted">#<?php echo (int) ($rowIndex + 1); ?></td>
                                                             <td>
                                                                 <input class="form-control form-control-sm" name="services[<?php echo sanitize_output($typeKey); ?>][<?php echo (int) $rowIndex; ?>][name]" maxlength="120" value="<?php echo sanitize_output($serviceValue); ?>" placeholder="Es. ISEE, NASpI, 730">
+                                                            </td>
+                                                            <td>
+                                                                <input class="form-control form-control-sm text-end" name="services[<?php echo sanitize_output($typeKey); ?>][<?php echo (int) $rowIndex; ?>][price]" type="number" min="0" step="0.01" value="<?php echo sanitize_output($priceValue); ?>" placeholder="0.00">
                                                             </td>
                                                         </tr>
                                                     <?php endforeach; ?>
