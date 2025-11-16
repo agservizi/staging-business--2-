@@ -44,13 +44,17 @@ function redirect_by_role(string $role): void
     }
 }
 
-function sanitize_output(?string $value): string
+function sanitize_output(string|int|float|bool|null $value): string
 {
     if ($value === null) {
         return '';
     }
 
-    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    if (is_bool($value)) {
+        $value = $value ? '1' : '0';
+    }
+
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
 function format_currency(?float $amount): string

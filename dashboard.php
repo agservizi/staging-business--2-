@@ -218,7 +218,20 @@ try {
     }
 
     try {
-        $topClientsSql = "SELECT c.id, COALESCE(NULLIF(c.ragione_sociale, ''), CONCAT(c.nome, ' ', c.cognome)) AS cliente_nome, SUM(CASE WHEN eu.tipo_movimento = 'Entrata' THEN eu.importo ELSE 0 END) AS totale_entrate, SUM(CASE WHEN eu.tipo_movimento = 'Uscita' THEN eu.importo ELSE 0 END) AS totale_uscite FROM entrate_uscite eu LEFT JOIN clienti c ON c.id = eu.cliente_id WHERE eu.cliente_id IS NOT NULL AND YEAR(COALESCE(eu.data_pagamento, eu.created_at)) = YEAR(CURRENT_DATE) GROUP BY c.id, cliente_nome ORDER BY (totale_entrate - totale_uscite) DESC LIMIT 5";
+        $topClientsSql = "SELECT ranked.* FROM (
+                SELECT 
+                    c.id,
+                    COALESCE(NULLIF(c.ragione_sociale, ''), CONCAT(c.nome, ' ', c.cognome)) AS cliente_nome,
+                    SUM(CASE WHEN eu.tipo_movimento = 'Entrata' THEN eu.importo ELSE 0 END) AS totale_entrate,
+                    SUM(CASE WHEN eu.tipo_movimento = 'Uscita' THEN eu.importo ELSE 0 END) AS totale_uscite
+                FROM entrate_uscite eu
+                LEFT JOIN clienti c ON c.id = eu.cliente_id
+                WHERE eu.cliente_id IS NOT NULL
+                  AND YEAR(COALESCE(eu.data_pagamento, eu.created_at)) = YEAR(CURRENT_DATE)
+                GROUP BY c.id, cliente_nome
+            ) AS ranked
+            ORDER BY (ranked.totale_entrate - ranked.totale_uscite) DESC
+            LIMIT 5";
         $topClientsStmt = $pdo->prepare($topClientsSql);
         $topClientsStmt->execute();
         $topFinanceClients = $topClientsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
