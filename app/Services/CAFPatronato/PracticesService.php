@@ -1578,6 +1578,44 @@ SQL;
         return $this->sendCustomerCreationMail($practice, $requestUserId, $recipientOverride);
     }
 
+    public function deletePractice(int $practiceId, bool $canManageAll, ?int $operatorId): void
+    {
+        if ($practiceId <= 0) {
+            throw new RuntimeException('ID pratica non valido.');
+        }
+
+        $practice = $this->getPractice($practiceId, $canManageAll, $operatorId);
+        $documents = isset($practice['documenti']) && is_array($practice['documenti']) ? $practice['documenti'] : [];
+        $trackingCode = trim((string) ($practice['tracking_code'] ?? ''));
+        $references = [];
+        if ($trackingCode !== '') {
+            $references[] = $trackingCode;
+        }
+        $references[] = 'PRATICA-' . $practiceId;
+
+        $this->pdo->beginTransaction();
+        try {
+            if ($references) {
+                $deleteMovementStmt = $this->pdo->prepare('DELETE FROM entrate_uscite WHERE riferimento = :riferimento');
+                foreach (array_unique($references) as $reference) {
+                    if ($reference === '') {
+                        continue;
+                    }
+                    $deleteMovementStmt->execute([':riferimento' => $reference]);
+                }
+            }
+
+            $deletePracticeStmt = $this->pdo->prepare('DELETE FROM pratiche WHERE id = :id');
+            $deletePracticeStmt->execute([':id' => $practiceId]);
+            $this->pdo->commit();
+        } catch (Throwable $exception) {
+            $this->pdo->rollBack();
+            throw new RuntimeException('Impossibile eliminare la pratica: ' . $exception->getMessage(), (int) $exception->getCode(), $exception);
+        }
+
+        $this->deletePracticeStorage($practiceId, $documents);
+    }
+
     /**
      * @param array<string,mixed> $payload
      */
@@ -2713,6 +2751,63 @@ SQL;
         }
 
         return substr($value, 0, $maxLength);
+    }
+
+    /**
+     * @param array<int,array<string,mixed>> $documents
+     */
+    private function deletePracticeStorage(int $practiceId, array $documents): void
+    {
+        foreach ($documents as $document) {
+            if (!is_array($document)) {
+                continue;
+            }
+            $relativePath = isset($document['file_path']) ? (string) $document['file_path'] : '';
+            $absolutePath = $this->resolveAbsolutePath($relativePath);
+            if ($absolutePath !== null && is_file($absolutePath)) {
+                @unlink($absolutePath);
+            }
+        }
+
+        $practiceDir = $this->storagePath . DIRECTORY_SEPARATOR . $practiceId;
+        $this->deleteDirectoryIfExists($practiceDir);
+    }
+
+    private function resolveAbsolutePath(string $relativePath): ?string
+    {
+        $trimmed = trim($relativePath);
+        if ($trimmed === '') {
+            return null;
+        }
+        $normalized = ltrim($trimmed, '\\/');
+        $normalized = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $normalized);
+        return $this->projectRoot . DIRECTORY_SEPARATOR . $normalized;
+    }
+
+    private function deleteDirectoryIfExists(string $directory): void
+    {
+        if (!is_dir($directory)) {
+            return;
+        }
+
+        $items = @scandir($directory);
+        if ($items === false) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+            $path = $directory . DIRECTORY_SEPARATOR . $item;
+            if (is_dir($path) && !is_link($path)) {
+                $this->deleteDirectoryIfExists($path);
+            } else {
+                @unlink($path);
+            }
+        }
+
+        @rmdir($directory);
     }
 
     /**

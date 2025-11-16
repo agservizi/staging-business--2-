@@ -405,6 +405,38 @@ final class PracticesServiceTest extends TestCase
         self::assertStringContainsString('ISEE', $entry['descrizione']);
     }
 
+    public function testDeletePracticeRemovesRecordsAndMovements(): void
+    {
+        $practice = $this->service->createPractice([
+            'titolo' => 'Pratica da eliminare',
+            'tipo_pratica' => 1,
+            'categoria' => 'CAF',
+            'cliente_id' => 1,
+            'metadati' => [
+                'servizio' => 'ISEE',
+                'nominativo' => 'Cliente Test',
+                'importo' => '35,00',
+            ],
+        ], 1);
+
+        $practiceId = (int) $practice['id'];
+        self::assertTrue($practiceId > 0);
+
+        $countBefore = (int) $this->pdo->query('SELECT COUNT(*) FROM pratiche')->fetchColumn();
+        self::assertSame(1, $countBefore);
+
+        $movementBefore = (int) $this->pdo->query('SELECT COUNT(*) FROM entrate_uscite')->fetchColumn();
+        self::assertSame(1, $movementBefore);
+
+        $this->service->deletePractice($practiceId, true, null);
+
+        $countAfter = (int) $this->pdo->query('SELECT COUNT(*) FROM pratiche')->fetchColumn();
+        self::assertSame(0, $countAfter);
+
+        $movementAfter = (int) $this->pdo->query('SELECT COUNT(*) FROM entrate_uscite')->fetchColumn();
+        self::assertSame(0, $movementAfter);
+    }
+
     public function testCreatePracticeSendsCustomerMail(): void
     {
         $practiceData = [

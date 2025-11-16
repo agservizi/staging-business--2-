@@ -1802,6 +1802,7 @@ function renderPracticesTable(container, practices, options = {}) {
             return selected.trim();
         })();
 
+        const serializedTitle = JSON.stringify(String(practice?.titolo ?? ''));
         const actions = [`
             <button class="btn btn-icon btn-soft-accent btn-sm" type="button" onclick="viewPractice(${practice.id})" title="Visualizza">
                 <i class="fa-solid fa-eye"></i>
@@ -1818,6 +1819,11 @@ function renderPracticesTable(container, practices, options = {}) {
             actions.push(`
                 <button class="btn btn-icon btn-outline-primary btn-sm" type="button" data-customer-email="${escapeHtml(derivedEmail)}" onclick="resendCustomerMail(${practice.id}, this.dataset.customerEmail)" title="Reinvia email al cliente">
                     <i class="fa-solid fa-envelope"></i>
+                </button>
+            `);
+            actions.push(`
+                <button class="btn btn-icon btn-outline-danger btn-sm" type="button" onclick="deletePractice(${practice.id}, ${serializedTitle})" title="Elimina pratica">
+                    <i class="fa-solid fa-trash"></i>
                 </button>
             `);
         }
@@ -2555,6 +2561,45 @@ function resendCustomerMail(practiceId, defaultRecipient = '') {
                 }
             }
         }
+    });
+}
+
+function deletePractice(practiceId, practiceTitle = '') {
+    if (!cafContext.canCreatePractices) {
+        window.CS?.showToast?.('Non hai i permessi per eliminare pratiche.', 'warning');
+        return;
+    }
+
+    const targetId = parseInt(practiceId, 10);
+    if (!targetId) {
+        return;
+    }
+
+    const label = typeof practiceTitle === 'string' && practiceTitle.trim() !== ''
+        ? practiceTitle.trim()
+        : `Pratica #${targetId}`;
+
+    showConfirmDialog({
+        title: 'Elimina pratica',
+        message: `<p>Eliminando <strong>${escapeHtml(label)}</strong> verranno rimossi definitivamente documenti, note, timeline e movimenti economici associati. L'operazione non può essere annullata.</p>
+                  <p class="mb-0 text-danger">Confermi di voler procedere?</p>`,
+        confirmLabel: 'Elimina',
+        confirmVariant: 'danger',
+        onConfirm: async () => {
+            try {
+                await apiRequest('POST', {
+                    action: 'delete_practice',
+                    id: targetId,
+                });
+                window.CS?.showToast?.('Pratica eliminata correttamente.', 'success');
+                await loadPracticesList(currentPracticePage || 1, { silent: false });
+                return true;
+            } catch (error) {
+                const message = error && error.message ? error.message : 'Eliminazione non riuscita.';
+                window.CS?.showToast?.(`Errore: ${message}`, 'error');
+                return false;
+            }
+        },
     });
 }
 
