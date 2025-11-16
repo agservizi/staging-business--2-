@@ -22,6 +22,16 @@ $csrfToken = csrf_token();
 
 $clientsStmt = $pdo->query('SELECT id, nome, cognome, ragione_sociale FROM clienti ORDER BY ragione_sociale, cognome, nome');
 $clients = $clientsStmt ? $clientsStmt->fetchAll(PDO::FETCH_ASSOC) : [];
+$clientDisplayNames = [];
+foreach ($clients as $client) {
+    $company = trim((string) ($client['ragione_sociale'] ?? ''));
+    $person = trim(((string) ($client['cognome'] ?? '')) . ' ' . ((string) ($client['nome'] ?? '')));
+    $label = $company !== '' && $person !== '' ? $company . ' - ' . $person : ($company !== '' ? $company : $person);
+    if ($label === '') {
+        $label = 'Cliente #' . (int) $client['id'];
+    }
+    $clientDisplayNames[(int) $client['id']] = $label;
+}
 
 $typeOptions = caf_patronato_type_options();
 if (!$typeOptions) {
@@ -88,6 +98,15 @@ $data = [
 
 $errors = [];
 $processedUploads = [];
+$generatedTempFiles = [];
+$cleanupGeneratedTempFiles = static function () use (&$generatedTempFiles): void {
+    foreach ($generatedTempFiles as $index => $tmpFile) {
+        if (is_string($tmpFile) && $tmpFile !== '' && is_file($tmpFile)) {
+            @unlink($tmpFile);
+        }
+        unset($generatedTempFiles[$index]);
+    }
+};
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_valid_csrf();
@@ -176,6 +195,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'size' => $upload['size'],
                 'mime' => $mime,
             ];
+        }
+    }
+
+    $autocertAttachment = null;
+    if (!$errors) {
+        try {
+            $clienteId = (int) $data['cliente_id'];
+            $autocertAttachment = caf_patronato_create_autocertification_attachment($data, [
+                'cliente_label' => $clienteId > 0 ? ($clientDisplayNames[$clienteId] ?? ('Cliente #' . $clienteId)) : '',
+                'operator_label' => function_exists('current_user_display_name') ? current_user_display_name() : (string) ($_SESSION['username'] ?? 'Operatore'),
+                'operator_role' => $currentRole,
+                'request_ip' => function_exists('request_ip') ? request_ip() : (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+            ]);
+            if ($autocertAttachment) {
+                $processedUploads[] = $autocertAttachment;
+                $generatedTempFiles[] = $autocertAttachment['tmp_name'];
+            }
+        } catch (Throwable $exception) {
+            $errors[] = 'Impossibile generare l\'autocertificazione della richiesta. Riprova pi&ugrave; tardi.';
+            error_log('CAF/Patronato autocertificazione non generata: ' . $exception->getMessage());
         }
     }
 
@@ -323,8 +362,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'file_size' => (int) $upload['size'],
                         'download_url' => caf_patronato_build_download_url('document', $attachmentId),
                     ];
+
+                    if (!empty($upload['cleanup']) && isset($upload['tmp_name'])) {
+                        $tmpFile = (string) $upload['tmp_name'];
+                        if ($tmpFile !== '' && is_file($tmpFile)) {
+                            @unlink($tmpFile);
+                        }
+                        $foundIndex = array_search($tmpFile, $generatedTempFiles, true);
+                        if ($foundIndex !== false) {
+                            unset($generatedTempFiles[$foundIndex]);
+                        }
+                    }
                 }
             }
+
+            $cleanupGeneratedTempFiles();
 
             $legacyPayload = [
                 'tipo_pratica' => $data['tipo_pratica'],
@@ -390,6 +442,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
+            $cleanupGeneratedTempFiles();
             error_log('CAF/Patronato create failed: ' . $exception->getMessage());
             $errors[] = 'Si è verificato un errore durante il salvataggio della pratica. Riprova.';
         }
@@ -482,14 +535,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <option value="">Nessun cliente</option>
                             <?php foreach ($clients as $client): ?>
                                 <?php
-                                    $company = trim((string) ($client['ragione_sociale'] ?? ''));
-                                    $person = trim(((string) ($client['cognome'] ?? '')) . ' ' . ((string) ($client['nome'] ?? '')));
-                                    $label = $company !== '' && $person !== '' ? $company . ' - ' . $person : ($company !== '' ? $company : $person);
-                                    if ($label === '') {
-                                        $label = 'Cliente #' . (int) $client['id'];
-                                    }
+                                    $clientId = (int) $client['id'];
+                                    $label = $clientDisplayNames[$clientId] ?? ('Cliente #' . $clientId);
                                 ?>
-                                <option value="<?php echo (int) $client['id']; ?>" <?php echo (int) $data['cliente_id'] === (int) $client['id'] ? 'selected' : ''; ?>>
+                                <option value="<?php echo $clientId; ?>" <?php echo (int) $data['cliente_id'] === $clientId ? 'selected' : ''; ?>>
                                     <?php echo sanitize_output($label); ?>
                                 </option>
                             <?php endforeach; ?>

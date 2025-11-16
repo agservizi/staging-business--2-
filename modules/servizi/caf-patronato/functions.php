@@ -2,6 +2,11 @@
 declare(strict_types=1);
 
 use App\Services\SettingsService;
+use DateTimeImmutable;
+use DateTimeZone;
+use Mpdf\Mpdf;
+use Mpdf\MpdfException;
+use Mpdf\Output\Destination;
 
 const CAF_PATRONATO_MODULE_LOG = 'Servizi/CAFPatronato';
 const CAF_PATRONATO_UPLOAD_DIR = 'assets/uploads/caf-patronato';
@@ -533,6 +538,225 @@ function caf_patronato_allowed_mime_types(): array
         'image/jpeg' => 'JPEG',
         'image/png' => 'PNG',
     ];
+}
+
+/**
+ * @param array<string,mixed> $formData
+ * @param array<string,mixed> $context
+ * @return array{path:string,size:int}
+ */
+function caf_patronato_generate_autocertification_pdf(array $formData, array $context = []): array
+{
+    if (!class_exists(Mpdf::class)) {
+        throw new RuntimeException('Libreria mPDF non disponibile. Esegui composer install dal server.');
+    }
+
+    $timezoneId = (string) ($context['timezone'] ?? (function_exists('date_default_timezone_get') ? date_default_timezone_get() : 'UTC'));
+    try {
+        $timezone = new DateTimeZone($timezoneId ?: 'UTC');
+    } catch (Throwable) {
+        $timezone = new DateTimeZone('UTC');
+    }
+
+    $generatedAt = $context['generated_at'] ?? null;
+    if (!$generatedAt instanceof DateTimeImmutable) {
+        $generatedAt = new DateTimeImmutable('now', $timezone);
+    } else {
+        $generatedAt = $generatedAt->setTimezone($timezone);
+    }
+
+    $operatorLabel = trim((string) ($context['operator_label'] ?? 'Operatore incaricato'));
+    if ($operatorLabel === '') {
+        $operatorLabel = 'Operatore incaricato';
+    }
+
+    $operatorRole = trim((string) ($context['operator_role'] ?? ''));
+    $requestIp = trim((string) ($context['request_ip'] ?? ''));
+
+    $companyName = trim((string) ($context['company_name'] ?? (function_exists('env') ? (env('APP_NAME', 'Coresuite Business') ?: 'Coresuite Business') : 'Coresuite Business')));
+    if ($companyName === '') {
+        $companyName = 'Coresuite Business';
+    }
+    $companyNameHtml = htmlspecialchars($companyName, ENT_QUOTES, 'UTF-8');
+
+    $summaryRows = [
+        'Tipologia pratica' => $formData['tipo_pratica'] ?? '',
+        'Servizio richiesto' => $formData['servizio'] ?? '',
+        'Nominativo richiedente' => $formData['nominativo'] ?? '',
+        'Codice fiscale' => $formData['codice_fiscale'] ?? '',
+        'Telefono' => $formData['telefono'] ?? '',
+        'Email' => $formData['email'] ?? '',
+        'Cliente collegato' => $context['cliente_label'] ?? '',
+        'Notifica al team' => (($formData['send_notification'] ?? '1') === '1') ? 'Richiesta' : 'Non richiesta',
+    ];
+
+    $rowsHtml = '';
+    foreach ($summaryRows as $label => $value) {
+        $rowsHtml .= '<tr><th>' . htmlspecialchars((string) $label, ENT_QUOTES, 'UTF-8') . '</th><td>' . caf_patronato_format_autocertification_value($value) . '</td></tr>';
+    }
+
+    $nominativo = caf_patronato_format_autocertification_value($formData['nominativo'] ?? '');
+    $codiceFiscale = caf_patronato_format_autocertification_value($formData['codice_fiscale'] ?? '');
+    $servizio = caf_patronato_format_autocertification_value($formData['servizio'] ?? '');
+    $intro = 'Il/La sottoscritto/a <strong>' . $nominativo . '</strong> (CF: ' . $codiceFiscale . '), richiede l\'attivazione della seguente pratica: <strong>' . $servizio . '</strong> e dichiara che le informazioni fornite sono veritiere.';
+
+    $operatorMeta = trim($operatorLabel . ($operatorRole ? ' (' . $operatorRole . ')' : ''));
+    $operatorMetaHtml = htmlspecialchars($operatorMeta, ENT_QUOTES, 'UTF-8');
+    $operatorLabelHtml = htmlspecialchars($operatorLabel, ENT_QUOTES, 'UTF-8');
+
+    $consentList = '<ul>
+            <li>Autorizzo ' . $companyNameHtml . ' al trattamento dei miei dati personali ai sensi del Regolamento (UE) 2016/679 (GDPR) esclusivamente per la gestione della pratica richiesta.</li>
+            <li>Dichiaro di essere stato informato sulle modalit&agrave; di conservazione dei documenti e sulla possibilit&agrave; di revocare i consensi prestati.</li>
+            <li>Richiedo di essere contattato ai recapiti indicati per eventuali aggiornamenti o integrazioni.</li>
+        </ul>';
+
+    $metaInfo = '<p class="meta">Documento generato il ' . $generatedAt->format('d/m/Y H:i') . ' — Operatore: ' . $operatorMetaHtml;
+    if ($requestIp !== '') {
+        $metaInfo .= ' — IP richiedente: ' . htmlspecialchars($requestIp, ENT_QUOTES, 'UTF-8');
+    }
+    $metaInfo .= '</p>';
+
+    $html = <<<HTML
+<style>
+    body { font-family: "DejaVu Sans", sans-serif; font-size: 11pt; color: #1f2937; }
+    h1 { font-size: 18pt; margin-bottom: 6px; color: #111827; }
+    p { line-height: 1.5; }
+    table.summary { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    table.summary th { text-align: left; width: 30%; background: #f3f4f6; padding: 7px 9px; font-weight: 600; font-size: 10.5pt; }
+    table.summary td { padding: 7px 9px; border-left: 1px solid #e5e7eb; font-size: 10.5pt; }
+    table.summary tr + tr th,
+    table.summary tr + tr td { border-top: 1px solid #e5e7eb; }
+    .consents { margin-top: 12px; }
+    .signature { margin-top: 40px; display: flex; justify-content: space-between; gap: 30px; }
+    .signature div { flex: 1; text-align: center; font-size: 10pt; }
+    .signature div .line { border-top: 1px solid #111827; margin-top: 50px; padding-top: 6px; }
+    .meta { font-size: 9pt; color: #4b5563; margin-top: 10px; }
+</style>
+<h1>Autocertificazione richiesta pratica CAF &amp; Patronato</h1>
+<p>Struttura responsabile: <strong>{$companyNameHtml}</strong></p>
+{$metaInfo}
+<p>{$intro}</p>
+<table class="summary">
+    {$rowsHtml}
+</table>
+<div class="consents">
+    <p>Il richiedente dichiara inoltre:</p>
+    {$consentList}
+</div>
+<div class="signature">
+    <div>
+        <span>Firma del richiedente</span>
+        <div class="line">{$nominativo}</div>
+    </div>
+    <div>
+        <span>Firma operatore incaricato</span>
+        <div class="line">{$operatorLabelHtml}</div>
+    </div>
+</div>
+HTML;
+
+    $tempBase = tempnam(sys_get_temp_dir(), 'caf_auto_');
+    if ($tempBase === false) {
+        throw new RuntimeException('Impossibile creare un file temporaneo per l\'autocertificazione.');
+    }
+
+    $pdfPath = $tempBase . '.pdf';
+    @unlink($tempBase);
+
+    try {
+        $mpdf = new Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'margin_left' => 18,
+            'margin_right' => 18,
+            'margin_top' => 20,
+            'margin_bottom' => 20,
+            'tempDir' => sys_get_temp_dir(),
+            'default_font' => 'DejaVu Sans',
+        ]);
+        $mpdf->SetTitle('Autocertificazione richiesta pratica');
+        $mpdf->SetAuthor($companyName);
+        $mpdf->WriteHTML($html);
+        $mpdf->Output($pdfPath, Destination::FILE);
+    } catch (MpdfException $exception) {
+        throw new RuntimeException('Generazione del PDF non riuscita: ' . $exception->getMessage(), 0, $exception);
+    }
+
+    if (!is_file($pdfPath)) {
+        throw new RuntimeException('Il file PDF dell\'autocertificazione non &egrave; stato creato.');
+    }
+
+    $size = @filesize($pdfPath);
+    if ($size === false) {
+        $size = 0;
+    }
+
+    return ['path' => $pdfPath, 'size' => (int) $size];
+}
+
+/**
+ * @param array<string,mixed> $formData
+ * @param array<string,mixed> $context
+ * @return array<string,mixed>
+ */
+function caf_patronato_create_autocertification_attachment(array $formData, array $context = []): array
+{
+    $pdf = caf_patronato_generate_autocertification_pdf($formData, $context);
+
+    $parts = [];
+    if (!empty($formData['nominativo'])) {
+        $parts[] = caf_patronato_slugify_identifier((string) $formData['nominativo']);
+    }
+    if (!empty($formData['codice_fiscale'])) {
+        $parts[] = preg_replace('/[^A-Za-z0-9]/', '', strtoupper((string) $formData['codice_fiscale']));
+    }
+
+    $suffix = $parts ? implode('_', $parts) : date('Ymd_His');
+    $rawFilename = 'Autocertificazione_' . $suffix . '.pdf';
+    if (function_exists('sanitize_filename')) {
+        $rawFilename = sanitize_filename($rawFilename);
+    } else {
+        $rawFilename = preg_replace('/[^A-Za-z0-9._-]/', '_', $rawFilename) ?: ('Autocertificazione_' . date('Ymd_His') . '.pdf');
+    }
+
+    return [
+        'name' => $rawFilename,
+        'tmp_name' => $pdf['path'],
+        'size' => $pdf['size'],
+        'mime' => 'application/pdf',
+        'cleanup' => true,
+    ];
+}
+
+function caf_patronato_format_autocertification_value($value): string
+{
+    $string = trim((string) $value);
+    if ($string === '') {
+        return '—';
+    }
+
+    return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+}
+
+function caf_patronato_slugify_identifier(string $value): string
+{
+    $normalized = $value;
+    if (function_exists('iconv')) {
+        $converted = iconv('UTF-8', 'ASCII//TRANSLIT', $value);
+        if ($converted !== false) {
+            $normalized = $converted;
+        }
+    }
+
+    $normalized = strtoupper((string) $normalized);
+    $normalized = preg_replace('/[^A-Z0-9]+/', '-', $normalized ?? '');
+    $normalized = trim((string) $normalized, '-');
+
+    if ($normalized === '') {
+        return 'PRATICA';
+    }
+
+    return $normalized;
 }
 
 function caf_patronato_normalize_uploads(?array $files): array
