@@ -1507,6 +1507,12 @@ SQL;
             throw new RuntimeException('Impossibile creare la pratica: ' . $exception->getMessage(), (int) $exception->getCode(), $exception);
         }
 
+        try {
+            $this->ensureFinancialMovementForPractice($practiceId);
+        } catch (Throwable $exception) {
+            error_log('CAF/Patronato financial movement ensure warning: ' . $exception->getMessage());
+        }
+
         $practice = $this->getPractice($practiceId, true, null);
 
         try {
@@ -1549,6 +1555,77 @@ SQL;
         $this->registerFinancialMovement($practiceId, $payload, $trackingCode);
     }
 
+    /**
+     * @return array{scanned:int,created:int,remaining:int}
+     */
+    public function syncMissingFinancialMovements(?int $limit = null): array
+    {
+        $limitClause = '';
+        if ($limit !== null) {
+            $limitValue = max(1, (int) $limit);
+            $limitClause = ' LIMIT ' . $limitValue;
+        }
+
+        $practiceReferenceExpr = $this->buildPracticeReferenceSql('p');
+
+        $sql = <<<SQL
+SELECT p.id, COALESCE(p.tracking_code, '') AS tracking_code
+FROM pratiche p
+WHERE NOT EXISTS (
+    SELECT 1 FROM entrate_uscite eu
+    WHERE (
+        (p.tracking_code IS NOT NULL AND p.tracking_code <> '' AND eu.riferimento = p.tracking_code)
+        OR eu.riferimento = {$practiceReferenceExpr}
+    )
+)
+ORDER BY p.id ASC{$limitClause}
+SQL;
+
+        $stmt = $this->pdo->query($sql);
+        $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+        if (!$rows) {
+            return [
+                'scanned' => 0,
+                'created' => 0,
+                'remaining' => $this->countMissingFinancialMovements(),
+            ];
+        }
+
+        $trackingCodeStmt = $this->pdo->prepare('SELECT tracking_code FROM pratiche WHERE id = :id');
+        $created = 0;
+
+        foreach ($rows as $row) {
+            $practiceId = (int) ($row['id'] ?? 0);
+            if ($practiceId <= 0) {
+                continue;
+            }
+
+            try {
+                $this->ensureFinancialMovementForPractice($practiceId);
+                if ($trackingCodeStmt) {
+                    $trackingCodeStmt->execute([':id' => $practiceId]);
+                    $trackingCode = (string) $trackingCodeStmt->fetchColumn();
+                } else {
+                    $trackingCode = (string) ($row['tracking_code'] ?? '');
+                }
+
+                $references = $this->buildMovementReferences($practiceId, $trackingCode);
+                if ($references && $this->financialMovementExists($references)) {
+                    $created++;
+                }
+            } catch (Throwable $exception) {
+                error_log('CAF/Patronato financial movement backfill warning: ' . $exception->getMessage());
+            }
+        }
+
+        return [
+            'scanned' => count($rows),
+            'created' => $created,
+            'remaining' => $this->countMissingFinancialMovements(),
+        ];
+    }
+
     public function sendCustomerConfirmationMail(int $practiceId, int $requestUserId, ?string $recipientOverride = null): bool
     {
         $practice = $this->getPractice($practiceId, true, null);
@@ -1586,18 +1663,14 @@ SQL;
 
         $practice = $this->getPractice($practiceId, $canManageAll, $operatorId);
         $documents = isset($practice['documenti']) && is_array($practice['documenti']) ? $practice['documenti'] : [];
-        $trackingCode = trim((string) ($practice['tracking_code'] ?? ''));
-        $references = [];
-        if ($trackingCode !== '') {
-            $references[] = $trackingCode;
-        }
-        $references[] = 'PRATICA-' . $practiceId;
+        $trackingCode = (string) ($practice['tracking_code'] ?? '');
+        $references = $this->buildMovementReferences($practiceId, $trackingCode);
 
         $this->pdo->beginTransaction();
         try {
             if ($references) {
                 $deleteMovementStmt = $this->pdo->prepare('DELETE FROM entrate_uscite WHERE riferimento = :riferimento');
-                foreach (array_unique($references) as $reference) {
+                foreach ($references as $reference) {
                     if ($reference === '') {
                         continue;
                     }
@@ -2477,14 +2550,16 @@ SQL;
      */
     private function registerFinancialMovement(int $practiceId, array $data, string $trackingCode): void
     {
-        $reference = trim($trackingCode) !== '' ? trim($trackingCode) : 'PRATICA-' . $practiceId;
-        $reference = $this->limitLength($reference, 80);
-
-        $checkStmt = $this->pdo->prepare('SELECT 1 FROM entrate_uscite WHERE riferimento = :riferimento LIMIT 1');
-        $checkStmt->execute([':riferimento' => $reference]);
-        if ($checkStmt->fetchColumn()) {
+        $references = $this->buildMovementReferences($practiceId, $trackingCode);
+        if (!$references) {
             return;
         }
+
+        if ($this->financialMovementExists($references)) {
+            return;
+        }
+
+        $reference = $references[0];
 
         $metadata = [];
         if (isset($data['metadati']) && is_array($data['metadati'])) {
@@ -2567,6 +2642,71 @@ SQL;
             ':data_scadenza' => $scadenza,
             ':note' => $note,
         ]);
+    }
+
+    /**
+     * @return array<int,string>
+     */
+    private function buildMovementReferences(int $practiceId, ?string $trackingCode): array
+    {
+        $references = [];
+        $cleanTracking = trim((string) $trackingCode);
+        if ($cleanTracking !== '') {
+            $references[] = $this->limitLength($cleanTracking, 80);
+        }
+        $references[] = $this->limitLength('PRATICA-' . $practiceId, 80);
+
+        $references = array_values(array_filter(array_unique($references), static fn($value) => is_string($value) && $value !== ''));
+
+        return $references;
+    }
+
+    /**
+     * @param array<int,string> $references
+     */
+    private function financialMovementExists(array $references): bool
+    {
+        if (!$references) {
+            return false;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($references), '?'));
+        $stmt = $this->pdo->prepare('SELECT 1 FROM entrate_uscite WHERE riferimento IN (' . $placeholders . ') LIMIT 1');
+        $stmt->execute($references);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    private function countMissingFinancialMovements(): int
+    {
+        $practiceReferenceExpr = $this->buildPracticeReferenceSql('p');
+
+        $sql = <<<SQL
+SELECT COUNT(*) FROM pratiche p
+WHERE NOT EXISTS (
+    SELECT 1 FROM entrate_uscite eu
+    WHERE (
+        (p.tracking_code IS NOT NULL AND p.tracking_code <> '' AND eu.riferimento = p.tracking_code)
+        OR eu.riferimento = {$practiceReferenceExpr}
+    )
+)
+SQL;
+
+        $stmt = $this->pdo->query($sql);
+
+        return (int) ($stmt ? $stmt->fetchColumn() : 0);
+    }
+
+    private function buildPracticeReferenceSql(string $alias = 'p'): string
+    {
+        $sanitizedAlias = preg_replace('/[^a-zA-Z0-9_]/', '', $alias) ?: 'p';
+        $driver = (string) $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        if ($driver === 'sqlite') {
+            return "'PRATICA-' || CAST({$sanitizedAlias}.id AS TEXT)";
+        }
+
+        return "CONCAT('PRATICA-', {$sanitizedAlias}.id)";
     }
 
     /**

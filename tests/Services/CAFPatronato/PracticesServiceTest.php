@@ -437,6 +437,140 @@ final class PracticesServiceTest extends TestCase
         self::assertSame(0, $movementAfter);
     }
 
+    public function testEnsureFinancialMovementDoesNotDuplicateWhenTrackingCodeAssignedLater(): void
+    {
+        $metadata = json_encode([
+            'servizio' => 'ISEE',
+            'nominativo' => 'Erika Conti',
+            'importo' => '75,00',
+        ], JSON_THROW_ON_ERROR);
+
+        $stmt = $this->pdo->prepare('INSERT INTO pratiche (
+            titolo,
+            descrizione,
+            tipo_pratica,
+            categoria,
+            stato,
+            data_creazione,
+            data_aggiornamento,
+            scadenza,
+            id_admin,
+            id_utente_caf_patronato,
+            cliente_id,
+            allegati,
+            note,
+            metadati,
+            tracking_steps
+        ) VALUES (
+            :titolo,
+            :descrizione,
+            :tipo_pratica,
+            :categoria,
+            :stato,
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP,
+            NULL,
+            1,
+            NULL,
+            1,
+            :allegati,
+            NULL,
+            :metadati,
+            :steps
+        )');
+        $stmt->execute([
+            ':titolo' => 'Erika Conti - ISEE',
+            ':descrizione' => 'Pratica generata dal modulo legacy.',
+            ':tipo_pratica' => 1,
+            ':categoria' => 'CAF',
+            ':stato' => 'in_lavorazione',
+            ':allegati' => json_encode([], JSON_THROW_ON_ERROR),
+            ':metadati' => $metadata,
+            ':steps' => json_encode([], JSON_THROW_ON_ERROR),
+        ]);
+
+        $practiceId = (int) $this->pdo->lastInsertId();
+        self::assertTrue($practiceId > 0);
+
+        $this->service->ensureFinancialMovementForPractice($practiceId);
+        $initialEntries = (int) $this->pdo->query('SELECT COUNT(*) FROM entrate_uscite')->fetchColumn();
+        self::assertEquals(1, $initialEntries);
+
+        $update = $this->pdo->prepare('UPDATE pratiche SET tracking_code = :tracking_code WHERE id = :id');
+        $update->execute([
+            ':tracking_code' => 'CAF-PRAT-90001',
+            ':id' => $practiceId,
+        ]);
+
+        $this->service->ensureFinancialMovementForPractice($practiceId);
+
+        $entries = $this->pdo->query('SELECT riferimento FROM entrate_uscite')->fetchAll(PDO::FETCH_COLUMN);
+        self::assertCount(1, $entries);
+        self::assertEquals('PRATICA-' . $practiceId, $entries[0]);
+    }
+
+    public function testSyncMissingFinancialMovementsBackfillsEntries(): void
+    {
+        $stmt = $this->pdo->prepare('INSERT INTO pratiche (
+            titolo,
+            descrizione,
+            tipo_pratica,
+            categoria,
+            stato,
+            data_creazione,
+            data_aggiornamento,
+            scadenza,
+            id_admin,
+            id_utente_caf_patronato,
+            cliente_id,
+            allegati,
+            note,
+            metadati,
+            tracking_code,
+            tracking_steps
+        ) VALUES (
+            :titolo,
+            :descrizione,
+            :tipo_pratica,
+            :categoria,
+            :stato,
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP,
+            NULL,
+            1,
+            NULL,
+            1,
+            :allegati,
+            NULL,
+            :metadati,
+            NULL,
+            :steps
+        )');
+        $stmt->execute([
+            ':titolo' => 'Backfill Practice',
+            ':descrizione' => 'Pratica senza movimento.',
+            ':tipo_pratica' => 1,
+            ':categoria' => 'CAF',
+            ':stato' => 'in_lavorazione',
+            ':allegati' => json_encode([], JSON_THROW_ON_ERROR),
+            ':metadati' => json_encode([
+                'servizio' => 'ISEE',
+                'nominativo' => 'Arianna Test',
+                'importo' => '45,00',
+            ], JSON_THROW_ON_ERROR),
+            ':steps' => json_encode([], JSON_THROW_ON_ERROR),
+        ]);
+
+        $result = $this->service->syncMissingFinancialMovements();
+
+        self::assertSame(1, $result['scanned']);
+        self::assertSame(1, $result['created']);
+        self::assertSame(0, $result['remaining']);
+
+        $entries = $this->pdo->query('SELECT COUNT(*) FROM entrate_uscite')->fetchColumn();
+        self::assertEquals(1, (int) $entries);
+    }
+
     public function testCreatePracticeSendsCustomerMail(): void
     {
         $practiceData = [
