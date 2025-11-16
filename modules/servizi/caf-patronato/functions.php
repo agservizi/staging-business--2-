@@ -2,8 +2,6 @@
 declare(strict_types=1);
 
 use App\Services\SettingsService;
-use DateTimeImmutable;
-use DateTimeZone;
 use Mpdf\Mpdf;
 use Mpdf\MpdfException;
 use Mpdf\Output\Destination;
