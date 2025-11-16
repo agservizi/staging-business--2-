@@ -502,10 +502,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="list-group position-absolute w-100 d-none shadow-sm border bg-white" id="cafPatronatoServiceList" data-service-list role="listbox" style="z-index: 1055; max-height: 240px; overflow-y: auto;"></div>
                         </div>
-                        <div class="form-text">Elenco alimentato dalle impostazioni &ldquo;Servizi richiesti&rdquo;. Puoi indicare anche valori personalizzati.</div>
-                        <div class="d-flex justify-content-between align-items-center small text-muted mt-1">
-                            <span>Prezzo consigliato</span>
-                            <span class="fw-semibold" data-service-price>—</span>
+                        <div class="alert alert-warning bg-opacity-10 border border-warning mt-3 d-flex justify-content-between align-items-center" role="status">
+                            <div>
+                                <div class="text-uppercase small text-warning fw-semibold">Prezzo consigliato</div>
+                                <div class="fs-5 mb-0" data-service-price>—</div>
+                            </div>
+                            <div class="text-muted small ms-3">Adegua il compenso in base all'accordo con l'assistito.</div>
                         </div>
                     </div>
 
