@@ -114,7 +114,25 @@ $serviziItems = [
     'href' => base_url('modules/servizi/cie/index.php'),
     'color' => 'violet',
     ],
+    [
+        'needle' => 'modules/servizi/consulenza-fiscale',
+        'label' => 'Consulenza fiscale rapida',
+        'icon' => 'fa-solid fa-file-invoice-dollar',
+        'href' => base_url('modules/servizi/consulenza-fiscale/index.php'),
+        'color' => 'crimson',
+        'roles' => ['Admin', 'Manager', 'Operatore'],
+    ],
 ];
+
+if ($role) {
+    $serviziItems = array_values(array_filter($serviziItems, static function (array $item) use ($role): bool {
+        if (empty($item['roles']) || !is_array($item['roles'])) {
+            return true;
+        }
+
+        return in_array($role, $item['roles'], true);
+    }));
+}
 
 if ($isPatronato) {
     $serviziItems = array_values(array_filter($serviziItems, static function (array $item): bool {
