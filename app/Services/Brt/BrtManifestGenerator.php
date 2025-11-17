@@ -119,6 +119,7 @@ final class BrtManifestGenerator
                 $this->escape($shipment['alphanumeric_sender_reference'] ?? ''),
                 $this->escape((string) ($shipment['numeric_sender_reference'] ?? '')),
                 $this->escape($shipment['consignee_name'] ?? ''),
+                $this->escape($this->formatConsigneeLocation($shipment)),
                 $this->escape($this->formatAddress($shipment)),
                 $this->escape($shipment['parcel_id'] ?? ''),
                 $this->escape((string) ($shipment['departure_depot'] ?? '')),
@@ -207,10 +208,19 @@ CSS;
 
     private function formatAddress(array $shipment): string
     {
+        $address = trim((string) ($shipment['consignee_address'] ?? ''));
+        if ($address !== '') {
+            return $address;
+        }
+
+        return $this->formatConsigneeLocation($shipment);
+    }
+
+    private function formatConsigneeLocation(array $shipment): string
+    {
         $parts = array_map(
             static fn ($value) => trim((string) $value),
             [
-                $shipment['consignee_address'] ?? '',
                 sprintf('%s %s', $shipment['consignee_zip'] ?? '', $shipment['consignee_city'] ?? ''),
                 strtoupper((string) ($shipment['consignee_province'] ?? '')),
                 strtoupper((string) ($shipment['consignee_country'] ?? '')),
