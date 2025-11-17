@@ -607,6 +607,17 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                             <i class="fa-solid fa-print fa-sm fa-fw"></i>
                                                         </button>
                                                     </form>
+                                                    <?php if (!empty($shipment['label_path'])): ?>
+                                                        <a
+                                                            class="btn btn-icon btn-outline-success btn-sm"
+                                                            href="customer_notice.php?id=<?php echo (int) $shipment['id']; ?>"
+                                                            title="Genera comunicazione per il cliente"
+                                                            target="_blank"
+                                                            rel="noopener"
+                                                        >
+                                                            <i class="fa-solid fa-file-signature fa-sm fa-fw"></i>
+                                                        </a>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
                                                 <?php if ($shipment['status'] !== 'cancelled' && empty($shipment['deleted_at'])): ?>
                                                     <form
