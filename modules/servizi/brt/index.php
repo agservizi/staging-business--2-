@@ -99,8 +99,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 } catch (BrtException $exception) {
                     $cleanMessage = brt_normalize_remote_warning($exception->getMessage());
-                    $errors[] = sprintf('Conferma spedizione #%d non riuscita: %s', $selectedId, $cleanMessage);
-                    continue;
+                    if (brt_is_remote_already_confirmed_message($cleanMessage)) {
+                        brt_mark_shipment_confirmed_from_remote_status($selectedId, $cleanMessage);
+                        brt_log_event('info', 'Spedizione già confermata da BRT rilevata durante il borderò', [
+                            'shipment_id' => $selectedId,
+                            'numeric_reference' => $shipment['numeric_sender_reference'] ?? null,
+                            'message' => $cleanMessage,
+                            'user' => current_user_display_name(),
+                        ]);
+                    } else {
+                        $errors[] = sprintf('Conferma spedizione #%d non riuscita: %s', $selectedId, $cleanMessage);
+                        continue;
+                    }
                 } catch (Throwable $exception) {
                     $errors[] = sprintf('Conferma spedizione #%d non riuscita: %s', $selectedId, $exception->getMessage());
                     continue;

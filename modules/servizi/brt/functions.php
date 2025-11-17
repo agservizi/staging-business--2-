@@ -939,6 +939,42 @@ function brt_normalize_remote_warning(?string $message): string
     return $cleanMessage;
 }
 
+function brt_is_remote_already_confirmed_message(?string $message): bool
+{
+    $normalized = strtoupper(trim((string) $message));
+    if ($normalized === '') {
+        return false;
+    }
+
+    $needles = [
+        'SHIPMENT HAS ALREADY BEEN CONFIRMED',
+        'SHIPMENT ALREADY CONFIRMED',
+        'ALREADY BEEN CONFIRMED',
+        'SPEDIZIONE GIA CONFERMATA',
+        'SPEDIZIONE GIA\' CONFERMATA',
+    ];
+
+    foreach ($needles as $needle) {
+        if ($needle !== '' && strpos($normalized, $needle) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function brt_mark_shipment_confirmed_from_remote_status(int $shipmentId, string $message): void
+{
+    $confirmResponse = [
+        'executionMessage' => [
+            'code' => 0,
+            'codeDesc' => 'ALREADY CONFIRMED REMOTAMENTE',
+            'message' => $message,
+        ],
+    ];
+
+    brt_mark_shipment_confirmed($shipmentId, $confirmResponse);
+}
 /**
  * @return array<int, string>
  */
@@ -2274,12 +2310,23 @@ function brt_generate_manifest_for_shipments(array $shipmentIds, ?BrtConfig $con
                 ]);
                 
             } catch (BrtException $exception) {
-                brt_log_event('warning', 'Impossibile confermare automaticamente la spedizione durante creazione borderò: ' . $exception->getMessage(), [
-                    'shipment_id' => $shipment['id'],
-                    'numeric_reference' => $shipment['numeric_sender_reference']
-                ]);
-                // Se la conferma fallisce, manteniamo comunque la spedizione nel manifest se è in stato created
-                continue;
+                $cleanMessage = brt_normalize_remote_warning($exception->getMessage());
+                if (brt_is_remote_already_confirmed_message($cleanMessage)) {
+                    brt_mark_shipment_confirmed_from_remote_status((int) $shipment['id'], $cleanMessage);
+                    $shipment['status'] = 'confirmed';
+                    brt_log_event('info', 'Spedizione già confermata da BRT rilevata durante creazione borderò', [
+                        'shipment_id' => $shipment['id'],
+                        'numeric_reference' => $shipment['numeric_sender_reference'],
+                        'message' => $cleanMessage,
+                    ]);
+                } else {
+                    brt_log_event('warning', 'Impossibile confermare automaticamente la spedizione durante creazione borderò: ' . $cleanMessage, [
+                        'shipment_id' => $shipment['id'],
+                        'numeric_reference' => $shipment['numeric_sender_reference']
+                    ]);
+                    // Se la conferma fallisce, manteniamo comunque la spedizione nel manifest se è in stato created
+                    continue;
+                }
             }
         }
     }
