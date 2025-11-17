@@ -2205,11 +2205,20 @@ function brt_generate_pending_manifest(?BrtConfig $config = null): ?array
     try {
         $officialData = [];
         if ($manifestService !== null) {
-            $officialData = $manifestService->generateOfficialManifest($shipments, [
-                'departureDepot' => $context['departureDepot'] ?? null,
-                'pickupDate' => $manifestData['generated_at']->format('Y-m-d'),
-            ]);
-            $officialPdfRelativePath = $officialData['pdf_path'] ?? null;
+            try {
+                $officialData = $manifestService->generateOfficialManifest($shipments, [
+                    'departureDepot' => $context['departureDepot'] ?? null,
+                    'pickupDate' => $manifestData['generated_at']->format('Y-m-d'),
+                ]);
+                $officialPdfRelativePath = $officialData['pdf_path'] ?? null;
+            } catch (BrtException $exception) {
+                $cleanMessage = brt_normalize_remote_warning($exception->getMessage());
+                brt_log_event('warning', 'Bordero ufficiale non generato: ' . $cleanMessage, [
+                    'error' => $cleanMessage,
+                    'shipments' => array_column($shipments, 'id'),
+                    'context' => $context,
+                ]);
+            }
         }
 
         $manifestId = brt_store_manifest_record([
