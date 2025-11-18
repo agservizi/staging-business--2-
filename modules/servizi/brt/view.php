@@ -90,6 +90,10 @@ if ($trackingPayloadRaw !== null) {
         $trackingPayloadData = $decodedTrackingPayload;
     }
 }
+$getTrackingSectionData = static function (array $payload, string $key): array {
+    $section = $payload[$key] ?? [];
+    return is_array($section) ? $section : [];
+};
 $formatSummaryValue = static function ($value, array $config = []): string {
     if (array_key_exists('default', $config) && ($value === null || $value === '')) {
         $value = $config['default'];
@@ -167,6 +171,105 @@ if ($trackingPayloadData !== []) {
         'deliveryContactName' => ['label' => 'Contatto consegna'],
         'deliveryNote' => ['label' => 'Note consegna'],
     ]);
+}
+$trackingDataShipment = $getTrackingSectionData($trackingPayloadData, 'dati_spedizione');
+$trackingDataDelivery = $getTrackingSectionData($trackingPayloadData, 'dati_consegna');
+$trackingDataReferences = $getTrackingSectionData($trackingPayloadData, 'riferimenti');
+$trackingDataSender = $getTrackingSectionData($trackingPayloadData, 'mittente');
+$trackingDataConsignee = $getTrackingSectionData($trackingPayloadData, 'destinatario');
+$trackingDataGoods = $getTrackingSectionData($trackingPayloadData, 'merce');
+$trackingDataCod = $getTrackingSectionData($trackingPayloadData, 'contrassegno');
+$trackingDataInsurance = $getTrackingSectionData($trackingPayloadData, 'assicurazione');
+
+$trackingShipmentDetailRows = $trackingDataShipment !== [] ? $buildSummaryRows($trackingDataShipment, [
+    'spedizione_id' => ['label' => 'ID spedizione', 'hide_when_empty' => false],
+    'spedizione_data' => ['label' => 'Data spedizione', 'hide_when_empty' => false],
+    'tipo_porto' => ['label' => 'Tipo porto (codice)'],
+    'porto' => ['label' => 'Porto'],
+    'tipo_servizio' => ['label' => 'Tipo servizio (codice)'],
+    'servizio' => ['label' => 'Servizio'],
+    'cod_filiale_arrivo' => ['label' => 'Cod. filiale arrivo'],
+    'filiale_arrivo' => ['label' => 'Filiale arrivo'],
+    'filiale_arrivo_URL' => ['label' => 'URL filiale arrivo'],
+    'stato_sped_parte1' => ['label' => 'Stato spedizione (titolo)'],
+    'stato_sped_parte2' => ['label' => 'Stato spedizione (sottotitolo)'],
+    'descrizione_stato_sped_parte1' => ['label' => 'Dettaglio stato'],
+    'descrizione_stato_sped_parte2' => ['label' => 'Dettaglio stato (2)'],
+]) : [];
+
+$trackingDeliveryDetailRows = $trackingDataDelivery !== [] ? $buildSummaryRows($trackingDataDelivery, [
+    'data_cons_richiesta' => ['label' => 'Data consegna richiesta'],
+    'ora_cons_richiesta' => ['label' => 'Ora consegna richiesta'],
+    'tipo_cons_richiesta' => ['label' => 'Tipo consegna richiesta'],
+    'descrizione_cons_richiesta' => ['label' => 'Descrizione consegna richiesta'],
+    'data_teorica_consegna' => ['label' => 'Data teorica consegna'],
+    'ora_teorica_consegna_da' => ['label' => 'Ora teorica da'],
+    'ora_teorica_consegna_a' => ['label' => 'Ora teorica a'],
+    'data_consegna_merce' => ['label' => 'Data consegna effettiva'],
+    'ora_consegna_merce' => ['label' => 'Ora consegna effettiva'],
+    'firmatario_consegna' => ['label' => 'Firmatario'],
+]) : [];
+
+$trackingReferenceRows = $trackingDataReferences !== [] ? $buildSummaryRows($trackingDataReferences, [
+    'riferimento_mittente_numerico' => ['label' => 'Rif. mittente numerico', 'hide_when_empty' => false],
+    'riferimento_mittente_alfabetico' => ['label' => 'Rif. mittente alfanumerico', 'hide_when_empty' => false],
+    'riferimento_partner_estero' => ['label' => 'Rif. partner estero'],
+]) : [];
+
+$trackingSenderRows = $trackingDataSender !== [] ? $buildSummaryRows($trackingDataSender, [
+    'codice' => ['label' => 'Codice mittente', 'hide_when_empty' => false],
+    'ragione_sociale' => ['label' => 'Ragione sociale'],
+    'indirizzo' => ['label' => 'Indirizzo'],
+    'cap' => ['label' => 'CAP'],
+    'localita' => ['label' => 'Località'],
+    'sigla_area' => ['label' => 'Provincia/Area'],
+]) : [];
+
+$trackingConsigneeRows = $trackingDataConsignee !== [] ? $buildSummaryRows($trackingDataConsignee, [
+    'ragione_sociale' => ['label' => 'Ragione sociale'],
+    'indirizzo' => ['label' => 'Indirizzo'],
+    'cap' => ['label' => 'CAP'],
+    'localita' => ['label' => 'Località'],
+    'sigla_provincia' => ['label' => 'Provincia'],
+    'sigla_nazione' => ['label' => 'Nazione'],
+    'referente_consegna' => ['label' => 'Referente consegna'],
+    'telefono_referente' => ['label' => 'Telefono referente'],
+]) : [];
+
+$trackingGoodsRows = $trackingDataGoods !== [] ? $buildSummaryRows($trackingDataGoods, [
+    'colli' => ['label' => 'Colli', 'format' => 'int', 'hide_when_empty' => false],
+    'peso_kg' => ['label' => 'Peso (Kg)', 'format' => 'float', 'precision' => 2, 'hide_when_empty' => false],
+    'volume_m3' => ['label' => 'Volume (m³)', 'format' => 'float', 'precision' => 3],
+    'natura_merce' => ['label' => 'Natura merce'],
+]) : [];
+
+$trackingCodRows = $trackingDataCod !== [] ? $buildSummaryRows($trackingDataCod, [
+    'contrassegno_importo' => ['label' => 'Importo contrassegno', 'format' => 'float', 'precision' => 2, 'hide_when_empty' => false],
+    'contrassegno_divisa' => ['label' => 'Divisa contrassegno', 'hide_when_empty' => false],
+    'contrassegno_incasso' => ['label' => 'Modalità incasso'],
+    'contrassegno_particolarita' => ['label' => 'Particolarità'],
+]) : [];
+
+$trackingInsuranceRows = $trackingDataInsurance !== [] ? $buildSummaryRows($trackingDataInsurance, [
+    'assicurazione_importo' => ['label' => 'Importo assicurazione', 'format' => 'float', 'precision' => 2, 'hide_when_empty' => false],
+    'assicurazione_divisa' => ['label' => 'Divisa assicurazione', 'hide_when_empty' => false],
+]) : [];
+
+$trackingStructuredSections = [];
+foreach ([
+    ['title' => 'Dati spedizione', 'rows' => $trackingShipmentDetailRows],
+    ['title' => 'Dati consegna', 'rows' => $trackingDeliveryDetailRows],
+    ['title' => 'Riferimenti', 'rows' => $trackingReferenceRows],
+    ['title' => 'Mittente', 'rows' => $trackingSenderRows],
+    ['title' => 'Destinatario', 'rows' => $trackingConsigneeRows],
+    ['title' => 'Merce', 'rows' => $trackingGoodsRows],
+    ['title' => 'Contrassegno', 'rows' => $trackingCodRows],
+    ['title' => 'Assicurazione', 'rows' => $trackingInsuranceRows],
+] as $section) {
+    if ($section['rows'] === []) {
+        continue;
+    }
+    $trackingStructuredSections[] = $section;
 }
 
 $extractTrackingEvents = static function (array $payload): array {
@@ -614,6 +717,17 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <?php else: ?>
                                 <p class="text-muted mb-0">Nessun evento di tracking disponibile nel payload.</p>
                             <?php endif; ?>
+                                <?php if ($trackingStructuredSections): ?>
+                                    <h3 class="h6 text-uppercase text-muted mt-4 mb-2">Dettaglio payload</h3>
+                                    <div class="row g-4">
+                                        <?php foreach ($trackingStructuredSections as $section): ?>
+                                            <div class="col-lg-6 col-12">
+                                                <h4 class="h6 text-muted text-uppercase mb-2"><?php echo sanitize_output($section['title']); ?></h4>
+                                                <?php $renderSummaryTable($section['rows']); ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
                             <details class="mt-4">
                                 <summary class="small text-muted fw-semibold" style="cursor: pointer;">Mostra payload JSON completo</summary>
                                 <pre class="bg-dark text-light p-3 rounded small overflow-auto mt-3" style="max-height: 320px;"><?php echo htmlspecialchars($trackingPayloadRaw, ENT_QUOTES, 'UTF-8'); ?></pre>
