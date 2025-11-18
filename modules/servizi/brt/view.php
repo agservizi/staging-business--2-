@@ -94,6 +94,70 @@ $getTrackingSectionData = static function (array $payload, string $key): array {
     $section = $payload[$key] ?? [];
     return is_array($section) ? $section : [];
 };
+$humanizeTrackingKey = static function (string $key): string {
+    static $prettified = [
+        'parcelid' => 'Parcel ID',
+        'trackingbyparcelid' => 'Tracking (Parcel ID)',
+        'bolla' => 'Bolla',
+        'statusdescription' => 'Descrizione stato',
+        'deliverystatus' => 'Stato consegna',
+        'deliverydate' => 'Data consegna prevista',
+        'deliverytime' => 'Ora consegna prevista',
+        'deliverycompanyname' => 'Ragione sociale consegna',
+        'deliverycontactname' => 'Contatto consegna',
+        'deliverynote' => 'Note consegna',
+        'spedizione_id' => 'ID spedizione',
+        'spedizione_data' => 'Data spedizione',
+        'tipo_porto' => 'Tipo porto',
+        'porto' => 'Porto',
+        'tipo_servizio' => 'Tipo servizio',
+        'servizio' => 'Servizio',
+        'cod_filiale_arrivo' => 'Codice filiale arrivo',
+        'filiale_arrivo' => 'Filiale arrivo',
+        'filiale_arrivo_url' => 'URL filiale arrivo',
+        'stato_sped_parte1' => 'Stato spedizione',
+        'stato_sped_parte2' => 'Stato spedizione (2)',
+        'descrizione_stato_sped_parte1' => 'Descrizione stato',
+        'descrizione_stato_sped_parte2' => 'Descrizione stato (2)',
+        'data_teorica_consegna' => 'Data teorica consegna',
+        'data_consegna_merce' => 'Data consegna effettiva',
+        'ora_consegna_merce' => 'Ora consegna effettiva',
+        'firmatario_consegna' => 'Firmatario',
+        'riferimento_mittente_numerico' => 'Rif. mittente numerico',
+        'riferimento_mittente_alfabetico' => 'Rif. mittente alfanumerico',
+        'riferimento_partner_estero' => 'Rif. partner estero',
+        'sigla_area' => 'Area',
+        'sigla_provincia' => 'Provincia',
+        'sigla_nazione' => 'Nazione',
+        'peso_kg' => 'Peso (Kg)',
+        'volume_m3' => 'Volume (m³)',
+        'natura_merce' => 'Natura merce',
+        'contrassegno_importo' => 'Importo contrassegno',
+        'contrassegno_divisa' => 'Divisa contrassegno',
+        'contrassegno_incasso' => 'Modalità incasso',
+        'contrassegno_particolarita' => 'Particolarità contrassegno',
+        'assicurazione_importo' => 'Importo assicurazione',
+        'assicurazione_divisa' => 'Divisa assicurazione',
+    ];
+
+    $normalized = strtolower(str_replace(' ', '', (string) $key));
+    if (isset($prettified[$normalized])) {
+        return $prettified[$normalized];
+    }
+
+    $label = str_replace(['_', '-', '.'], ' ', (string) $key);
+    $label = preg_replace('/\s+/', ' ', $label ?? '') ?? '';
+    $label = trim($label);
+    if ($label === '') {
+        return (string) $key;
+    }
+
+    if (function_exists('mb_convert_case')) {
+        return mb_convert_case($label, MB_CASE_TITLE, 'UTF-8');
+    }
+
+    return ucwords(strtolower($label));
+};
 $formatSummaryValue = static function ($value, array $config = []): string {
     if (array_key_exists('default', $config) && ($value === null || $value === '')) {
         $value = $config['default'];
@@ -155,6 +219,65 @@ $buildSummaryRows = static function (array $source, array $fields) use ($formatS
         ];
     }
     return $rows;
+};
+$buildGenericTrackingSections = static function (array $payload, ?string $sectionTitle = null) use (&$buildGenericTrackingSections, $formatSummaryValue, $humanizeTrackingKey): array {
+    $rows = [];
+    $sections = [];
+
+    foreach ($payload as $key => $value) {
+        $label = $humanizeTrackingKey((string) $key);
+
+        if (is_array($value)) {
+            if ($value === []) {
+                continue;
+            }
+
+            if (array_is_list($value)) {
+                $values = [];
+                foreach ($value as $item) {
+                    if (is_array($item)) {
+                        continue;
+                    }
+                    $formattedItem = $formatSummaryValue($item, ['hide_when_empty' => true]);
+                    if ($formattedItem !== 'N/D') {
+                        $values[] = $formattedItem;
+                    }
+                }
+                if ($values !== []) {
+                    $rows[] = [
+                        'label' => $label,
+                        'value' => implode(', ', $values),
+                    ];
+                }
+                continue;
+            }
+
+            $childSections = $buildGenericTrackingSections($value, $label);
+            if ($childSections !== []) {
+                $sections = array_merge($sections, $childSections);
+            }
+            continue;
+        }
+
+        $formatted = $formatSummaryValue($value, ['hide_when_empty' => true]);
+        if ($formatted === 'N/D') {
+            continue;
+        }
+
+        $rows[] = [
+            'label' => $label,
+            'value' => $formatted,
+        ];
+    }
+
+    if ($rows !== []) {
+        array_unshift($sections, [
+            'title' => $sectionTitle ?? 'Dettagli tracking',
+            'rows' => $rows,
+        ]);
+    }
+
+    return $sections;
 };
 
 $trackingSummaryRows = [];
@@ -270,6 +393,22 @@ foreach ([
         continue;
     }
     $trackingStructuredSections[] = $section;
+}
+
+if ($trackingPayloadData !== []) {
+    $knownSectionKeys = ['dati_spedizione', 'dati_consegna', 'riferimenti', 'mittente', 'destinatario', 'merce', 'contrassegno', 'assicurazione'];
+    $genericPayload = array_diff_key($trackingPayloadData, array_flip($knownSectionKeys));
+
+    if ($genericPayload !== []) {
+        $genericSections = $buildGenericTrackingSections($genericPayload);
+        if ($genericSections !== []) {
+            $trackingStructuredSections = array_merge($trackingStructuredSections, $genericSections);
+        }
+    }
+
+    if ($trackingStructuredSections === []) {
+        $trackingStructuredSections = $buildGenericTrackingSections($trackingPayloadData, 'Dettagli tracking');
+    }
 }
 
 $extractTrackingEvents = static function (array $payload): array {
