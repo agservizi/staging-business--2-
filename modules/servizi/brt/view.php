@@ -12,6 +12,20 @@ if (is_file($autoloadPath)) {
 }
 require_once __DIR__ . '/functions.php';
 
+if (!function_exists('array_is_list')) {
+    function array_is_list(array $array): bool
+    {
+        $expectedKey = 0;
+        foreach ($array as $key => $_) {
+            if ($key !== $expectedKey) {
+                return false;
+            }
+            $expectedKey++;
+        }
+        return true;
+    }
+}
+
 require_role('Admin', 'Operatore', 'Manager');
 
 $shipmentId = (int) ($_GET['id'] ?? 0);
@@ -76,6 +90,70 @@ if ($trackingPayloadRaw !== null) {
         $trackingPayloadData = $decodedTrackingPayload;
     }
 }
+$trackingSummaryRows = [];
+if ($trackingPayloadData !== []) {
+    $trackingSummaryRows = $buildSummaryRows($trackingPayloadData, [
+        'parcelID' => ['label' => 'ParcelID'],
+        'trackingByParcelID' => ['label' => 'trackingByParcelID'],
+        'bolla' => ['label' => 'Bolla'],
+        'statusDescription' => ['label' => 'Stato'],
+        'deliveryStatus' => ['label' => 'Stato consegna'],
+        'deliveryDate' => ['label' => 'Data consegna prevista'],
+        'deliveryTime' => ['label' => 'Ora consegna prevista'],
+        'deliveryCompanyName' => ['label' => 'Destinatario registrato'],
+        'deliveryContactName' => ['label' => 'Contatto consegna'],
+        'deliveryNote' => ['label' => 'Note consegna'],
+    ]);
+}
+
+$extractTrackingEvents = static function (array $payload): array {
+    $candidates = [];
+    foreach (['trackingList', 'trackingEvents', 'events'] as $key) {
+        if (isset($payload[$key])) {
+            $candidates[] = $payload[$key];
+        }
+    }
+
+    foreach ($candidates as $candidate) {
+        if (!is_array($candidate)) {
+            continue;
+        }
+
+        if (array_is_list($candidate)) {
+            return array_values(array_filter($candidate, static fn ($event) => is_array($event)));
+        }
+
+        if (isset($candidate['tracking']) && is_array($candidate['tracking'])) {
+            return array_values(array_filter($candidate['tracking'], static fn ($event) => is_array($event)));
+        }
+
+        if (isset($candidate['event']) && is_array($candidate['event'])) {
+            return array_values(array_filter($candidate['event'], static fn ($event) => is_array($event)));
+        }
+    }
+
+    return [];
+};
+
+$trackingEvents = $trackingPayloadData !== [] ? $extractTrackingEvents($trackingPayloadData) : [];
+
+$formatTrackingEventValue = static function (array $event, array $keys): string {
+    foreach ($keys as $key) {
+        if (!isset($event[$key])) {
+            continue;
+        }
+        $value = $event[$key];
+        if (is_array($value)) {
+            continue;
+        }
+        $text = trim((string) $value);
+        if ($text !== '') {
+            return $text;
+        }
+    }
+
+    return '';
+};
 
 $formatSummaryValue = static function ($value, array $config = []): string {
     if (array_key_exists('default', $config) && ($value === null || $value === '')) {
@@ -464,7 +542,82 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="card-body">
                         <?php if ($trackingPayloadRaw !== null): ?>
                             <p class="text-muted small">Aggiornato il <?php echo sanitize_output(format_datetime_locale($shipment['last_tracking_at'] ?? '')); ?></p>
-                            <pre class="bg-dark text-light p-3 rounded small overflow-auto" style="max-height: 320px;"><?php echo htmlspecialchars($trackingPayloadRaw, ENT_QUOTES, 'UTF-8'); ?></pre>
+                            <?php if ($trackingSummaryRows): ?>
+                                <h3 class="h6 text-uppercase text-muted mb-2">Sintesi</h3>
+                                <?php $renderSummaryTable($trackingSummaryRows); ?>
+                            <?php endif; ?>
+                            <?php if ($trackingEvents): ?>
+                                <h3 class="h6 text-uppercase text-muted mt-4 mb-2">Timeline eventi</h3>
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Data/Ora</th>
+                                                <th scope="col">Stato</th>
+                                                <th scope="col">Descrizione</th>
+                                                <th scope="col">Località / Note</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($trackingEvents as $event): ?>
+                                                <?php
+                                                    $eventDate = $formatTrackingEventValue($event, ['eventDate', 'trackingDate', 'date']);
+                                                    $eventTime = $formatTrackingEventValue($event, ['eventTime', 'trackingTime', 'time']);
+                                                    $eventStatus = $formatTrackingEventValue($event, ['trackingStatusDescription', 'eventStatusDescription', 'trackingStatus', 'statusDescription', 'status']);
+                                                    $eventDescription = $formatTrackingEventValue($event, ['trackingDescription', 'eventDescription', 'description', 'message']);
+                                                    $eventLocation = $formatTrackingEventValue($event, ['locationDescription', 'eventLocation', 'location', 'branch']);
+                                                    $eventNote = $formatTrackingEventValue($event, ['note', 'noteDescription', 'memo']);
+                                                    $eventOperator = $formatTrackingEventValue($event, ['operator', 'user', 'agent']);
+                                                    $eventDateTime = trim($eventDate . ' ' . $eventTime);
+                                                ?>
+                                                <tr>
+                                                    <td>
+                                                        <?php if ($eventDateTime !== ''): ?>
+                                                            <?php echo sanitize_output($eventDateTime); ?>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">—</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <?php if ($eventStatus !== ''): ?>
+                                                            <span class="badge bg-secondary text-uppercase"><?php echo sanitize_output($eventStatus); ?></span>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">—</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <?php if ($eventDescription !== ''): ?>
+                                                            <?php echo sanitize_output($eventDescription); ?>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">—</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
+                                                        <?php if ($eventLocation !== ''): ?>
+                                                            <div><?php echo sanitize_output($eventLocation); ?></div>
+                                                        <?php endif; ?>
+                                                        <?php if ($eventNote !== ''): ?>
+                                                            <div class="small text-muted"><?php echo sanitize_output($eventNote); ?></div>
+                                                        <?php endif; ?>
+                                                        <?php if ($eventOperator !== ''): ?>
+                                                            <div class="small text-muted">Operatore: <?php echo sanitize_output($eventOperator); ?></div>
+                                                        <?php endif; ?>
+                                                        <?php if ($eventLocation === '' && $eventNote === '' && $eventOperator === ''): ?>
+                                                            <span class="text-muted">—</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php else: ?>
+                                <p class="text-muted mb-0">Nessun evento di tracking disponibile nel payload.</p>
+                            <?php endif; ?>
+                            <details class="mt-4">
+                                <summary class="small text-muted fw-semibold" style="cursor: pointer;">Mostra payload JSON completo</summary>
+                                <pre class="bg-dark text-light p-3 rounded small overflow-auto mt-3" style="max-height: 320px;"><?php echo htmlspecialchars($trackingPayloadRaw, ENT_QUOTES, 'UTF-8'); ?></pre>
+                            </details>
                         <?php else: ?>
                             <p class="text-muted mb-0">Nessun tracking registrato per questa spedizione.</p>
                         <?php endif; ?>
