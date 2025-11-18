@@ -208,6 +208,9 @@ $buildSummaryRows = static function (array $source, array $fields) use ($formatS
         if (isset($meta['value']) && is_callable($meta['value'])) {
             $value = $meta['value']($source);
         }
+        if (($meta['skip_arrays'] ?? false) && is_array($value)) {
+            continue;
+        }
         $formatted = $formatSummaryValue($value, $meta);
         $hideWhenEmpty = $meta['hide_when_empty'] ?? true;
         if ($hideWhenEmpty && $formatted === 'N/D') {
@@ -285,7 +288,7 @@ if ($trackingPayloadData !== []) {
     $trackingSummaryRows = $buildSummaryRows($trackingPayloadData, [
         'parcelID' => ['label' => 'ParcelID'],
         'trackingByParcelID' => ['label' => 'trackingByParcelID'],
-        'bolla' => ['label' => 'Bolla'],
+        'bolla' => ['label' => 'Bolla', 'skip_arrays' => true],
         'statusDescription' => ['label' => 'Stato'],
         'deliveryStatus' => ['label' => 'Stato consegna'],
         'deliveryDate' => ['label' => 'Data consegna prevista'],
