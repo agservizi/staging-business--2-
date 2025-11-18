@@ -90,6 +90,69 @@ if ($trackingPayloadRaw !== null) {
         $trackingPayloadData = $decodedTrackingPayload;
     }
 }
+$formatSummaryValue = static function ($value, array $config = []): string {
+    if (array_key_exists('default', $config) && ($value === null || $value === '')) {
+        $value = $config['default'];
+    }
+
+    $format = $config['format'] ?? null;
+
+    if ($format === 'bool') {
+        return $value ? 'Sì' : 'No';
+    }
+
+    if ($value === null || $value === '' || (is_array($value) && $value === [])) {
+        return 'N/D';
+    }
+
+    if ($format === 'int') {
+        return number_format((int) $value, 0, ',', '.');
+    }
+
+    if ($format === 'float') {
+        $precision = (int) ($config['precision'] ?? 2);
+        return number_format((float) $value, $precision, ',', '.');
+    }
+
+    if ($format === 'json') {
+        return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    if (is_array($value)) {
+        return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    return (string) $value;
+};
+
+$buildSummaryRows = static function (array $source, array $fields) use ($formatSummaryValue): array {
+    $rows = [];
+    foreach ($fields as $key => $meta) {
+        if (is_int($key) && is_string($meta)) {
+            $key = $meta;
+            $meta = ['label' => $meta];
+        }
+        if (!is_array($meta)) {
+            $meta = ['label' => (string) $meta];
+        }
+        $label = (string) ($meta['label'] ?? $key);
+        $value = $source[$key] ?? ($meta['default'] ?? null);
+        if (isset($meta['value']) && is_callable($meta['value'])) {
+            $value = $meta['value']($source);
+        }
+        $formatted = $formatSummaryValue($value, $meta);
+        $hideWhenEmpty = $meta['hide_when_empty'] ?? true;
+        if ($hideWhenEmpty && $formatted === 'N/D') {
+            continue;
+        }
+        $rows[] = [
+            'label' => $label,
+            'value' => $formatted,
+        ];
+    }
+    return $rows;
+};
+
 $trackingSummaryRows = [];
 if ($trackingPayloadData !== []) {
     $trackingSummaryRows = $buildSummaryRows($trackingPayloadData, [
@@ -153,69 +216,6 @@ $formatTrackingEventValue = static function (array $event, array $keys): string 
     }
 
     return '';
-};
-
-$formatSummaryValue = static function ($value, array $config = []): string {
-    if (array_key_exists('default', $config) && ($value === null || $value === '')) {
-        $value = $config['default'];
-    }
-
-    $format = $config['format'] ?? null;
-
-    if ($format === 'bool') {
-        return $value ? 'Sì' : 'No';
-    }
-
-    if ($value === null || $value === '' || (is_array($value) && $value === [])) {
-        return 'N/D';
-    }
-
-    if ($format === 'int') {
-        return number_format((int) $value, 0, ',', '.');
-    }
-
-    if ($format === 'float') {
-        $precision = (int) ($config['precision'] ?? 2);
-        return number_format((float) $value, $precision, ',', '.');
-    }
-
-    if ($format === 'json') {
-        return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    }
-
-    if (is_array($value)) {
-        return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    }
-
-    return (string) $value;
-};
-
-$buildSummaryRows = static function (array $source, array $fields) use ($formatSummaryValue): array {
-    $rows = [];
-    foreach ($fields as $key => $meta) {
-        if (is_int($key) && is_string($meta)) {
-            $key = $meta;
-            $meta = ['label' => $meta];
-        }
-        if (!is_array($meta)) {
-            $meta = ['label' => (string) $meta];
-        }
-        $label = (string) ($meta['label'] ?? $key);
-        $value = $source[$key] ?? ($meta['default'] ?? null);
-        if (isset($meta['value']) && is_callable($meta['value'])) {
-            $value = $meta['value']($source);
-        }
-        $formatted = $formatSummaryValue($value, $meta);
-        $hideWhenEmpty = $meta['hide_when_empty'] ?? true;
-        if ($hideWhenEmpty && $formatted === 'N/D') {
-            continue;
-        }
-        $rows[] = [
-            'label' => $label,
-            'value' => $formatted,
-        ];
-    }
-    return $rows;
 };
 
 $renderSummaryTable = static function (array $rows): void {
