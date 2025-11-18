@@ -728,10 +728,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>
-                            <details class="mt-4">
-                                <summary class="small text-muted fw-semibold" style="cursor: pointer;">Mostra payload JSON completo</summary>
-                                <pre class="bg-dark text-light p-3 rounded small overflow-auto mt-3" style="max-height: 320px;"><?php echo htmlspecialchars($trackingPayloadRaw, ENT_QUOTES, 'UTF-8'); ?></pre>
-                            </details>
                         <?php else: ?>
                             <p class="text-muted mb-0">Nessun tracking registrato per questa spedizione.</p>
                         <?php endif; ?>
