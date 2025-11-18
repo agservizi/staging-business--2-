@@ -210,9 +210,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'user' => current_user_display_name(),
                 ]);
             } elseif ($action === 'refresh_tracking') {
-                $trackingId = (string) ($_POST['tracking_by_parcel_id'] ?? $shipment['tracking_by_parcel_id'] ?? '');
+                $trackingId = brt_normalize_tracking_identifier($_POST['tracking_by_parcel_id'] ?? ($shipment['tracking_by_parcel_id'] ?? ''));
                 if ($trackingId === '') {
-                    $trackingId = (string) ($_POST['parcel_id'] ?? $shipment['parcel_id'] ?? '');
+                    $trackingId = brt_normalize_tracking_identifier($_POST['parcel_id'] ?? ($shipment['parcel_id'] ?? ''));
                 }
 
                 if ($trackingId === '') {

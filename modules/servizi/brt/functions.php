@@ -69,6 +69,20 @@ function brt_missing_tables(): array
     return $missing;
 }
 
+function brt_normalize_tracking_identifier(?string $value): string
+{
+    if ($value === null) {
+        return '';
+    }
+
+    $trimmed = trim($value);
+    if ($trimmed === '') {
+        return '';
+    }
+
+    $compact = preg_replace('/\s+/', '', $trimmed);
+    return $compact !== null ? $compact : $trimmed;
+}
 function brt_log_event(string $level, string $message, array $context = []): void
 {
     $normalizedLevel = strtolower(trim($level));
@@ -224,11 +238,8 @@ function brt_store_shipment(array $createData, array $response, array $metadata 
             :response_payload
         )');
 
-    $parcelId = (string) ($response['labels']['label'][0]['parcelID'] ?? '');
-    $trackingByParcelId = (string) ($response['labels']['label'][0]['trackingByParcelID'] ?? '');
-    $trackingByParcelId = (string) ($response['labels']['label'][0]['trackingByParcelID'] ?? '');
-    $trackingByParcelId = (string) ($response['labels']['label'][0]['trackingByParcelID'] ?? '');
-    $trackingByParcelId = (string) ($response['labels']['label'][0]['trackingByParcelID'] ?? '');
+    $parcelId = trim((string) ($response['labels']['label'][0]['parcelID'] ?? ''));
+    $trackingByParcelId = brt_normalize_tracking_identifier($response['labels']['label'][0]['trackingByParcelID'] ?? '');
         $executionMessage = $response['executionMessage'] ?? [];
         $executionCode = (int) ($executionMessage['code'] ?? 0);
         $executionDesc = (string) ($executionMessage['codeDesc'] ?? '');
@@ -283,8 +294,8 @@ function brt_update_shipment_record(int $shipmentId, array $createData, array $r
 {
     $pdo = brt_db();
 
-    $parcelId = (string) ($response['labels']['label'][0]['parcelID'] ?? '');
-    $trackingByParcelId = (string) ($response['labels']['label'][0]['trackingByParcelID'] ?? '');
+    $parcelId = trim((string) ($response['labels']['label'][0]['parcelID'] ?? ''));
+    $trackingByParcelId = brt_normalize_tracking_identifier($response['labels']['label'][0]['trackingByParcelID'] ?? '');
     $executionMessage = $response['executionMessage'] ?? [];
     $executionCode = (int) ($executionMessage['code'] ?? 0);
     $executionDesc = (string) ($executionMessage['codeDesc'] ?? '');
@@ -815,8 +826,8 @@ function brt_attach_label(int $shipmentId, array $label): ?string
         return null;
     }
 
-    $parcelId = (string) ($label['parcelID'] ?? 'label');
-    $trackingByParcelId = (string) ($label['trackingByParcelID'] ?? '');
+    $parcelId = trim((string) ($label['parcelID'] ?? 'label'));
+    $trackingByParcelId = brt_normalize_tracking_identifier($label['trackingByParcelID'] ?? '');
     $path = brt_store_label_stream($parcelId, $stream);
 
     $pdo = brt_db();
