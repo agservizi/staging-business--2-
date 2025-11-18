@@ -67,7 +67,7 @@ $serviziItems = [
     ],
     [
         'needle' => 'modules/servizi/brt',
-        'label' => 'BRT Spedizioni',
+        'label' => 'Spedizioni BRT',
         'icon' => 'fa-solid fa-truck-fast',
         'href' => base_url('modules/servizi/brt/index.php'),
         'color' => 'azure',

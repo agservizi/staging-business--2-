@@ -19,7 +19,7 @@ if (is_file($autoloadPath)) {
 require_once __DIR__ . '/functions.php';
 
 require_role('Admin', 'Operatore', 'Manager');
-$pageTitle = 'BRT Spedizioni';
+$pageTitle = 'Spedizioni BRT';
 
 $csrfToken = csrf_token();
 
@@ -384,7 +384,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     <main class="content-wrapper">
         <div class="page-toolbar mb-4">
             <div>
-                <h1 class="h3 mb-0">BRT Spedizioni</h1>
+                <h1 class="h3 mb-0">Spedizioni BRT</h1>
                 <p class="text-muted mb-0">Gestione spedizioni, etichette e tracking tramite webservice BRT.</p>
             </div>
             <div class="toolbar-actions d-flex align-items-center gap-2">
