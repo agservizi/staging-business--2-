@@ -709,8 +709,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <td><?php echo sanitize_output(number_format((float) $manifest['total_weight_kg'], 2, ',', '.')); ?></td>
                                         <td class="text-end">
                                             <div class="btn-group btn-group-sm" role="group">
-                                                <?php if (!empty($manifest['pdf_path'])): ?>
-                                                    <a class="btn btn-outline-secondary" href="<?php echo asset($manifest['pdf_path']); ?>" target="_blank" rel="noopener">
+                                                <?php if (!empty($manifest['id'])): ?>
+                                                    <a class="btn btn-outline-secondary" href="manifest.php?id=<?php echo (int) $manifest['id']; ?>" target="_blank" rel="noopener">
                                                         <i class="fa-solid fa-file-pdf me-1"></i>Locale
                                                     </a>
                                                 <?php endif; ?>

@@ -20,6 +20,9 @@ const BRT_UPLOAD_BASE = __DIR__ . '/../../../uploads/brt';
 const BRT_LABEL_DIRECTORY = BRT_UPLOAD_BASE . '/labels';
 const BRT_MANIFEST_DIRECTORY = BRT_UPLOAD_BASE . '/manifests';
 const BRT_CUSTOMS_DIRECTORY = BRT_UPLOAD_BASE . '/customs';
+const BRT_BACKUP_BASE = __DIR__ . '/../../../backups/brt';
+const BRT_MANIFEST_BACKUP_DIRECTORY = BRT_BACKUP_BASE . '/manifests';
+const BRT_MANIFEST_OFFICIAL_BACKUP_DIRECTORY = BRT_BACKUP_BASE . '/manifests-official';
 const BRT_FILE_RETENTION_DAYS = 120;
 const BRT_LOG_LEVELS = ['info', 'warning', 'error'];
 
@@ -1414,6 +1417,62 @@ function brt_cleanup_old_artifacts(?int $retentionDays = null): void
     }
 }
 
+function brt_backup_manifest_document(?string $absolutePath, ?string $relativePath = null): void
+{
+    if ($absolutePath === null || $absolutePath === '' || !is_file($absolutePath)) {
+        return;
+    }
+
+    $filename = $relativePath !== null && $relativePath !== ''
+        ? basename(str_replace('\\', '/', $relativePath))
+        : basename($absolutePath);
+
+    brt_copy_to_backup($absolutePath, BRT_MANIFEST_BACKUP_DIRECTORY, $filename, 'manifest');
+}
+
+function brt_backup_official_manifest_document(?string $relativePath): void
+{
+    $trimmed = $relativePath !== null ? trim($relativePath) : '';
+    if ($trimmed === '') {
+        return;
+    }
+
+    $absolute = public_path($trimmed);
+    if (!is_file($absolute)) {
+        return;
+    }
+
+    $filename = basename(str_replace('\\', '/', $trimmed));
+    brt_copy_to_backup($absolute, BRT_MANIFEST_OFFICIAL_BACKUP_DIRECTORY, $filename, 'manifest_official');
+}
+
+function brt_copy_to_backup(string $source, string $directory, string $filename, string $type): void
+{
+    if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+        brt_log_event('warning', 'Impossibile creare la cartella backup BRT', [
+            'directory' => $directory,
+            'type' => $type,
+        ]);
+        return;
+    }
+
+    $destination = rtrim($directory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filename;
+    if (@copy($source, $destination)) {
+        return;
+    }
+
+    $fallback = rtrim($directory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . date('Ymd_His') . '_' . $filename;
+    if (@copy($source, $fallback)) {
+        return;
+    }
+
+    brt_log_event('warning', 'Copia backup borderò non riuscita', [
+        'type' => $type,
+        'source' => $source,
+        'destination' => $destination,
+    ]);
+}
+
 /**
  * @return array<int, array<string, mixed>>
  */
@@ -1446,6 +1505,14 @@ function brt_get_shipments(array $filters = []): array
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
+    return $stmt->fetchAll() ?: [];
+}
+
+function brt_get_shipments_by_manifest(int $manifestId): array
+{
+    $pdo = brt_db();
+    $stmt = $pdo->prepare('SELECT * FROM brt_shipments WHERE manifest_id = :id ORDER BY id ASC');
+    $stmt->execute([':id' => $manifestId]);
     return $stmt->fetchAll() ?: [];
 }
 
@@ -2173,6 +2240,77 @@ function brt_get_manifest(int $manifestId): ?array
     return $result ?: null;
 }
 
+function brt_update_manifest_pdf_path(int $manifestId, string $relativePath): void
+{
+    $pdo = brt_db();
+    $stmt = $pdo->prepare('UPDATE brt_manifests SET pdf_path = :path WHERE id = :id');
+    $stmt->execute([
+        ':path' => $relativePath,
+        ':id' => $manifestId,
+    ]);
+}
+
+/**
+ * @param array<string, mixed> $manifest
+ * @return array{relative_path: string, absolute_path: string}|null
+ */
+function brt_ensure_manifest_pdf(array $manifest, ?BrtConfig $config = null): ?array
+{
+    $relative = isset($manifest['pdf_path']) ? (string) $manifest['pdf_path'] : '';
+    if ($relative !== '') {
+        $absolute = public_path($relative);
+        if (is_file($absolute)) {
+            return ['relative_path' => $relative, 'absolute_path' => $absolute];
+        }
+    }
+
+    $manifestId = (int) ($manifest['id'] ?? 0);
+    if ($manifestId <= 0) {
+        return null;
+    }
+
+    $shipments = brt_get_shipments_by_manifest($manifestId);
+    if ($shipments === []) {
+        return null;
+    }
+
+    $config = $config ?? new BrtConfig();
+    $context = [
+        'senderCustomerCode' => $config->getSenderCustomerCode(),
+        'departureDepot' => $config->getDepartureDepot(),
+    ];
+
+    $timestamp = null;
+    if (!empty($manifest['generated_at'])) {
+        try {
+            $timestamp = new DateTimeImmutable((string) $manifest['generated_at']);
+        } catch (Throwable $exception) {
+            $timestamp = null;
+        }
+    }
+
+    $filename = null;
+    if ($relative !== '') {
+        $filename = basename(str_replace('\\', '/', $relative));
+    } elseif ($timestamp !== null) {
+        $filename = sprintf('bordero_brt_%s.pdf', $timestamp->format('Ymd_His'));
+    }
+
+    try {
+        $generator = new BrtManifestGenerator();
+        $paths = $generator->generate($shipments, $context, $timestamp, $filename);
+        brt_update_manifest_pdf_path($manifestId, $paths['relative_path']);
+        brt_backup_manifest_document($paths['absolute_path'] ?? null, $paths['relative_path'] ?? null);
+        return $paths;
+    } catch (Throwable $exception) {
+        brt_log_event('error', 'Rigenerazione borderò non riuscita: ' . $exception->getMessage(), [
+            'manifest_id' => $manifestId,
+            'reference' => $manifest['reference'] ?? null,
+        ]);
+        return null;
+    }
+}
+
 /**
  * @throws Throwable
  */
@@ -2194,6 +2332,7 @@ function brt_generate_pending_manifest(?BrtConfig $config = null): ?array
     ];
 
     $manifestData = $generator->generate($shipments, $context);
+    brt_backup_manifest_document($manifestData['absolute_path'] ?? null, $manifestData['relative_path'] ?? null);
 
     $totals = brt_calculate_manifest_totals($shipments);
 
@@ -2211,6 +2350,7 @@ function brt_generate_pending_manifest(?BrtConfig $config = null): ?array
                     'pickupDate' => $manifestData['generated_at']->format('Y-m-d'),
                 ]);
                 $officialPdfRelativePath = $officialData['pdf_path'] ?? null;
+                brt_backup_official_manifest_document($officialPdfRelativePath);
             } catch (BrtException $exception) {
                 $cleanMessage = brt_normalize_remote_warning($exception->getMessage());
                 brt_log_event('warning', 'Bordero ufficiale non generato: ' . $cleanMessage, [
@@ -2350,6 +2490,7 @@ function brt_generate_manifest_for_shipments(array $shipmentIds, ?BrtConfig $con
     ];
 
     $manifestData = $generator->generate($shipments, $context);
+    brt_backup_manifest_document($manifestData['absolute_path'] ?? null, $manifestData['relative_path'] ?? null);
     $totals = brt_calculate_manifest_totals($shipments);
 
     $pdo = brt_db();
@@ -2366,6 +2507,7 @@ function brt_generate_manifest_for_shipments(array $shipmentIds, ?BrtConfig $con
                     'pickupDate' => $manifestData['generated_at']->format('Y-m-d'),
                 ]);
                 $officialPdfRelativePath = $officialData['pdf_path'] ?? null;
+                brt_backup_official_manifest_document($officialPdfRelativePath);
             } catch (BrtException $exception) {
                 $cleanMessage = brt_normalize_remote_warning($exception->getMessage());
                 brt_log_event('warning', 'Bordero ufficiale non generato: ' . $cleanMessage, [
