@@ -69,61 +69,82 @@ try {
 }
 
 $absolutePath = caf_patronato_absolute_path($projectRoot, $relativePath);
-if (!is_file($absolutePath)) {
-    $candidates = [];
+$candidates = [$absolutePath];
 
-    $publicCandidate = public_path($relativePath);
-    if ($publicCandidate !== '' && $publicCandidate !== $absolutePath) {
-        $candidates[] = $publicCandidate;
+$documentBasename = $relativePath !== '' ? basename(str_replace('\\', '/', $relativePath)) : '';
+try {
+    $practiceStoragePath = $service->storagePathForPractice($practiceId);
+} catch (Throwable $exception) {
+    $practiceStoragePath = '';
+}
+
+if ($practiceStoragePath !== '' && $documentBasename !== '') {
+    $storageCandidate = rtrim(str_replace('\\', '/', $practiceStoragePath), '/') . '/' . $documentBasename;
+    if ($storageCandidate !== $absolutePath) {
+        $candidates[] = $storageCandidate;
+    }
+}
+
+$publicCandidate = public_path($relativePath);
+if ($publicCandidate !== '' && !in_array($publicCandidate, $candidates, true)) {
+    $candidates[] = $publicCandidate;
+}
+
+if (str_starts_with($relativePath, CAF_PATRONATO_UPLOAD_DIR . '/')) {
+    $apiCandidate = caf_patronato_absolute_path($projectRoot, 'api/' . $relativePath);
+    if (!in_array($apiCandidate, $candidates, true)) {
+        $candidates[] = $apiCandidate;
+    }
+
+    $publicApiCandidate = public_path('api/' . $relativePath);
+    if ($publicApiCandidate !== '' && !in_array($publicApiCandidate, $candidates, true)) {
+        $candidates[] = $publicApiCandidate;
+    }
+}
+
+if (str_ends_with($relativePath, CAF_PATRONATO_ENCRYPTION_SUFFIX)) {
+    $withoutSuffix = substr($relativePath, 0, -strlen(CAF_PATRONATO_ENCRYPTION_SUFFIX));
+
+    $plainCandidate = caf_patronato_absolute_path($projectRoot, $withoutSuffix);
+    if (!in_array($plainCandidate, $candidates, true)) {
+        $candidates[] = $plainCandidate;
+    }
+
+    if ($practiceStoragePath !== '' && $documentBasename !== '') {
+        $storagePlainCandidate = rtrim(str_replace('\\', '/', $practiceStoragePath), '/') . '/' . basename($withoutSuffix);
+        if (!in_array($storagePlainCandidate, $candidates, true)) {
+            $candidates[] = $storagePlainCandidate;
+        }
+    }
+
+    $publicPlainCandidate = public_path($withoutSuffix);
+    if ($publicPlainCandidate !== '' && !in_array($publicPlainCandidate, $candidates, true)) {
+        $candidates[] = $publicPlainCandidate;
     }
 
     if (str_starts_with($relativePath, CAF_PATRONATO_UPLOAD_DIR . '/')) {
-        $apiCandidate = caf_patronato_absolute_path($projectRoot, 'api/' . $relativePath);
-        if ($apiCandidate !== $absolutePath) {
-            $candidates[] = $apiCandidate;
+        $apiPlainCandidate = caf_patronato_absolute_path($projectRoot, 'api/' . $withoutSuffix);
+        if (!in_array($apiPlainCandidate, $candidates, true)) {
+            $candidates[] = $apiPlainCandidate;
         }
 
-        $publicApiCandidate = public_path('api/' . $relativePath);
-        if ($publicApiCandidate !== '' && $publicApiCandidate !== $absolutePath) {
-            $candidates[] = $publicApiCandidate;
-        }
-    }
-
-    if (str_ends_with($relativePath, CAF_PATRONATO_ENCRYPTION_SUFFIX)) {
-        $withoutSuffix = substr($relativePath, 0, -strlen(CAF_PATRONATO_ENCRYPTION_SUFFIX));
-        $plainCandidate = caf_patronato_absolute_path($projectRoot, $withoutSuffix);
-        if ($plainCandidate !== $absolutePath) {
-            $candidates[] = $plainCandidate;
-        }
-
-        $publicPlainCandidate = public_path($withoutSuffix);
-        if ($publicPlainCandidate !== '' && $publicPlainCandidate !== $absolutePath) {
-            $candidates[] = $publicPlainCandidate;
-        }
-
-        if (str_starts_with($relativePath, CAF_PATRONATO_UPLOAD_DIR . '/')) {
-            $apiPlainCandidate = caf_patronato_absolute_path($projectRoot, 'api/' . $withoutSuffix);
-            if ($apiPlainCandidate !== $absolutePath) {
-                $candidates[] = $apiPlainCandidate;
-            }
-
-            $publicApiPlainCandidate = public_path('api/' . $withoutSuffix);
-            if ($publicApiPlainCandidate !== '' && $publicApiPlainCandidate !== $absolutePath) {
-                $candidates[] = $publicApiPlainCandidate;
-            }
+        $publicApiPlainCandidate = public_path('api/' . $withoutSuffix);
+        if ($publicApiPlainCandidate !== '' && !in_array($publicApiPlainCandidate, $candidates, true)) {
+            $candidates[] = $publicApiPlainCandidate;
         }
     }
+}
 
-    foreach ($candidates as $candidate) {
-        if ($candidate !== '' && is_file($candidate)) {
-            $absolutePath = $candidate;
-            break;
-        }
+$absolutePath = '';
+foreach ($candidates as $candidate) {
+    if ($candidate !== '' && is_file($candidate)) {
+        $absolutePath = $candidate;
+        break;
     }
+}
 
-    if (!is_file($absolutePath)) {
-        abort_download(404, 'Allegato non trovato.');
-    }
+if ($absolutePath === '' || !is_file($absolutePath)) {
+    abort_download(404, 'Allegato non trovato.');
 }
 
 try {
