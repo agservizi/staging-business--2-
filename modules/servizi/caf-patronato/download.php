@@ -75,7 +75,9 @@ try {
     $practiceStoragePath = '';
 }
 
-$practiceStoragePath = $practiceStoragePath !== '' ? str_replace('\\', '/', rtrim($practiceStoragePath, '\\/')) : '';
+$practiceStoragePath = $practiceStoragePath !== '' ? str_replace('\\', '/', rtrim($practiceStoragePath, '\\/' )) : '';
+$uploadDirPrefix = CAF_PATRONATO_UPLOAD_DIR . '/';
+$uploadDirPrefixLength = strlen($uploadDirPrefix);
 $pathQueue = $practicePathVariants;
 $processedVariants = [];
 $candidates = [];
@@ -100,6 +102,7 @@ while ($pathQueue) {
     }
 
     $processedVariants[$normalizedVariant] = true;
+    $normalizedLower = strtolower($normalizedVariant);
 
     $absoluteCandidate = caf_patronato_absolute_path($projectRoot, $normalizedVariant);
     $candidates[] = $absoluteCandidate;
@@ -115,7 +118,8 @@ while ($pathQueue) {
         $candidates[] = $publicCandidate;
     }
 
-    if (str_starts_with($normalizedVariant, CAF_PATRONATO_UPLOAD_DIR . '/')) {
+    $startsWithUploadDir = $uploadDirPrefixLength > 0 && strncmp($normalizedLower, strtolower($uploadDirPrefix), $uploadDirPrefixLength) === 0;
+    if ($startsWithUploadDir) {
         $apiVariant = 'api/' . $normalizedVariant;
         $candidates[] = caf_patronato_absolute_path($projectRoot, $apiVariant);
         $publicApiCandidate = public_path($apiVariant);
@@ -124,29 +128,49 @@ while ($pathQueue) {
         }
     }
 
-    if (!str_starts_with($normalizedVariant, CAF_PATRONATO_UPLOAD_DIR . '/')) {
-        $uploadNeedle = CAF_PATRONATO_UPLOAD_DIR . '/';
-        $needlePos = strpos($normalizedVariant, $uploadNeedle);
-        if ($needlePos > 0) {
+    if (!$startsWithUploadDir) {
+        $needlePos = stripos($normalizedVariant, $uploadDirPrefix);
+        if ($needlePos !== false && $needlePos > 0) {
             $suffixVariant = substr($normalizedVariant, $needlePos);
             if ($suffixVariant !== false && $suffixVariant !== '') {
                 $pathQueue[] = $suffixVariant;
             }
         }
 
-        if (str_starts_with($normalizedVariant, 'caf-patronato/')) {
-            $prefixedVariant = CAF_PATRONATO_UPLOAD_DIR . '/' . substr($normalizedVariant, strlen('caf-patronato/'));
+        $cafNeedle = 'caf-patronato/';
+        $cafPrefixLength = strlen($cafNeedle);
+        $cafStarts = strncasecmp($normalizedVariant, $cafNeedle, $cafPrefixLength) === 0;
+        if ($cafStarts) {
+            $prefixedVariant = CAF_PATRONATO_UPLOAD_DIR . '/' . substr($normalizedVariant, $cafPrefixLength);
             if ($prefixedVariant !== '' && !isset($processedVariants[$prefixedVariant])) {
                 $pathQueue[] = $prefixedVariant;
             }
         } else {
-            $cafNeedle = 'caf-patronato/';
-            $cafPos = strpos($normalizedVariant, $cafNeedle);
-            if ($cafPos > 0) {
+            $cafPos = stripos($normalizedVariant, $cafNeedle);
+            if ($cafPos !== false && $cafPos > 0) {
                 $suffix = substr($normalizedVariant, $cafPos);
                 if ($suffix !== false && $suffix !== '') {
                     $pathQueue[] = $suffix;
                 }
+            }
+        }
+
+        $uploadsPrefix = 'uploads/caf-patronato/';
+        $uploadsLen = strlen($uploadsPrefix);
+        $uploadsStarts = strncasecmp($normalizedVariant, $uploadsPrefix, $uploadsLen) === 0;
+        if ($uploadsStarts) {
+            $prefixedVariant = CAF_PATRONATO_UPLOAD_DIR . '/' . substr($normalizedVariant, $uploadsLen);
+            if ($prefixedVariant !== '' && !isset($processedVariants[$prefixedVariant])) {
+                $pathQueue[] = $prefixedVariant;
+            }
+        }
+
+        $storagePrefix = 'storage/caf-patronato/';
+        $storageLen = strlen($storagePrefix);
+        if (strncasecmp($normalizedVariant, $storagePrefix, $storageLen) === 0) {
+            $prefixedVariant = CAF_PATRONATO_UPLOAD_DIR . '/' . substr($normalizedVariant, $storageLen);
+            if ($prefixedVariant !== '' && !isset($processedVariants[$prefixedVariant])) {
+                $pathQueue[] = $prefixedVariant;
             }
         }
     }
@@ -157,7 +181,7 @@ while ($pathQueue) {
             $pathQueue[] = $withoutSuffix;
         }
 
-        if (str_starts_with($normalizedVariant, CAF_PATRONATO_UPLOAD_DIR . '/')) {
+        if ($startsWithUploadDir) {
             $plainApiVariant = 'api/' . $withoutSuffix;
             $candidates[] = caf_patronato_absolute_path($projectRoot, $plainApiVariant);
             $publicPlainApiCandidate = public_path($plainApiVariant);
@@ -265,6 +289,12 @@ function caf_patronato_initial_path_variants(string $rawPath): array
         $cutPos = strcspn($candidate, '?#');
         if ($cutPos < strlen($candidate)) {
             $candidate = substr($candidate, 0, $cutPos);
+        }
+
+        if (preg_match('#^[a-z]:/#i', $candidate) === 1) {
+            $candidate = substr($candidate, 3);
+        } elseif (strncmp($candidate, '//', 2) === 0) {
+            $candidate = preg_replace('#^//[^/]+/#', '', $candidate) ?? $candidate;
         }
 
         while (str_starts_with($candidate, './')) {
