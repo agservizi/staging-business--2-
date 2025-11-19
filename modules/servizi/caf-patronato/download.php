@@ -60,7 +60,7 @@ try {
         abort_download(403, $exception->getMessage());
     }
 
-    $relativePath = (string) ($payload['file_path'] ?? '');
+    $rawRelativePath = (string) ($payload['file_path'] ?? '');
     $fileName = (string) ($payload['file_name'] ?? '');
     $mimeType = (string) ($payload['mime_type'] ?? '');
     $fileSize = (int) ($payload['file_size'] ?? 0);
@@ -68,72 +68,107 @@ try {
     abort_download(404, $exception->getMessage());
 }
 
-$absolutePath = caf_patronato_absolute_path($projectRoot, $relativePath);
-$candidates = [$absolutePath];
-
-$documentBasename = $relativePath !== '' ? basename(str_replace('\\', '/', $relativePath)) : '';
+$practicePathVariants = caf_patronato_initial_path_variants($rawRelativePath);
 try {
     $practiceStoragePath = $service->storagePathForPractice($practiceId);
 } catch (Throwable $exception) {
     $practiceStoragePath = '';
 }
 
-if ($practiceStoragePath !== '' && $documentBasename !== '') {
-    $storageCandidate = rtrim(str_replace('\\', '/', $practiceStoragePath), '/') . '/' . $documentBasename;
-    if ($storageCandidate !== $absolutePath) {
+$practiceStoragePath = $practiceStoragePath !== '' ? str_replace('\\', '/', rtrim($practiceStoragePath, '\\/')) : '';
+$pathQueue = $practicePathVariants;
+$processedVariants = [];
+$candidates = [];
+
+while ($pathQueue) {
+    $variant = array_shift($pathQueue);
+    if (!is_string($variant)) {
+        continue;
+    }
+
+    $normalizedVariant = str_replace('\\', '/', trim($variant));
+    while (str_starts_with($normalizedVariant, './')) {
+        $normalizedVariant = substr($normalizedVariant, 2);
+    }
+    while (str_starts_with($normalizedVariant, '../')) {
+        $normalizedVariant = substr($normalizedVariant, 3);
+    }
+    $normalizedVariant = ltrim($normalizedVariant, '/');
+
+    if ($normalizedVariant === '' || isset($processedVariants[$normalizedVariant])) {
+        continue;
+    }
+
+    $processedVariants[$normalizedVariant] = true;
+
+    $absoluteCandidate = caf_patronato_absolute_path($projectRoot, $normalizedVariant);
+    $candidates[] = $absoluteCandidate;
+
+    $documentBasename = basename($normalizedVariant);
+    if ($practiceStoragePath !== '' && $documentBasename !== '') {
+        $storageCandidate = $practiceStoragePath . '/' . $documentBasename;
         $candidates[] = $storageCandidate;
     }
-}
 
-$publicCandidate = public_path($relativePath);
-if ($publicCandidate !== '' && !in_array($publicCandidate, $candidates, true)) {
-    $candidates[] = $publicCandidate;
-}
-
-if (str_starts_with($relativePath, CAF_PATRONATO_UPLOAD_DIR . '/')) {
-    $apiCandidate = caf_patronato_absolute_path($projectRoot, 'api/' . $relativePath);
-    if (!in_array($apiCandidate, $candidates, true)) {
-        $candidates[] = $apiCandidate;
+    $publicCandidate = public_path($normalizedVariant);
+    if ($publicCandidate !== '') {
+        $candidates[] = $publicCandidate;
     }
 
-    $publicApiCandidate = public_path('api/' . $relativePath);
-    if ($publicApiCandidate !== '' && !in_array($publicApiCandidate, $candidates, true)) {
-        $candidates[] = $publicApiCandidate;
-    }
-}
-
-if (str_ends_with($relativePath, CAF_PATRONATO_ENCRYPTION_SUFFIX)) {
-    $withoutSuffix = substr($relativePath, 0, -strlen(CAF_PATRONATO_ENCRYPTION_SUFFIX));
-
-    $plainCandidate = caf_patronato_absolute_path($projectRoot, $withoutSuffix);
-    if (!in_array($plainCandidate, $candidates, true)) {
-        $candidates[] = $plainCandidate;
-    }
-
-    if ($practiceStoragePath !== '' && $documentBasename !== '') {
-        $storagePlainCandidate = rtrim(str_replace('\\', '/', $practiceStoragePath), '/') . '/' . basename($withoutSuffix);
-        if (!in_array($storagePlainCandidate, $candidates, true)) {
-            $candidates[] = $storagePlainCandidate;
+    if (str_starts_with($normalizedVariant, CAF_PATRONATO_UPLOAD_DIR . '/')) {
+        $apiVariant = 'api/' . $normalizedVariant;
+        $candidates[] = caf_patronato_absolute_path($projectRoot, $apiVariant);
+        $publicApiCandidate = public_path($apiVariant);
+        if ($publicApiCandidate !== '') {
+            $candidates[] = $publicApiCandidate;
         }
     }
 
-    $publicPlainCandidate = public_path($withoutSuffix);
-    if ($publicPlainCandidate !== '' && !in_array($publicPlainCandidate, $candidates, true)) {
-        $candidates[] = $publicPlainCandidate;
-    }
-
-    if (str_starts_with($relativePath, CAF_PATRONATO_UPLOAD_DIR . '/')) {
-        $apiPlainCandidate = caf_patronato_absolute_path($projectRoot, 'api/' . $withoutSuffix);
-        if (!in_array($apiPlainCandidate, $candidates, true)) {
-            $candidates[] = $apiPlainCandidate;
+    if (!str_starts_with($normalizedVariant, CAF_PATRONATO_UPLOAD_DIR . '/')) {
+        $uploadNeedle = CAF_PATRONATO_UPLOAD_DIR . '/';
+        $needlePos = strpos($normalizedVariant, $uploadNeedle);
+        if ($needlePos > 0) {
+            $suffixVariant = substr($normalizedVariant, $needlePos);
+            if ($suffixVariant !== false && $suffixVariant !== '') {
+                $pathQueue[] = $suffixVariant;
+            }
         }
 
-        $publicApiPlainCandidate = public_path('api/' . $withoutSuffix);
-        if ($publicApiPlainCandidate !== '' && !in_array($publicApiPlainCandidate, $candidates, true)) {
-            $candidates[] = $publicApiPlainCandidate;
+        if (str_starts_with($normalizedVariant, 'caf-patronato/')) {
+            $prefixedVariant = CAF_PATRONATO_UPLOAD_DIR . '/' . substr($normalizedVariant, strlen('caf-patronato/'));
+            if ($prefixedVariant !== '' && !isset($processedVariants[$prefixedVariant])) {
+                $pathQueue[] = $prefixedVariant;
+            }
+        } else {
+            $cafNeedle = 'caf-patronato/';
+            $cafPos = strpos($normalizedVariant, $cafNeedle);
+            if ($cafPos > 0) {
+                $suffix = substr($normalizedVariant, $cafPos);
+                if ($suffix !== false && $suffix !== '') {
+                    $pathQueue[] = $suffix;
+                }
+            }
+        }
+    }
+
+    if (str_ends_with($normalizedVariant, CAF_PATRONATO_ENCRYPTION_SUFFIX)) {
+        $withoutSuffix = substr($normalizedVariant, 0, -strlen(CAF_PATRONATO_ENCRYPTION_SUFFIX));
+        if ($withoutSuffix !== false && $withoutSuffix !== '' && !isset($processedVariants[$withoutSuffix])) {
+            $pathQueue[] = $withoutSuffix;
+        }
+
+        if (str_starts_with($normalizedVariant, CAF_PATRONATO_UPLOAD_DIR . '/')) {
+            $plainApiVariant = 'api/' . $withoutSuffix;
+            $candidates[] = caf_patronato_absolute_path($projectRoot, $plainApiVariant);
+            $publicPlainApiCandidate = public_path($plainApiVariant);
+            if ($publicPlainApiCandidate !== '') {
+                $candidates[] = $publicPlainApiCandidate;
+            }
         }
     }
 }
+
+$candidates = array_values(array_unique(array_filter($candidates, static fn($path) => is_string($path) && $path !== '')));
 
 $absolutePath = '';
 foreach ($candidates as $candidate) {
@@ -198,5 +233,53 @@ function caf_patronato_absolute_path(string $projectRoot, string $relativePath):
     $cleanRelative = ltrim(str_replace('\\', '/', $relativePath), '/');
 
     return $cleanRoot . '/' . $cleanRelative;
+}
+
+/**
+ * @return array<int,string>
+ */
+function caf_patronato_initial_path_variants(string $rawPath): array
+{
+    $trimmed = trim($rawPath);
+    if ($trimmed === '') {
+        return [];
+    }
+
+    $normalized = str_replace('\\', '/', $trimmed);
+    $variants = [$normalized];
+
+    if (preg_match('#^[a-z][a-z0-9+.-]*://#i', $normalized) === 1) {
+        $urlPath = parse_url($normalized, PHP_URL_PATH);
+        if (is_string($urlPath) && $urlPath !== '') {
+            $variants[] = $urlPath;
+        }
+    }
+
+    $processed = [];
+    foreach ($variants as $variant) {
+        if (!is_string($variant) || $variant === '') {
+            continue;
+        }
+
+        $candidate = str_replace('\\', '/', trim($variant));
+        $cutPos = strcspn($candidate, '?#');
+        if ($cutPos < strlen($candidate)) {
+            $candidate = substr($candidate, 0, $cutPos);
+        }
+
+        while (str_starts_with($candidate, './')) {
+            $candidate = substr($candidate, 2);
+        }
+        while (str_starts_with($candidate, '../')) {
+            $candidate = substr($candidate, 3);
+        }
+
+        $candidate = ltrim($candidate, '/');
+        if ($candidate !== '') {
+            $processed[] = $candidate;
+        }
+    }
+
+    return array_values(array_unique($processed));
 }
 
