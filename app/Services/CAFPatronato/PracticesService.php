@@ -9,6 +9,7 @@ use PDO;
 use RuntimeException;
 use Throwable;
 use function caf_patronato_build_download_url;
+use function caf_patronato_decrypt_file;
 use function caf_patronato_encrypt_uploaded_file;
 use function caf_patronato_generate_standard_filename;
 use function caf_patronato_get_encryption_key;
@@ -603,13 +604,7 @@ SQL;
 
         $this->cachePracticeCustomerEmail($practice, $recipient);
 
-        $mailCallable = null;
-        if (function_exists(__NAMESPACE__ . '\\send_system_mail')) {
-            $mailCallable = __NAMESPACE__ . '\\send_system_mail';
-        } elseif (function_exists('send_system_mail')) {
-            $mailCallable = 'send_system_mail';
-        }
-
+        $mailCallable = $this->resolveMailCallable();
         if ($mailCallable === null) {
             throw new RuntimeException('Servizio email non disponibile sul server.', 503);
         }
@@ -672,6 +667,22 @@ SQL;
         }
 
         return '/' . ltrim($path, '/');
+    }
+
+    /**
+     * @return callable|null
+     */
+    private function resolveMailCallable(): ?callable
+    {
+        if (function_exists(__NAMESPACE__ . '\\send_system_mail')) {
+            return __NAMESPACE__ . '\\send_system_mail';
+        }
+
+        if (function_exists('send_system_mail')) {
+            return 'send_system_mail';
+        }
+
+        return null;
     }
 
     /**
@@ -2019,7 +2030,102 @@ SQL;
             error_log('CAF/Patronato timeline append warning (document upload): ' . $exception->getMessage());
         }
 
+        $this->notifyCustomerDocumentUploaded($practiceId, $safeName, $relativePath, $detectedMime, $requestUserId, $operatorId);
+
         return $this->listDocuments($practiceId);
+    }
+
+    private function notifyCustomerDocumentUploaded(int $practiceId, string $displayName, string $relativePath, string $mimeType, int $requestUserId, ?int $operatorId): void
+    {
+        if ($operatorId === null) {
+            return;
+        }
+
+        try {
+            $practice = $this->getPractice($practiceId, true, null);
+        } catch (Throwable $exception) {
+            error_log('CAF/Patronato document mail skipped: pratica non disponibile - ' . $exception->getMessage());
+            return;
+        }
+
+        $recipient = $this->resolvePracticeCustomerEmail($practice);
+        if ($recipient === null) {
+            return;
+        }
+
+        $mailCallable = $this->resolveMailCallable();
+        if ($mailCallable === null) {
+            error_log('CAF/Patronato document mail skipped: servizio email non disponibile.');
+            return;
+        }
+
+        $relativeClean = ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativePath), DIRECTORY_SEPARATOR);
+        $absolutePath = $this->projectRoot . DIRECTORY_SEPARATOR . $relativeClean;
+
+        try {
+            $attachmentContent = caf_patronato_decrypt_file($absolutePath);
+        } catch (Throwable $exception) {
+            error_log('CAF/Patronato document mail skipped: decifratura allegato non riuscita - ' . $exception->getMessage());
+            return;
+        }
+
+        $trackingCode = (string) ($practice['tracking_code'] ?? '');
+        $subjectReference = $trackingCode !== '' ? $trackingCode : sprintf('#%d', $practiceId);
+        $subject = 'Nuovo documento per la pratica ' . $subjectReference;
+        $trackingLink = $this->buildTrackingLink($trackingCode);
+        $practiceTitle = trim((string) ($practice['titolo'] ?? ''));
+        if ($practiceTitle === '') {
+            $practiceTitle = 'la tua pratica';
+        }
+
+        $body = '<p>Buongiorno,</p>';
+        $body .= '<p>In allegato trovi il documento <strong>' . htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') . '</strong> caricato dall&#39;operatore Patronato per la tua pratica <strong>' . htmlspecialchars($practiceTitle, ENT_QUOTES, 'UTF-8') . '</strong>.</p>';
+        if ($trackingLink !== '') {
+            $body .= '<p>Puoi seguire l&#39;avanzamento della pratica da questo link: <a href="' . htmlspecialchars($trackingLink, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($trackingLink, ENT_QUOTES, 'UTF-8') . '</a>.</p>';
+        }
+        $body .= '<p>Per ulteriori informazioni rispondi a questa email o contatta il tuo operatore di riferimento.</p>';
+        $body .= '<p>Grazie,<br>Ufficio Patronato</p>';
+
+        $htmlBody = function_exists('render_mail_template')
+            ? render_mail_template('Aggiornamento pratica CAF & Patronato', $body)
+            : $body;
+
+        $options = [
+            'attachments' => [[
+                'name' => $displayName,
+                'mime' => $mimeType,
+                'content' => $attachmentContent,
+            ]],
+            'metadata' => [
+                'practice_id' => (string) $practiceId,
+                'event' => 'document_upload',
+            ],
+        ];
+
+        try {
+            $sent = $mailCallable($recipient, $subject, $htmlBody, $options);
+        } catch (Throwable $exception) {
+            error_log('CAF/Patronato document mail dispatch error: ' . $exception->getMessage());
+            return;
+        }
+
+        if (!$sent) {
+            error_log('CAF/Patronato document mail dispatch failed for pratica #' . $practiceId . ' verso ' . $recipient);
+            return;
+        }
+
+        $payload = [
+            'email' => $recipient,
+            'documento' => $displayName,
+        ];
+        $this->recordEvent($practiceId, 'notifica_cliente', 'Documento inviato via email al cliente', $payload, $requestUserId, $operatorId);
+
+        try {
+            $message = sprintf('Documento inviato al cliente: %s', $displayName);
+            $this->appendTrackingStepInternal($practiceId, $message, 'patronato', false);
+        } catch (Throwable $exception) {
+            error_log('CAF/Patronato timeline append warning (document mail notify): ' . $exception->getMessage());
+        }
     }
 
     public function deleteDocument(int $documentId, int $practiceId, bool $canManageAll, ?int $operatorId): void
