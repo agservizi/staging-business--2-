@@ -342,6 +342,40 @@ function asset(string $path): string
     return base_url($relative) . '?v=' . $timestamp;
 }
 
+function ai_assistant_enabled(): bool
+{
+    static $cached;
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $flag = filter_var(env('AI_THINKING_ASSISTANT_ENABLED', true), FILTER_VALIDATE_BOOL);
+    $key = trim((string) env('OPENROUTER_API_KEY', ''));
+    $cached = $flag && $key !== '';
+
+    return $cached;
+}
+
+/**
+ * @return array{enabled:bool,endpoint?:string,defaultPeriod?:string,user?:array{name:string,role:string}}
+ */
+function ai_assistant_frontend_config(): array
+{
+    $config = ['enabled' => ai_assistant_enabled()];
+    if (!$config['enabled']) {
+        return $config;
+    }
+
+    $config['endpoint'] = base_url('api/ai/advisor.php');
+    $config['defaultPeriod'] = 'last30';
+    $config['user'] = [
+        'name' => current_user_display_name(),
+        'role' => (string) ($_SESSION['role'] ?? ''),
+    ];
+
+    return $config;
+}
+
 function format_datetime(?string $value, string $format = 'd/m/Y H:i'): string
 {
     if ($value === null || $value === '') {

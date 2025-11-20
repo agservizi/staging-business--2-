@@ -756,6 +756,267 @@ document.addEventListener('DOMContentLoaded', () => {
         scheduleFetch(Math.min(5000, pollInterval));
     }
 
+    const initAiAssistant = () => {
+        const root = document.querySelector('[data-ai-assistant]');
+        if (!root) {
+            return;
+        }
+
+        const panel = root.querySelector('.ai-assistant-panel');
+        const toggleBtn = root.querySelector('[data-ai-toggle]');
+        const closeBtn = root.querySelector('[data-ai-close]');
+        const refreshBtn = root.querySelector('[data-ai-refresh]');
+        const form = root.querySelector('[data-ai-form]');
+        const questionInput = root.querySelector('[data-ai-question]');
+        const periodSelect = root.querySelector('[data-ai-period]');
+        const customRange = root.querySelector('[data-ai-custom-range]');
+        const customStart = root.querySelector('[data-ai-custom-start]');
+        const customEnd = root.querySelector('[data-ai-custom-end]');
+        const statusEl = root.querySelector('[data-ai-status]');
+        const logContainer = root.querySelector('[data-ai-log]');
+        const contextEl = root.querySelector('[data-ai-context]');
+        const hintBtn = root.querySelector('[data-ai-hint]');
+        const thinkingWrap = root.querySelector('[data-ai-thinking]');
+        const thinkingToggle = root.querySelector('[data-ai-thinking-toggle]');
+        const thinkingContent = root.querySelector('[data-ai-thinking-content]');
+        const timestampEl = root.querySelector('[data-ai-timestamp]');
+        const endpoint = root.dataset.endpoint || 'api/ai/advisor.php';
+        const defaultPeriod = root.dataset.defaultPeriod || 'last30';
+        const showToast = window?.CS?.showToast ?? (() => {});
+
+        let isOpen = false;
+        let inFlight = false;
+        let history = [];
+        let latestQuestion = '';
+
+        const togglePanel = (open) => {
+            if (!panel) {
+                return;
+            }
+            isOpen = open;
+            panel.hidden = !open;
+            if (toggleBtn) {
+                toggleBtn.setAttribute('aria-expanded', String(open));
+            }
+            if (open && questionInput instanceof HTMLTextAreaElement) {
+                setTimeout(() => questionInput.focus(), 120);
+            }
+        };
+
+        const setStatus = (message, variant = 'info') => {
+            if (!statusEl) {
+                return;
+            }
+            if (!message) {
+                statusEl.hidden = true;
+                statusEl.textContent = '';
+                statusEl.classList.remove('text-danger', 'text-success', 'text-muted');
+                statusEl.classList.add('text-muted');
+                return;
+            }
+            statusEl.hidden = false;
+            statusEl.textContent = message;
+            statusEl.classList.remove('text-danger', 'text-success', 'text-muted');
+            if (variant === 'error') {
+                statusEl.classList.add('text-danger');
+            } else if (variant === 'success') {
+                statusEl.classList.add('text-success');
+            } else {
+                statusEl.classList.add('text-muted');
+            }
+        };
+
+        const renderMessage = (role, content) => {
+            if (!logContainer) {
+                return;
+            }
+            const bubble = document.createElement('div');
+            bubble.className = `ai-assistant-message ${role}`;
+            const chunks = String(content ?? '').split(/\n{2,}/).map((chunk) => chunk.trim()).filter((chunk) => chunk !== '');
+            if (chunks.length === 0) {
+                const p = document.createElement('p');
+                p.className = 'mb-0';
+                p.textContent = String(content ?? '').trim();
+                bubble.appendChild(p);
+            } else {
+                chunks.forEach((chunk, index) => {
+                    const p = document.createElement('p');
+                    p.className = index === chunks.length - 1 ? 'mb-0' : 'mb-2';
+                    p.textContent = chunk;
+                    bubble.appendChild(p);
+                });
+            }
+            logContainer.appendChild(bubble);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        };
+
+        const updateContext = (lines) => {
+            if (!contextEl) {
+                return;
+            }
+            contextEl.innerHTML = '';
+            if (!Array.isArray(lines) || lines.length === 0) {
+                contextEl.hidden = true;
+                return;
+            }
+            const list = document.createElement('ul');
+            list.className = 'mb-0 ps-3';
+            lines.forEach((line) => {
+                const item = document.createElement('li');
+                item.textContent = line;
+                list.appendChild(item);
+            });
+            contextEl.appendChild(list);
+            contextEl.hidden = false;
+        };
+
+        const updateThinking = (content) => {
+            if (!thinkingWrap || !thinkingContent || !thinkingToggle) {
+                return;
+            }
+            const hasContent = typeof content === 'string' && content.trim() !== '';
+            thinkingWrap.hidden = !hasContent;
+            thinkingToggle.hidden = !hasContent;
+            if (!hasContent) {
+                thinkingContent.textContent = '';
+                return;
+            }
+            thinkingContent.textContent = content.trim();
+            const labelEl = thinkingToggle.querySelector('span');
+            if (labelEl) {
+                labelEl.textContent = thinkingWrap.open ? 'Nascondi ragionamento' : 'Mostra ragionamento';
+            }
+        };
+
+        thinkingToggle?.addEventListener('click', () => {
+            if (!thinkingWrap) {
+                return;
+            }
+            thinkingWrap.open = !thinkingWrap.open;
+            const label = thinkingWrap.open ? 'Nascondi ragionamento' : 'Mostra ragionamento';
+            const labelEl = thinkingToggle.querySelector('span');
+            if (labelEl) {
+                labelEl.textContent = label;
+            }
+        });
+
+        const formatTimestamp = (value) => {
+            if (!value || !timestampEl) {
+                return;
+            }
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return;
+            }
+            const formatted = date.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            timestampEl.textContent = `Aggiornato alle ${formatted}`;
+        };
+
+        const buildPayload = (question) => {
+            const payload = {
+                question,
+                period: periodSelect?.value || defaultPeriod,
+                history,
+                focus: root.dataset.userRole === 'Manager' ? 'Bilanciare finanza e operation' : '',
+            };
+            if (payload.period === 'custom' && customStart && customEnd) {
+                payload.customStart = customStart.value;
+                payload.customEnd = customEnd.value;
+            }
+            return payload;
+        };
+
+        const requestAdvisor = async (question) => {
+            if (inFlight) {
+                return;
+            }
+            inFlight = true;
+            setStatus('Sto analizzando il periodo selezionato…', 'info');
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(buildPayload(question))
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data?.ok) {
+                    throw new Error(data?.error || 'Impossibile ottenere consigli.');
+                }
+
+                history = Array.isArray(data.history) ? data.history : history;
+                updateContext(data.contextLines || []);
+                renderMessage('assistant', data.answer || 'Nessuna risposta disponibile.');
+                updateThinking(data.thinking || '');
+                setStatus('Consigli aggiornati.', 'success');
+                formatTimestamp(data.generatedAt || new Date().toISOString());
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Errore sconosciuto.';
+                setStatus(message, 'error');
+                showToast(message, 'danger');
+                renderMessage('assistant', 'Non riesco a completare la richiesta in questo momento. Riprova più tardi.');
+            } finally {
+                inFlight = false;
+            }
+        };
+
+        toggleBtn?.addEventListener('click', () => {
+            togglePanel(!isOpen);
+        });
+
+        closeBtn?.addEventListener('click', () => togglePanel(false));
+
+        refreshBtn?.addEventListener('click', () => {
+            if (latestQuestion) {
+                requestAdvisor(latestQuestion);
+            }
+        });
+
+        if (periodSelect) {
+            periodSelect.value = defaultPeriod;
+            if (customRange) {
+                customRange.hidden = periodSelect.value !== 'custom';
+            }
+            periodSelect.addEventListener('change', () => {
+                if (customRange) {
+                    customRange.hidden = periodSelect.value !== 'custom';
+                }
+            });
+        }
+
+        hintBtn?.addEventListener('click', () => {
+            if (!(questionInput instanceof HTMLTextAreaElement)) {
+                return;
+            }
+            const hint = hintBtn.dataset.aiHint || 'Suggeriscimi tre priorità operative basate sui dati più recenti.';
+            questionInput.value = hint;
+            questionInput.focus();
+        });
+
+        form?.addEventListener('submit', (event) => {
+            event.preventDefault();
+            if (!(questionInput instanceof HTMLTextAreaElement)) {
+                return;
+            }
+            const question = questionInput.value.trim();
+            if (question === '') {
+                questionInput.focus();
+                return;
+            }
+            latestQuestion = question;
+            renderMessage('user', question);
+            questionInput.value = '';
+            requestAdvisor(question);
+        });
+    };
+
+    initAiAssistant();
+
     if (Array.isArray(window.CS_INITIAL_FLASHES)) {
         window.CS_INITIAL_FLASHES.forEach((flash) => {
             if (flash?.message) {
