@@ -448,7 +448,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <span class="text-muted small">Pratiche per tipologia</span>
                         </div>
                         <div class="card-body" style="min-height: 140px;">
-                            <canvas id="chartServices" height="110"></canvas>
+                            <canvas id="chartServices" height="90"></canvas>
                         </div>
                     </div>
                 </div>
