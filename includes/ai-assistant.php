@@ -17,7 +17,7 @@ $user = $config['user'] ?? ['name' => current_user_display_name(), 'role' => (st
         <header class="ai-assistant-panel-header">
             <div>
                 <p class="ai-assistant-panel-title mb-0">Assistente operativo</p>
-                <small class="text-muted">Modello deepseek/deepseek-r1-0528:free</small>
+                <small class="text-muted">Consigli contestuali sul periodo selezionato</small>
             </div>
             <div class="ai-assistant-panel-actions">
                 <button class="btn btn-link btn-sm" type="button" data-ai-refresh title="Rigenera con dati aggiornati">

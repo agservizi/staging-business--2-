@@ -440,6 +440,8 @@ body.login-body {
     display: flex;
     flex-direction: column;
     padding: 1rem 1.25rem;
+    overflow-y: auto;
+    min-height: 0;
 }
 
 .ai-assistant-panel[hidden] {
@@ -476,7 +478,8 @@ body.login-body {
 }
 
 .ai-assistant-log {
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
