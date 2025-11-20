@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileBreakpoint = window.matchMedia('(max-width: 991.98px)');
     const toastContainer = document.getElementById('csToastContainer');
     const initialFlashes = Array.isArray(window.CS_INITIAL_FLASHES) ? window.CS_INITIAL_FLASHES : [];
+    const SIDEBAR_HOVER_CLASS = 'hover-expand';
+    let sidebarHoverTimer = null;
 
     const toastVariants = {
         success: { className: 'text-bg-success text-white', icon: 'fa-circle-check' },
@@ -41,15 +43,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const inner = document.createElement('div');
         inner.className = 'd-flex align-items-center';
 
-    const body = document.createElement('div');
-    body.className = 'toast-body d-flex align-items-center gap-2 flex-grow-1 text-white';
+        const body = document.createElement('div');
+        body.className = 'toast-body d-flex align-items-center gap-2 flex-grow-1 text-white';
 
         const icon = document.createElement('i');
         icon.className = `fa-solid ${variant.icon} flex-shrink-0`;
         icon.setAttribute('aria-hidden', 'true');
 
-    const text = document.createElement('span');
-    text.className = 'flex-grow-1';
+        const text = document.createElement('span');
+        text.className = 'flex-grow-1';
         text.textContent = safeMessage;
 
         body.append(icon, text);
@@ -151,7 +153,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const inSidebar = sidebar?.contains(element);
             const sidebarCollapsed = sidebar?.classList.contains('collapsed');
             const sidebarOpen = sidebar?.classList.contains('open');
-            if (inSidebar && (!sidebarCollapsed || sidebarOpen)) {
+            const sidebarHovering = sidebar?.classList.contains(SIDEBAR_HOVER_CLASS);
+            if (inSidebar && (!sidebarCollapsed || sidebarOpen || sidebarHovering)) {
                 return;
             }
             const options = { container: 'body' };
@@ -176,6 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const shouldCollapse = localStorage.getItem('csSidebar') === 'collapsed';
+        sidebar.classList.remove(SIDEBAR_HOVER_CLASS);
         if (mobileBreakpoint.matches) {
             sidebar.classList.remove('collapsed');
             sidebarToggle?.setAttribute('aria-expanded', 'false');
@@ -224,6 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sidebarMobileToggle?.setAttribute('aria-expanded', String(isOpen));
             return;
         }
+        sidebar.classList.remove(SIDEBAR_HOVER_CLASS);
         const shouldCollapse = !sidebar.classList.contains('collapsed');
         sidebar.classList.toggle('collapsed', shouldCollapse);
         localStorage.setItem('csSidebar', shouldCollapse ? 'collapsed' : 'expanded');
@@ -239,6 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!sidebar) {
             return;
         }
+        sidebar.classList.remove(SIDEBAR_HOVER_CLASS);
         const isOpen = sidebar.classList.toggle('open');
         document.body.classList.toggle('offcanvas-active', isOpen);
         sidebarMobileToggle.setAttribute('aria-expanded', String(isOpen));
@@ -257,6 +263,61 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    const cancelSidebarHoverTimer = () => {
+        if (sidebarHoverTimer) {
+            window.clearTimeout(sidebarHoverTimer);
+            sidebarHoverTimer = null;
+        }
+    };
+
+    const scheduleSidebarHoverCollapse = () => {
+        if (!sidebar) {
+            return;
+        }
+        cancelSidebarHoverTimer();
+        sidebarHoverTimer = window.setTimeout(() => {
+            sidebar.classList.remove(SIDEBAR_HOVER_CLASS);
+            sidebarHoverTimer = null;
+            initializeTooltips();
+        }, 120);
+    };
+
+    const enableSidebarHoverPeek = () => {
+        if (!sidebar) {
+            return;
+        }
+        sidebar.addEventListener('mouseenter', () => {
+            if (mobileBreakpoint.matches || !sidebar.classList.contains('collapsed')) {
+                return;
+            }
+            cancelSidebarHoverTimer();
+            sidebar.classList.add(SIDEBAR_HOVER_CLASS);
+            initializeTooltips();
+        });
+        sidebar.addEventListener('mouseleave', () => {
+            if (mobileBreakpoint.matches) {
+                return;
+            }
+            scheduleSidebarHoverCollapse();
+        });
+        sidebar.addEventListener('focusin', () => {
+            if (mobileBreakpoint.matches || !sidebar.classList.contains('collapsed')) {
+                return;
+            }
+            cancelSidebarHoverTimer();
+            sidebar.classList.add(SIDEBAR_HOVER_CLASS);
+            initializeTooltips();
+        });
+        sidebar.addEventListener('focusout', (event) => {
+            const nextTarget = event.relatedTarget;
+            if (!nextTarget || !sidebar.contains(nextTarget)) {
+                scheduleSidebarHoverCollapse();
+            }
+        });
+    };
+
+    enableSidebarHoverPeek();
 
     document.querySelectorAll('[data-datatable="true"]').forEach((table) => {
         // eslint-disable-next-line no-undef
@@ -803,8 +864,8 @@ const FlashModal = (() => {
             bodyEl.textContent = message;
         }
 
-    // eslint-disable-next-line no-undef
-    const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+        // eslint-disable-next-line no-undef
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
         modalElement.addEventListener('hidden.bs.modal', () => {
             showNext();
         }, { once: true });
