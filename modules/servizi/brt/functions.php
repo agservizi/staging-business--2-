@@ -20,6 +20,9 @@ const BRT_UPLOAD_BASE = __DIR__ . '/../../../uploads/brt';
 const BRT_LABEL_DIRECTORY = BRT_UPLOAD_BASE . '/labels';
 const BRT_MANIFEST_DIRECTORY = BRT_UPLOAD_BASE . '/manifests';
 const BRT_CUSTOMS_DIRECTORY = BRT_UPLOAD_BASE . '/customs';
+const BRT_BACKUP_BASE = __DIR__ . '/../../../backups/brt';
+const BRT_MANIFEST_BACKUP_DIRECTORY = BRT_BACKUP_BASE . '/manifests';
+const BRT_MANIFEST_OFFICIAL_BACKUP_DIRECTORY = BRT_BACKUP_BASE . '/manifests-official';
 const BRT_FILE_RETENTION_DAYS = 120;
 const BRT_LOG_LEVELS = ['info', 'warning', 'error'];
 
@@ -66,6 +69,20 @@ function brt_missing_tables(): array
     return $missing;
 }
 
+function brt_normalize_tracking_identifier(?string $value): string
+{
+    if ($value === null) {
+        return '';
+    }
+
+    $trimmed = trim($value);
+    if ($trimmed === '') {
+        return '';
+    }
+
+    $compact = preg_replace('/\s+/', '', $trimmed);
+    return $compact !== null ? $compact : $trimmed;
+}
 function brt_log_event(string $level, string $message, array $context = []): void
 {
     $normalizedLevel = strtolower(trim($level));
@@ -221,11 +238,8 @@ function brt_store_shipment(array $createData, array $response, array $metadata 
             :response_payload
         )');
 
-    $parcelId = (string) ($response['labels']['label'][0]['parcelID'] ?? '');
-    $trackingByParcelId = (string) ($response['labels']['label'][0]['trackingByParcelID'] ?? '');
-    $trackingByParcelId = (string) ($response['labels']['label'][0]['trackingByParcelID'] ?? '');
-    $trackingByParcelId = (string) ($response['labels']['label'][0]['trackingByParcelID'] ?? '');
-    $trackingByParcelId = (string) ($response['labels']['label'][0]['trackingByParcelID'] ?? '');
+    $parcelId = trim((string) ($response['labels']['label'][0]['parcelID'] ?? ''));
+    $trackingByParcelId = brt_normalize_tracking_identifier($response['labels']['label'][0]['trackingByParcelID'] ?? '');
         $executionMessage = $response['executionMessage'] ?? [];
         $executionCode = (int) ($executionMessage['code'] ?? 0);
         $executionDesc = (string) ($executionMessage['codeDesc'] ?? '');
@@ -280,8 +294,8 @@ function brt_update_shipment_record(int $shipmentId, array $createData, array $r
 {
     $pdo = brt_db();
 
-    $parcelId = (string) ($response['labels']['label'][0]['parcelID'] ?? '');
-    $trackingByParcelId = (string) ($response['labels']['label'][0]['trackingByParcelID'] ?? '');
+    $parcelId = trim((string) ($response['labels']['label'][0]['parcelID'] ?? ''));
+    $trackingByParcelId = brt_normalize_tracking_identifier($response['labels']['label'][0]['trackingByParcelID'] ?? '');
     $executionMessage = $response['executionMessage'] ?? [];
     $executionCode = (int) ($executionMessage['code'] ?? 0);
     $executionDesc = (string) ($executionMessage['codeDesc'] ?? '');
@@ -812,8 +826,8 @@ function brt_attach_label(int $shipmentId, array $label): ?string
         return null;
     }
 
-    $parcelId = (string) ($label['parcelID'] ?? 'label');
-    $trackingByParcelId = (string) ($label['trackingByParcelID'] ?? '');
+    $parcelId = trim((string) ($label['parcelID'] ?? 'label'));
+    $trackingByParcelId = brt_normalize_tracking_identifier($label['trackingByParcelID'] ?? '');
     $path = brt_store_label_stream($parcelId, $stream);
 
     $pdo = brt_db();
@@ -939,6 +953,42 @@ function brt_normalize_remote_warning(?string $message): string
     return $cleanMessage;
 }
 
+function brt_is_remote_already_confirmed_message(?string $message): bool
+{
+    $normalized = strtoupper(trim((string) $message));
+    if ($normalized === '') {
+        return false;
+    }
+
+    $needles = [
+        'SHIPMENT HAS ALREADY BEEN CONFIRMED',
+        'SHIPMENT ALREADY CONFIRMED',
+        'ALREADY BEEN CONFIRMED',
+        'SPEDIZIONE GIA CONFERMATA',
+        'SPEDIZIONE GIA\' CONFERMATA',
+    ];
+
+    foreach ($needles as $needle) {
+        if ($needle !== '' && strpos($normalized, $needle) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function brt_mark_shipment_confirmed_from_remote_status(int $shipmentId, string $message): void
+{
+    $confirmResponse = [
+        'executionMessage' => [
+            'code' => 0,
+            'codeDesc' => 'ALREADY CONFIRMED REMOTAMENTE',
+            'message' => $message,
+        ],
+    ];
+
+    brt_mark_shipment_confirmed($shipmentId, $confirmResponse);
+}
 /**
  * @return array<int, string>
  */
@@ -1378,23 +1428,81 @@ function brt_cleanup_old_artifacts(?int $retentionDays = null): void
     }
 }
 
+function brt_backup_manifest_document(?string $absolutePath, ?string $relativePath = null): void
+{
+    if ($absolutePath === null || $absolutePath === '' || !is_file($absolutePath)) {
+        return;
+    }
+
+    $filename = $relativePath !== null && $relativePath !== ''
+        ? basename(str_replace('\\', '/', $relativePath))
+        : basename($absolutePath);
+
+    brt_copy_to_backup($absolutePath, BRT_MANIFEST_BACKUP_DIRECTORY, $filename, 'manifest');
+}
+
+function brt_backup_official_manifest_document(?string $relativePath): void
+{
+    $trimmed = $relativePath !== null ? trim($relativePath) : '';
+    if ($trimmed === '') {
+        return;
+    }
+
+    $absolute = public_path($trimmed);
+    if (!is_file($absolute)) {
+        return;
+    }
+
+    $filename = basename(str_replace('\\', '/', $trimmed));
+    brt_copy_to_backup($absolute, BRT_MANIFEST_OFFICIAL_BACKUP_DIRECTORY, $filename, 'manifest_official');
+}
+
+function brt_copy_to_backup(string $source, string $directory, string $filename, string $type): void
+{
+    if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+        brt_log_event('warning', 'Impossibile creare la cartella backup BRT', [
+            'directory' => $directory,
+            'type' => $type,
+        ]);
+        return;
+    }
+
+    $destination = rtrim($directory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $filename;
+    if (@copy($source, $destination)) {
+        return;
+    }
+
+    $fallback = rtrim($directory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . date('Ymd_His') . '_' . $filename;
+    if (@copy($source, $fallback)) {
+        return;
+    }
+
+    brt_log_event('warning', 'Copia backup borderò non riuscita', [
+        'type' => $type,
+        'source' => $source,
+        'destination' => $destination,
+    ]);
+}
+
 /**
  * @return array<int, array<string, mixed>>
  */
-function brt_get_shipments(array $filters = []): array
+function brt_get_shipments(array $filters = [], int $limit = 200, int $offset = 0, ?int &$total = null): array
 {
     $pdo = brt_db();
     $where = [];
-    $params = [];
+    $filterParams = [];
+    $limit = max(1, $limit);
+    $offset = max(0, $offset);
 
     if (!empty($filters['status'])) {
         $where[] = 'status = :status';
-        $params[':status'] = $filters['status'];
+        $filterParams[':status'] = $filters['status'];
     }
 
     if (!empty($filters['search'])) {
         $where[] = '(parcel_id LIKE :search OR consignee_name LIKE :search OR alphanumeric_sender_reference LIKE :search)';
-        $params[':search'] = '%' . $filters['search'] . '%';
+        $filterParams[':search'] = '%' . $filters['search'] . '%';
     }
 
     $sql = 'SELECT s.*, m.reference AS manifest_reference, m.pdf_path AS manifest_pdf_path, m.generated_at AS manifest_generated_at, '
@@ -1406,10 +1514,36 @@ function brt_get_shipments(array $filters = []): array
     if ($where !== []) {
         $sql .= ' WHERE ' . implode(' AND ', $where);
     }
-    $sql .= ' ORDER BY created_at DESC LIMIT 200';
+    if ($total !== null) {
+        $countSql = 'SELECT COUNT(*) FROM brt_shipments s';
+        if ($where !== []) {
+            $countSql .= ' WHERE ' . implode(' AND ', $where);
+        }
+        $countStmt = $pdo->prepare($countSql);
+        foreach ($filterParams as $key => $value) {
+            $countStmt->bindValue($key, $value);
+        }
+        $countStmt->execute();
+        $total = (int) $countStmt->fetchColumn();
+    }
+
+    $sql .= ' ORDER BY created_at DESC LIMIT :limit OFFSET :offset';
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    foreach ($filterParams as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll() ?: [];
+}
+
+function brt_get_shipments_by_manifest(int $manifestId): array
+{
+    $pdo = brt_db();
+    $stmt = $pdo->prepare('SELECT * FROM brt_shipments WHERE manifest_id = :id ORDER BY id ASC');
+    $stmt->execute([':id' => $manifestId]);
     return $stmt->fetchAll() ?: [];
 }
 
@@ -1428,6 +1562,20 @@ function brt_get_shipment(int $shipmentId): ?array
     $stmt->execute([':id' => $shipmentId]);
     $result = $stmt->fetch();
     return $result ?: null;
+}
+
+function brt_get_shipment_status_value(int $shipmentId): ?string
+{
+    $pdo = brt_db();
+    $stmt = $pdo->prepare('SELECT status FROM brt_shipments WHERE id = :id LIMIT 1');
+    $stmt->execute([':id' => $shipmentId]);
+    $value = $stmt->fetchColumn();
+    if ($value === false || $value === null) {
+        return null;
+    }
+
+    $status = strtolower(trim((string) $value));
+    return $status === '' ? null : $status;
 }
 
 function brt_get_shipment_by_reference(string $senderCustomerCode, int $numericReference): ?array
@@ -1908,14 +2056,446 @@ function brt_get_recent_orm_requests(): array
     return $stmt->fetchAll() ?: [];
 }
 
+function brt_is_list(array $array): bool
+{
+    if (function_exists('array_is_list')) {
+        return array_is_list($array);
+    }
+
+    $expectedKey = 0;
+    foreach ($array as $key => $_) {
+        if ($key !== $expectedKey) {
+            return false;
+        }
+        $expectedKey++;
+    }
+
+    return true;
+}
+
+/**
+ * @param array<string, mixed> $payload
+ * @return array<int, array<string, mixed>>
+ */
+function brt_extract_tracking_events(array $payload): array
+{
+    $candidates = [];
+    foreach (['trackingList', 'trackingEvents', 'events'] as $key) {
+        if (isset($payload[$key])) {
+            $candidates[] = $payload[$key];
+        }
+    }
+
+    foreach ($candidates as $candidate) {
+        if (!is_array($candidate)) {
+            continue;
+        }
+
+        if (brt_is_list($candidate)) {
+            return array_values(array_filter($candidate, static fn ($event) => is_array($event)));
+        }
+
+        if (isset($candidate['tracking']) && is_array($candidate['tracking'])) {
+            $tracking = $candidate['tracking'];
+            if (brt_is_list($tracking)) {
+                return array_values(array_filter($tracking, static fn ($event) => is_array($event)));
+            }
+        }
+
+        if (isset($candidate['event']) && is_array($candidate['event'])) {
+            $events = $candidate['event'];
+            if (brt_is_list($events)) {
+                return array_values(array_filter($events, static fn ($event) => is_array($event)));
+            }
+        }
+    }
+
+    return [];
+}
+
+function brt_tracking_event_value(array $event, array $keys): string
+{
+    foreach ($keys as $key) {
+        if (!array_key_exists($key, $event)) {
+            continue;
+        }
+
+        $value = $event[$key];
+        if (is_array($value)) {
+            continue;
+        }
+
+        $text = trim((string) $value);
+        if ($text !== '') {
+            return $text;
+        }
+    }
+
+    return '';
+}
+
+function brt_tracking_event_timestamp(array $event): ?\DateTimeImmutable
+{
+    $timestampFields = ['timestamp', 'eventTimestamp', 'eventDateTime', 'trackingDateTime', 'dateTime'];
+    foreach ($timestampFields as $field) {
+        if (!isset($event[$field])) {
+            continue;
+        }
+        $value = trim((string) $event[$field]);
+        if ($value === '') {
+            continue;
+        }
+        try {
+            return new \DateTimeImmutable($value);
+        } catch (\Throwable $exception) {
+            continue;
+        }
+    }
+
+    $date = brt_tracking_event_value($event, ['eventDate', 'trackingDate', 'date']);
+    if ($date === '') {
+        return null;
+    }
+
+    $time = brt_tracking_event_value($event, ['eventTime', 'trackingTime', 'time']);
+    $candidate = trim($date . ' ' . $time);
+    try {
+        return new \DateTimeImmutable($candidate);
+    } catch (\Throwable $exception) {
+        return null;
+    }
+}
+
+function brt_normalize_tracking_text(string $text): string
+{
+    $normalized = strtolower(trim($text));
+    if ($normalized === '') {
+        return '';
+    }
+
+    $normalized = strtr($normalized, [
+        'à' => 'a',
+        'è' => 'e',
+        'é' => 'e',
+        'ì' => 'i',
+        'ò' => 'o',
+        'ù' => 'u',
+    ]);
+
+    return $normalized;
+}
+
+function brt_extract_tracking_status_text(array $tracking): string
+{
+    $keys = [
+        'trackingStatusDescription',
+        'trackingStatus',
+        'statusDescription',
+        'status',
+        'currentStatusDescription',
+        'currentStatus',
+        'macroStatusDescription',
+        'macroStatus',
+        'esito',
+    ];
+
+    foreach ($keys as $key) {
+        if (!isset($tracking[$key]) || is_array($tracking[$key])) {
+            continue;
+        }
+        $value = trim((string) $tracking[$key]);
+        if ($value !== '') {
+            return $value;
+        }
+    }
+
+    if (isset($tracking['executionMessage']) && is_array($tracking['executionMessage'])) {
+        $exec = $tracking['executionMessage'];
+        foreach (['message', 'codeDesc'] as $execKey) {
+            if (!isset($exec[$execKey])) {
+                continue;
+            }
+            $value = trim((string) $exec[$execKey]);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+    }
+
+    return '';
+}
+
+function brt_classify_tracking_text(string $text): ?string
+{
+    $normalized = brt_normalize_tracking_text($text);
+    if ($normalized === '') {
+        return null;
+    }
+
+    if (str_contains($normalized, 'annullat') || str_contains($normalized, 'cancelled')) {
+        return 'cancelled';
+    }
+
+    if (
+        str_contains($normalized, 'return to sender')
+        || str_contains($normalized, 'reso al mittente')
+        || preg_match('/\breso\b/', $normalized) === 1
+        || str_contains($normalized, 'ritorn')
+        || str_contains($normalized, 'restituz')
+    ) {
+        return 'returned';
+    }
+
+    if (
+        str_contains($normalized, 'consegnat')
+        || str_contains($normalized, 'delivered')
+        || str_contains($normalized, 'firma destinatario')
+        || str_contains($normalized, 'ritirata dal destinatario')
+    ) {
+        return 'delivered';
+    }
+
+    if (
+        (str_contains($normalized, 'in consegna') && !str_contains($normalized, 'presa in consegna'))
+        || str_contains($normalized, 'out for delivery')
+        || str_contains($normalized, 'courier on delivery')
+    ) {
+        return 'out_for_delivery';
+    }
+
+    if (
+        str_contains($normalized, 'giacenz')
+        || str_contains($normalized, 'anomali')
+        || str_contains($normalized, 'problema')
+        || str_contains($normalized, 'incident')
+        || str_contains($normalized, 'ritardo')
+        || str_contains($normalized, 'mancata consegn')
+        || str_contains($normalized, 'delivery attempt')
+        || str_contains($normalized, 'attempted delivery')
+        || str_contains($normalized, 'tentata consegna')
+        || str_contains($normalized, 'destinatario assente')
+        || str_contains($normalized, 'indirizzo errato')
+        || str_contains($normalized, 'rifiutat')
+        || str_contains($normalized, 'bloccata')
+        || str_contains($normalized, 'fermo')
+        || str_contains($normalized, 'hold')
+        || str_contains($normalized, 'awaiting instruction')
+        || str_contains($normalized, 'non consegnat')
+    ) {
+        return 'warning';
+    }
+
+    if (
+        str_contains($normalized, 'in transit')
+        || str_contains($normalized, 'in transito')
+        || str_contains($normalized, 'transit')
+        || str_contains($normalized, 'smistamento')
+        || str_contains($normalized, 'hub')
+        || str_contains($normalized, 'partit')
+        || str_contains($normalized, 'arrivat')
+        || str_contains($normalized, 'presa in carico')
+        || str_contains($normalized, 'presa in consegna')
+        || str_contains($normalized, 'ritiro')
+        || str_contains($normalized, 'ritirata dal corriere')
+        || str_contains($normalized, 'pickup')
+        || str_contains($normalized, 'in lavorazione')
+    ) {
+        return 'in_transit';
+    }
+
+    return null;
+}
+
+/**
+ * @param array<string, mixed> $tracking
+ * @return array{
+ *     status: string,
+ *     status_text: string,
+ *     description: string,
+ *     location: string,
+ *     note: string,
+ *     timestamp: ?\DateTimeImmutable
+ * }|null
+ */
+function brt_resolve_tracking_status(array $tracking): ?array
+{
+    $events = brt_extract_tracking_events($tracking);
+    $bestEvent = null;
+    $bestTimestamp = null;
+
+    foreach ($events as $event) {
+        if (!is_array($event)) {
+            continue;
+        }
+        $timestamp = brt_tracking_event_timestamp($event);
+        if ($timestamp !== null) {
+            if ($bestTimestamp === null || $timestamp > $bestTimestamp) {
+                $bestTimestamp = $timestamp;
+                $bestEvent = $event;
+            }
+            continue;
+        }
+
+        if ($bestEvent === null) {
+            $bestEvent = $event;
+        }
+    }
+
+    $status = null;
+    $statusText = '';
+    $description = '';
+    $location = '';
+    $note = '';
+
+    if ($bestEvent !== null) {
+        $statusText = brt_tracking_event_value($bestEvent, ['trackingStatusDescription', 'eventStatusDescription', 'trackingStatus', 'statusDescription', 'status']);
+        $description = brt_tracking_event_value($bestEvent, ['trackingDescription', 'eventDescription', 'description', 'message']);
+        $location = brt_tracking_event_value($bestEvent, ['locationDescription', 'eventLocation', 'location', 'branch']);
+        $note = brt_tracking_event_value($bestEvent, ['note', 'noteDescription', 'memo']);
+        $combined = trim($statusText . ' ' . $description . ' ' . $note);
+        $status = brt_classify_tracking_text($combined);
+    }
+
+    if ($status === null) {
+        $summaryText = brt_extract_tracking_status_text($tracking);
+        $status = brt_classify_tracking_text($summaryText);
+        if ($status !== null && $statusText === '') {
+            $statusText = $summaryText;
+        }
+    }
+
+    if ($status === null) {
+        return null;
+    }
+
+    return [
+        'status' => $status,
+        'status_text' => $statusText,
+        'description' => $description,
+        'location' => $location,
+        'note' => $note,
+        'timestamp' => $bestTimestamp,
+    ];
+}
+
+function brt_should_replace_tracking_status(?string $currentStatus, string $nextStatus): bool
+{
+    $next = strtolower(trim($nextStatus));
+    if ($next === '') {
+        return false;
+    }
+
+    $current = $currentStatus !== null ? strtolower(trim($currentStatus)) : '';
+    if ($current === '') {
+        return true;
+    }
+
+    if ($current === $next) {
+        return false;
+    }
+
+    $finalStatuses = ['cancelled', 'delivered', 'returned'];
+    if (in_array($current, $finalStatuses, true) && $current !== $next) {
+        return false;
+    }
+
+    if ($next === 'warning' && !in_array($current, $finalStatuses, true)) {
+        return true;
+    }
+
+    $rank = [
+        'created' => 10,
+        'confirmed' => 20,
+        'warning' => 25,
+        'in_transit' => 30,
+        'out_for_delivery' => 40,
+        'returned' => 80,
+        'delivered' => 90,
+        'cancelled' => 100,
+    ];
+
+    $currentRank = $rank[$current] ?? 0;
+    $nextRank = $rank[$next] ?? ($currentRank + 1);
+
+    return $nextRank > $currentRank;
+}
+
+function brt_build_tracking_status_message(array $statusInfo): ?string
+{
+    $parts = [];
+    foreach (['status_text', 'description', 'location', 'note'] as $key) {
+        if (!isset($statusInfo[$key])) {
+            continue;
+        }
+        $value = trim((string) $statusInfo[$key]);
+        if ($value !== '') {
+            $parts[] = $value;
+        }
+    }
+
+    $timestamp = $statusInfo['timestamp'] ?? null;
+    if ($timestamp instanceof \DateTimeInterface) {
+        $parts[] = $timestamp->format('d/m/Y H:i');
+    } elseif (is_string($timestamp)) {
+        $timeText = trim($timestamp);
+        if ($timeText !== '') {
+            $parts[] = $timeText;
+        }
+    }
+
+    if ($parts === []) {
+        return null;
+    }
+
+    $parts = array_values(array_unique($parts));
+    return 'Tracking: ' . implode(' · ', $parts);
+}
+
 function brt_update_tracking(int $shipmentId, array $tracking): void
 {
     $pdo = brt_db();
-    $stmt = $pdo->prepare('UPDATE brt_shipments SET last_tracking_payload = :payload, last_tracking_at = NOW() WHERE id = :id');
-    $stmt->execute([
-        ':payload' => encode_json_pretty($tracking),
+    $payload = encode_json_pretty($tracking);
+    $statusInfo = brt_resolve_tracking_status($tracking);
+    $message = $statusInfo !== null ? brt_build_tracking_status_message($statusInfo) : null;
+
+    $currentStatus = $statusInfo !== null ? brt_get_shipment_status_value($shipmentId) : null;
+    $shouldUpdateStatus = $statusInfo !== null && brt_should_replace_tracking_status($currentStatus, $statusInfo['status']);
+
+    $setParts = [
+        'last_tracking_payload = :payload',
+        'last_tracking_at = NOW()',
+    ];
+
+    $params = [
+        ':payload' => $payload,
         ':id' => $shipmentId,
-    ]);
+    ];
+
+    if ($shouldUpdateStatus && $statusInfo !== null) {
+        $setParts[] = 'status = :status';
+        $params[':status'] = $statusInfo['status'];
+    }
+
+    if ($message !== null && $message !== '') {
+        $setParts[] = 'execution_message = :execution_message';
+        $params[':execution_message'] = mb_strimwidth($message, 0, 500, '', 'UTF-8');
+    }
+
+    $sql = 'UPDATE brt_shipments SET ' . implode(', ', $setParts) . ' WHERE id = :id';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    if ($shouldUpdateStatus && $statusInfo !== null) {
+        brt_log_event('info', 'Tracking: stato aggiornato automaticamente', [
+            'shipment_id' => $shipmentId,
+            'status' => $statusInfo['status'],
+            'status_text' => $statusInfo['status_text'] ?? null,
+            'description' => $statusInfo['description'] ?? null,
+            'location' => $statusInfo['location'] ?? null,
+            'timestamp' => $statusInfo['timestamp'] instanceof \DateTimeInterface ? $statusInfo['timestamp']->format('c') : null,
+            'source' => 'tracking_update',
+        ]);
+    }
 }
 
 function brt_get_orm_request(int $requestId): ?array
@@ -2121,10 +2701,21 @@ function brt_get_shipments_for_manifest(array $shipmentIds): array
 /**
  * @return array<int, array<string, mixed>>
  */
-function brt_get_recent_manifests(): array
+function brt_get_recent_manifests(int $limit = 20, int $offset = 0, ?int &$total = null): array
 {
     $pdo = brt_db();
-    $stmt = $pdo->query('SELECT * FROM brt_manifests ORDER BY generated_at DESC LIMIT 20');
+    $limit = max(1, $limit);
+    $offset = max(0, $offset);
+
+    if ($total !== null) {
+        $countStmt = $pdo->query('SELECT COUNT(*) FROM brt_manifests');
+        $total = (int) $countStmt->fetchColumn();
+    }
+
+    $stmt = $pdo->prepare('SELECT * FROM brt_manifests ORDER BY generated_at DESC LIMIT :limit OFFSET :offset');
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
     return $stmt->fetchAll() ?: [];
 }
 
@@ -2135,6 +2726,77 @@ function brt_get_manifest(int $manifestId): ?array
     $stmt->execute([':id' => $manifestId]);
     $result = $stmt->fetch();
     return $result ?: null;
+}
+
+function brt_update_manifest_pdf_path(int $manifestId, string $relativePath): void
+{
+    $pdo = brt_db();
+    $stmt = $pdo->prepare('UPDATE brt_manifests SET pdf_path = :path WHERE id = :id');
+    $stmt->execute([
+        ':path' => $relativePath,
+        ':id' => $manifestId,
+    ]);
+}
+
+/**
+ * @param array<string, mixed> $manifest
+ * @return array{relative_path: string, absolute_path: string}|null
+ */
+function brt_ensure_manifest_pdf(array $manifest, ?BrtConfig $config = null): ?array
+{
+    $relative = isset($manifest['pdf_path']) ? (string) $manifest['pdf_path'] : '';
+    if ($relative !== '') {
+        $absolute = public_path($relative);
+        if (is_file($absolute)) {
+            return ['relative_path' => $relative, 'absolute_path' => $absolute];
+        }
+    }
+
+    $manifestId = (int) ($manifest['id'] ?? 0);
+    if ($manifestId <= 0) {
+        return null;
+    }
+
+    $shipments = brt_get_shipments_by_manifest($manifestId);
+    if ($shipments === []) {
+        return null;
+    }
+
+    $config = $config ?? new BrtConfig();
+    $context = [
+        'senderCustomerCode' => $config->getSenderCustomerCode(),
+        'departureDepot' => $config->getDepartureDepot(),
+    ];
+
+    $timestamp = null;
+    if (!empty($manifest['generated_at'])) {
+        try {
+            $timestamp = new DateTimeImmutable((string) $manifest['generated_at']);
+        } catch (Throwable $exception) {
+            $timestamp = null;
+        }
+    }
+
+    $filename = null;
+    if ($relative !== '') {
+        $filename = basename(str_replace('\\', '/', $relative));
+    } elseif ($timestamp !== null) {
+        $filename = sprintf('bordero_brt_%s.pdf', $timestamp->format('Ymd_His'));
+    }
+
+    try {
+        $generator = new BrtManifestGenerator();
+        $paths = $generator->generate($shipments, $context, $timestamp, $filename);
+        brt_update_manifest_pdf_path($manifestId, $paths['relative_path']);
+        brt_backup_manifest_document($paths['absolute_path'] ?? null, $paths['relative_path'] ?? null);
+        return $paths;
+    } catch (Throwable $exception) {
+        brt_log_event('error', 'Rigenerazione borderò non riuscita: ' . $exception->getMessage(), [
+            'manifest_id' => $manifestId,
+            'reference' => $manifest['reference'] ?? null,
+        ]);
+        return null;
+    }
 }
 
 /**
@@ -2158,6 +2820,7 @@ function brt_generate_pending_manifest(?BrtConfig $config = null): ?array
     ];
 
     $manifestData = $generator->generate($shipments, $context);
+    brt_backup_manifest_document($manifestData['absolute_path'] ?? null, $manifestData['relative_path'] ?? null);
 
     $totals = brt_calculate_manifest_totals($shipments);
 
@@ -2169,11 +2832,21 @@ function brt_generate_pending_manifest(?BrtConfig $config = null): ?array
     try {
         $officialData = [];
         if ($manifestService !== null) {
-            $officialData = $manifestService->generateOfficialManifest($shipments, [
-                'departureDepot' => $context['departureDepot'] ?? null,
-                'pickupDate' => $manifestData['generated_at']->format('Y-m-d'),
-            ]);
-            $officialPdfRelativePath = $officialData['pdf_path'] ?? null;
+            try {
+                $officialData = $manifestService->generateOfficialManifest($shipments, [
+                    'departureDepot' => $context['departureDepot'] ?? null,
+                    'pickupDate' => $manifestData['generated_at']->format('Y-m-d'),
+                ]);
+                $officialPdfRelativePath = $officialData['pdf_path'] ?? null;
+                brt_backup_official_manifest_document($officialPdfRelativePath);
+            } catch (BrtException $exception) {
+                $cleanMessage = brt_normalize_remote_warning($exception->getMessage());
+                brt_log_event('warning', 'Bordero ufficiale non generato: ' . $cleanMessage, [
+                    'error' => $cleanMessage,
+                    'shipments' => array_column($shipments, 'id'),
+                    'context' => $context,
+                ]);
+            }
         }
 
         $manifestId = brt_store_manifest_record([
@@ -2274,12 +2947,23 @@ function brt_generate_manifest_for_shipments(array $shipmentIds, ?BrtConfig $con
                 ]);
                 
             } catch (BrtException $exception) {
-                brt_log_event('warning', 'Impossibile confermare automaticamente la spedizione durante creazione borderò: ' . $exception->getMessage(), [
-                    'shipment_id' => $shipment['id'],
-                    'numeric_reference' => $shipment['numeric_sender_reference']
-                ]);
-                // Se la conferma fallisce, manteniamo comunque la spedizione nel manifest se è in stato created
-                continue;
+                $cleanMessage = brt_normalize_remote_warning($exception->getMessage());
+                if (brt_is_remote_already_confirmed_message($cleanMessage)) {
+                    brt_mark_shipment_confirmed_from_remote_status((int) $shipment['id'], $cleanMessage);
+                    $shipment['status'] = 'confirmed';
+                    brt_log_event('info', 'Spedizione già confermata da BRT rilevata durante creazione borderò', [
+                        'shipment_id' => $shipment['id'],
+                        'numeric_reference' => $shipment['numeric_sender_reference'],
+                        'message' => $cleanMessage,
+                    ]);
+                } else {
+                    brt_log_event('warning', 'Impossibile confermare automaticamente la spedizione durante creazione borderò: ' . $cleanMessage, [
+                        'shipment_id' => $shipment['id'],
+                        'numeric_reference' => $shipment['numeric_sender_reference']
+                    ]);
+                    // Se la conferma fallisce, manteniamo comunque la spedizione nel manifest se è in stato created
+                    continue;
+                }
             }
         }
     }
@@ -2294,6 +2978,7 @@ function brt_generate_manifest_for_shipments(array $shipmentIds, ?BrtConfig $con
     ];
 
     $manifestData = $generator->generate($shipments, $context);
+    brt_backup_manifest_document($manifestData['absolute_path'] ?? null, $manifestData['relative_path'] ?? null);
     $totals = brt_calculate_manifest_totals($shipments);
 
     $pdo = brt_db();
@@ -2304,11 +2989,21 @@ function brt_generate_manifest_for_shipments(array $shipmentIds, ?BrtConfig $con
     try {
         $officialData = [];
         if ($manifestService !== null) {
-            $officialData = $manifestService->generateOfficialManifest($shipments, [
-                'departureDepot' => $context['departureDepot'] ?? null,
-                'pickupDate' => $manifestData['generated_at']->format('Y-m-d'),
-            ]);
-            $officialPdfRelativePath = $officialData['pdf_path'] ?? null;
+            try {
+                $officialData = $manifestService->generateOfficialManifest($shipments, [
+                    'departureDepot' => $context['departureDepot'] ?? null,
+                    'pickupDate' => $manifestData['generated_at']->format('Y-m-d'),
+                ]);
+                $officialPdfRelativePath = $officialData['pdf_path'] ?? null;
+                brt_backup_official_manifest_document($officialPdfRelativePath);
+            } catch (BrtException $exception) {
+                $cleanMessage = brt_normalize_remote_warning($exception->getMessage());
+                brt_log_event('warning', 'Bordero ufficiale non generato: ' . $cleanMessage, [
+                    'error' => $cleanMessage,
+                    'shipments' => array_column($shipments, 'id'),
+                    'context' => $context,
+                ]);
+            }
         }
 
         $manifestId = brt_store_manifest_record([
@@ -2456,6 +3151,10 @@ function brt_translate_status(string $status): string
         'created' => 'Creata',
         'confirmed' => 'Confermata',
         'warning' => 'Con avvisi',
+        'in_transit' => 'In transito',
+        'out_for_delivery' => 'In consegna',
+        'returned' => 'In reso',
+        'delivered' => 'Consegnata',
         'cancelled' => 'Annullata',
     ];
 

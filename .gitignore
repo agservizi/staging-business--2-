@@ -4,6 +4,10 @@ assets/uploads/*
 !assets/uploads/branding/
 assets/uploads/branding/*
 !assets/uploads/branding/sidebar-logo.png
+cache/*
+!cache/.gitkeep
+storage/*
+!storage/.gitkeep
 /vendor/
 node_modules/
 .idea/

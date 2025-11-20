@@ -174,6 +174,18 @@ try {
             respondWithData(['notes' => $notes]);
             break;
 
+        case 'delete_practice':
+            if (!$canManagePractices) {
+                respondWithError('Non hai i permessi per eliminare pratiche.', 403);
+            }
+            $practiceId = (int) ($bodyParams['id'] ?? 0);
+            if ($practiceId <= 0) {
+                respondWithError('ID pratica non valido.', 400);
+            }
+            $service->deletePractice($practiceId, $canManagePractices, $operatorId);
+            respondWithData(['deleted' => true]);
+            break;
+
         case 'delete_note':
             $practiceId = (int) ($bodyParams['practice_id'] ?? 0);
             $noteId = (int) ($bodyParams['note_id'] ?? 0);

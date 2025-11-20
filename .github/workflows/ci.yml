@@ -1,13 +1,14 @@
-name: CI
+name: CI & Deploy
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main", "master", "staging", "production"]
   pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -42,3 +43,37 @@ jobs:
       - name: Placeholder unit tests
         run: composer test
         continue-on-error: true
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/production'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set target directory based on branch
+        id: vars
+        run: |
+          case "${GITHUB_REF##*/}" in
+            main|staging)
+              echo "target=/public_html/staging-business" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "target=/public_html/business" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "target=/public_html/staging-business" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Upload files via FTP
+        uses: SamKirkland/FTP-Deploy-Action@4.3.3
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASS }}
+          local-dir: .
+          server-dir: ${{ steps.vars.outputs.target }}
+          dry-run: false

@@ -67,7 +67,7 @@ $serviziItems = [
     ],
     [
         'needle' => 'modules/servizi/brt',
-        'label' => 'BRT Spedizioni',
+        'label' => 'Spedizioni BRT',
         'icon' => 'fa-solid fa-truck-fast',
         'href' => base_url('modules/servizi/brt/index.php'),
         'color' => 'azure',
@@ -115,6 +115,16 @@ $serviziItems = [
     'color' => 'violet',
     ],
 ];
+
+if ($role) {
+    $serviziItems = array_values(array_filter($serviziItems, static function (array $item) use ($role): bool {
+        if (empty($item['roles']) || !is_array($item['roles'])) {
+            return true;
+        }
+
+        return in_array($role, $item['roles'], true);
+    }));
+}
 
 if ($isPatronato) {
     $serviziItems = array_values(array_filter($serviziItems, static function (array $item): bool {

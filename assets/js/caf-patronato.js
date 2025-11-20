@@ -1821,6 +1821,14 @@ function renderPracticesTable(container, practices, options = {}) {
                 </button>
             `);
         }
+        if (cafContext.canManagePractices) {
+            const encodedTitle = encodeURIComponent(String(practice?.titolo ?? ''));
+            actions.push(`
+                <button class="btn btn-icon btn-outline-danger btn-sm" type="button" data-practice-title="${encodedTitle}" onclick="deletePractice(${practice.id}, this.dataset.practiceTitle)" title="Elimina pratica">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            `);
+        }
 
         html += `
             <tr>
@@ -2555,6 +2563,53 @@ function resendCustomerMail(practiceId, defaultRecipient = '') {
                 }
             }
         }
+    });
+}
+
+function deletePractice(practiceId, practiceTitle = '') {
+    if (!cafContext.canManagePractices) {
+        window.CS?.showToast?.('Non hai i permessi per eliminare pratiche.', 'warning');
+        return;
+    }
+
+    const targetId = parseInt(practiceId, 10);
+    if (!targetId) {
+        return;
+    }
+
+    let resolvedTitle = '';
+    if (typeof practiceTitle === 'string' && practiceTitle.trim() !== '') {
+        const trimmed = practiceTitle.trim();
+        try {
+            resolvedTitle = decodeURIComponent(trimmed);
+        } catch (error) {
+            resolvedTitle = trimmed;
+        }
+    }
+
+    const label = resolvedTitle !== '' ? resolvedTitle : `Pratica #${targetId}`;
+
+    showConfirmDialog({
+        title: 'Elimina pratica',
+        message: `<p>Eliminando <strong>${escapeHtml(label)}</strong> verranno rimossi definitivamente documenti, note, timeline e movimenti economici associati. L'operazione non può essere annullata.</p>
+                  <p class="mb-0 text-danger">Confermi di voler procedere?</p>`,
+        confirmLabel: 'Elimina',
+        confirmVariant: 'danger',
+        onConfirm: async () => {
+            try {
+                await apiRequest('POST', {
+                    action: 'delete_practice',
+                    id: targetId,
+                });
+                window.CS?.showToast?.('Pratica eliminata correttamente.', 'success');
+                await loadPracticesList(currentPracticePage || 1, { silent: false });
+                return true;
+            } catch (error) {
+                const message = error && error.message ? error.message : 'Eliminazione non riuscita.';
+                window.CS?.showToast?.(`Errore: ${message}`, 'error');
+                return false;
+            }
+        },
     });
 }
 

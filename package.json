@@ -1,0 +1,29 @@
+{
+  "name": "staging-business-(2)",
+  "version": "1.0.0",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy:staging": "node tools/deploy-staging.js sftp-staging.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agservizi/staging-business--2-.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/agservizi/staging-business--2-/issues"
+  },
+  "homepage": "https://github.com/agservizi/staging-business--2-#readme",
+  "description": "",
+  "devDependencies": {
+    "sftp-sync-deploy": "^0.7.1"
+  }
+}

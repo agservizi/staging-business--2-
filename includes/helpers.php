@@ -44,13 +44,17 @@ function redirect_by_role(string $role): void
     }
 }
 
-function sanitize_output(?string $value): string
+function sanitize_output(string|int|float|bool|null $value): string
 {
     if ($value === null) {
         return '';
     }
 
-    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    if (is_bool($value)) {
+        $value = $value ? '1' : '0';
+    }
+
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
 function format_currency(?float $amount): string
@@ -336,6 +340,96 @@ function asset(string $path): string
     $file = public_path($relative);
     $timestamp = is_file($file) ? filemtime($file) : time();
     return base_url($relative) . '?v=' . $timestamp;
+}
+
+function ai_assistant_enabled(): bool
+{
+    static $cached;
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $flag = filter_var(env('AI_THINKING_ASSISTANT_ENABLED', true), FILTER_VALIDATE_BOOL);
+    $key = trim((string) env('OPENROUTER_API_KEY', ''));
+    $cached = $flag && $key !== '';
+
+    return $cached;
+}
+
+/**
+ * @return array{title:string,path:string,section:string,description:string,slug:string}
+ */
+function ai_assistant_page_context(): array
+{
+    $script = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
+    $path = '/' . ltrim($script, '/');
+    $normalized = trim(str_replace('.php', '', $path), '/');
+    $segments = $normalized === '' ? [] : explode('/', $normalized);
+    $defaultTitle = $GLOBALS['pageTitle'] ?? '';
+    $defaultSection = 'Dashboard';
+    $defaultDescription = 'Panoramica generale sul controllo operativo di Coresuite Business.';
+
+    $map = [
+        'dashboard' => ['Dashboard', 'Monitora KPI, pipeline e anomalie generali.'],
+        'modules/clienti' => ['Clienti', 'Gestisci anagrafiche, opportunità e contratti dei clienti.'],
+        'modules/servizi' => ['Servizi', 'Coordina erogazioni, logistics e follow-up dei servizi.'],
+        'modules/report' => ['Reportistica', 'Analizza trend e scarica report operativi/finanziari.'],
+        'modules/ticket' => ['Ticket', 'Gestisci richieste di assistenza e SLA.'],
+        'modules/email-marketing' => ['Email marketing', 'Programma e analizza campagne marketing.'],
+        'modules/documenti' => ['Documenti', 'Archivia e condividi documentazione ufficiale.'],
+        'modules/impostazioni' => ['Impostazioni', 'Configura utenti, permessi e parametri di sistema.'],
+        'customer-portal' => ['Customer portal', 'Supporta i clienti finali nelle operazioni self-service.'],
+        'tools' => ['Tools', 'Utility amministrative e script di manutenzione.'],
+    ];
+
+    $section = $defaultSection;
+    $description = $defaultDescription;
+    foreach ($map as $needle => $info) {
+        $needle = trim($needle, '/');
+        if ($needle === '') {
+            continue;
+        }
+        if ($normalized === '' && $needle === 'dashboard') {
+            [$section, $description] = $info;
+            break;
+        }
+        if ($needle !== '' && str_starts_with($normalized, $needle)) {
+            [$section, $description] = $info;
+            break;
+        }
+    }
+
+    $slug = $normalized !== '' ? str_replace('/', '-', $normalized) : 'dashboard';
+    $title = trim((string) $defaultTitle) !== '' ? (string) $defaultTitle : ucfirst(str_replace('-', ' ', $slug));
+
+    return [
+        'title' => $title,
+        'path' => $path,
+        'section' => $section,
+        'description' => $description,
+        'slug' => $slug,
+    ];
+}
+
+/**
+ * @return array{enabled:bool,endpoint?:string,defaultPeriod?:string,user?:array{name:string,role:string}}
+ */
+function ai_assistant_frontend_config(): array
+{
+    $config = ['enabled' => ai_assistant_enabled()];
+    if (!$config['enabled']) {
+        return $config;
+    }
+
+    $config['endpoint'] = base_url('api/ai/advisor.php');
+    $config['defaultPeriod'] = 'last30';
+    $config['user'] = [
+        'name' => current_user_display_name(),
+        'role' => (string) ($_SESSION['role'] ?? ''),
+    ];
+    $config['page'] = ai_assistant_page_context();
+
+    return $config;
 }
 
 function format_datetime(?string $value, string $format = 'd/m/Y H:i'): string

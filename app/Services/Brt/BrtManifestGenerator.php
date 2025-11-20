@@ -13,6 +13,7 @@ use const ENT_QUOTES;
 use const ENT_SUBSTITUTE;
 
 use function array_map;
+use function basename;
 use function array_filter;
 use function class_exists;
 use function count;
@@ -21,9 +22,13 @@ use function implode;
 use function is_dir;
 use function mkdir;
 use function number_format;
+use function preg_replace;
 use function sprintf;
 use function str_replace;
+use function str_ends_with;
+use function strtolower;
 use function strtoupper;
+use function trim;
 
 final class BrtManifestGenerator
 {
@@ -39,7 +44,7 @@ final class BrtManifestGenerator
      *     generated_at: DateTimeInterface
      * }
      */
-    public function generate(array $shipments, array $context = []): array
+    public function generate(array $shipments, array $context = [], ?DateTimeInterface $timestampOverride = null, ?string $filenameOverride = null): array
     {
         if ($shipments === []) {
             throw new BrtException('Nessuna spedizione confermata disponibile per la generazione del borderò.');
@@ -49,7 +54,7 @@ final class BrtManifestGenerator
             throw new BrtException('Libreria mPDF non disponibile. Eseguire composer install.');
         }
 
-        $timestamp = new DateTimeImmutable('now');
+        $timestamp = $timestampOverride ?? new DateTimeImmutable('now');
 
         $html = $this->buildHtml($shipments, $context, $timestamp);
 
@@ -60,7 +65,7 @@ final class BrtManifestGenerator
 
         $this->ensureDirectoryExists();
 
-        $filename = sprintf('bordero_brt_%s.pdf', $timestamp->format('Ymd_His'));
+        $filename = $this->resolveFilename($timestamp, $filenameOverride);
         $relativePath = self::RELATIVE_DIRECTORY . '/' . $filename;
         $absolutePath = $this->buildAbsolutePath($filename);
 
@@ -119,6 +124,7 @@ final class BrtManifestGenerator
                 $this->escape($shipment['alphanumeric_sender_reference'] ?? ''),
                 $this->escape((string) ($shipment['numeric_sender_reference'] ?? '')),
                 $this->escape($shipment['consignee_name'] ?? ''),
+                $this->escape($this->formatConsigneeLocation($shipment)),
                 $this->escape($this->formatAddress($shipment)),
                 $this->escape($shipment['parcel_id'] ?? ''),
                 $this->escape((string) ($shipment['departure_depot'] ?? '')),
@@ -207,10 +213,19 @@ CSS;
 
     private function formatAddress(array $shipment): string
     {
+        $address = trim((string) ($shipment['consignee_address'] ?? ''));
+        if ($address !== '') {
+            return $address;
+        }
+
+        return $this->formatConsigneeLocation($shipment);
+    }
+
+    private function formatConsigneeLocation(array $shipment): string
+    {
         $parts = array_map(
             static fn ($value) => trim((string) $value),
             [
-                $shipment['consignee_address'] ?? '',
                 sprintf('%s %s', $shipment['consignee_zip'] ?? '', $shipment['consignee_city'] ?? ''),
                 strtoupper((string) ($shipment['consignee_province'] ?? '')),
                 strtoupper((string) ($shipment['consignee_country'] ?? '')),
@@ -282,5 +297,35 @@ CSS;
             throw new BrtException('Impossibile creare la cartella temporanea per mPDF.');
         }
         return $temp;
+    }
+
+    private function resolveFilename(DateTimeInterface $timestamp, ?string $override): string
+    {
+        $candidate = $override !== null ? $this->sanitizeFilename($override) : null;
+        if ($candidate === null || $candidate === '') {
+            return sprintf('bordero_brt_%s.pdf', $timestamp->format('Ymd_His'));
+        }
+
+        return $candidate;
+    }
+
+    private function sanitizeFilename(string $filename): ?string
+    {
+        $trimmed = trim($filename);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        $candidate = basename(str_replace('\\', '/', $trimmed));
+        if ($candidate === '') {
+            return null;
+        }
+
+        if (!str_ends_with(strtolower($candidate), '.pdf')) {
+            $candidate .= '.pdf';
+        }
+
+        $sanitized = preg_replace('/[^A-Za-z0-9._-]/', '_', $candidate);
+        return $sanitized === '' ? null : $sanitized;
     }
 }

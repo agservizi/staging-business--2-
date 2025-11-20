@@ -115,9 +115,9 @@ if (!function_exists('maybe_refresh_brt_tracking')) {
             }
 
             foreach ($shipments as $shipment) {
-                $trackingId = (string) ($shipment['tracking_by_parcel_id'] ?? '');
+                $trackingId = brt_normalize_tracking_identifier($shipment['tracking_by_parcel_id'] ?? '');
                 if ($trackingId === '') {
-                    $trackingId = (string) ($shipment['parcel_id'] ?? '');
+                    $trackingId = brt_normalize_tracking_identifier($shipment['parcel_id'] ?? '');
                 }
 
                 if ($trackingId === '') {

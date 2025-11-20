@@ -60,7 +60,7 @@ try {
         abort_download(403, $exception->getMessage());
     }
 
-    $relativePath = (string) ($payload['file_path'] ?? '');
+    $rawRelativePath = (string) ($payload['file_path'] ?? '');
     $fileName = (string) ($payload['file_name'] ?? '');
     $mimeType = (string) ($payload['mime_type'] ?? '');
     $fileSize = (int) ($payload['file_size'] ?? 0);
@@ -68,31 +68,142 @@ try {
     abort_download(404, $exception->getMessage());
 }
 
-$absolutePath = public_path($relativePath);
-if (!is_file($absolutePath)) {
-    $candidates = [];
-    if (str_starts_with($relativePath, CAF_PATRONATO_UPLOAD_DIR . '/')) {
-        $candidates[] = public_path('api/' . $relativePath);
+$practicePathVariants = caf_patronato_initial_path_variants($rawRelativePath);
+try {
+    $practiceStoragePath = $service->storagePathForPractice($practiceId);
+} catch (Throwable $exception) {
+    $practiceStoragePath = '';
+}
+
+$practiceStoragePath = $practiceStoragePath !== '' ? str_replace('\\', '/', rtrim($practiceStoragePath, '\\/' )) : '';
+$uploadDirPrefix = CAF_PATRONATO_UPLOAD_DIR . '/';
+$uploadDirPrefixLength = strlen($uploadDirPrefix);
+$pathQueue = $practicePathVariants;
+$processedVariants = [];
+$candidates = [];
+
+while ($pathQueue) {
+    $variant = array_shift($pathQueue);
+    if (!is_string($variant)) {
+        continue;
     }
 
-    if (str_ends_with($relativePath, CAF_PATRONATO_ENCRYPTION_SUFFIX)) {
-        $withoutSuffix = substr($relativePath, 0, -strlen(CAF_PATRONATO_ENCRYPTION_SUFFIX));
-        $candidates[] = public_path($withoutSuffix);
-        if (str_starts_with($relativePath, CAF_PATRONATO_UPLOAD_DIR . '/')) {
-            $candidates[] = public_path('api/' . $withoutSuffix);
+    $normalizedVariant = str_replace('\\', '/', trim($variant));
+    while (str_starts_with($normalizedVariant, './')) {
+        $normalizedVariant = substr($normalizedVariant, 2);
+    }
+    while (str_starts_with($normalizedVariant, '../')) {
+        $normalizedVariant = substr($normalizedVariant, 3);
+    }
+    $normalizedVariant = ltrim($normalizedVariant, '/');
+
+    if ($normalizedVariant === '' || isset($processedVariants[$normalizedVariant])) {
+        continue;
+    }
+
+    $processedVariants[$normalizedVariant] = true;
+    $normalizedLower = strtolower($normalizedVariant);
+
+    $absoluteCandidate = caf_patronato_absolute_path($projectRoot, $normalizedVariant);
+    $candidates[] = $absoluteCandidate;
+
+    $documentBasename = basename($normalizedVariant);
+    if ($practiceStoragePath !== '' && $documentBasename !== '') {
+        $storageCandidate = $practiceStoragePath . '/' . $documentBasename;
+        $candidates[] = $storageCandidate;
+    }
+
+    $publicCandidate = public_path($normalizedVariant);
+    if ($publicCandidate !== '') {
+        $candidates[] = $publicCandidate;
+    }
+
+    $startsWithUploadDir = $uploadDirPrefixLength > 0 && strncmp($normalizedLower, strtolower($uploadDirPrefix), $uploadDirPrefixLength) === 0;
+    if ($startsWithUploadDir) {
+        $apiVariant = 'api/' . $normalizedVariant;
+        $candidates[] = caf_patronato_absolute_path($projectRoot, $apiVariant);
+        $publicApiCandidate = public_path($apiVariant);
+        if ($publicApiCandidate !== '') {
+            $candidates[] = $publicApiCandidate;
         }
     }
 
-    foreach ($candidates as $candidate) {
-        if (is_file($candidate)) {
-            $absolutePath = $candidate;
-            break;
+    if (!$startsWithUploadDir) {
+        $needlePos = stripos($normalizedVariant, $uploadDirPrefix);
+        if ($needlePos !== false && $needlePos > 0) {
+            $suffixVariant = substr($normalizedVariant, $needlePos);
+            if ($suffixVariant !== false && $suffixVariant !== '') {
+                $pathQueue[] = $suffixVariant;
+            }
+        }
+
+        $cafNeedle = 'caf-patronato/';
+        $cafPrefixLength = strlen($cafNeedle);
+        $cafStarts = strncasecmp($normalizedVariant, $cafNeedle, $cafPrefixLength) === 0;
+        if ($cafStarts) {
+            $prefixedVariant = CAF_PATRONATO_UPLOAD_DIR . '/' . substr($normalizedVariant, $cafPrefixLength);
+            if ($prefixedVariant !== '' && !isset($processedVariants[$prefixedVariant])) {
+                $pathQueue[] = $prefixedVariant;
+            }
+        } else {
+            $cafPos = stripos($normalizedVariant, $cafNeedle);
+            if ($cafPos !== false && $cafPos > 0) {
+                $suffix = substr($normalizedVariant, $cafPos);
+                if ($suffix !== false && $suffix !== '') {
+                    $pathQueue[] = $suffix;
+                }
+            }
+        }
+
+        $uploadsPrefix = 'uploads/caf-patronato/';
+        $uploadsLen = strlen($uploadsPrefix);
+        $uploadsStarts = strncasecmp($normalizedVariant, $uploadsPrefix, $uploadsLen) === 0;
+        if ($uploadsStarts) {
+            $prefixedVariant = CAF_PATRONATO_UPLOAD_DIR . '/' . substr($normalizedVariant, $uploadsLen);
+            if ($prefixedVariant !== '' && !isset($processedVariants[$prefixedVariant])) {
+                $pathQueue[] = $prefixedVariant;
+            }
+        }
+
+        $storagePrefix = 'storage/caf-patronato/';
+        $storageLen = strlen($storagePrefix);
+        if (strncasecmp($normalizedVariant, $storagePrefix, $storageLen) === 0) {
+            $prefixedVariant = CAF_PATRONATO_UPLOAD_DIR . '/' . substr($normalizedVariant, $storageLen);
+            if ($prefixedVariant !== '' && !isset($processedVariants[$prefixedVariant])) {
+                $pathQueue[] = $prefixedVariant;
+            }
         }
     }
 
-    if (!is_file($absolutePath)) {
-        abort_download(404, 'Allegato non trovato.');
+    if (str_ends_with($normalizedVariant, CAF_PATRONATO_ENCRYPTION_SUFFIX)) {
+        $withoutSuffix = substr($normalizedVariant, 0, -strlen(CAF_PATRONATO_ENCRYPTION_SUFFIX));
+        if ($withoutSuffix !== false && $withoutSuffix !== '' && !isset($processedVariants[$withoutSuffix])) {
+            $pathQueue[] = $withoutSuffix;
+        }
+
+        if ($startsWithUploadDir) {
+            $plainApiVariant = 'api/' . $withoutSuffix;
+            $candidates[] = caf_patronato_absolute_path($projectRoot, $plainApiVariant);
+            $publicPlainApiCandidate = public_path($plainApiVariant);
+            if ($publicPlainApiCandidate !== '') {
+                $candidates[] = $publicPlainApiCandidate;
+            }
+        }
     }
+}
+
+$candidates = array_values(array_unique(array_filter($candidates, static fn($path) => is_string($path) && $path !== '')));
+
+$absolutePath = '';
+foreach ($candidates as $candidate) {
+    if ($candidate !== '' && is_file($candidate)) {
+        $absolutePath = $candidate;
+        break;
+    }
+}
+
+if ($absolutePath === '' || !is_file($absolutePath)) {
+    abort_download(404, 'Allegato non trovato.');
 }
 
 try {
@@ -138,5 +249,67 @@ function fetch_practice_document(PDO $pdo, int $documentId): array
     }
 
     return $row;
+}
+
+function caf_patronato_absolute_path(string $projectRoot, string $relativePath): string
+{
+    $cleanRoot = rtrim(str_replace('\\', '/', $projectRoot), '/');
+    $cleanRelative = ltrim(str_replace('\\', '/', $relativePath), '/');
+
+    return $cleanRoot . '/' . $cleanRelative;
+}
+
+/**
+ * @return array<int,string>
+ */
+function caf_patronato_initial_path_variants(string $rawPath): array
+{
+    $trimmed = trim($rawPath);
+    if ($trimmed === '') {
+        return [];
+    }
+
+    $normalized = str_replace('\\', '/', $trimmed);
+    $variants = [$normalized];
+
+    if (preg_match('#^[a-z][a-z0-9+.-]*://#i', $normalized) === 1) {
+        $urlPath = parse_url($normalized, PHP_URL_PATH);
+        if (is_string($urlPath) && $urlPath !== '') {
+            $variants[] = $urlPath;
+        }
+    }
+
+    $processed = [];
+    foreach ($variants as $variant) {
+        if (!is_string($variant) || $variant === '') {
+            continue;
+        }
+
+        $candidate = str_replace('\\', '/', trim($variant));
+        $cutPos = strcspn($candidate, '?#');
+        if ($cutPos < strlen($candidate)) {
+            $candidate = substr($candidate, 0, $cutPos);
+        }
+
+        if (preg_match('#^[a-z]:/#i', $candidate) === 1) {
+            $candidate = substr($candidate, 3);
+        } elseif (strncmp($candidate, '//', 2) === 0) {
+            $candidate = preg_replace('#^//[^/]+/#', '', $candidate) ?? $candidate;
+        }
+
+        while (str_starts_with($candidate, './')) {
+            $candidate = substr($candidate, 2);
+        }
+        while (str_starts_with($candidate, '../')) {
+            $candidate = substr($candidate, 3);
+        }
+
+        $candidate = ltrim($candidate, '/');
+        if ($candidate !== '') {
+            $processed[] = $candidate;
+        }
+    }
+
+    return array_values(array_unique($processed));
 }
 
