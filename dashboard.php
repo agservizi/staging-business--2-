@@ -437,7 +437,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <span class="text-muted small">Ultimi 6 mesi</span>
                         </div>
                         <div class="card-body">
-                            <canvas id="chartRevenue" height="180"></canvas>
+                            <canvas id="chartRevenue" height="120"></canvas>
                         </div>
                     </div>
                 </div>
@@ -448,7 +448,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <span class="text-muted small">Pratiche per tipologia</span>
                         </div>
                         <div class="card-body">
-                            <canvas id="chartServices" height="200"></canvas>
+                            <canvas id="chartServices" height="140"></canvas>
                         </div>
                     </div>
                 </div>
