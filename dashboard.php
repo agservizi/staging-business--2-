@@ -179,6 +179,24 @@ try {
 
     $charts['services']['values'] = array_values($serviceTotals);
 
+    $serviceBreakdown = [];
+    $serviceBreakdownTotal = array_sum($charts['services']['values']);
+    foreach ($charts['services']['labels'] as $index => $label) {
+        $value = $charts['services']['values'][$index] ?? 0;
+        $percentage = $serviceBreakdownTotal > 0 ? ($value / $serviceBreakdownTotal) * 100 : 0;
+        $serviceBreakdown[] = [
+            'label' => $label,
+            'value' => $value,
+            'percentage' => $percentage,
+        ];
+    }
+
+    $serviceBreakdownTop = $serviceBreakdown;
+    usort($serviceBreakdownTop, static function (array $a, array $b): int {
+        return $b['value'] <=> $a['value'];
+    });
+    $serviceBreakdownTop = array_slice($serviceBreakdownTop, 0, 5);
+
     try {
         $latestMovementsStmt = $pdo->query("SELECT id, descrizione, tipo_movimento, importo, stato, cliente_id, COALESCE(data_pagamento, data_scadenza, updated_at, created_at) AS movimento_data FROM entrate_uscite ORDER BY COALESCE(data_pagamento, updated_at, created_at) DESC LIMIT 6");
         if ($latestMovementsStmt) {
@@ -316,13 +334,57 @@ require_once __DIR__ . '/includes/sidebar.php';
     <main class="content-wrapper" data-dashboard-root data-dashboard-endpoint="api/dashboard.php" data-refresh-interval="60000">
             <style>
                 .chart-card-body {
-                    min-height: 140px;
+                    min-height: 220px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                 }
                 .chart-canvas {
-                    max-height: 90px;
+                    max-height: 180px;
+                    width: 100%;
+                }
+                .services-card-body {
+                    justify-content: space-between;
+                    align-items: stretch;
+                    gap: 1.5rem;
+                }
+                .services-card-body .service-chart-column {
+                    flex: 0 0 48%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .services-card-body .service-details-column {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: flex-start;
+                    gap: 0.75rem;
+                }
+                .service-breakdown-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.75rem;
+                }
+                .service-breakdown-item {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding-bottom: 0.35rem;
+                    border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+                }
+                .service-breakdown-item:last-child {
+                    border-bottom: none;
+                    padding-bottom: 0;
+                }
+                @media (max-width: 991.98px) {
+                    .services-card-body {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+                    .services-card-body .service-chart-column {
+                        flex: 1 1 auto;
+                    }
                 }
             </style>
         <?php if ($view === 'cliente' && $_SESSION['role'] === 'Cliente'): ?>
@@ -448,7 +510,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <span class="text-muted small">Ultimi 6 mesi</span>
                         </div>
                         <div class="card-body chart-card-body">
-                            <canvas id="chartRevenue" class="chart-canvas" height="90"></canvas>
+                            <canvas id="chartRevenue" class="chart-canvas" height="180"></canvas>
                         </div>
                     </div>
                 </div>
@@ -458,8 +520,31 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <h5 class="card-title mb-0">Ripartizione servizi</h5>
                             <span class="text-muted small">Pratiche per tipologia</span>
                         </div>
-                        <div class="card-body chart-card-body">
-                            <canvas id="chartServices" class="chart-canvas" height="90"></canvas>
+                        <div class="card-body chart-card-body services-card-body">
+                            <div class="service-chart-column">
+                                <canvas id="chartServices" class="chart-canvas" height="180"></canvas>
+                            </div>
+                            <div class="service-details-column">
+                                <p class="text-muted text-uppercase small mb-1">Totale pratiche monitorate</p>
+                                <div class="h3 mb-3 fw-semibold"><?php echo number_format($serviceBreakdownTotal); ?></div>
+                                <?php if (!empty($serviceBreakdownTop)): ?>
+                                    <div class="service-breakdown-list">
+                                        <?php foreach ($serviceBreakdownTop as $serviceItem): ?>
+                                            <div class="service-breakdown-item">
+                                                <div>
+                                                    <div class="fw-semibold"><?php echo sanitize_output($serviceItem['label']); ?></div>
+                                                    <small class="text-muted"><?php echo number_format($serviceItem['percentage'], 1, ',', '.'); ?>% del totale</small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <span class="badge bg-light text-dark"><?php echo number_format($serviceItem['value']); ?></span>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <p class="text-muted mb-0">Nessun dato disponibile.</p>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
