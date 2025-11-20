@@ -343,6 +343,9 @@ require_once __DIR__ . '/includes/sidebar.php';
                     max-height: 180px;
                     width: 100%;
                 }
+                .service-chart-canvas {
+                    max-height: 320px;
+                }
                 .services-card-body {
                     justify-content: space-between;
                     align-items: stretch;
@@ -522,7 +525,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                         </div>
                         <div class="card-body chart-card-body services-card-body">
                             <div class="service-chart-column">
-                                <canvas id="chartServices" class="chart-canvas" height="180"></canvas>
+                                <canvas id="chartServices" class="chart-canvas service-chart-canvas" height="320"></canvas>
                             </div>
                             <div class="service-details-column">
                                 <p class="text-muted text-uppercase small mb-1">Totale pratiche monitorate</p>
