@@ -868,6 +868,45 @@ document.addEventListener('DOMContentLoaded', () => {
         let inFlight = false;
         let history = [];
         let latestQuestion = '';
+        const idleTimeoutMs = 10000;
+        let idleTimerId = null;
+        let isIdle = false;
+
+        const exitIdleState = () => {
+            if (!toggleBtn || !isIdle) {
+                return;
+            }
+            toggleBtn.classList.remove('is-idle');
+            isIdle = false;
+        };
+
+        const enterIdleState = () => {
+            if (!toggleBtn || isOpen) {
+                return;
+            }
+            toggleBtn.classList.add('is-idle');
+            isIdle = true;
+        };
+
+        const clearIdleTimer = () => {
+            if (idleTimerId !== null) {
+                window.clearTimeout(idleTimerId);
+                idleTimerId = null;
+            }
+        };
+
+        const scheduleIdleState = () => {
+            if (!toggleBtn) {
+                return;
+            }
+            clearIdleTimer();
+            if (isOpen) {
+                return;
+            }
+            idleTimerId = window.setTimeout(() => {
+                enterIdleState();
+            }, idleTimeoutMs);
+        };
 
         const togglePanel = (open) => {
             if (!panel) {
@@ -877,6 +916,12 @@ document.addEventListener('DOMContentLoaded', () => {
             panel.hidden = !open;
             if (toggleBtn) {
                 toggleBtn.setAttribute('aria-expanded', String(open));
+            }
+            if (open) {
+                clearIdleTimer();
+                exitIdleState();
+            } else {
+                scheduleIdleState();
             }
             if (open && questionInput instanceof HTMLTextAreaElement) {
                 setTimeout(() => questionInput.focus(), 120);
@@ -1052,7 +1097,19 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         toggleBtn?.addEventListener('click', () => {
+            exitIdleState();
+            clearIdleTimer();
             togglePanel(!isOpen);
+        });
+
+        toggleBtn?.addEventListener('mouseenter', () => {
+            exitIdleState();
+            scheduleIdleState();
+        });
+
+        toggleBtn?.addEventListener('focus', () => {
+            exitIdleState();
+            scheduleIdleState();
         });
 
         closeBtn?.addEventListener('click', () => togglePanel(false));
@@ -1099,6 +1156,8 @@ document.addEventListener('DOMContentLoaded', () => {
             questionInput.value = '';
             requestAdvisor(question);
         });
+
+        scheduleIdleState();
     };
 
     initAiAssistant();
