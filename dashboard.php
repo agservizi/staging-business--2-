@@ -314,6 +314,17 @@ require_once __DIR__ . '/includes/sidebar.php';
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once __DIR__ . '/includes/topbar.php'; ?>
     <main class="content-wrapper" data-dashboard-root data-dashboard-endpoint="api/dashboard.php" data-refresh-interval="60000">
+            <style>
+                .chart-card-body {
+                    min-height: 140px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .chart-canvas {
+                    max-height: 90px;
+                }
+            </style>
         <?php if ($view === 'cliente' && $_SESSION['role'] === 'Cliente'): ?>
             <div class="row g-4 mb-4">
                 <div class="col-12">
@@ -436,8 +447,8 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <h5 class="card-title mb-0">Trend Entrate/Uscite</h5>
                             <span class="text-muted small">Ultimi 6 mesi</span>
                         </div>
-                        <div class="card-body" style="min-height: 140px;">
-                            <canvas id="chartRevenue" height="90"></canvas>
+                        <div class="card-body chart-card-body">
+                            <canvas id="chartRevenue" class="chart-canvas" height="90"></canvas>
                         </div>
                     </div>
                 </div>
@@ -447,8 +458,8 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <h5 class="card-title mb-0">Ripartizione servizi</h5>
                             <span class="text-muted small">Pratiche per tipologia</span>
                         </div>
-                        <div class="card-body" style="min-height: 140px;">
-                            <canvas id="chartServices" height="90"></canvas>
+                        <div class="card-body chart-card-body">
+                            <canvas id="chartServices" class="chart-canvas" height="90"></canvas>
                         </div>
                     </div>
                 </div>
