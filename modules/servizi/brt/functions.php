@@ -1487,20 +1487,22 @@ function brt_copy_to_backup(string $source, string $directory, string $filename,
 /**
  * @return array<int, array<string, mixed>>
  */
-function brt_get_shipments(array $filters = []): array
+function brt_get_shipments(array $filters = [], int $limit = 200, int $offset = 0, ?int &$total = null): array
 {
     $pdo = brt_db();
     $where = [];
-    $params = [];
+    $filterParams = [];
+    $limit = max(1, $limit);
+    $offset = max(0, $offset);
 
     if (!empty($filters['status'])) {
         $where[] = 'status = :status';
-        $params[':status'] = $filters['status'];
+        $filterParams[':status'] = $filters['status'];
     }
 
     if (!empty($filters['search'])) {
         $where[] = '(parcel_id LIKE :search OR consignee_name LIKE :search OR alphanumeric_sender_reference LIKE :search)';
-        $params[':search'] = '%' . $filters['search'] . '%';
+        $filterParams[':search'] = '%' . $filters['search'] . '%';
     }
 
     $sql = 'SELECT s.*, m.reference AS manifest_reference, m.pdf_path AS manifest_pdf_path, m.generated_at AS manifest_generated_at, '
@@ -1512,10 +1514,28 @@ function brt_get_shipments(array $filters = []): array
     if ($where !== []) {
         $sql .= ' WHERE ' . implode(' AND ', $where);
     }
-    $sql .= ' ORDER BY created_at DESC LIMIT 200';
+    if ($total !== null) {
+        $countSql = 'SELECT COUNT(*) FROM brt_shipments s';
+        if ($where !== []) {
+            $countSql .= ' WHERE ' . implode(' AND ', $where);
+        }
+        $countStmt = $pdo->prepare($countSql);
+        foreach ($filterParams as $key => $value) {
+            $countStmt->bindValue($key, $value);
+        }
+        $countStmt->execute();
+        $total = (int) $countStmt->fetchColumn();
+    }
+
+    $sql .= ' ORDER BY created_at DESC LIMIT :limit OFFSET :offset';
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    foreach ($filterParams as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
     return $stmt->fetchAll() ?: [];
 }
 

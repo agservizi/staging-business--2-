@@ -372,7 +372,48 @@ if ($searchFilter !== '') {
     $filters['search'] = $searchFilter;
 }
 
-$shipments = brt_get_shipments($filters);
+$shipmentsPerPage = 10;
+$currentPage = max(1, (int) ($_GET['page'] ?? 1));
+$totalShipments = 0;
+$shipments = brt_get_shipments($filters, $shipmentsPerPage, ($currentPage - 1) * $shipmentsPerPage, $totalShipments);
+$totalPages = $totalShipments > 0 ? (int) ceil($totalShipments / $shipmentsPerPage) : 0;
+if ($totalPages > 0 && $currentPage > $totalPages) {
+    $currentPage = $totalPages;
+    $shipments = brt_get_shipments($filters, $shipmentsPerPage, ($currentPage - 1) * $shipmentsPerPage, $totalShipments);
+}
+$currentOffset = max(0, ($currentPage - 1) * $shipmentsPerPage);
+$shipmentsRangeStart = $totalShipments > 0 ? ($currentOffset + 1) : 0;
+$shipmentsRangeEnd = $totalShipments > 0 ? min($totalShipments, $currentOffset + count($shipments)) : 0;
+$paginationFilters = [];
+if ($statusFilter !== '') {
+    $paginationFilters['status'] = $statusFilter;
+}
+if ($searchFilter !== '') {
+    $paginationFilters['search'] = $searchFilter;
+}
+$paginationUrlBuilder = static function (int $targetPage) use ($paginationFilters): string {
+    $params = $paginationFilters;
+    if ($targetPage > 1) {
+        $params['page'] = $targetPage;
+    } else {
+        unset($params['page']);
+    }
+    $query = http_build_query($params);
+    return $query === '' ? 'index.php' : 'index.php?' . $query;
+};
+$paginationPages = [];
+if ($totalPages > 1) {
+    $paginationPages = [1, $totalPages];
+    for ($i = $currentPage - 1; $i <= $currentPage + 1; $i++) {
+        if ($i > 1 && $i < $totalPages) {
+            $paginationPages[] = $i;
+        }
+    }
+    $paginationPages = array_values(array_unique(array_filter($paginationPages, static function (int $pageNumber) use ($totalPages): bool {
+        return $pageNumber >= 1 && $pageNumber <= $totalPages;
+    })));
+    sort($paginationPages);
+}
 $recentOrmRequests = brt_get_recent_orm_requests();
 $recentManifests = brt_get_recent_manifests();
 
@@ -427,7 +468,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <div class="card ag-card mb-5">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h2 class="card-title h5 mb-0">Ultime spedizioni</h2>
-                <span class="text-muted small">Mostrate al massimo 200 spedizioni</span>
+                <?php if ($totalShipments > 0): ?>
+                    <span class="text-muted small">
+                        <?php echo sanitize_output(sprintf('Mostrate %d-%d di %d | Pagina %d di %d | %d per pagina', $shipmentsRangeStart, $shipmentsRangeEnd, $totalShipments, $currentPage, max(1, $totalPages), $shipmentsPerPage)); ?>
+                    </span>
+                <?php else: ?>
+                    <span class="text-muted small">Nessuna spedizione trovata</span>
+                <?php endif; ?>
             </div>
             <div class="card-body p-0">
                 <?php if (!$shipments): ?>
@@ -673,6 +720,51 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </tbody>
                         </table>
                     </div>
+                    <?php if ($totalPages > 1): ?>
+                        <div class="p-3 border-top">
+                            <nav aria-label="Paginazione spedizioni">
+                                <ul class="pagination pagination-sm justify-content-center mb-0 flex-wrap gap-1">
+                                    <?php if ($currentPage > 1): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="<?php echo sanitize_output($paginationUrlBuilder($currentPage - 1)); ?>" aria-label="Pagina precedente">&laquo;</a>
+                                        </li>
+                                    <?php else: ?>
+                                        <li class="page-item disabled" aria-disabled="true">
+                                            <span class="page-link">&laquo;</span>
+                                        </li>
+                                    <?php endif; ?>
+                                    <?php $lastRenderedPage = 0; ?>
+                                    <?php foreach ($paginationPages as $pageNumber): ?>
+                                        <?php if ($lastRenderedPage > 0 && $pageNumber - $lastRenderedPage > 1): ?>
+                                            <li class="page-item disabled" aria-disabled="true">
+                                                <span class="page-link">&hellip;</span>
+                                            </li>
+                                        <?php endif; ?>
+                                        <?php $isActive = $pageNumber === $currentPage; ?>
+                                        <?php if ($isActive): ?>
+                                            <li class="page-item active" aria-current="page">
+                                                <span class="page-link"><?php echo (int) $pageNumber; ?></span>
+                                            </li>
+                                        <?php else: ?>
+                                            <li class="page-item">
+                                                <a class="page-link" href="<?php echo sanitize_output($paginationUrlBuilder($pageNumber)); ?>" aria-label="Vai a pagina <?php echo (int) $pageNumber; ?>"><?php echo (int) $pageNumber; ?></a>
+                                            </li>
+                                        <?php endif; ?>
+                                        <?php $lastRenderedPage = $pageNumber; ?>
+                                    <?php endforeach; ?>
+                                    <?php if ($currentPage < $totalPages): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="<?php echo sanitize_output($paginationUrlBuilder($currentPage + 1)); ?>" aria-label="Pagina successiva">&raquo;</a>
+                                        </li>
+                                    <?php else: ?>
+                                        <li class="page-item disabled" aria-disabled="true">
+                                            <span class="page-link">&raquo;</span>
+                                        </li>
+                                    <?php endif; ?>
+                                </ul>
+                            </nav>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>
