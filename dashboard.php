@@ -343,6 +343,9 @@ require_once __DIR__ . '/includes/sidebar.php';
                     max-height: 180px;
                     width: 100%;
                 }
+                .revenue-chart-canvas {
+                    max-height: 260px;
+                }
                 .service-chart-canvas {
                     max-height: 320px;
                 }
@@ -513,7 +516,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <span class="text-muted small">Ultimi 6 mesi</span>
                         </div>
                         <div class="card-body chart-card-body">
-                            <canvas id="chartRevenue" class="chart-canvas" height="180"></canvas>
+                            <canvas id="chartRevenue" class="chart-canvas revenue-chart-canvas" height="260"></canvas>
                         </div>
                     </div>
                 </div>
