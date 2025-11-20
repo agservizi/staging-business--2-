@@ -1688,6 +1688,34 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             }
         });
         </script>
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.querySelector('form[method="post"]');
+            if (!form) {
+                return;
+            }
+
+            let pendingIntent = null;
+            const intentButtons = form.querySelectorAll('button[name="intent"]');
+            intentButtons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    pendingIntent = button.value || null;
+                });
+            });
+
+            form.addEventListener('submit', function (event) {
+                if (event.defaultPrevented || pendingIntent !== 'create') {
+                    return;
+                }
+
+                const message = 'Confermi che tutti i dati inseriti sono corretti?\n'
+                    + 'Premi OK per creare la spedizione oppure Annulla per modificarli.';
+                if (!window.confirm(message)) {
+                    event.preventDefault();
+                }
+            });
+        });
+        </script>
     </main>
     <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
 </div>
