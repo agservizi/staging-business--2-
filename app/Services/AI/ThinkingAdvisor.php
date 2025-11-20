@@ -47,7 +47,7 @@ final class ThinkingAdvisor
             ['role' => 'user', 'content' => $userPrompt],
         ]);
 
-        $response = $this->client->chat($messages, [
+        $response = $this->requestWithFallback($messages, [
             'temperature' => 0.35,
             'top_p' => 0.9,
         ]);
@@ -690,5 +690,70 @@ final class ThinkingAdvisor
         }
 
         return $formatted;
+    }
+
+    /**
+     * @param array<int, array{role:string,content:string}> $messages
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    private function requestWithFallback(array $messages, array $options): array
+    {
+        $models = $this->resolveModelChain($options['model'] ?? null);
+        $lastRateException = null;
+
+        foreach ($models as $model) {
+            try {
+                $payload = $options;
+                $payload['model'] = $model;
+                return $this->client->chat($messages, $payload);
+            } catch (RuntimeException $exception) {
+                if (!$this->isRateLimitException($exception)) {
+                    throw $exception;
+                }
+                $lastRateException = $exception;
+            }
+        }
+
+        if ($lastRateException !== null) {
+            throw $lastRateException;
+        }
+
+        return $this->client->chat($messages, $options);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveModelChain(?string $preferred): array
+    {
+        $candidates = [];
+        $primary = trim((string) ($preferred ?? $this->client->getDefaultModel()));
+        if ($primary !== '') {
+            $candidates[] = $primary;
+        }
+
+        $fallbackRaw = (string) env('OPENROUTER_FALLBACK_MODELS', '');
+        if ($fallbackRaw !== '') {
+            $parts = preg_split('/[\n,]+/', $fallbackRaw) ?: [];
+            foreach ($parts as $candidate) {
+                $candidate = trim($candidate);
+                if ($candidate !== '') {
+                    $candidates[] = $candidate;
+                }
+            }
+        }
+
+        return array_values(array_unique($candidates));
+    }
+
+    private function isRateLimitException(RuntimeException $exception): bool
+    {
+        $message = strtolower($exception->getMessage());
+        return str_contains($message, '429')
+            || str_contains($message, 'rate limit')
+            || str_contains($message, 'rate-limit')
+            || str_contains($message, 'temporarily')
+            || str_contains($message, 'limite');
     }
 }

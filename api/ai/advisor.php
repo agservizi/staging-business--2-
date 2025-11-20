@@ -3,6 +3,7 @@ use App\Services\AI\ThinkingAdvisor;
 use DateTimeImmutable;
 use DateTimeInterface;
 use InvalidArgumentException;
+use RuntimeException;
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/db_connect.php';
@@ -74,6 +75,20 @@ try {
     echo json_encode([
         'ok' => false,
         'error' => $exception->getMessage(),
+    ], JSON_THROW_ON_ERROR);
+} catch (RuntimeException $exception) {
+    error_log('AI advisor runtime warning: ' . $exception->getMessage());
+    $message = 'Assistente momentaneamente non disponibile. Riprova tra qualche minuto.';
+    $status = 503;
+    if (stripos($exception->getMessage(), '429') !== false || stripos($exception->getMessage(), 'rate') !== false) {
+        $status = 429;
+        $message = 'L’assistente ha raggiunto il limite di richieste. Attendi un attimo e riprova.';
+    }
+
+    http_response_code($status);
+    echo json_encode([
+        'ok' => false,
+        'error' => $message,
     ], JSON_THROW_ON_ERROR);
 } catch (Throwable $exception) {
     error_log('AI advisor API failure: ' . $exception->getMessage());

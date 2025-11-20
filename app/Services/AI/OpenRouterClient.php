@@ -31,6 +31,11 @@ final class OpenRouterClient
         $this->timeout = max(10, $timeoutSeconds);
     }
 
+    public function getDefaultModel(): string
+    {
+        return $this->defaultModel;
+    }
+
     /**
      * @param array<int, array{role:string,content:string}> $messages
      * @param array<string, mixed> $options
