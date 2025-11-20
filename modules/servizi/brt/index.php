@@ -372,6 +372,9 @@ if ($searchFilter !== '') {
     $filters['search'] = $searchFilter;
 }
 
+$manifestsPerPage = 5;
+$manifestsPage = max(1, (int) ($_GET['manifests_page'] ?? 1));
+
 $shipmentsPerPage = 10;
 $currentPage = max(1, (int) ($_GET['page'] ?? 1));
 $totalShipments = 0;
@@ -390,6 +393,9 @@ if ($statusFilter !== '') {
 }
 if ($searchFilter !== '') {
     $paginationFilters['search'] = $searchFilter;
+}
+if ($manifestsPage > 1) {
+    $paginationFilters['manifests_page'] = $manifestsPage;
 }
 $paginationUrlBuilder = static function (int $targetPage) use ($paginationFilters): string {
     $params = $paginationFilters;
@@ -415,7 +421,49 @@ if ($totalPages > 1) {
     sort($paginationPages);
 }
 $recentOrmRequests = brt_get_recent_orm_requests();
-$recentManifests = brt_get_recent_manifests();
+$totalManifests = 0;
+$recentManifests = brt_get_recent_manifests($manifestsPerPage, ($manifestsPage - 1) * $manifestsPerPage, $totalManifests);
+$totalManifestPages = $totalManifests > 0 ? (int) ceil($totalManifests / $manifestsPerPage) : 0;
+if ($totalManifestPages > 0 && $manifestsPage > $totalManifestPages) {
+    $manifestsPage = $totalManifestPages;
+    $recentManifests = brt_get_recent_manifests($manifestsPerPage, ($manifestsPage - 1) * $manifestsPerPage, $totalManifests);
+}
+$manifestsOffset = max(0, ($manifestsPage - 1) * $manifestsPerPage);
+$manifestsRangeStart = $totalManifests > 0 ? ($manifestsOffset + 1) : 0;
+$manifestsRangeEnd = $totalManifests > 0 ? min($totalManifests, $manifestsOffset + count($recentManifests)) : 0;
+$manifestPaginationFilters = [];
+if ($statusFilter !== '') {
+    $manifestPaginationFilters['status'] = $statusFilter;
+}
+if ($searchFilter !== '') {
+    $manifestPaginationFilters['search'] = $searchFilter;
+}
+if ($currentPage > 1) {
+    $manifestPaginationFilters['page'] = $currentPage;
+}
+$manifestPaginationUrlBuilder = static function (int $targetPage) use ($manifestPaginationFilters): string {
+    $params = $manifestPaginationFilters;
+    if ($targetPage > 1) {
+        $params['manifests_page'] = $targetPage;
+    } else {
+        unset($params['manifests_page']);
+    }
+    $query = http_build_query($params);
+    return $query === '' ? 'index.php' : 'index.php?' . $query;
+};
+$manifestPaginationPages = [];
+if ($totalManifestPages > 1) {
+    $manifestPaginationPages = [1, $totalManifestPages];
+    for ($i = $manifestsPage - 1; $i <= $manifestsPage + 1; $i++) {
+        if ($i > 1 && $i < $totalManifestPages) {
+            $manifestPaginationPages[] = $i;
+        }
+    }
+    $manifestPaginationPages = array_values(array_unique(array_filter($manifestPaginationPages, static function (int $pageNumber) use ($totalManifestPages): bool {
+        return $pageNumber >= 1 && $pageNumber <= $totalManifestPages;
+    })));
+    sort($manifestPaginationPages);
+}
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -772,6 +820,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <div class="card ag-card mb-5">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h2 class="card-title h5 mb-0">Borderò generati</h2>
+                <?php if ($totalManifests > 0): ?>
+                    <span class="text-muted small">
+                        <?php echo sanitize_output(sprintf('Mostrati %d-%d di %d | Pagina %d di %d | %d per pagina', $manifestsRangeStart, $manifestsRangeEnd, $totalManifests, $manifestsPage, max(1, $totalManifestPages), $manifestsPerPage)); ?>
+                    </span>
+                <?php else: ?>
+                    <span class="text-muted small">Nessun borderò disponibile</span>
+                <?php endif; ?>
             </div>
             <div class="card-body p-0">
                 <?php if (!$recentManifests): ?>
@@ -825,6 +880,51 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </tbody>
                         </table>
                     </div>
+                    <?php if ($totalManifestPages > 1): ?>
+                        <div class="p-3 border-top">
+                            <nav aria-label="Paginazione borderò">
+                                <ul class="pagination pagination-sm justify-content-center mb-0 flex-wrap gap-1">
+                                    <?php if ($manifestsPage > 1): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="<?php echo sanitize_output($manifestPaginationUrlBuilder($manifestsPage - 1)); ?>" aria-label="Pagina precedente">&laquo;</a>
+                                        </li>
+                                    <?php else: ?>
+                                        <li class="page-item disabled" aria-disabled="true">
+                                            <span class="page-link">&laquo;</span>
+                                        </li>
+                                    <?php endif; ?>
+                                    <?php $lastManifestPage = 0; ?>
+                                    <?php foreach ($manifestPaginationPages as $pageNumber): ?>
+                                        <?php if ($lastManifestPage > 0 && $pageNumber - $lastManifestPage > 1): ?>
+                                            <li class="page-item disabled" aria-disabled="true">
+                                                <span class="page-link">&hellip;</span>
+                                            </li>
+                                        <?php endif; ?>
+                                        <?php $isCurrent = $pageNumber === $manifestsPage; ?>
+                                        <?php if ($isCurrent): ?>
+                                            <li class="page-item active" aria-current="page">
+                                                <span class="page-link"><?php echo (int) $pageNumber; ?></span>
+                                            </li>
+                                        <?php else: ?>
+                                            <li class="page-item">
+                                                <a class="page-link" href="<?php echo sanitize_output($manifestPaginationUrlBuilder($pageNumber)); ?>" aria-label="Vai a pagina <?php echo (int) $pageNumber; ?>"><?php echo (int) $pageNumber; ?></a>
+                                            </li>
+                                        <?php endif; ?>
+                                        <?php $lastManifestPage = $pageNumber; ?>
+                                    <?php endforeach; ?>
+                                    <?php if ($manifestsPage < $totalManifestPages): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="<?php echo sanitize_output($manifestPaginationUrlBuilder($manifestsPage + 1)); ?>" aria-label="Pagina successiva">&raquo;</a>
+                                        </li>
+                                    <?php else: ?>
+                                        <li class="page-item disabled" aria-disabled="true">
+                                            <span class="page-link">&raquo;</span>
+                                        </li>
+                                    <?php endif; ?>
+                                </ul>
+                            </nav>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>

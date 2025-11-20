@@ -2255,10 +2255,21 @@ function brt_get_shipments_for_manifest(array $shipmentIds): array
 /**
  * @return array<int, array<string, mixed>>
  */
-function brt_get_recent_manifests(): array
+function brt_get_recent_manifests(int $limit = 20, int $offset = 0, ?int &$total = null): array
 {
     $pdo = brt_db();
-    $stmt = $pdo->query('SELECT * FROM brt_manifests ORDER BY generated_at DESC LIMIT 20');
+    $limit = max(1, $limit);
+    $offset = max(0, $offset);
+
+    if ($total !== null) {
+        $countStmt = $pdo->query('SELECT COUNT(*) FROM brt_manifests');
+        $total = (int) $countStmt->fetchColumn();
+    }
+
+    $stmt = $pdo->prepare('SELECT * FROM brt_manifests ORDER BY generated_at DESC LIMIT :limit OFFSET :offset');
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
     return $stmt->fetchAll() ?: [];
 }
 
