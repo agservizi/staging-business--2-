@@ -35,7 +35,8 @@ final class ThinkingAdvisor
 
         $period = $this->resolvePeriod($input);
         $snapshot = $this->buildSnapshot($period);
-        $contextLines = $this->summarizeSnapshot($snapshot, $period);
+        $pageMeta = $input['page'] ?? [];
+        $contextLines = $this->summarizeSnapshot($snapshot, $period, is_array($pageMeta) ? $pageMeta : []);
         $history = $this->sanitizeHistory($input['history'] ?? []);
 
         $systemPrompt = $this->buildSystemPrompt($period);
@@ -481,9 +482,17 @@ final class ThinkingAdvisor
      * @param array{label:string,days:int,start:DateTimeImmutable,end:DateTimeImmutable} $period
      * @return array<int, string>
      */
-    private function summarizeSnapshot(array $snapshot, array $period): array
+    private function summarizeSnapshot(array $snapshot, array $period, array $page = []): array
     {
-        $lines = [];
+        $section = strtolower(trim((string) ($page['section'] ?? '')));
+        $linesByTopic = [
+            'overview' => [],
+            'finance' => [],
+            'operations' => [],
+            'support' => [],
+            'marketing' => [],
+            'risks' => [],
+        ];
         $finance = $snapshot['finance'] ?? [];
         $operations = $snapshot['operations'] ?? [];
         $support = $snapshot['support'] ?? [];
@@ -493,7 +502,7 @@ final class ThinkingAdvisor
         $entrate = (float) ($finance['entrate'] ?? 0.0);
         $uscite = (float) ($finance['uscite'] ?? 0.0);
         $saldo = $entrate - $uscite;
-        $lines[] = sprintf(
+        $linesByTopic['overview'][] = sprintf(
             '%s (%d giorni) | Entrate %s - Uscite %s = Saldo %s su %d movimenti',
             $period['label'],
             $period['days'],
@@ -504,7 +513,7 @@ final class ThinkingAdvisor
         );
 
         if ((int) ($finance['inLavorazione'] ?? 0) > 0) {
-            $lines[] = sprintf('Movimenti in lavorazione: %d (di cui %d scaduti per %s).',
+            $linesByTopic['finance'][] = sprintf('Movimenti in lavorazione: %d (di cui %d scaduti per %s).',
                 (int) $finance['inLavorazione'],
                 (int) ($finance['overdue'] ?? 0),
                 $this->formatMoney((float) ($finance['overdueValue'] ?? 0.0))
@@ -516,7 +525,7 @@ final class ThinkingAdvisor
             $clientSummary = array_map(function (array $client): string {
                 return sprintf('%s (%s)', $client['cliente'], $this->formatMoney((float) $client['netto']));
             }, $topClients);
-            $lines[] = 'Clienti che generano più margine: ' . implode(', ', $clientSummary) . '.';
+            $linesByTopic['finance'][] = 'Clienti che generano più margine: ' . implode(', ', $clientSummary) . '.';
         }
 
         $appointments = $operations['appointments'] ?? [];
@@ -524,17 +533,17 @@ final class ThinkingAdvisor
             $statusPieces = array_map(static function (array $item): string {
                 return sprintf('%s: %d', $item['stato'], $item['totale']);
             }, $appointments['statuses'] ?? []);
-            $lines[] = 'Appuntamenti nel periodo: ' . implode(', ', $statusPieces) . '.';
+            $linesByTopic['operations'][] = 'Appuntamenti nel periodo: ' . implode(', ', $statusPieces) . '.';
         }
 
         $energyCreated = (int) ($operations['energy']['created'] ?? 0);
         if ($energyCreated > 0) {
-            $lines[] = sprintf('Contratti energia creati: %d.', $energyCreated);
+            $linesByTopic['operations'][] = sprintf('Contratti energia creati: %d.', $energyCreated);
         }
 
         $logistics = $operations['logistics'] ?? [];
         if (($logistics['spedizioni'] ?? 0) > 0 || ($logistics['brt'] ?? 0) > 0) {
-            $lines[] = sprintf('Logistica: %d spedizioni interne, %d spedizioni BRT, %d criticità aperte.',
+            $linesByTopic['operations'][] = sprintf('Logistica: %d spedizioni interne, %d spedizioni BRT, %d criticità aperte.',
                 (int) ($logistics['spedizioni'] ?? 0),
                 (int) ($logistics['brt'] ?? 0),
                 (int) ($logistics['issues'] ?? 0)
@@ -542,26 +551,84 @@ final class ThinkingAdvisor
         }
 
         if (($support['open'] ?? 0) > 0) {
-            $lines[] = sprintf('Ticket aperti: %d (nuovi nel periodo: %d).',
+            $linesByTopic['support'][] = sprintf('Ticket aperti: %d (nuovi nel periodo: %d).',
                 (int) ($support['open'] ?? 0),
                 (int) ($support['created'] ?? 0)
             );
         }
 
         $campaigns = $marketing['campaigns'] ?? [];
-        if (($campaigns['scheduled'] ?? 0) > 0 || ($campaigns['sent'] ?? 0) > 0) {
-            $lines[] = sprintf('Marketing: %d campagne programmate, %d invii completati.',
+        $subscribers = $marketing['subscribers'] ?? [];
+        $forceMarketing = $this->shouldForceTopicSummary($section, 'marketing');
+        if ((($campaigns['scheduled'] ?? 0) > 0) || (($campaigns['sent'] ?? 0) > 0) || (($subscribers['new'] ?? 0) > 0)
+            || (($subscribers['inactive'] ?? 0) > 0) || $forceMarketing) {
+            $label = $section === 'email marketing' ? 'Email marketing' : 'Marketing';
+            $summary = sprintf('%s: %d campagne programmate, %d invii completati',
+                $label,
                 (int) ($campaigns['scheduled'] ?? 0),
                 (int) ($campaigns['sent'] ?? 0)
             );
+            $subscriberDetails = sprintf(' (nuovi iscritti: %d, disiscritti: %d)',
+                (int) ($subscribers['new'] ?? 0),
+                (int) ($subscribers['inactive'] ?? 0)
+            );
+            if (!$forceMarketing && ($subscribers['new'] ?? 0) === 0 && ($subscribers['inactive'] ?? 0) === 0) {
+                $subscriberDetails = '';
+            }
+            $linesByTopic['marketing'][] = rtrim($summary . $subscriberDetails, '.') . '.';
         }
 
         $risksList = $risks['overduePayments'] ?? [];
         if ($risksList) {
-            $lines[] = sprintf('Avvisi: %d incassi scaduti da recuperare.', count($risksList));
+            $linesByTopic['risks'][] = sprintf('Avvisi: %d incassi scaduti da recuperare.', count($risksList));
         }
 
-        return array_values(array_filter($lines, static fn(string $line): bool => trim($line) !== ''));
+        $priorities = $this->resolveContextPriorities($section);
+        $ordered = [];
+        foreach ($priorities as $topic) {
+            foreach ($linesByTopic[$topic] ?? [] as $line) {
+                $line = trim($line);
+                if ($line !== '') {
+                    $ordered[] = $line;
+                }
+            }
+        }
+
+        if (!$ordered) {
+            $ordered = array_values(array_filter(
+                array_merge(...array_values($linesByTopic)),
+                static fn(string $line): bool => trim($line) !== ''
+            ));
+        }
+
+        return $ordered;
+    }
+
+    private function shouldForceTopicSummary(string $section, string $topic): bool
+    {
+        return match ($topic) {
+            'marketing' => $section === 'email marketing',
+            'support' => $section === 'ticket',
+            default => false,
+        };
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveContextPriorities(string $section): array
+    {
+        return match ($section) {
+            'email marketing' => ['marketing', 'support', 'operations', 'risks'],
+            'ticket' => ['support', 'operations', 'risks', 'marketing', 'finance'],
+            'servizi' => ['operations', 'support', 'finance', 'risks', 'marketing', 'overview'],
+            'clienti' => ['finance', 'operations', 'support', 'marketing', 'risks', 'overview'],
+            'documenti' => ['operations', 'risks', 'support', 'finance', 'overview'],
+            'impostazioni' => ['risks', 'operations', 'support', 'finance', 'overview'],
+            'customer portal' => ['support', 'operations', 'marketing', 'finance', 'risks', 'overview'],
+            'tools' => ['operations', 'finance', 'risks', 'support', 'marketing', 'overview'],
+            default => ['overview', 'finance', 'operations', 'support', 'marketing', 'risks'],
+        };
     }
 
     private function buildSystemPrompt(array $period): string
