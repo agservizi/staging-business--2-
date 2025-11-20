@@ -790,6 +790,80 @@ document.addEventListener('DOMContentLoaded', () => {
             path: root.dataset.pagePath || window.location.pathname
         };
 
+        const hintLibrary = {
+            default: [
+                'Dammi una panoramica sintetica e indica 3 azioni ad alto impatto per oggi.',
+                'Quali rischi operativi o finanziari devo gestire con priorità questa settimana?',
+                'Suggeriscimi come migliorare il cash-flow nei prossimi 7 giorni con dati attuali.'
+            ],
+            clienti: [
+                'Quali clienti mostrano segnali di churn e come posso intervenire subito?',
+                'Aiutami a pianificare le prossime campagne di upsell sui clienti più profittevoli.',
+                'Che tipo di follow-up dovrei inviare ai clienti senza attività negli ultimi 30 giorni?'
+            ],
+            servizi: [
+                'Quali appuntamenti o consegne richiedono azioni urgenti per evitare ritardi?',
+                'Come posso ottimizzare le risorse operative e ridurre eventuali colli di bottiglia?',
+                'Suggerisci un piano per alzare il tasso di completamento servizi entro la settimana.'
+            ],
+            reportistica: [
+                'Aiutami a leggere i KPI principali di questo report e ricavare 3 insight azionabili.',
+                'Quali metriche stanno peggiorando rispetto al periodo precedente e perché?',
+                'Suggerisci un briefing per il team partendo dai dati in evidenza su questa pagina.'
+            ],
+            ticket: [
+                'Come posso ridurre il backlog dei ticket aperti nelle prossime 48 ore?',
+                'Quali ticket critici rischiano di sforare gli SLA e come posso prevenirlo?',
+                'Dammi un piano per migliorare la soddisfazione clienti dai ticket attuali.'
+            ],
+            'email marketing': [
+                'Quali segmenti meritano una campagna urgente basata sui dati di oggi?',
+                'Suggerisci 3 miglioramenti per aumentare apertura e click delle ultime newsletter.',
+                'Come posso recuperare gli iscritti inattivi registrati in questo periodo?'
+            ],
+            documenti: [
+                'Segnalami eventuali documenti critici in scadenza o con anomalie.',
+                'Quali procedure dovrei aggiornare per migliorare la compliance documentale?',
+                'Come posso organizzare meglio i documenti condivisi per ridurre gli errori?' 
+            ],
+            impostazioni: [
+                'Quali controlli di sicurezza o permessi dovrei verificare in questa pagina?',
+                'Dammi un elenco di impostazioni critiche da rivedere per evitare misconfigurazioni.',
+                'Quali automatismi potrei ottimizzare per ridurre interventi manuali?' 
+            ],
+            'customer portal': [
+                "Come migliorare l'esperienza dei clienti sul portale partendo dai dati attuali?",
+                'Quali richieste ricorrenti dovrei anticipare per alleggerire il supporto?',
+                "Suggerisci iniziative per aumentare l'adozione del portale dai clienti inattivi."
+            ],
+            tools: [
+                'Quali verifiche tecniche devo completare prima di usare questo strumento oggi?',
+                'Suggerisci una checklist rapida per evitare errori con questo tool.',
+                'Come posso validare i dati generati da questo strumento prima di inviarli al cliente?'
+            ]
+        };
+
+        const normalizedSection = (pageContext.section || '').trim().toLowerCase();
+        const hintPool = [...(hintLibrary[normalizedSection] ?? hintLibrary.default)];
+        let lastHint = '';
+
+        const pickHint = () => {
+            const pool = hintPool.length > 0 ? hintPool : hintLibrary.default;
+            if (pool.length === 0) {
+                return hintBtn?.dataset.aiHint || 'Suggeriscimi tre priorità operative basate sui dati più recenti.';
+            }
+            let candidate = pool[Math.floor(Math.random() * pool.length)];
+            if (pool.length > 1) {
+                let attempts = 0;
+                while (candidate === lastHint && attempts < 4) {
+                    candidate = pool[Math.floor(Math.random() * pool.length)];
+                    attempts += 1;
+                }
+            }
+            lastHint = candidate;
+            return candidate;
+        };
+
         let isOpen = false;
         let inFlight = false;
         let history = [];
@@ -1005,7 +1079,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!(questionInput instanceof HTMLTextAreaElement)) {
                 return;
             }
-            const hint = hintBtn.dataset.aiHint || 'Suggeriscimi tre priorità operative basate sui dati più recenti.';
+            const hint = pickHint();
             questionInput.value = hint;
             questionInput.focus();
         });
