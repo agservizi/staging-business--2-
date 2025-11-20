@@ -616,6 +616,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 'created' => 'bg-warning text-white',
                                 'confirmed' => 'bg-success',
                                 'warning' => 'bg-danger',
+                                'in_transit' => 'bg-info text-dark',
+                                'out_for_delivery' => 'bg-primary',
+                                'delivered' => 'bg-success',
+                                'returned' => 'bg-dark',
                                 'cancelled' => 'bg-secondary',
                             ][$status] ?? 'bg-secondary';
                             $statusLabel = brt_translate_status($status) ?: $status;

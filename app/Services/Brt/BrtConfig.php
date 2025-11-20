@@ -202,7 +202,7 @@ final class BrtConfig
         $this->trackingBatchSize = $this->intEnv('BRT_TRACKING_BATCH_SIZE', 10, 1, 50);
         $this->trackingStaleMinutes = $this->intEnv('BRT_TRACKING_STALE_MINUTES', 180, 15, 1440);
         $this->trackingMaxAgeDays = $this->intEnv('BRT_TRACKING_MAX_AGE_DAYS', 15, 0, 90, true);
-        $this->trackingStatuses = $this->parseStatuses($this->clean(env('BRT_TRACKING_STATUSES')), ['confirmed', 'warning']);
+        $this->trackingStatuses = $this->parseStatuses($this->clean(env('BRT_TRACKING_STATUSES')), ['confirmed', 'warning', 'in_transit', 'out_for_delivery']);
 
         $this->manifestEnabled = $this->boolEnv('BRT_MANIFEST_ENABLED', false);
         $this->manifestStorePdf = $this->boolEnv('BRT_MANIFEST_STORE_PDF', true);

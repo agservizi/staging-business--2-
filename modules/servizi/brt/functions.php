@@ -1564,6 +1564,20 @@ function brt_get_shipment(int $shipmentId): ?array
     return $result ?: null;
 }
 
+function brt_get_shipment_status_value(int $shipmentId): ?string
+{
+    $pdo = brt_db();
+    $stmt = $pdo->prepare('SELECT status FROM brt_shipments WHERE id = :id LIMIT 1');
+    $stmt->execute([':id' => $shipmentId]);
+    $value = $stmt->fetchColumn();
+    if ($value === false || $value === null) {
+        return null;
+    }
+
+    $status = strtolower(trim((string) $value));
+    return $status === '' ? null : $status;
+}
+
 function brt_get_shipment_by_reference(string $senderCustomerCode, int $numericReference): ?array
 {
     $pdo = brt_db();
@@ -2042,14 +2056,446 @@ function brt_get_recent_orm_requests(): array
     return $stmt->fetchAll() ?: [];
 }
 
+function brt_is_list(array $array): bool
+{
+    if (function_exists('array_is_list')) {
+        return array_is_list($array);
+    }
+
+    $expectedKey = 0;
+    foreach ($array as $key => $_) {
+        if ($key !== $expectedKey) {
+            return false;
+        }
+        $expectedKey++;
+    }
+
+    return true;
+}
+
+/**
+ * @param array<string, mixed> $payload
+ * @return array<int, array<string, mixed>>
+ */
+function brt_extract_tracking_events(array $payload): array
+{
+    $candidates = [];
+    foreach (['trackingList', 'trackingEvents', 'events'] as $key) {
+        if (isset($payload[$key])) {
+            $candidates[] = $payload[$key];
+        }
+    }
+
+    foreach ($candidates as $candidate) {
+        if (!is_array($candidate)) {
+            continue;
+        }
+
+        if (brt_is_list($candidate)) {
+            return array_values(array_filter($candidate, static fn ($event) => is_array($event)));
+        }
+
+        if (isset($candidate['tracking']) && is_array($candidate['tracking'])) {
+            $tracking = $candidate['tracking'];
+            if (brt_is_list($tracking)) {
+                return array_values(array_filter($tracking, static fn ($event) => is_array($event)));
+            }
+        }
+
+        if (isset($candidate['event']) && is_array($candidate['event'])) {
+            $events = $candidate['event'];
+            if (brt_is_list($events)) {
+                return array_values(array_filter($events, static fn ($event) => is_array($event)));
+            }
+        }
+    }
+
+    return [];
+}
+
+function brt_tracking_event_value(array $event, array $keys): string
+{
+    foreach ($keys as $key) {
+        if (!array_key_exists($key, $event)) {
+            continue;
+        }
+
+        $value = $event[$key];
+        if (is_array($value)) {
+            continue;
+        }
+
+        $text = trim((string) $value);
+        if ($text !== '') {
+            return $text;
+        }
+    }
+
+    return '';
+}
+
+function brt_tracking_event_timestamp(array $event): ?\DateTimeImmutable
+{
+    $timestampFields = ['timestamp', 'eventTimestamp', 'eventDateTime', 'trackingDateTime', 'dateTime'];
+    foreach ($timestampFields as $field) {
+        if (!isset($event[$field])) {
+            continue;
+        }
+        $value = trim((string) $event[$field]);
+        if ($value === '') {
+            continue;
+        }
+        try {
+            return new \DateTimeImmutable($value);
+        } catch (\Throwable $exception) {
+            continue;
+        }
+    }
+
+    $date = brt_tracking_event_value($event, ['eventDate', 'trackingDate', 'date']);
+    if ($date === '') {
+        return null;
+    }
+
+    $time = brt_tracking_event_value($event, ['eventTime', 'trackingTime', 'time']);
+    $candidate = trim($date . ' ' . $time);
+    try {
+        return new \DateTimeImmutable($candidate);
+    } catch (\Throwable $exception) {
+        return null;
+    }
+}
+
+function brt_normalize_tracking_text(string $text): string
+{
+    $normalized = strtolower(trim($text));
+    if ($normalized === '') {
+        return '';
+    }
+
+    $normalized = strtr($normalized, [
+        'à' => 'a',
+        'è' => 'e',
+        'é' => 'e',
+        'ì' => 'i',
+        'ò' => 'o',
+        'ù' => 'u',
+    ]);
+
+    return $normalized;
+}
+
+function brt_extract_tracking_status_text(array $tracking): string
+{
+    $keys = [
+        'trackingStatusDescription',
+        'trackingStatus',
+        'statusDescription',
+        'status',
+        'currentStatusDescription',
+        'currentStatus',
+        'macroStatusDescription',
+        'macroStatus',
+        'esito',
+    ];
+
+    foreach ($keys as $key) {
+        if (!isset($tracking[$key]) || is_array($tracking[$key])) {
+            continue;
+        }
+        $value = trim((string) $tracking[$key]);
+        if ($value !== '') {
+            return $value;
+        }
+    }
+
+    if (isset($tracking['executionMessage']) && is_array($tracking['executionMessage'])) {
+        $exec = $tracking['executionMessage'];
+        foreach (['message', 'codeDesc'] as $execKey) {
+            if (!isset($exec[$execKey])) {
+                continue;
+            }
+            $value = trim((string) $exec[$execKey]);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+    }
+
+    return '';
+}
+
+function brt_classify_tracking_text(string $text): ?string
+{
+    $normalized = brt_normalize_tracking_text($text);
+    if ($normalized === '') {
+        return null;
+    }
+
+    if (str_contains($normalized, 'annullat') || str_contains($normalized, 'cancelled')) {
+        return 'cancelled';
+    }
+
+    if (
+        str_contains($normalized, 'return to sender')
+        || str_contains($normalized, 'reso al mittente')
+        || preg_match('/\breso\b/', $normalized) === 1
+        || str_contains($normalized, 'ritorn')
+        || str_contains($normalized, 'restituz')
+    ) {
+        return 'returned';
+    }
+
+    if (
+        str_contains($normalized, 'consegnat')
+        || str_contains($normalized, 'delivered')
+        || str_contains($normalized, 'firma destinatario')
+        || str_contains($normalized, 'ritirata dal destinatario')
+    ) {
+        return 'delivered';
+    }
+
+    if (
+        (str_contains($normalized, 'in consegna') && !str_contains($normalized, 'presa in consegna'))
+        || str_contains($normalized, 'out for delivery')
+        || str_contains($normalized, 'courier on delivery')
+    ) {
+        return 'out_for_delivery';
+    }
+
+    if (
+        str_contains($normalized, 'giacenz')
+        || str_contains($normalized, 'anomali')
+        || str_contains($normalized, 'problema')
+        || str_contains($normalized, 'incident')
+        || str_contains($normalized, 'ritardo')
+        || str_contains($normalized, 'mancata consegn')
+        || str_contains($normalized, 'delivery attempt')
+        || str_contains($normalized, 'attempted delivery')
+        || str_contains($normalized, 'tentata consegna')
+        || str_contains($normalized, 'destinatario assente')
+        || str_contains($normalized, 'indirizzo errato')
+        || str_contains($normalized, 'rifiutat')
+        || str_contains($normalized, 'bloccata')
+        || str_contains($normalized, 'fermo')
+        || str_contains($normalized, 'hold')
+        || str_contains($normalized, 'awaiting instruction')
+        || str_contains($normalized, 'non consegnat')
+    ) {
+        return 'warning';
+    }
+
+    if (
+        str_contains($normalized, 'in transit')
+        || str_contains($normalized, 'in transito')
+        || str_contains($normalized, 'transit')
+        || str_contains($normalized, 'smistamento')
+        || str_contains($normalized, 'hub')
+        || str_contains($normalized, 'partit')
+        || str_contains($normalized, 'arrivat')
+        || str_contains($normalized, 'presa in carico')
+        || str_contains($normalized, 'presa in consegna')
+        || str_contains($normalized, 'ritiro')
+        || str_contains($normalized, 'ritirata dal corriere')
+        || str_contains($normalized, 'pickup')
+        || str_contains($normalized, 'in lavorazione')
+    ) {
+        return 'in_transit';
+    }
+
+    return null;
+}
+
+/**
+ * @param array<string, mixed> $tracking
+ * @return array{
+ *     status: string,
+ *     status_text: string,
+ *     description: string,
+ *     location: string,
+ *     note: string,
+ *     timestamp: ?\DateTimeImmutable
+ * }|null
+ */
+function brt_resolve_tracking_status(array $tracking): ?array
+{
+    $events = brt_extract_tracking_events($tracking);
+    $bestEvent = null;
+    $bestTimestamp = null;
+
+    foreach ($events as $event) {
+        if (!is_array($event)) {
+            continue;
+        }
+        $timestamp = brt_tracking_event_timestamp($event);
+        if ($timestamp !== null) {
+            if ($bestTimestamp === null || $timestamp > $bestTimestamp) {
+                $bestTimestamp = $timestamp;
+                $bestEvent = $event;
+            }
+            continue;
+        }
+
+        if ($bestEvent === null) {
+            $bestEvent = $event;
+        }
+    }
+
+    $status = null;
+    $statusText = '';
+    $description = '';
+    $location = '';
+    $note = '';
+
+    if ($bestEvent !== null) {
+        $statusText = brt_tracking_event_value($bestEvent, ['trackingStatusDescription', 'eventStatusDescription', 'trackingStatus', 'statusDescription', 'status']);
+        $description = brt_tracking_event_value($bestEvent, ['trackingDescription', 'eventDescription', 'description', 'message']);
+        $location = brt_tracking_event_value($bestEvent, ['locationDescription', 'eventLocation', 'location', 'branch']);
+        $note = brt_tracking_event_value($bestEvent, ['note', 'noteDescription', 'memo']);
+        $combined = trim($statusText . ' ' . $description . ' ' . $note);
+        $status = brt_classify_tracking_text($combined);
+    }
+
+    if ($status === null) {
+        $summaryText = brt_extract_tracking_status_text($tracking);
+        $status = brt_classify_tracking_text($summaryText);
+        if ($status !== null && $statusText === '') {
+            $statusText = $summaryText;
+        }
+    }
+
+    if ($status === null) {
+        return null;
+    }
+
+    return [
+        'status' => $status,
+        'status_text' => $statusText,
+        'description' => $description,
+        'location' => $location,
+        'note' => $note,
+        'timestamp' => $bestTimestamp,
+    ];
+}
+
+function brt_should_replace_tracking_status(?string $currentStatus, string $nextStatus): bool
+{
+    $next = strtolower(trim($nextStatus));
+    if ($next === '') {
+        return false;
+    }
+
+    $current = $currentStatus !== null ? strtolower(trim($currentStatus)) : '';
+    if ($current === '') {
+        return true;
+    }
+
+    if ($current === $next) {
+        return false;
+    }
+
+    $finalStatuses = ['cancelled', 'delivered', 'returned'];
+    if (in_array($current, $finalStatuses, true) && $current !== $next) {
+        return false;
+    }
+
+    if ($next === 'warning' && !in_array($current, $finalStatuses, true)) {
+        return true;
+    }
+
+    $rank = [
+        'created' => 10,
+        'confirmed' => 20,
+        'warning' => 25,
+        'in_transit' => 30,
+        'out_for_delivery' => 40,
+        'returned' => 80,
+        'delivered' => 90,
+        'cancelled' => 100,
+    ];
+
+    $currentRank = $rank[$current] ?? 0;
+    $nextRank = $rank[$next] ?? ($currentRank + 1);
+
+    return $nextRank > $currentRank;
+}
+
+function brt_build_tracking_status_message(array $statusInfo): ?string
+{
+    $parts = [];
+    foreach (['status_text', 'description', 'location', 'note'] as $key) {
+        if (!isset($statusInfo[$key])) {
+            continue;
+        }
+        $value = trim((string) $statusInfo[$key]);
+        if ($value !== '') {
+            $parts[] = $value;
+        }
+    }
+
+    $timestamp = $statusInfo['timestamp'] ?? null;
+    if ($timestamp instanceof \DateTimeInterface) {
+        $parts[] = $timestamp->format('d/m/Y H:i');
+    } elseif (is_string($timestamp)) {
+        $timeText = trim($timestamp);
+        if ($timeText !== '') {
+            $parts[] = $timeText;
+        }
+    }
+
+    if ($parts === []) {
+        return null;
+    }
+
+    $parts = array_values(array_unique($parts));
+    return 'Tracking: ' . implode(' · ', $parts);
+}
+
 function brt_update_tracking(int $shipmentId, array $tracking): void
 {
     $pdo = brt_db();
-    $stmt = $pdo->prepare('UPDATE brt_shipments SET last_tracking_payload = :payload, last_tracking_at = NOW() WHERE id = :id');
-    $stmt->execute([
-        ':payload' => encode_json_pretty($tracking),
+    $payload = encode_json_pretty($tracking);
+    $statusInfo = brt_resolve_tracking_status($tracking);
+    $message = $statusInfo !== null ? brt_build_tracking_status_message($statusInfo) : null;
+
+    $currentStatus = $statusInfo !== null ? brt_get_shipment_status_value($shipmentId) : null;
+    $shouldUpdateStatus = $statusInfo !== null && brt_should_replace_tracking_status($currentStatus, $statusInfo['status']);
+
+    $setParts = [
+        'last_tracking_payload = :payload',
+        'last_tracking_at = NOW()',
+    ];
+
+    $params = [
+        ':payload' => $payload,
         ':id' => $shipmentId,
-    ]);
+    ];
+
+    if ($shouldUpdateStatus && $statusInfo !== null) {
+        $setParts[] = 'status = :status';
+        $params[':status'] = $statusInfo['status'];
+    }
+
+    if ($message !== null && $message !== '') {
+        $setParts[] = 'execution_message = :execution_message';
+        $params[':execution_message'] = mb_strimwidth($message, 0, 500, '', 'UTF-8');
+    }
+
+    $sql = 'UPDATE brt_shipments SET ' . implode(', ', $setParts) . ' WHERE id = :id';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    if ($shouldUpdateStatus && $statusInfo !== null) {
+        brt_log_event('info', 'Tracking: stato aggiornato automaticamente', [
+            'shipment_id' => $shipmentId,
+            'status' => $statusInfo['status'],
+            'status_text' => $statusInfo['status_text'] ?? null,
+            'description' => $statusInfo['description'] ?? null,
+            'location' => $statusInfo['location'] ?? null,
+            'timestamp' => $statusInfo['timestamp'] instanceof \DateTimeInterface ? $statusInfo['timestamp']->format('c') : null,
+            'source' => 'tracking_update',
+        ]);
+    }
 }
 
 function brt_get_orm_request(int $requestId): ?array
@@ -2705,6 +3151,10 @@ function brt_translate_status(string $status): string
         'created' => 'Creata',
         'confirmed' => 'Confermata',
         'warning' => 'Con avvisi',
+        'in_transit' => 'In transito',
+        'out_for_delivery' => 'In consegna',
+        'returned' => 'In reso',
+        'delivered' => 'Consegnata',
         'cancelled' => 'Annullata',
     ];
 
