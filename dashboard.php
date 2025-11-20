@@ -436,8 +436,8 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <h5 class="card-title mb-0">Trend Entrate/Uscite</h5>
                             <span class="text-muted small">Ultimi 6 mesi</span>
                         </div>
-                        <div class="card-body">
-                            <canvas id="chartRevenue" height="120"></canvas>
+                        <div class="card-body" style="min-height: 140px;">
+                            <canvas id="chartRevenue" height="90"></canvas>
                         </div>
                     </div>
                 </div>
@@ -447,8 +447,8 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <h5 class="card-title mb-0">Ripartizione servizi</h5>
                             <span class="text-muted small">Pratiche per tipologia</span>
                         </div>
-                        <div class="card-body">
-                            <canvas id="chartServices" height="140"></canvas>
+                        <div class="card-body" style="min-height: 140px;">
+                            <canvas id="chartServices" height="110"></canvas>
                         </div>
                     </div>
                 </div>
