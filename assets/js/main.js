@@ -783,6 +783,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const endpoint = root.dataset.endpoint || 'api/ai/advisor.php';
         const defaultPeriod = root.dataset.defaultPeriod || 'last30';
         const showToast = window?.CS?.showToast ?? (() => {});
+        const pageContext = {
+            title: root.dataset.pageTitle || document.title || '',
+            section: root.dataset.pageSection || '',
+            description: root.dataset.pageDescription || '',
+            path: root.dataset.pagePath || window.location.pathname
+        };
 
         let isOpen = false;
         let inFlight = false;
@@ -918,6 +924,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 period: periodSelect?.value || defaultPeriod,
                 history,
                 focus: root.dataset.userRole === 'Manager' ? 'Bilanciare finanza e operation' : '',
+                page: pageContext,
             };
             if (payload.period === 'custom' && customStart && customEnd) {
                 payload.customStart = customStart.value;

@@ -580,8 +580,18 @@ final class ThinkingAdvisor
      */
     private function buildUserPrompt(string $question, array $period, array $contextLines, array $input): string
     {
+        $pageContextLine = $this->formatPageContextLine($input['page'] ?? []);
+        $contextLinesExtended = $contextLines;
+        if ($pageContextLine !== '') {
+            array_unshift($contextLinesExtended, $pageContextLine);
+        }
+
         $focus = trim((string) ($input['focus'] ?? ''));
-        $context = $contextLines ? "\nContesto sintetico:\n- " . implode("\n- ", $contextLines) : '';
+        if ($focus === '') {
+            $focus = $this->inferFocusFromPage($input['page'] ?? []);
+        }
+
+        $context = $contextLinesExtended ? "\nContesto sintetico:\n- " . implode("\n- ", $contextLinesExtended) : '';
         $focusLine = $focus !== '' ? "\nFocalizzati anche su: {$focus}." : '';
 
         return sprintf(
@@ -590,6 +600,57 @@ final class ThinkingAdvisor
             $context,
             $focusLine
         );
+    }
+
+    private function formatPageContextLine($page): string
+    {
+        if (!is_array($page)) {
+            return '';
+        }
+
+        $title = trim((string) ($page['title'] ?? ''));
+        $section = trim((string) ($page['section'] ?? ''));
+        $description = trim((string) ($page['description'] ?? ''));
+        $path = trim((string) ($page['path'] ?? ''));
+
+        $parts = [];
+        if ($section !== '') {
+            $parts[] = $section;
+        }
+        if ($title !== '') {
+            $parts[] = $title;
+        }
+        if ($path !== '') {
+            $parts[] = sprintf('(%s)', $path);
+        }
+
+        $header = $parts ? implode(' ', $parts) : '';
+        if ($description !== '') {
+            return trim($header . ' - ' . $description);
+        }
+
+        return $header;
+    }
+
+    private function inferFocusFromPage($page): string
+    {
+        if (!is_array($page)) {
+            return '';
+        }
+
+        $section = strtolower(trim((string) ($page['section'] ?? '')));
+        return match ($section) {
+            'clienti' => 'Suggerisci azioni concrete su anagrafiche clienti, follow-up commerciali e prevenzione churn.',
+            'servizi' => 'Ottimizza erogazione servizi, logistica e coordinamento operativo con focus su SLA.',
+            'reportistica' => 'Aiuta a interpretare KPI e creare insight azionabili dai report in esame.',
+            'ticket' => 'Prioritizza la risoluzione ticket e migliora la customer experience.',
+            'email marketing' => 'Concentrati su contenuti, segmentazioni e metriche campagne marketing.',
+            'documenti' => 'Mantieni la governance documentale e segnala rischi di compliance.',
+            'impostazioni' => 'Verifica configurazioni critiche, ruoli e sicurezza applicativa.',
+            'customer portal' => 'Supporta i clienti finali nelle procedure self-service e monitora le richieste.',
+            'tools' => 'Raccomanda verifiche tecniche o operazioni di manutenzione coerenti con lo strumento aperto.',
+            default => '',
+        };
     }
 
     /**

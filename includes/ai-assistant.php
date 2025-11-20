@@ -7,8 +7,9 @@ if (!$config['enabled']) {
 $endpoint = $config['endpoint'] ?? base_url('api/ai/advisor.php');
 $defaultPeriod = $config['defaultPeriod'] ?? 'last30';
 $user = $config['user'] ?? ['name' => current_user_display_name(), 'role' => (string) ($_SESSION['role'] ?? '')];
+$page = $config['page'] ?? ai_assistant_page_context();
 ?>
-<div class="ai-assistant" data-ai-assistant data-endpoint="<?php echo sanitize_output($endpoint); ?>" data-default-period="<?php echo sanitize_output($defaultPeriod); ?>" data-user-name="<?php echo sanitize_output($user['name'] ?? ''); ?>" data-user-role="<?php echo sanitize_output($user['role'] ?? ''); ?>">
+<div class="ai-assistant" data-ai-assistant data-endpoint="<?php echo sanitize_output($endpoint); ?>" data-default-period="<?php echo sanitize_output($defaultPeriod); ?>" data-user-name="<?php echo sanitize_output($user['name'] ?? ''); ?>" data-user-role="<?php echo sanitize_output($user['role'] ?? ''); ?>" data-page-title="<?php echo sanitize_output($page['title'] ?? ''); ?>" data-page-section="<?php echo sanitize_output($page['section'] ?? ''); ?>" data-page-description="<?php echo sanitize_output($page['description'] ?? ''); ?>" data-page-path="<?php echo sanitize_output($page['path'] ?? ''); ?>">
     <button class="ai-assistant-toggle" type="button" aria-expanded="false" data-ai-toggle>
         <span class="ai-assistant-toggle-icon" aria-hidden="true"><i class="fa-solid fa-sparkles"></i></span>
         <span class="ai-assistant-toggle-label">Consigli AI</span>

@@ -45,6 +45,12 @@ $advisorInput = [
     'history' => $payload['history'] ?? [],
     'customStart' => $payload['customStart'] ?? null,
     'customEnd' => $payload['customEnd'] ?? null,
+    'page' => [
+        'title' => trim((string) ($payload['page']['title'] ?? '')),
+        'path' => trim((string) ($payload['page']['path'] ?? '')),
+        'section' => trim((string) ($payload['page']['section'] ?? '')),
+        'description' => trim((string) ($payload['page']['description'] ?? '')),
+    ],
 ];
 
 try {
