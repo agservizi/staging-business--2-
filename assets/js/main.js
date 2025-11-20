@@ -933,13 +933,18 @@ document.addEventListener('DOMContentLoaded', () => {
             inFlight = true;
             setStatus('Sto analizzando il periodo selezionato…', 'info');
             try {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                };
+                if (csrfToken) {
+                    headers['X-CSRF-Token'] = csrfToken;
+                }
+
                 const response = await fetch(endpoint, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
+                    headers,
                     credentials: 'same-origin',
                     body: JSON.stringify(buildPayload(question))
                 });
