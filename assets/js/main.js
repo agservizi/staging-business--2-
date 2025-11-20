@@ -871,6 +871,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const idleTimeoutMs = 10000;
         let idleTimerId = null;
         let isIdle = false;
+        let autoRequested = false;
 
         const exitIdleState = () => {
             if (!toggleBtn || !isIdle) {
@@ -908,6 +909,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }, idleTimeoutMs);
         };
 
+        const tryAutoRequest = () => {
+            if (autoRequested || inFlight) {
+                return;
+            }
+            const autoQuestion = pickHint();
+            autoRequested = true;
+            latestQuestion = autoQuestion;
+            renderMessage('user', autoQuestion);
+            requestAdvisor(autoQuestion);
+        };
+
         const togglePanel = (open) => {
             if (!panel) {
                 return;
@@ -920,6 +932,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (open) {
                 clearIdleTimer();
                 exitIdleState();
+                if (!logContainer?.children.length) {
+                    tryAutoRequest();
+                }
             } else {
                 scheduleIdleState();
             }

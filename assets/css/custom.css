@@ -443,6 +443,7 @@ body.login-body {
     border-radius: 50%;
     padding: 0;
     justify-content: center;
+    gap: 0;
     box-shadow: 0 12px 24px rgba(8, 28, 60, 0.22);
     animation: ai-toggle-pulse 2.4s ease-in-out infinite;
 }
