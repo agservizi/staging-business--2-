@@ -11,8 +11,8 @@ $page = $config['page'] ?? ai_assistant_page_context();
 ?>
 <div class="ai-assistant" data-ai-assistant data-endpoint="<?php echo sanitize_output($endpoint); ?>" data-default-period="<?php echo sanitize_output($defaultPeriod); ?>" data-user-name="<?php echo sanitize_output($user['name'] ?? ''); ?>" data-user-role="<?php echo sanitize_output($user['role'] ?? ''); ?>" data-page-title="<?php echo sanitize_output($page['title'] ?? ''); ?>" data-page-section="<?php echo sanitize_output($page['section'] ?? ''); ?>" data-page-description="<?php echo sanitize_output($page['description'] ?? ''); ?>" data-page-path="<?php echo sanitize_output($page['path'] ?? ''); ?>">
     <button class="ai-assistant-toggle" type="button" aria-expanded="false" data-ai-toggle>
-        <span class="ai-assistant-toggle-icon" aria-hidden="true"><i class="fa-solid fa-sparkles"></i></span>
-        <span class="ai-assistant-toggle-label">Consigli AI</span>
+        <span class="ai-assistant-toggle-icon" aria-hidden="true"><i class="fa-solid fa-robot"></i></span>
+        <span class="ai-assistant-toggle-label">Assistente AI</span>
     </button>
     <section class="ai-assistant-panel" aria-live="polite" aria-label="Assistente AI" hidden>
         <header class="ai-assistant-panel-header">
@@ -60,14 +60,7 @@ $page = $config['page'] ?? ai_assistant_page_context();
                 <textarea class="form-control" id="aiAssistantQuestion" rows="3" placeholder="Esempio: quali priorità dovrei seguire questa settimana?" data-ai-question required></textarea>
             </div>
             <div class="ai-assistant-actions">
-                <button class="btn btn-outline-secondary btn-sm" type="button" data-ai-hint="Dammi una panoramica sintetica e indica 3 azioni ad alto impatto per oggi.">
-                    Suggerisci una domanda
-                </button>
-                <div class="ms-auto d-flex gap-2">
-                    <button class="btn btn-outline-warning" type="button" data-ai-thinking-toggle hidden>
-                        <i class="fa-solid fa-eye"></i>
-                        <span>Mostra ragionamento</span>
-                    </button>
+                <div class="ms-auto">
                     <button class="btn btn-warning" type="submit">
                         <i class="fa-solid fa-paper-plane me-2"></i>Chiedi aiuto
                     </button>
@@ -75,7 +68,7 @@ $page = $config['page'] ?? ai_assistant_page_context();
             </div>
         </form>
         <footer class="ai-assistant-footer">
-            <small class="text-muted" data-ai-timestamp></small>
+            <small class="text-muted">Risposta generata dall'AI</small>
         </footer>
         <details class="ai-assistant-thinking" data-ai-thinking hidden>
             <summary>Ragionamento interno</summary>

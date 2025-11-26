@@ -350,8 +350,7 @@ function ai_assistant_enabled(): bool
     }
 
     $flag = filter_var(env('AI_THINKING_ASSISTANT_ENABLED', true), FILTER_VALIDATE_BOOL);
-    $key = trim((string) env('OPENROUTER_API_KEY', ''));
-    $cached = $flag && $key !== '';
+    $cached = $flag;
 
     return $cached;
 }

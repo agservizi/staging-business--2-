@@ -66,6 +66,7 @@ try {
         'contextLines' => $result['contextLines'],
         'history' => $result['history'],
         'snapshot' => $result['snapshot'],
+        'conversation_id' => $result['conversation_id'],
         'period' => [
             'label' => (string) ($period['label'] ?? ''),
             'start' => isset($period['start']) && $period['start'] instanceof DateTimeInterface ? $period['start']->format(DateTimeInterface::ATOM) : null,
