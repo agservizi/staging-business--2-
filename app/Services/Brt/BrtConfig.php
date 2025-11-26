@@ -163,6 +163,7 @@ final class BrtConfig
             'PUDO' => $this->clean(env('BRT_PRICING_CONDITION_CODE_PUDO')),
             'DPD' => $this->clean(env('BRT_PRICING_CONDITION_CODE_DPD')),
             'EUROPE' => $this->clean(env('BRT_PRICING_CONDITION_CODE_EUROPE')),
+            'SWISS' => $this->clean(env('BRT_PRICING_CONDITION_CODE_SWISS')),
         ], static fn ($value) => $value !== null && $value !== '');
         $this->defaultNetwork = $this->clean(env('BRT_DEFAULT_NETWORK'));
         $this->defaultServiceType = $this->clean(env('BRT_DEFAULT_SERVICE_TYPE'));

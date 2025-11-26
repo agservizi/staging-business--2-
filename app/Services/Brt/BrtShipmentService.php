@@ -26,7 +26,6 @@ final class BrtShipmentService
         'ITALIA' => 'ITALIA',
         'ITALY' => 'ITALIA',
         'E' => 'EUROPE',
-        'EU' => 'EUROPE',
         'EUR' => 'EUROPE',
         'EUROPE' => 'EUROPE',
         'EUROPA' => 'EUROPE',
@@ -37,6 +36,9 @@ final class BrtShipmentService
         'B2C' => 'B2C',
         'D' => 'DPD',
         'DPD' => 'DPD',
+        'S' => 'SWISS',
+        'SWISS' => 'SWISS',
+        'CH' => 'SWISS',
     ];
 
     private const NETWORK_CODE_BY_ALIAS = [
@@ -45,6 +47,7 @@ final class BrtShipmentService
         'PUDO' => 'P',
         'B2C' => 'B',
         'DPD' => 'D',
+        'SWISS' => 'S',
     ];
 
     private BrtConfig $config;
