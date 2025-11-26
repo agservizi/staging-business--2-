@@ -1,5 +1,5 @@
 <?php
-use App\Services\AI\ThinkingAdvisor;
+use App\Services\AI\CustomAdvisor;
 use DateTimeImmutable;
 use DateTimeInterface;
 use InvalidArgumentException;
@@ -45,6 +45,7 @@ $advisorInput = [
     'history' => $payload['history'] ?? [],
     'customStart' => $payload['customStart'] ?? null,
     'customEnd' => $payload['customEnd'] ?? null,
+    'user_id' => $_SESSION['user_id'] ?? null,
     'page' => [
         'title' => trim((string) ($payload['page']['title'] ?? '')),
         'path' => trim((string) ($payload['page']['path'] ?? '')),
@@ -54,7 +55,7 @@ $advisorInput = [
 ];
 
 try {
-    $advisor = new ThinkingAdvisor($pdo);
+    $advisor = new CustomAdvisor($pdo);
     $result = $advisor->generate($advisorInput);
 
     $period = $result['period'];
