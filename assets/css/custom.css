@@ -432,6 +432,9 @@ body.login-body {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
+    position: absolute;
+    bottom: 0;
+    right: 0;
 }
 
 .ai-assistant-toggle:hover {
@@ -502,6 +505,10 @@ body.login-body {
     overflow-y: auto;
     min-height: 0;
     backdrop-filter: blur(10px);
+    position: absolute;
+    bottom: 4rem;
+    right: 0;
+    z-index: 1091;
 }
 
 .ai-assistant-panel[hidden] {
@@ -651,6 +658,9 @@ body.login-body {
         --ai-toggle-expanded-width: clamp(8rem, 15vw, 10rem);
         block-size: 3rem;
         font-size: 0.8rem;
+        position: absolute;
+        bottom: 1rem;
+        right: 1rem;
     }
 
     .ai-assistant-toggle.is-idle {
@@ -659,10 +669,14 @@ body.login-body {
     }
 
     .ai-assistant-panel {
-        width: 100%;
+        left: 1rem;
+        right: 1rem;
         max-height: calc(100vh - 5rem);
         padding: 1rem;
         border-radius: 16px;
+        position: absolute;
+        bottom: 5rem;
+        z-index: 1091;
     }
 
     .ai-assistant-panel-header {
@@ -694,6 +708,11 @@ body.login-body {
     .ai-assistant-panel {
         padding: 0.75rem;
         max-height: calc(100vh - 4rem);
+        position: absolute;
+        bottom: 5rem;
+        left: 1rem;
+        right: 1rem;
+        z-index: 1091;
     }
 
     .ai-assistant-toggle {
@@ -701,6 +720,9 @@ body.login-body {
         block-size: 2.75rem;
         font-size: 0.75rem;
         padding: 0 1rem;
+        position: absolute;
+        bottom: 1rem;
+        right: 1rem;
     }
 
     .ai-assistant-toggle.is-idle {
