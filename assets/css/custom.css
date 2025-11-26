@@ -494,7 +494,8 @@ body.login-body {
 
 .ai-assistant-panel {
     width: min(400px, calc(100vw - 2rem));
-    max-height: min(600px, calc(100vh - 6rem));
+    max-height: calc(100vh - 6rem);
+    height: auto;
     background: #ffffff;
     border-radius: 20px;
     border: 1px solid rgba(12, 28, 60, 0.08);
@@ -502,7 +503,7 @@ body.login-body {
     display: flex;
     flex-direction: column;
     padding: 1.5rem;
-    overflow-y: auto;
+    overflow: visible;
     min-height: 0;
     backdrop-filter: blur(10px);
     position: absolute;
@@ -672,8 +673,10 @@ body.login-body {
         left: 1rem;
         right: 1rem;
         max-height: calc(100vh - 5rem);
+        height: auto;
         padding: 1rem;
         border-radius: 16px;
+        overflow: visible;
         position: absolute;
         bottom: 5rem;
         z-index: 1091;
@@ -708,6 +711,8 @@ body.login-body {
     .ai-assistant-panel {
         padding: 0.75rem;
         max-height: calc(100vh - 4rem);
+        height: auto;
+        overflow: visible;
         position: absolute;
         bottom: 5rem;
         left: 1rem;
