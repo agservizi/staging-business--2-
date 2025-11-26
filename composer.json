@@ -19,6 +19,7 @@
         "spomky-labs/otphp": "^11",
         "bacon/bacon-qr-code": "^2.0",
         "mpdf/mpdf": "^8.2",
-        "stripe/stripe-php": "^14.8"
+        "stripe/stripe-php": "^14.8",
+        "guzzlehttp/guzzle": "^7.0"
     }
 }
