@@ -8,9 +8,6 @@ require_once __DIR__ . '/../../../includes/mailer.php';
 require_once __DIR__ . '/functions.php';
 
 use App\Services\CAFPatronato\PracticesService;
-use PDO;
-use RuntimeException;
-use Throwable;
 
 require_role('Admin', 'Operatore', 'Manager', 'Patronato');
 
