@@ -65,19 +65,71 @@ function format_currency(?float $amount): string
     return '€ ' . number_format($amount, 2, ',', '.');
 }
 
+function app_base_path(): string
+{
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $docRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: '';
+    $projectRoot = realpath(__DIR__ . '/..') ?: __DIR__ . '/..';
+
+    $docRoot = rtrim(str_replace('\\', '/', $docRoot), '/');
+    $projectRoot = rtrim(str_replace('\\', '/', $projectRoot), '/');
+
+    if ($docRoot !== '' && str_starts_with($projectRoot, $docRoot)) {
+        $relative = trim(substr($projectRoot, strlen($docRoot)), '/');
+        $cached = $relative === '' ? '' : '/' . $relative;
+        return $cached;
+    }
+
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    $scriptName = str_replace('\\', '/', $scriptName);
+    if ($scriptName !== '') {
+        $dir = trim(dirname($scriptName), '/');
+        if ($dir !== '') {
+            $segments = explode('/', $dir);
+            $baseSegments = [];
+            foreach ($segments as $segment) {
+                if ($segment === '' || $segment === 'modules' || $segment === 'api' || $segment === 'customer-portal') {
+                    break;
+                }
+                $baseSegments[] = $segment;
+            }
+            if ($baseSegments !== []) {
+                $cached = '/' . implode('/', $baseSegments);
+                return $cached;
+            }
+        }
+    }
+
+    $cached = '';
+    return $cached;
+}
+
 function base_url(string $path = ''): string
 {
     static $cached;
     if ($cached === null) {
         $currentHost = $_SERVER['HTTP_HOST'] ?? null;
         $appUrl = env('APP_URL');
+        $strictAppUrl = filter_var(env('APP_URL_STRICT', false), FILTER_VALIDATE_BOOL);
+
         if ($appUrl) {
             $appUrl = rtrim($appUrl, '/');
             $appHost = parse_url($appUrl, PHP_URL_HOST);
-            $strictAppUrl = filter_var(env('APP_URL_STRICT', false), FILTER_VALIDATE_BOOL);
 
             if ($currentHost && $appHost && strcasecmp((string) $appHost, (string) $currentHost) !== 0 && !$strictAppUrl) {
                 $appUrl = null;
+            } else {
+                $appPath = parse_url($appUrl, PHP_URL_PATH) ?: '';
+                if (($appPath === '' || $appPath === '/') && !$strictAppUrl) {
+                    $basePath = app_base_path();
+                    if ($basePath !== '') {
+                        $appUrl .= $basePath;
+                    }
+                }
             }
         }
 
@@ -86,21 +138,7 @@ function base_url(string $path = ''): string
         } else {
             $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
             $host = $currentHost ?: 'localhost';
-            $docRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: '';
-            $projectRoot = realpath(__DIR__ . '/..') ?: '';
-            $basePath = '';
-
-            if ($docRoot !== '' && $projectRoot !== '' && strncmp($projectRoot, $docRoot, strlen($docRoot)) === 0) {
-                $relative = str_replace('\\', '/', substr($projectRoot, strlen($docRoot)));
-                $basePath = '/' . ltrim($relative, '/');
-                if ($basePath === '/') {
-                    $basePath = '';
-                }
-            } else {
-                $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
-                $basePath = $scriptDir && $scriptDir !== '.' ? $scriptDir : '';
-            }
-
+            $basePath = app_base_path();
             $cached = rtrim($scheme . '://' . $host . $basePath, '/');
         }
     }

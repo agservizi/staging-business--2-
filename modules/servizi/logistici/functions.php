@@ -83,30 +83,6 @@ function pickup_relative_path(string $absolutePath): string
     return $absolutePath;
 }
 
-function pickup_web_base_path(): string
-{
-    static $cached = null;
-    if ($cached !== null) {
-        return $cached;
-    }
-
-    $docRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: '';
-    $projectRoot = realpath(pickup_root_path()) ?: pickup_root_path();
-    $docRoot = rtrim(str_replace('\\', '/', $docRoot), '/');
-    $projectRoot = rtrim(str_replace('\\', '/', $projectRoot), '/');
-
-    $basePath = '';
-    if ($docRoot !== '' && str_starts_with($projectRoot, $docRoot)) {
-        $relative = trim(substr($projectRoot, strlen($docRoot)), '/');
-        if ($relative !== '') {
-            $basePath = '/' . $relative;
-        }
-    }
-
-    $cached = $basePath;
-    return $cached;
-}
-
 function pickup_public_url(?string $path): string
 {
     $path = trim((string) $path);
@@ -118,24 +94,7 @@ function pickup_public_url(?string $path): string
         return $path;
     }
 
-    $normalized = ltrim($path, '/');
-    $baseUrl = trim((string) env('APP_URL', ''));
-    $basePath = pickup_web_base_path();
-
-    if ($baseUrl !== '') {
-        $baseUrl = rtrim($baseUrl, '/');
-        $existingPath = parse_url($baseUrl, PHP_URL_PATH) ?: '';
-        if ($existingPath === '' && $basePath !== '') {
-            $baseUrl .= $basePath;
-        }
-        return $baseUrl . '/' . $normalized;
-    }
-
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $base = rtrim($scheme . '://' . $host . $basePath, '/');
-
-    return $base . '/' . $normalized;
+    return base_url(ltrim($path, '/'));
 }
 
 function pickup_fetch_qr_image(string $targetUrl): ?string
