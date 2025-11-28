@@ -265,7 +265,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <p class="text-muted text-uppercase small mb-1">Anagrafica cliente</p>
                                 <h2 class="h5 mb-0">Dati principali</h2>
                             </div>
-                            <span class="badge bg-warning text-dark">Obbligatorio</span>
+                            <span class="badge bg-warning text-white">Obbligatorio</span>
                         </div>
                         <div class="card-body">
                             <div class="row g-4">
