@@ -150,30 +150,33 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 <div class="flex-grow-1 d-flex flex-column min-vh-100 pickup-module">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
-        <div class="page-toolbar mb-4 d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="h3 mb-0">Segnalazioni portale pickup</h1>
+        <div class="page-toolbar mb-4 flex-wrap">
+            <div class="flex-grow-1 mb-3 mb-md-0">
+                <h1 class="h3 mb-1">Segnalazioni portale pickup</h1>
                 <p class="text-muted mb-0">Gestisci le segnalazioni inviate dai clienti attraverso il portale.</p>
             </div>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Pickup</a>
-                <a class="btn btn-warning text-dark" href="../logistici/create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo pickup</a>
+                <a class="btn btn-outline-warning w-100 w-sm-auto" href="index.php"><i class="fa-solid fa-arrow-left"></i> Pickup</a>
+                <a class="btn btn-warning text-dark w-100 w-sm-auto" href="../logistici/create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo pickup</a>
             </div>
         </div>
 
         <div class="row g-4">
-            <div class="col-xxl-9">
+            <div class="col-12 col-xxl-9">
                 <div class="card ag-card mb-4">
-                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                        <h2 class="h5 mb-0">Filtri</h2>
+                    <div class="card-header bg-transparent border-0 d-flex flex-wrap justify-content-between align-items-start gap-2">
+                        <div>
+                            <h2 class="h5 mb-1">Filtri</h2>
+                            <p class="text-muted mb-0 small">Affina le segnalazioni per stato, periodo e collegamento.</p>
+                        </div>
                     </div>
                     <div class="card-body">
                         <form class="row g-3 align-items-end" method="get" action="reports.php">
-                            <div class="col-md-4">
+                            <div class="col-12 col-md-6 col-lg-4">
                                 <label class="form-label" for="search">Ricerca</label>
                                 <input class="form-control" id="search" name="search" value="<?php echo sanitize_output($search); ?>" placeholder="Tracking, cliente o note">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-6 col-md-4 col-lg-3">
                                 <label class="form-label" for="status">Stato</label>
                                 <select class="form-select" id="status" name="status">
                                     <option value="">Tutti</option>
@@ -182,36 +185,45 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-6 col-md-4 col-lg-2">
                                 <label class="form-label" for="from">Dal</label>
                                 <input class="form-control" id="from" name="from" type="date" value="<?php echo sanitize_output($from); ?>">
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-6 col-md-4 col-lg-2">
                                 <label class="form-label" for="to">Al</label>
                                 <input class="form-control" id="to" name="to" type="date" value="<?php echo sanitize_output($to); ?>">
                             </div>
-                            <div class="col-md-1 d-flex align-items-center">
-                                <div class="form-check form-switch mt-4">
+                            <div class="col-6 col-md-4 col-lg-2">
+                                <label class="form-label" for="limit">Limite</label>
+                                <select class="form-select" id="limit" name="limit">
+                                    <?php foreach ([25, 50, 100, 200] as $limitOption): ?>
+                                        <option value="<?php echo $limitOption; ?>" <?php echo $limitOption === $limit ? 'selected' : ''; ?>><?php echo $limitOption; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6 col-lg-4">
+                                <label class="form-label d-block">Senza pickup</label>
+                                <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" role="switch" id="only_unlinked" name="only_unlinked" value="1" <?php echo $onlyUnlinked ? 'checked' : ''; ?>>
-                                    <label class="form-check-label" for="only_unlinked">Senza pickup</label>
+                                    <label class="form-check-label" for="only_unlinked">Mostra solo segnalazioni non collegate</label>
                                 </div>
                             </div>
-                            <div class="col-12 d-flex gap-2">
-                                <button class="btn btn-warning text-dark" type="submit">Applica filtri</button>
-                                <a class="btn btn-outline-warning" href="reports.php">Reset</a>
+                            <div class="col-12 d-flex flex-wrap gap-2">
+                                <button class="btn btn-warning text-dark flex-grow-1 flex-sm-grow-0" type="submit">Applica filtri</button>
+                                <a class="btn btn-outline-warning flex-grow-1 flex-sm-grow-0" href="reports.php">Reset</a>
                             </div>
                         </form>
                     </div>
                 </div>
 
                 <div class="card ag-card">
-                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                    <div class="card-header bg-transparent border-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <h2 class="h5 mb-0">Segnalazioni</h2>
                         <span class="text-muted small">Totale: <?php echo count($reports); ?></span>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle">
+                            <table class="table table-hover align-middle" data-table="reports">
                                 <thead>
                                     <tr>
                                         <th>Tracking</th>
@@ -326,12 +338,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
             </div>
-            <div class="col-xxl-3">
+            <div class="col-12 col-xxl-3">
                 <div class="card ag-card mb-4">
-                    <div class="card-header bg-transparent border-0">
+                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <h2 class="h5 mb-0">Riepilogo</h2>
+                        <button class="btn btn-sm btn-outline-warning d-xxl-none" type="button" data-bs-toggle="collapse" data-bs-target="#reportsSummary" aria-expanded="false" aria-controls="reportsSummary">Mostra</button>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body collapse d-xxl-block" id="reportsSummary">
                         <ul class="list-unstyled mb-0">
                             <li class="d-flex justify-content-between"><span>Totali</span><span><?php echo (int) ($stats['totale'] ?? 0); ?></span></li>
                             <li class="d-flex justify-content-between"><span>Segnalate</span><span><?php echo (int) ($stats['reported'] ?? 0); ?></span></li>
@@ -343,10 +356,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
                 <div class="card ag-card">
-                    <div class="card-header bg-transparent border-0">
+                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <h2 class="h5 mb-0">Azioni rapide</h2>
+                        <button class="btn btn-sm btn-outline-warning d-xxl-none" type="button" data-bs-toggle="collapse" data-bs-target="#reportsQuickActions" aria-expanded="false" aria-controls="reportsQuickActions">Mostra</button>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body collapse d-xxl-block" id="reportsQuickActions">
                         <ul class="list-unstyled mb-0 small text-secondary">
                             <li class="mb-2">• Usa <strong>Abbina tracking</strong> per collegare automaticamente la segnalazione al pickup con lo stesso codice.</li>
                             <li class="mb-2">• Il campo <strong>ID pickup</strong> consente di collegare manualmente una segnalazione già gestita.</li>
