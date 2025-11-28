@@ -675,7 +675,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const pickupFeedConfig = window.CS?.pickupReportFeed;
     if (pickupFeedConfig?.endpoint) {
-        const endpoint = String(pickupFeedConfig.endpoint);
+        const resolveFeedEndpoint = () => {
+            const configured = typeof pickupFeedConfig.endpoint === 'string' ? pickupFeedConfig.endpoint.trim() : '';
+            const rawBase = typeof window.CS?.apiBaseUrl === 'string' ? window.CS.apiBaseUrl.trim() : '';
+            const normalizedBase = rawBase !== '' ? (rawBase.endsWith('/') ? rawBase : `${rawBase}/`) : '';
+            let fallbackBase = normalizedBase;
+            if (fallbackBase === '') {
+                const assetsBase = typeof window.CS?.assetsBaseUrl === 'string' ? window.CS.assetsBaseUrl.trim() : '';
+                if (assetsBase !== '') {
+                    const cleaned = assetsBase.replace(/assets\/?$/i, '');
+                    if (cleaned !== '') {
+                        fallbackBase = cleaned.endsWith('/') ? cleaned : `${cleaned}/`;
+                    }
+                }
+            }
+            const fallback = fallbackBase !== '' ? `${fallbackBase}api/pickup-report-feed.php` : 'api/pickup-report-feed.php';
+            if (configured === '' || /\/api\/index\.php$/i.test(configured)) {
+                return fallback;
+            }
+            return configured;
+        };
+
+        let endpoint = resolveFeedEndpoint();
         const pollInterval = Math.max(5000, Number.parseInt(pickupFeedConfig.pollInterval, 10) || 30000);
         let lastId = Number.parseInt(pickupFeedConfig.initialLastId, 10);
         if (!Number.isFinite(lastId)) {
@@ -684,9 +705,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let timerId = null;
         let feedInFlight = false;
         let failureCount = 0;
+        let feedDisabled = false;
         const showToastFn = typeof window.CS.showToast === 'function' ? window.CS.showToast : null;
 
         const scheduleFetch = (delay = pollInterval) => {
+            if (feedDisabled) {
+                return;
+            }
             if (timerId) {
                 clearTimeout(timerId);
             }
@@ -728,6 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             feedInFlight = true;
+            let disableAfterFetch = false;
             try {
                 const url = `${endpoint}${endpoint.includes('?') ? '&' : '?'}since_id=${encodeURIComponent(lastId)}`;
                 const response = await fetch(url, {
@@ -737,6 +763,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (!response.ok) {
+                    if (response.status === 404) {
+                        disableAfterFetch = true;
+                        throw new Error('Pickup feed endpoint non trovato');
+                    }
                     throw new Error('Feed non disponibile');
                 }
 
@@ -750,6 +780,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 failureCount = 0;
                 scheduleFetch(pollInterval);
             } catch (error) {
+                if (disableAfterFetch) {
+                    feedDisabled = true;
+                    if (timerId) {
+                        clearTimeout(timerId);
+                        timerId = null;
+                    }
+                    console.warn('Pickup report feed disabilitato: endpoint non disponibile.', error);
+                    return;
+                }
                 failureCount += 1;
                 const backoff = Math.min(pollInterval * (failureCount + 1), pollInterval * 6);
                 scheduleFetch(backoff);
@@ -762,6 +801,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         document.addEventListener('visibilitychange', () => {
+            if (feedDisabled) {
+                return;
+            }
             if (document.visibilityState === 'visible') {
                 scheduleFetch(Math.min(5000, pollInterval));
             }
