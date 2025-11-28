@@ -255,64 +255,149 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         <?php endif; ?>
 
-        <div class="card ag-card">
-            <div class="card-body">
-                <form method="post" enctype="multipart/form-data" class="row g-4">
-                    <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
-                    <div class="col-md-6">
-                        <label class="form-label" for="nominativo">Nominativo <span class="text-warning">*</span></label>
-                        <input class="form-control" id="nominativo" name="nominativo" maxlength="160" value="<?php echo sanitize_output($data['nominativo']); ?>" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="codice_fiscale">Codice fiscale</label>
-                        <input class="form-control" id="codice_fiscale" name="codice_fiscale" maxlength="32" value="<?php echo sanitize_output($data['codice_fiscale']); ?>">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="email">Email referente <span class="text-warning">*</span></label>
-                        <input class="form-control" id="email" name="email" type="email" value="<?php echo sanitize_output($data['email']); ?>" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="telefono">Telefono</label>
-                        <input class="form-control" id="telefono" name="telefono" maxlength="40" value="<?php echo sanitize_output($data['telefono']); ?>">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="fornitura">Fornitura</label>
-                        <select class="form-select" id="fornitura" name="fornitura">
-                            <?php foreach ($forniture as $option): ?>
-                                <option value="<?php echo sanitize_output($option); ?>" <?php echo $data['fornitura'] === $option ? 'selected' : ''; ?>><?php echo sanitize_output($option); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="operazione">Operazione richiesta</label>
-                        <select class="form-select" id="operazione" name="operazione">
-                            <?php foreach ($operazioni as $option): ?>
-                                <option value="<?php echo sanitize_output($option); ?>" <?php echo $data['operazione'] === $option ? 'selected' : ''; ?>><?php echo sanitize_output($option); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label" for="note">Note operative</label>
-                        <textarea class="form-control" id="note" name="note" rows="4" maxlength="2000" placeholder="Inserisci informazioni utili per la gestione."><?php echo sanitize_output($data['note']); ?></textarea>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label" for="allegati">Allegati contratto</label>
-                        <input class="form-control" id="allegati" name="allegati[]" type="file" multiple accept=".pdf,.jpg,.jpeg,.png">
-                        <small class="text-muted">Formati consentiti: PDF, JPG, PNG. Dimensione massima 15 MB per file.</small>
-                    </div>
-                    <div class="col-12">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="send_now" name="send_now" value="1" <?php echo $data['send_now'] === '1' ? 'checked' : ''; ?>>
-                            <label class="form-check-label" for="send_now">Invia subito email a energia@newprojectmobile.it</label>
+        <form method="post" enctype="multipart/form-data" class="row g-4" novalidate>
+            <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
+            <div class="col-12 col-xxl-8">
+                <div class="d-flex flex-column gap-4">
+                    <div class="card ag-card h-100">
+                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                            <div>
+                                <p class="text-muted text-uppercase small mb-1">Anagrafica cliente</p>
+                                <h2 class="h5 mb-0">Dati principali</h2>
+                            </div>
+                            <span class="badge bg-warning text-dark">Obbligatorio</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label class="form-label" for="nominativo">Nominativo <span class="text-warning">*</span></label>
+                                    <input class="form-control" id="nominativo" name="nominativo" maxlength="160" value="<?php echo sanitize_output($data['nominativo']); ?>" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="codice_fiscale">Codice fiscale</label>
+                                    <input class="form-control" id="codice_fiscale" name="codice_fiscale" maxlength="32" value="<?php echo sanitize_output($data['codice_fiscale']); ?>">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="email">Email referente <span class="text-warning">*</span></label>
+                                    <input class="form-control" id="email" name="email" type="email" value="<?php echo sanitize_output($data['email']); ?>" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="telefono">Telefono</label>
+                                    <input class="form-control" id="telefono" name="telefono" maxlength="40" value="<?php echo sanitize_output($data['telefono']); ?>">
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-12 d-flex justify-content-end gap-2">
-                        <a class="btn btn-outline-warning" href="index.php">Annulla</a>
-                        <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Salva contratto</button>
+
+                    <div class="card ag-card">
+                        <div class="card-header bg-transparent border-0">
+                            <p class="text-muted text-uppercase small mb-1">Dettagli servizio</p>
+                            <h2 class="h5 mb-0">Tipologia e note operative</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-4">
+                                <div class="col-sm-6">
+                                    <label class="form-label" for="fornitura">Fornitura</label>
+                                    <select class="form-select" id="fornitura" name="fornitura">
+                                        <?php foreach ($forniture as $option): ?>
+                                            <option value="<?php echo sanitize_output($option); ?>" <?php echo $data['fornitura'] === $option ? 'selected' : ''; ?>><?php echo sanitize_output($option); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="form-label" for="operazione">Operazione richiesta</label>
+                                    <select class="form-select" id="operazione" name="operazione">
+                                        <?php foreach ($operazioni as $option): ?>
+                                            <option value="<?php echo sanitize_output($option); ?>" <?php echo $data['operazione'] === $option ? 'selected' : ''; ?>><?php echo sanitize_output($option); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="note">Note operative</label>
+                                    <textarea class="form-control" id="note" name="note" rows="4" maxlength="2000" placeholder="Inserisci informazioni utili per la gestione."><?php echo sanitize_output($data['note']); ?></textarea>
+                                    <small class="text-muted d-block mt-2">Massimo 2000 caratteri. Visibili al team operativo.</small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </form>
+
+                    <div class="card ag-card">
+                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                            <div>
+                                <p class="text-muted text-uppercase small mb-1">Documentazione</p>
+                                <h2 class="h5 mb-0">Allegati e invio</h2>
+                            </div>
+                            <span class="badge bg-secondary-subtle text-body">PDF / JPG / PNG</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label" for="allegati">Carica allegati contratto</label>
+                                <input class="form-control" id="allegati" name="allegati[]" type="file" multiple accept=".pdf,.jpg,.jpeg,.png">
+                                <small class="text-muted">Dimensione massima 15 MB per file.</small>
+                            </div>
+                            <div class="mb-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="send_now" name="send_now" value="1" <?php echo $data['send_now'] === '1' ? 'checked' : ''; ?>>
+                                    <label class="form-check-label" for="send_now">Invia subito email a energia@newprojectmobile.it</label>
+                                </div>
+                                <small class="text-muted">Se deselezionato, potrai inviare successivamente dal dettaglio contratto.</small>
+                            </div>
+                            <div class="d-flex flex-wrap justify-content-end gap-2">
+                                <a class="btn btn-outline-warning" href="index.php">Annulla</a>
+                                <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Salva contratto</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
+
+            <div class="col-12 col-xxl-4">
+                <div class="d-flex flex-column gap-4">
+                    <div class="card ag-card h-100">
+                        <div class="card-body">
+                            <p class="text-muted text-uppercase small mb-2">Checklist allegati</p>
+                            <ul class="list-unstyled small mb-0">
+                                <li class="d-flex align-items-start gap-2 mb-2">
+                                    <i class="fa-solid fa-file-pdf text-warning mt-1"></i>
+                                    Documento identità intestatario
+                                </li>
+                                <li class="d-flex align-items-start gap-2 mb-2">
+                                    <i class="fa-solid fa-file-signature text-warning mt-1"></i>
+                                    Modulo firmato per voltura/subentro
+                                </li>
+                                <li class="d-flex align-items-start gap-2">
+                                    <i class="fa-solid fa-receipt text-warning mt-1"></i>
+                                    Bolletta recente con POD/PDR
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="card ag-card">
+                        <div class="card-body">
+                            <p class="text-muted text-uppercase small mb-2">Tempistiche</p>
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <span class="badge rounded-pill bg-success-subtle text-success">Standard</span>
+                                <span class="text-muted small">24-48h presa in carico</span>
+                            </div>
+                            <p class="small mb-0">I contratti con documentazione completa vengono lavorati entro due giorni lavorativi. Eventuali integrazioni verranno richieste via email.</p>
+                        </div>
+                    </div>
+
+                    <div class="card ag-card">
+                        <div class="card-body">
+                            <p class="text-muted text-uppercase small mb-2">Supporto rapido</p>
+                            <div class="small mb-3">
+                                <div class="fw-semibold">Team Energia</div>
+                                <div><a class="link-warning" href="mailto:energia@newprojectmobile.it">energia@newprojectmobile.it</a></div>
+                                <div><a class="link-warning" href="tel:+390812345678">081 234 5678</a></div>
+                            </div>
+                            <p class="small text-muted mb-0">Indica nelle note eventuali urgenze o scadenze contrattuali per velocizzare la lavorazione.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
     </main>
 </div>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
