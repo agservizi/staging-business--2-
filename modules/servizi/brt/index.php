@@ -5,7 +5,6 @@ use App\Services\Brt\BrtConfig;
 use App\Services\Brt\BrtException;
 use App\Services\Brt\BrtShipmentService;
 use App\Services\Brt\BrtTrackingService;
-use Throwable;
 
 define('CORESUITE_BRT_BOOTSTRAP', true);
 
@@ -682,41 +681,41 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-end">
-                                            <div class="d-inline-flex flex-wrap justify-content-end gap-2">
-                                                <a class="btn btn-icon btn-outline-secondary btn-sm" href="view.php?id=<?php echo (int) $shipment['id']; ?>" title="Dettagli spedizione">
+                                            <div class="shipment-actions" role="group">
+                                                <a class="btn btn-icon btn-outline-secondary btn-sm shipment-action-btn" href="view.php?id=<?php echo (int) $shipment['id']; ?>" title="Dettagli spedizione">
                                                     <i class="fa-solid fa-eye fa-sm fa-fw"></i>
                                                 </a>
                                                 <?php if ((string) ($shipment['status'] ?? '') !== 'cancelled' && empty($shipment['deleted_at'])): ?>
-                                                    <a class="btn btn-icon btn-outline-warning btn-sm" href="orm.php?from_shipment=<?php echo (int) $shipment['id']; ?>" title="Precompila ordine di ritiro (ORM)">
+                                                    <a class="btn btn-icon btn-outline-warning btn-sm shipment-action-btn" href="orm.php?from_shipment=<?php echo (int) $shipment['id']; ?>" title="Precompila ordine di ritiro (ORM)">
                                                         <i class="fa-solid fa-truck-ramp-box fa-sm fa-fw"></i>
                                                     </a>
                                                 <?php endif; ?>
                                                 <?php if (in_array($shipment['status'], ['created', 'warning'], true) && empty($shipment['manifest_id']) && empty($shipment['deleted_at'])): ?>
-                                                    <a class="btn btn-icon btn-outline-primary btn-sm" href="edit.php?id=<?php echo (int) $shipment['id']; ?>" title="Modifica spedizione">
+                                                    <a class="btn btn-icon btn-outline-primary btn-sm shipment-action-btn" href="edit.php?id=<?php echo (int) $shipment['id']; ?>" title="Modifica spedizione">
                                                         <i class="fa-solid fa-pen fa-sm fa-fw"></i>
                                                     </a>
                                                 <?php endif; ?>
                                                 <?php if ((string) ($shipment['status'] ?? '') === 'confirmed' && empty($shipment['deleted_at'])): ?>
-                                                    <form method="post" class="d-inline">
+                                                    <form method="post" class="shipment-action-form">
                                                         <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                         <input type="hidden" name="action" value="refresh_details">
                                                         <input type="hidden" name="shipment_id" value="<?php echo (int) $shipment['id']; ?>">
-                                                        <button class="btn btn-icon btn-outline-info btn-sm" type="submit" title="Aggiorna dettagli da BRT">
+                                                        <button class="btn btn-icon btn-outline-info btn-sm shipment-action-btn" type="submit" title="Aggiorna dettagli da BRT">
                                                             <i class="fa-solid fa-arrows-rotate fa-sm fa-fw"></i>
                                                         </button>
                                                     </form>
-                                                    <form method="post" class="d-inline">
+                                                    <form method="post" class="shipment-action-form">
                                                         <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                         <input type="hidden" name="action" value="reprint_label">
                                                         <input type="hidden" name="shipment_id" value="<?php echo (int) $shipment['id']; ?>">
-                                                        <button class="btn btn-icon btn-outline-secondary btn-sm" type="submit" title="Rigenera etichetta PDF">
+                                                        <button class="btn btn-icon btn-outline-secondary btn-sm shipment-action-btn" type="submit" title="Rigenera etichetta PDF">
                                                             <i class="fa-solid fa-print fa-sm fa-fw"></i>
                                                         </button>
                                                     </form>
                                                 <?php endif; ?>
                                                 <?php if ($canGenerateCustomerNotice): ?>
                                                     <a
-                                                        class="btn btn-icon btn-outline-success btn-sm"
+                                                        class="btn btn-icon btn-outline-success btn-sm shipment-action-btn"
                                                         href="customer_notice.php?id=<?php echo (int) $shipment['id']; ?>"
                                                         title="Genera comunicazione per il cliente"
                                                         target="_blank"
@@ -728,7 +727,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                 <?php if ($shipment['status'] !== 'cancelled' && empty($shipment['deleted_at'])): ?>
                                                     <form
                                                         method="post"
-                                                        class="d-inline"
+                                                        class="shipment-action-form"
                                                         data-confirm="Confermi l'annullamento della spedizione?"
                                                         data-confirm-title="Annulla spedizione"
                                                         data-confirm-confirm-label="Sì, annulla"
@@ -737,17 +736,17 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                         <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                         <input type="hidden" name="action" value="cancel">
                                                         <input type="hidden" name="shipment_id" value="<?php echo (int) $shipment['id']; ?>">
-                                                        <button class="btn btn-icon btn-outline-danger btn-sm" type="submit" title="Annulla spedizione">
+                                                        <button class="btn btn-icon btn-outline-danger btn-sm shipment-action-btn" type="submit" title="Annulla spedizione">
                                                             <i class="fa-solid fa-xmark fa-sm fa-fw"></i>
                                                         </button>
                                                     </form>
                                                 <?php endif; ?>
                                                 <?php if (!empty($shipment['tracking_by_parcel_id']) || !empty($shipment['parcel_id'])): ?>
-                                                    <form method="post" class="d-inline">
+                                                    <form method="post" class="shipment-action-form">
                                                         <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                         <input type="hidden" name="action" value="refresh_tracking">
                                                         <input type="hidden" name="shipment_id" value="<?php echo (int) $shipment['id']; ?>">
-                                                        <button class="btn btn-icon btn-outline-info btn-sm" type="submit" title="Aggiorna tracking">
+                                                        <button class="btn btn-icon btn-outline-info btn-sm shipment-action-btn" type="submit" title="Aggiorna tracking">
                                                             <i class="fa-solid fa-location-crosshairs fa-sm fa-fw"></i>
                                                         </button>
                                                     </form>
@@ -755,7 +754,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                 <?php if ($shipment['status'] !== 'confirmed' && empty($shipment['manifest_id'])): ?>
                                                     <form
                                                         method="post"
-                                                        class="d-inline"
+                                                        class="shipment-action-form"
                                                         data-confirm="Eliminare definitivamente la spedizione selezionata? Questa operazione non può essere annullata."
                                                         data-confirm-title="Elimina spedizione"
                                                         data-confirm-confirm-label="Elimina"
@@ -764,7 +763,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                         <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                         <input type="hidden" name="action" value="delete_local">
                                                         <input type="hidden" name="shipment_id" value="<?php echo (int) $shipment['id']; ?>">
-                                                        <button class="btn btn-icon btn-outline-danger btn-sm" type="submit" title="Elimina definitivamente">
+                                                        <button class="btn btn-icon btn-outline-danger btn-sm shipment-action-btn" type="submit" title="Elimina definitivamente">
                                                             <i class="fa-solid fa-trash fa-sm fa-fw"></i>
                                                         </button>
                                                     </form>

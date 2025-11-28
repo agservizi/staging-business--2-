@@ -2197,21 +2197,41 @@ main.content-wrapper[data-dashboard-state="stale"] .ag-card {
     align-items: center;
     justify-content: center;
     line-height: 1;
-    padding: 0.5rem;
-    min-width: 2.5rem;
-    min-height: 2.5rem;
+    padding: 0;
+    width: 2.5rem;
+    height: 2.5rem;
     border-radius: 0.75rem;
 }
 
 .btn-icon.btn-sm {
-    padding: 0.35rem;
-    min-width: 2.1rem;
-    min-height: 2.1rem;
+    width: 2.25rem;
+    height: 2.25rem;
     border-radius: 0.65rem;
 }
 
 .btn-icon i {
     font-size: 1rem;
+}
+
+.shipment-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.35rem;
+}
+
+.shipment-actions .shipment-action-form {
+    margin: 0;
+}
+
+.shipment-actions .shipment-action-btn {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 992px) {
+    .shipment-actions {
+        justify-content: flex-start;
+    }
 }
 
 .badge.ag-badge {
