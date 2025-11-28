@@ -114,88 +114,185 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 <div class="flex-grow-1 d-flex flex-column min-vh-100 pickup-module">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
-        <div class="card ag-card">
-            <div class="card-header bg-transparent border-0 d-flex flex-wrap align-items-center justify-content-between gap-3">
-                <h1 class="h4 mb-0">Nuovo pickup</h1>
-                <a class="btn btn-outline-warning ms-auto" href="index.php"><i class="fa-solid fa-arrow-left"></i> Torna ai pickup</a>
+        <div class="page-toolbar mb-4 align-items-start">
+            <div>
+                <h1 class="h3 mb-1">Nuovo pickup</h1>
+                <p class="text-muted mb-0">Registra manualmente un ritiro, collega eventuali segnalazioni e assegna corriere e punto di consegna.</p>
             </div>
-            <div class="card-body">
-                <?php if ($errors): ?>
-                    <div class="alert alert-warning"><?php echo implode('<br>', array_map('sanitize_output', $errors)); ?></div>
-                <?php endif; ?>
-                <?php if ($sourceReport): ?>
-                    <div class="alert alert-info">
-                        Segnalazione portal #<?php echo (int) $sourceReport['id']; ?> · tracking <?php echo sanitize_output($sourceReport['tracking_code'] ?? ''); ?>.
-                        <?php
-                            $contactDetails = $sourceReport['customer_email'] ?? $sourceReport['customer_phone'] ?? '';
-                            if ($contactDetails !== '') {
-                                echo '<br>Contatto: ' . sanitize_output($contactDetails);
-                            }
-                        ?>
-                    </div>
-                <?php endif; ?>
-                <form method="post" novalidate>
+            <div class="toolbar-actions">
+                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Torna ai pickup</a>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-12 col-xl-8">
+                <form method="post" novalidate class="h-100">
                     <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                     <?php if ($sourceReportId > 0): ?>
                         <input type="hidden" name="source_report_id" value="<?php echo (int) $sourceReportId; ?>">
                     <?php endif; ?>
-                    <div class="row g-4">
-                        <div class="col-md-6">
-                            <label class="form-label" for="customer_name">Nome cliente</label>
-                            <input class="form-control" id="customer_name" name="customer_name" value="<?php echo sanitize_output($data['customer_name']); ?>" required>
+
+                    <?php if ($errors): ?>
+                        <div class="alert alert-warning mb-4"><?php echo implode('<br>', array_map('sanitize_output', $errors)); ?></div>
+                    <?php endif; ?>
+
+                    <div class="card ag-card mb-4">
+                        <div class="card-header bg-transparent border-0">
+                            <div>
+                                <h2 class="h5 mb-1">Dati cliente</h2>
+                                <p class="text-muted mb-0">Anagrafica e recapiti necessari per eventuali comunicazioni.</p>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="customer_phone">Telefono cliente</label>
-                            <input class="form-control" id="customer_phone" name="customer_phone" value="<?php echo sanitize_output($data['customer_phone']); ?>" placeholder="+391234567890" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="customer_email">Email cliente</label>
-                            <input class="form-control" id="customer_email" name="customer_email" type="email" value="<?php echo sanitize_output($data['customer_email']); ?>" placeholder="cliente@example.com">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="tracking">Codice tracking</label>
-                            <input class="form-control" id="tracking" name="tracking" value="<?php echo sanitize_output($data['tracking']); ?>" required>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="status">Stato iniziale</label>
-                            <select class="form-select" id="status" name="status">
-                                <?php foreach ($statuses as $status): ?>
-                                    <option value="<?php echo $status; ?>" <?php echo $status === $data['status'] ? 'selected' : ''; ?>><?php echo pickup_status_label($status); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="courier_id">Corriere</label>
-                            <select class="form-select" id="courier_id" name="courier_id">
-                                <option value="">Nessuno</option>
-                                <?php foreach ($couriers as $courier): ?>
-                                    <option value="<?php echo (int) $courier['id']; ?>" <?php echo (string) $courier['id'] === $data['courier_id'] ? 'selected' : ''; ?>><?php echo sanitize_output($courier['name']); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" for="pickup_location_id">Punto ritiro</label>
-                            <select class="form-select" id="pickup_location_id" name="pickup_location_id">
-                                <option value="">Seleziona</option>
-                                <?php foreach ($locations as $location): ?>
-                                    <option value="<?php echo (int) $location['id']; ?>" <?php echo (string) $location['id'] === $data['pickup_location_id'] ? 'selected' : ''; ?>><?php echo sanitize_output($location['name']); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="expected_at">Data prevista</label>
-                            <input class="form-control" id="expected_at" name="expected_at" type="date" value="<?php echo sanitize_output($data['expected_at']); ?>">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="notes">Note interne</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="4"><?php echo sanitize_output($data['notes']); ?></textarea>
+                        <div class="card-body">
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label class="form-label" for="customer_name">Nome cliente</label>
+                                    <input class="form-control" id="customer_name" name="customer_name" value="<?php echo sanitize_output($data['customer_name']); ?>" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="customer_phone">Telefono cliente</label>
+                                    <input class="form-control" id="customer_phone" name="customer_phone" value="<?php echo sanitize_output($data['customer_phone']); ?>" placeholder="+391234567890" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="customer_email">Email cliente</label>
+                                    <input class="form-control" id="customer_email" name="customer_email" type="email" value="<?php echo sanitize_output($data['customer_email']); ?>" placeholder="cliente@example.com">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="tracking">Codice tracking</label>
+                                    <input class="form-control" id="tracking" name="tracking" value="<?php echo sanitize_output($data['tracking']); ?>" required>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="d-flex justify-content-end gap-2 mt-4">
+
+                    <div class="card ag-card mb-4">
+                        <div class="card-header bg-transparent border-0">
+                            <div>
+                                <h2 class="h5 mb-1">Dettagli logistici</h2>
+                                <p class="text-muted mb-0">Definisci stato operativo, corriere e luogo di consegna.</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-4">
+                                <div class="col-md-4">
+                                    <label class="form-label" for="status">Stato iniziale</label>
+                                    <select class="form-select" id="status" name="status">
+                                        <?php foreach ($statuses as $status): ?>
+                                            <option value="<?php echo $status; ?>" <?php echo $status === $data['status'] ? 'selected' : ''; ?>><?php echo pickup_status_label($status); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="courier_id">Corriere</label>
+                                    <select class="form-select" id="courier_id" name="courier_id">
+                                        <option value="">Nessuno</option>
+                                        <?php foreach ($couriers as $courier): ?>
+                                            <option value="<?php echo (int) $courier['id']; ?>" <?php echo (string) $courier['id'] === $data['courier_id'] ? 'selected' : ''; ?>><?php echo sanitize_output($courier['name']); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="pickup_location_id">Punto ritiro</label>
+                                    <select class="form-select" id="pickup_location_id" name="pickup_location_id">
+                                        <option value="">Seleziona</option>
+                                        <?php foreach ($locations as $location): ?>
+                                            <option value="<?php echo (int) $location['id']; ?>" <?php echo (string) $location['id'] === $data['pickup_location_id'] ? 'selected' : ''; ?>><?php echo sanitize_output($location['name']); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="expected_at">Data prevista</label>
+                                    <input class="form-control" id="expected_at" name="expected_at" type="date" value="<?php echo sanitize_output($data['expected_at']); ?>">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="notes">Note interne</label>
+                                    <textarea class="form-control" id="notes" name="notes" rows="4" placeholder="Es. preferenze cliente, esiti contatto, anomalie"><?php echo sanitize_output($data['notes']); ?></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
                         <a class="btn btn-secondary" href="index.php">Annulla</a>
                         <button class="btn btn-warning text-dark" type="submit">Registra pickup</button>
                     </div>
                 </form>
+            </div>
+
+            <div class="col-12 col-xl-4">
+                <?php if ($sourceReport): ?>
+                    <div class="card ag-card mb-4">
+                        <div class="card-header bg-transparent border-0">
+                            <div>
+                                <h2 class="h6 mb-1">Segnalazione collegata</h2>
+                                <p class="text-muted mb-0">Importa i dettagli del cliente per evitare trascrizioni manuali.</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2"><span class="text-muted">ID segnalazione:</span> #<?php echo (int) $sourceReport['id']; ?></p>
+                            <p class="mb-2"><span class="text-muted">Tracking:</span> <?php echo sanitize_output($sourceReport['tracking_code'] ?? '—'); ?></p>
+                            <?php
+                                $contactDetails = $sourceReport['customer_email'] ?? $sourceReport['customer_phone'] ?? '';
+                                if ($contactDetails !== ''):
+                            ?>
+                                <p class="mb-0"><span class="text-muted">Contatto:</span> <?php echo sanitize_output($contactDetails); ?></p>
+                            <?php else: ?>
+                                <p class="text-muted mb-0">Nessun contatto aggiuntivo disponibile.</p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <div class="card ag-card mb-4">
+                    <div class="card-header bg-transparent border-0">
+                        <h2 class="h6 mb-0">Suggerimenti rapidi</h2>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0 small text-muted">
+                            <li class="mb-2"><i class="fa-solid fa-circle-check text-success me-2"></i>Verifica che il tracking sia già associato al corriere selezionato.</li>
+                            <li class="mb-2"><i class="fa-solid fa-circle-check text-success me-2"></i>Imposta la data prevista solo se confermata dal partner logistico.</li>
+                            <li class="mb-0"><i class="fa-solid fa-circle-check text-success me-2"></i>Usa le note per lasciare indicazioni operative al team.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card ag-card">
+                    <div class="card-header bg-transparent border-0">
+                        <h2 class="h6 mb-0">Riepilogo bozza</h2>
+                    </div>
+                    <div class="card-body small">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Tracking</span>
+                            <span class="fw-semibold"><?php echo $data['tracking'] !== '' ? sanitize_output($data['tracking']) : '—'; ?></span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Stato</span>
+                            <span class="fw-semibold"><?php echo sanitize_output(pickup_status_label($data['status'])); ?></span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Corriere</span>
+                            <span class="fw-semibold">
+                                <?php
+                                    $selectedCourier = array_values(array_filter($couriers, static function ($courier) use ($data) {
+                                        return (string) ($courier['id'] ?? '') === $data['courier_id'];
+                                    }));
+                                    echo $selectedCourier ? sanitize_output($selectedCourier[0]['name']) : '—';
+                                ?>
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Punto ritiro</span>
+                            <span class="fw-semibold">
+                                <?php
+                                    $selectedLocation = array_values(array_filter($locations, static function ($location) use ($data) {
+                                        return (string) ($location['id'] ?? '') === $data['pickup_location_id'];
+                                    }));
+                                    echo $selectedLocation ? sanitize_output($selectedLocation[0]['name']) : '—';
+                                ?>
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
