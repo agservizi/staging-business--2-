@@ -147,16 +147,20 @@ document.addEventListener('DOMContentLoaded', () => {
         tooltipElements.forEach((element) => {
             // eslint-disable-next-line no-undef
             const existing = bootstrap.Tooltip.getInstance(element);
-            if (existing) {
-                existing.dispose();
-            }
             const inSidebar = sidebar?.contains(element);
             const sidebarCollapsed = sidebar?.classList.contains('collapsed');
             const sidebarOpen = sidebar?.classList.contains('open');
             const sidebarHovering = sidebar?.classList.contains(SIDEBAR_HOVER_CLASS);
-            if (inSidebar && (!sidebarCollapsed || sidebarOpen || sidebarHovering)) {
+            const shouldDisable = Boolean(inSidebar && (!sidebarCollapsed || sidebarOpen || sidebarHovering));
+
+            if (shouldDisable) {
+                if (existing) {
+                    existing.hide();
+                    existing.disable();
+                }
                 return;
             }
+
             const options = { container: 'body' };
             const trigger = element.getAttribute('data-bs-trigger');
             if (trigger) {
@@ -169,8 +173,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!options.trigger) {
                 options.trigger = 'hover focus';
             }
+
+            const optionsSignature = JSON.stringify(options);
+            const previousSignature = element.dataset.csTooltipOptions || '';
+            const optionsChanged = optionsSignature !== previousSignature;
+
+            if (existing && !optionsChanged) {
+                existing.enable();
+                return;
+            }
+
+            if (existing && optionsChanged) {
+                existing.hide();
+                existing.dispose();
+            }
+
             // eslint-disable-next-line no-undef
-            new bootstrap.Tooltip(element, options);
+            bootstrap.Tooltip.getOrCreateInstance(element, options);
+            element.dataset.csTooltipOptions = optionsSignature;
         });
     };
 
