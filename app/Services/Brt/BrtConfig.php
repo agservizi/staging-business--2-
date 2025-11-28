@@ -164,13 +164,15 @@ final class BrtConfig
             'DPD' => $this->clean(env('BRT_PRICING_CONDITION_CODE_DPD')),
             'EUROPE' => $this->clean(env('BRT_PRICING_CONDITION_CODE_EUROPE')),
             'SWISS' => $this->clean(env('BRT_PRICING_CONDITION_CODE_SWISS')),
-        ], static fn ($value) => $value !== null && $value !== '');
+        ], static function ($value) {
+            return $value !== null && $value !== '';
+        });
         $this->defaultNetwork = $this->clean(env('BRT_DEFAULT_NETWORK'));
         $this->defaultServiceType = $this->clean(env('BRT_DEFAULT_SERVICE_TYPE'));
         $this->defaultPudoId = $this->clean(env('BRT_DEFAULT_PUDO_ID'));
-    $this->defaultBrtServiceCode = $this->clean(env('BRT_SERVICE_CODE'));
-    $this->returnServiceCode = $this->clean(env('BRT_RETURN_SERVICE_CODE', 'B15'));
-    $this->defaultReturnDepot = $this->clean(env('BRT_RETURN_DEPOT'));
+        $this->defaultBrtServiceCode = $this->clean(env('BRT_SERVICE_CODE'));
+        $this->returnServiceCode = $this->clean(env('BRT_RETURN_SERVICE_CODE', 'B15'));
+        $this->defaultReturnDepot = $this->clean(env('BRT_RETURN_DEPOT'));
 
         $this->labelRequiredByDefault = $this->boolEnv('BRT_LABEL_REQUIRED', true);
         $this->labelOutputType = $this->clean(env('BRT_LABEL_OUTPUT_TYPE', 'PDF')) ?? 'PDF';
