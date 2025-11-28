@@ -114,7 +114,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 <div class="flex-grow-1 d-flex flex-column min-vh-100 pickup-module">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
-        <div class="mb-4">
+        <div class="mb-4 d-flex justify-content-end">
             <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Torna ai pickup</a>
         </div>
         <div class="card ag-card">
