@@ -323,10 +323,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             </td>
                                             <td><?php echo sanitize_output(format_datetime_locale($report['updated_at'] ?? '')); ?></td>
                                             <td class="text-end">
-                                                <div class="btn-group flex-wrap" role="group">
-                                                    <a class="btn btn-sm btn-outline-warning" href="report.php?id=<?php echo (int) $report['id']; ?>"><i class="fa-solid fa-eye"></i></a>
+                                                <div class="d-flex flex-wrap justify-content-end gap-2">
+                                                    <a class="btn btn-soft-accent btn-icon btn-icon-sm" href="report.php?id=<?php echo (int) $report['id']; ?>" title="Dettaglio">
+                                                        <i class="fa-solid fa-eye"></i>
+                                                    </a>
                                                     <?php if (empty($report['pickup_id'])): ?>
-                                                        <a class="btn btn-sm btn-warning text-dark mt-2 mt-lg-0" href="create.php?source_report=<?php echo (int) $report['id']; ?>"><i class="fa-solid fa-circle-plus"></i></a>
+                                                        <a class="btn btn-warning text-dark btn-icon btn-icon-sm" href="create.php?source_report=<?php echo (int) $report['id']; ?>" title="Crea pickup">
+                                                            <i class="fa-solid fa-circle-plus"></i>
+                                                        </a>
                                                     <?php endif; ?>
                                                 </div>
                                             </td>
