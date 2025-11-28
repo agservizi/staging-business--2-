@@ -277,16 +277,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             </td>
                                             <td>
                                                 <span class="badge rounded-pill <?php echo sanitize_output($meta['badge']); ?>"><?php echo sanitize_output($meta['label']); ?></span>
-                                                <form class="d-flex align-items-center gap-2 mt-2" method="post">
+                                                <form class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2 mt-2" method="post">
                                                     <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                                                     <input type="hidden" name="action" value="update_report_status">
                                                     <input type="hidden" name="report_id" value="<?php echo (int) $report['id']; ?>">
-                                                    <select class="form-select form-select-sm" name="status">
+                                                    <select class="form-select form-select-sm flex-grow-1" name="status">
                                                         <?php foreach ($statuses as $statusOption): ?>
                                                             <option value="<?php echo $statusOption; ?>" <?php echo $statusOption === $report['status'] ? 'selected' : ''; ?>><?php echo pickup_customer_report_status_meta($statusOption)['label']; ?></option>
                                                         <?php endforeach; ?>
                                                     </select>
-                                                    <button class="btn btn-sm btn-outline-warning" type="submit">Aggiorna</button>
+                                                    <button class="btn btn-sm btn-outline-warning w-100 w-sm-auto" type="submit">Aggiorna</button>
                                                 </form>
                                             </td>
                                             <td>
@@ -297,36 +297,36 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                         <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                                                         <input type="hidden" name="action" value="unlink_report">
                                                         <input type="hidden" name="report_id" value="<?php echo (int) $report['id']; ?>">
-                                                        <button class="btn btn-sm btn-outline-warning" type="submit">Scollega</button>
+                                                        <button class="btn btn-sm btn-outline-warning w-100 w-sm-auto" type="submit">Scollega</button>
                                                     </form>
                                                 <?php else: ?>
                                                     <span class="badge bg-warning-subtle text-warning rounded-pill">In attesa</span>
-                                                    <form class="d-flex align-items-center gap-2 mt-2" method="post">
+                                                    <form class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 mt-2" method="post">
                                                         <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                                                         <input type="hidden" name="action" value="link_report">
                                                         <input type="hidden" name="report_id" value="<?php echo (int) $report['id']; ?>">
-                                                        <input class="form-control form-control-sm" name="package_id" type="number" min="1" placeholder="ID pickup">
-                                                        <select class="form-select form-select-sm" name="status_after">
+                                                        <input class="form-control form-control-sm flex-grow-1" name="package_id" type="number" min="1" placeholder="ID pickup">
+                                                        <select class="form-select form-select-sm flex-grow-1" name="status_after">
                                                             <option value="confirmed">Confermato</option>
                                                             <option value="arrived">Arrivato</option>
                                                             <option value="cancelled">Annullato</option>
                                                         </select>
-                                                        <button class="btn btn-sm btn-outline-warning" type="submit">Collega</button>
+                                                        <button class="btn btn-sm btn-outline-warning w-100 w-lg-auto" type="submit">Collega</button>
                                                     </form>
                                                     <form class="mt-2" method="post">
                                                         <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                                                         <input type="hidden" name="action" value="auto_link_report">
                                                         <input type="hidden" name="report_id" value="<?php echo (int) $report['id']; ?>">
-                                                        <button class="btn btn-sm btn-outline-warning" type="submit">Abbina tracking</button>
+                                                        <button class="btn btn-sm btn-outline-warning w-100 w-sm-auto" type="submit">Abbina tracking</button>
                                                     </form>
                                                 <?php endif; ?>
                                             </td>
                                             <td><?php echo sanitize_output(format_datetime_locale($report['updated_at'] ?? '')); ?></td>
                                             <td class="text-end">
-                                                <div class="btn-group">
+                                                <div class="btn-group flex-wrap" role="group">
                                                     <a class="btn btn-sm btn-outline-warning" href="report.php?id=<?php echo (int) $report['id']; ?>"><i class="fa-solid fa-eye"></i></a>
                                                     <?php if (empty($report['pickup_id'])): ?>
-                                                        <a class="btn btn-sm btn-warning text-dark" href="create.php?source_report=<?php echo (int) $report['id']; ?>"><i class="fa-solid fa-circle-plus"></i></a>
+                                                        <a class="btn btn-sm btn-warning text-dark mt-2 mt-lg-0" href="create.php?source_report=<?php echo (int) $report['id']; ?>"><i class="fa-solid fa-circle-plus"></i></a>
                                                     <?php endif; ?>
                                                 </div>
                                             </td>
