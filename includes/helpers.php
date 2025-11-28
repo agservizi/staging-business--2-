@@ -104,6 +104,38 @@ function app_base_path(): string
         }
     }
 
+    $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+    if ($requestUri !== '') {
+        $path = parse_url($requestUri, PHP_URL_PATH) ?: '';
+        $path = str_replace('\\', '/', $path);
+        if ($path !== '') {
+            $candidates = ['/modules/', '/api/', '/customer-portal/', '/dashboard', '/index.php'];
+            $positions = [];
+            foreach ($candidates as $needle) {
+                $pos = strpos($path, $needle);
+                if ($pos !== false) {
+                    $positions[] = $pos;
+                }
+            }
+            if ($positions !== []) {
+                $cut = min($positions);
+                $base = rtrim(substr($path, 0, $cut), '/');
+                if ($base !== '') {
+                    $cached = $base;
+                    return $cached;
+                }
+            }
+
+            if (!str_contains(basename($path), '.')) {
+                $base = rtrim($path, '/');
+                if ($base !== '') {
+                    $cached = $base;
+                    return $cached;
+                }
+            }
+        }
+    }
+
     $cached = '';
     return $cached;
 }
