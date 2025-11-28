@@ -15,17 +15,15 @@ class DailyFinancialReportService
 
     private PDO $pdo;
     private string $rootPath;
-    private string $storagePath;
 
     public function __construct(PDO $pdo, string $rootPath)
     {
         $this->pdo = $pdo;
         $this->rootPath = rtrim($rootPath, DIRECTORY_SEPARATOR);
-        $this->storagePath = $this->rootPath . DIRECTORY_SEPARATOR . 'backups' . DIRECTORY_SEPARATOR . 'daily-reports';
     }
 
     /**
-     * @return array{reportDate:string,filePath:string,totalEntrate:float,totalUscite:float,saldo:float}
+     * @return array{reportDate:string,totalEntrate:float,totalUscite:float,saldo:float}
      */
     public function generateForDate(DateTimeImmutable $date): array
     {
@@ -33,18 +31,24 @@ class DailyFinancialReportService
         $movements = $this->fetchMovementsForDate($reportDate);
         $totals = $this->calculateTotals($movements);
 
-        $relativePath = $this->storePdf($date, $movements, $totals['entrate'], $totals['uscite'], $totals['saldo']);
-
-        $this->persistReportRecord($reportDate, $relativePath, $totals['entrate'], $totals['uscite'], $totals['saldo']);
-        $this->logGeneration($reportDate, $relativePath, $totals['entrate'], $totals['uscite'], $totals['saldo']);
+        $this->persistReportRecord($reportDate, $totals['entrate'], $totals['uscite'], $totals['saldo']);
+        $this->logGeneration($reportDate, $totals['entrate'], $totals['uscite'], $totals['saldo']);
 
         return [
             'reportDate' => $reportDate,
-            'filePath' => $relativePath,
             'totalEntrate' => $totals['entrate'],
             'totalUscite' => $totals['uscite'],
             'saldo' => $totals['saldo'],
         ];
+    }
+
+    public function renderPdfContent(DateTimeImmutable $date): string
+    {
+        $reportDate = $date->format('Y-m-d');
+        $movements = $this->fetchMovementsForDate($reportDate);
+        $totals = $this->calculateTotals($movements);
+
+        return $this->buildPdfContent($date, $movements, $totals['entrate'], $totals['uscite'], $totals['saldo']);
     }
 
     /**
@@ -110,10 +114,8 @@ SQL;
     /**
      * @param array<int, array<string, mixed>> $movements
      */
-    private function storePdf(DateTimeImmutable $date, array $movements, float $entrate, float $uscite, float $saldo): string
+    private function buildPdfContent(DateTimeImmutable $date, array $movements, float $entrate, float $uscite, float $saldo): string
     {
-        $this->ensureStorageDirectory();
-
         $pdf = $this->createPdfInstance();
     $pdf->SetMargins(15.0, 15.0, 15.0);
     $pdf->SetAutoPageBreak(true, 20.0);
@@ -189,18 +191,7 @@ SQL;
         $pdf->Cell(40, 7, $this->pdfText($this->formatCurrency($saldo)), 0, 1, 'L');
         $pdf->SetTextColor(28, 37, 52);
 
-        $fileName = sprintf('report_finanziario_%s.pdf', $date->format('Ymd'));
-        $fullPath = $this->storagePath . DIRECTORY_SEPARATOR . $fileName;
-    $pdf->Output($fullPath, 'F');
-
-        return 'backups/daily-reports/' . $fileName;
-    }
-
-    private function ensureStorageDirectory(): void
-    {
-        if (!is_dir($this->storagePath) && !mkdir($this->storagePath, 0775, true) && !is_dir($this->storagePath)) {
-            throw new RuntimeException('Impossibile creare la cartella dei report giornalieri.');
-        }
+        return $pdf->Output('', 'S');
     }
     
     private function createPdfInstance(): object
@@ -223,27 +214,25 @@ SQL;
         return $instance;
     }
 
-    private function persistReportRecord(string $reportDate, string $filePath, float $entrate, float $uscite, float $saldo): void
+    private function persistReportRecord(string $reportDate, float $entrate, float $uscite, float $saldo): void
     {
         $stmt = $this->pdo->prepare('INSERT INTO daily_financial_reports (report_date, total_entrate, total_uscite, saldo, file_path, generated_at)
-            VALUES (:report_date, :entrate, :uscite, :saldo, :file_path, NOW())
-            ON DUPLICATE KEY UPDATE total_entrate = VALUES(total_entrate), total_uscite = VALUES(total_uscite), saldo = VALUES(saldo), file_path = VALUES(file_path), generated_at = VALUES(generated_at)');
+            VALUES (:report_date, :entrate, :uscite, :saldo, NULL, NOW())
+            ON DUPLICATE KEY UPDATE total_entrate = VALUES(total_entrate), total_uscite = VALUES(total_uscite), saldo = VALUES(saldo), generated_at = VALUES(generated_at)');
 
         $stmt->execute([
             ':report_date' => $reportDate,
             ':entrate' => $entrate,
             ':uscite' => $uscite,
             ':saldo' => $saldo,
-            ':file_path' => $filePath,
         ]);
     }
 
-    private function logGeneration(string $reportDate, string $filePath, float $entrate, float $uscite, float $saldo): void
+    private function logGeneration(string $reportDate, float $entrate, float $uscite, float $saldo): void
     {
         try {
             $payload = json_encode([
                 'report_date' => $reportDate,
-                'file_path' => $filePath,
                 'total_entrate' => $entrate,
                 'total_uscite' => $uscite,
                 'saldo' => $saldo,
