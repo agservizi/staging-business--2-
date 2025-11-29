@@ -148,21 +148,6 @@
         };
     };
 
-    const renderNativeOptions = (datalist, matches) => {
-        if (!datalist) {
-            return;
-        }
-        while (datalist.firstChild) {
-            datalist.removeChild(datalist.firstChild);
-        }
-        matches.forEach((match) => {
-            const option = document.createElement('option');
-            option.value = match.nome;
-            option.textContent = match.sigla ? `${match.nome} (${match.sigla})` : match.nome;
-            datalist.appendChild(option);
-        });
-    };
-
     const createDropdown = (input) => {
         const parent = input.parentElement;
         if (!parent) {
@@ -176,10 +161,7 @@
         const list = document.createElement('div');
         list.className = 'cie-istat-dropdown-list';
         container.appendChild(list);
-        const anchor = input.nextElementSibling && input.nextElementSibling.tagName === 'DATALIST'
-            ? input.nextElementSibling
-            : input;
-        anchor.insertAdjacentElement('afterend', container);
+        input.insertAdjacentElement('afterend', container);
         return { container, list };
     };
 
@@ -234,8 +216,6 @@
     };
 
     const initInput = (input) => {
-        const datalistId = input.getAttribute('list');
-        const datalist = datalistId ? document.getElementById(datalistId) : null;
         const dropdown = createDropdown(input);
         injectStyles();
 
@@ -255,7 +235,6 @@
         };
 
         const renderMatches = () => {
-            renderNativeOptions(datalist, state.matches);
             renderDropdownOptions(dropdown, state.matches, state.activeIndex, (index) => {
                 input.value = state.matches[index].nome;
                 applyMatch(input, state.matches[index]);

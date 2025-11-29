@@ -184,8 +184,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="luogo_nascita">Luogo di nascita</label>
-                                <input class="form-control" id="luogo_nascita" name="luogo_nascita" value="<?php echo sanitize_output($data['luogo_nascita']); ?>" placeholder="Comune di nascita" list="cie-luogo-nascita-options" data-istat-comune="true" data-istat-min-chars="3">
-                                <datalist id="cie-luogo-nascita-options"></datalist>
+                                <input class="form-control" id="luogo_nascita" name="luogo_nascita" value="<?php echo sanitize_output($data['luogo_nascita']); ?>" placeholder="Comune di nascita" data-istat-comune="true" data-istat-min-chars="3">
                                 <small class="text-muted">Suggerimenti ISTAT disponibili digitando almeno 3 caratteri.</small>
                             </div>
                             <div class="col-md-4">
@@ -212,9 +211,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label" for="residenza_citta">Comune</label>
-                                <input class="form-control" id="residenza_citta" name="residenza_citta" value="<?php echo sanitize_output($data['residenza_citta']); ?>" list="cie-residenza-citta-options" data-istat-comune="true" data-istat-province-target="#residenza_provincia" data-istat-cap-target="#residenza_cap">
-                                <datalist id="cie-residenza-citta-options"></datalist>
-                                <small class="text-muted">Seleziona il comune dall'elenco ISTAT per compilare automaticamente la provincia.</small>
+                                <input class="form-control" id="residenza_citta" name="residenza_citta" value="<?php echo sanitize_output($data['residenza_citta']); ?>" data-istat-comune="true" data-istat-province-target="#residenza_provincia" data-istat-cap-target="#residenza_cap">
+                                <small class="text-muted">Scegli il comune dal dropdown ISTAT per compilare automaticamente la provincia.</small>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label" for="residenza_provincia">Provincia</label>
@@ -228,8 +226,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label" for="comune_richiesta">Comune di richiesta</label>
-                                <input class="form-control" id="comune_richiesta" name="comune_richiesta" value="<?php echo sanitize_output($data['comune_richiesta']); ?>" required list="cie-comune-richiesta-options" data-istat-comune="true">
-                                <datalist id="cie-comune-richiesta-options"></datalist>
+                                <input class="form-control" id="comune_richiesta" name="comune_richiesta" value="<?php echo sanitize_output($data['comune_richiesta']); ?>" required data-istat-comune="true">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="disponibilita_data">Data preferita</label>
