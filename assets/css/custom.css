@@ -23,6 +23,19 @@
     max-width: 280px;
     height: auto;
 }
+
+.otp-input {
+    font-size: 1.6rem;
+    font-weight: 600;
+    letter-spacing: 0.25rem;
+    text-align: center;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.otp-input::placeholder {
+    color: var(--ag-muted);
+    letter-spacing: 0.25rem;
+}
 /* cspell:ignore topbar */
 :root {
     --ag-theme-key: 'navy';

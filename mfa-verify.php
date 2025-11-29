@@ -127,17 +127,21 @@ $userDisplay = format_user_display_name(
                             <?php echo sanitize_output($error); ?>
                         </div>
                     <?php endif; ?>
-                    <form method="post" novalidate>
+                    <form id="mfaVerifyForm" method="post" novalidate>
                         <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
                         <div class="mb-4">
                             <label for="code" class="form-label">Codice a 6 cifre</label>
                             <div class="input-group input-group-lg">
                                 <span class="input-group-text"><i class="fa-solid fa-key"></i></span>
-                                <input type="text" class="form-control" id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" placeholder="000000" autocomplete="one-time-code" required>
+                                <input type="text" class="form-control otp-input" id="code" name="code" inputmode="numeric" pattern="[0-9]{3}\s?[0-9]{3}" placeholder="000 000" autocomplete="one-time-code" maxlength="7" required>
                             </div>
+                            <div class="form-text">Inserisci il codice in due blocchi da 3 cifre.</div>
                         </div>
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-warning fw-semibold">Verifica e accedi</button>
+                            <button type="submit" class="btn btn-warning fw-semibold" id="mfaSubmitBtn">
+                                <span class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+                                <span class="btn-label">Verifica e accedi</span>
+                            </button>
                         </div>
                     </form>
                     <div class="login-meta mt-5">
@@ -148,5 +152,49 @@ $userDisplay = format_user_display_name(
         </div>
     </main>
     <script src="<?php echo asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js'); ?>"></script>
+    <script>
+        (() => {
+            const form = document.getElementById('mfaVerifyForm');
+            const codeInput = document.getElementById('code');
+            if (!form || !codeInput) return;
+
+            const formatOtp = (value) => {
+                const digitsOnly = value.replace(/\D+/g, '').slice(0, 6);
+                if (digitsOnly.length <= 3) {
+                    return digitsOnly;
+                }
+                return `${digitsOnly.slice(0, 3)} ${digitsOnly.slice(3)}`.trim();
+            };
+
+            const handleInput = () => {
+                const cursorAtEnd = codeInput.selectionStart === codeInput.value.length;
+                codeInput.value = formatOtp(codeInput.value);
+                if (cursorAtEnd) {
+                    codeInput.setSelectionRange(codeInput.value.length, codeInput.value.length);
+                }
+            };
+
+            codeInput.addEventListener('input', handleInput);
+            codeInput.addEventListener('paste', (event) => {
+                event.preventDefault();
+                const text = (event.clipboardData || window.clipboardData).getData('text');
+                codeInput.value = formatOtp(text);
+            });
+
+            form.addEventListener('submit', () => {
+                const submitBtn = document.getElementById('mfaSubmitBtn');
+                if (!submitBtn) return;
+                const normalizedCode = (codeInput.value || '').replace(/\s+/g, '');
+                if (!/^\d{6}$/.test(normalizedCode)) {
+                    return;
+                }
+                submitBtn.disabled = true;
+                const spinner = submitBtn.querySelector('.spinner-border');
+                const label = submitBtn.querySelector('.btn-label');
+                spinner?.classList.remove('d-none');
+                if (label) label.textContent = 'Verifica in corso...';
+            });
+        })();
+    </script>
 </body>
 </html>
