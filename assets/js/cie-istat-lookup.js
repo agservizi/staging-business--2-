@@ -31,10 +31,11 @@
                     right: 0;
                     z-index: 20;
                     margin-top: 2px;
-                    background: #1f1f1f;
-                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    background: var(--bs-body-bg, #ffffff);
+                    color: var(--bs-body-color, #212529);
+                    border: 1px solid rgba(15, 23, 42, 0.12);
                     border-radius: 0.5rem;
-                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+                    box-shadow: 0 18px 35px rgba(15, 23, 42, 0.15);
                     max-height: 260px;
                     overflow-y: auto;
                 }
@@ -53,7 +54,7 @@
                 }
                 .cie-istat-option:hover,
                 .cie-istat-option.is-active {
-                    background: rgba(255, 255, 255, 0.08);
+                    background: rgba(13, 110, 253, 0.08);
                 }
             `;
             document.head.appendChild(style);
