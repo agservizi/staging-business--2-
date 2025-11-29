@@ -234,6 +234,17 @@
             state.activeIndex = -1;
         };
 
+        const handleOutsidePointer = (event) => {
+            if (event.target === input) {
+                return;
+            }
+            if (dropdown && dropdown.container.contains(event.target)) {
+                return;
+            }
+            hideDropdown();
+        };
+        document.addEventListener('pointerdown', handleOutsidePointer);
+
         const renderMatches = () => {
             renderDropdownOptions(dropdown, state.matches, state.activeIndex, (index) => {
                 input.value = state.matches[index].nome;
