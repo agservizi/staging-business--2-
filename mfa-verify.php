@@ -99,9 +99,9 @@ $userDisplay = format_user_display_name(
     <link href="<?php echo asset('assets/css/custom.css'); ?>" rel="stylesheet">
 </head>
 <body class="login-body" data-bs-theme="light">
-    <main class="login-shell">
-        <div class="row g-0">
-            <div class="col-md-5 login-side-brand d-flex flex-column justify-content-between">
+    <main class="auth-layout login-shell">
+        <div class="auth-grid">
+            <section class="auth-panel auth-panel-brand login-side-brand">
                 <div>
                     <span class="badge rounded-pill px-3 py-2 mb-4">Verifica a due fattori</span>
                     <h1 class="display-6 fw-semibold mb-3">Ciao <?php echo sanitize_output($userDisplay); ?>, conferma l'accesso.</h1>
@@ -112,37 +112,39 @@ $userDisplay = format_user_display_name(
                         <li><i class="fa-solid fa-circle-info"></i><span>Se non riesci ad accedere, contatta subito l'amministratore</span></li>
                     </ul>
                 </div>
-                <div class="login-meta">
+                <div class="login-meta auth-meta">
                     &copy; <?php echo date('Y'); ?> Coresuite Business
                 </div>
-            </div>
-            <div class="col-md-7 login-form-area">
-                <div class="mb-4 text-center text-md-start">
-                    <h2 class="h4 fw-semibold mb-2">Inserisci il codice di verifica</h2>
-                    <p class="login-meta mb-0">Il codice contiene 6 cifre. Usa l'opzione di ri-sincronizzazione dell'app se i codici risultano sempre errati.</p>
-                </div>
-                <?php if ($error !== ''): ?>
-                    <div class="alert alert-danger border-0 shadow-sm mb-4" role="alert">
-                        <?php echo sanitize_output($error); ?>
+            </section>
+            <section class="auth-panel auth-panel-form login-form-area">
+                <div class="auth-panel-content">
+                    <div class="mb-4 text-center text-md-start">
+                        <h2 class="h4 fw-semibold mb-2">Inserisci il codice di verifica</h2>
+                        <p class="login-meta mb-0">Il codice contiene 6 cifre. Usa l'opzione di ri-sincronizzazione dell'app se i codici risultano sempre errati.</p>
                     </div>
-                <?php endif; ?>
-                <form method="post" novalidate>
-                    <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-                    <div class="mb-4">
-                        <label for="code" class="form-label">Codice a 6 cifre</label>
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text"><i class="fa-solid fa-key"></i></span>
-                            <input type="text" class="form-control" id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" placeholder="000000" autocomplete="one-time-code" required>
+                    <?php if ($error !== ''): ?>
+                        <div class="alert alert-danger border-0 shadow-sm mb-4" role="alert">
+                            <?php echo sanitize_output($error); ?>
                         </div>
+                    <?php endif; ?>
+                    <form method="post" novalidate>
+                        <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                        <div class="mb-4">
+                            <label for="code" class="form-label">Codice a 6 cifre</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text"><i class="fa-solid fa-key"></i></span>
+                                <input type="text" class="form-control" id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" placeholder="000000" autocomplete="one-time-code" required>
+                            </div>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-warning fw-semibold">Verifica e accedi</button>
+                        </div>
+                    </form>
+                    <div class="login-meta mt-5">
+                        Non hai accesso al generatore di codici? Contatta l'assistenza per il reset MFA.
                     </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-warning fw-semibold">Verifica e accedi</button>
-                    </div>
-                </form>
-                <div class="login-meta mt-5">
-                    Non hai accesso al generatore di codici? Contatta l'assistenza per il reset MFA.
                 </div>
-            </div>
+            </section>
         </div>
     </main>
     <script src="<?php echo asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js'); ?>"></script>

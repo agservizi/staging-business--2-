@@ -179,9 +179,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="<?php echo asset('assets/css/custom.css'); ?>" rel="stylesheet">
 </head>
 <body class="login-body" data-bs-theme="light">
-    <main class="login-shell">
-        <div class="row g-0">
-            <div class="col-md-5 login-side-brand d-flex flex-column justify-content-between">
+    <main class="auth-layout login-shell">
+        <div class="auth-grid">
+            <section class="auth-panel auth-panel-brand login-side-brand">
                 <div>
                     <span class="badge rounded-pill px-3 py-2 mb-4">Configura l'autenticazione</span>
                     <h1 class="display-6 fw-semibold mb-3">Proteggi il tuo account con Google Authenticator.</h1>
@@ -192,74 +192,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <li>Inserisci qui sotto il codice a 6 cifre per completare l'attivazione.</li>
                     </ol>
                 </div>
-                <div class="login-meta">
+                <div class="login-meta auth-meta">
                     &copy; <?php echo date('Y'); ?> Coresuite Business
                 </div>
-            </div>
-            <div class="col-md-7 login-form-area">
-                <div class="mb-4 text-center text-md-start">
-                    <h2 class="h4 fw-semibold mb-2">Autenticazione a due fattori</h2>
-                    <p class="login-meta mb-0">Titolo account: <strong><?php echo sanitize_output($sessionUser['username']); ?></strong></p>
-                </div>
-
-                <?php if ($errors): ?>
-                    <div class="alert alert-danger border-0 shadow-sm mb-4" role="alert">
-                        <?php echo implode('<br>', array_map('sanitize_output', $errors)); ?>
+            </section>
+            <section class="auth-panel auth-panel-form login-form-area">
+                <div class="auth-panel-content">
+                    <div class="mb-4 text-center text-md-start">
+                        <h2 class="h4 fw-semibold mb-2">Autenticazione a due fattori</h2>
+                        <p class="login-meta mb-0">Titolo account: <strong><?php echo sanitize_output($sessionUser['username']); ?></strong></p>
                     </div>
-                <?php endif; ?>
 
-                <?php if ($resetRequested && !$errors): ?>
-                    <div class="alert alert-info border-0 shadow-sm mb-4" role="alert">
-                        <i class="fa-solid fa-rotate me-2"></i>Stai rigenerando la configurazione MFA. Completa il processo per sostituire il vecchio codice.
-                    </div>
-                <?php endif; ?>
-
-                <div class="mfa-qr-wrapper text-center mb-4">
-                    <?php if ($qrSvg !== null): ?>
-                        <div class="d-inline-block bg-white p-3 rounded-3 shadow-sm border border-light">
-                            <?php echo $qrSvg; ?>
+                    <?php if ($errors): ?>
+                        <div class="alert alert-danger border-0 shadow-sm mb-4" role="alert">
+                            <?php echo implode('<br>', array_map('sanitize_output', $errors)); ?>
                         </div>
-                        <div class="mt-3 small text-secondary">Scansiona con l'app Authenticator</div>
+                    <?php endif; ?>
+
+                    <?php if ($resetRequested && !$errors): ?>
+                        <div class="alert alert-info border-0 shadow-sm mb-4" role="alert">
+                            <i class="fa-solid fa-rotate me-2"></i>Stai rigenerando la configurazione MFA. Completa il processo per sostituire il vecchio codice.
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="mfa-qr-wrapper text-center mb-4">
+                        <?php if ($qrSvg !== null): ?>
+                            <div class="d-inline-block bg-white p-3 rounded-3 shadow-sm border border-light">
+                                <?php echo $qrSvg; ?>
+                            </div>
+                            <div class="mt-3 small text-secondary">Scansiona con l'app Authenticator</div>
+                        <?php else: ?>
+                            <div class="alert alert-warning" role="alert">
+                                Impossibile generare il QR code automaticamente. Usa la chiave manuale qui sotto.
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="card bg-body-secondary border-0 mb-4">
+                        <div class="card-body">
+                            <span class="text-muted small d-block">Chiave segreta</span>
+                            <span class="fs-5 fw-semibold text-monospace"><?php echo sanitize_output($displaySecret); ?></span>
+                            <div class="form-text">Se non puoi scansionare il QR, inserisci questa chiave manualmente.</div>
+                        </div>
+                    </div>
+
+                    <form method="post" novalidate>
+                        <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                        <div class="mb-4">
+                            <label for="code" class="form-label">Codice a 6 cifre</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text"><i class="fa-solid fa-shield-halved"></i></span>
+                                <input type="text" class="form-control" id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" placeholder="000000" autocomplete="one-time-code" required>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column flex-md-row gap-3">
+                            <button type="submit" class="btn btn-warning fw-semibold flex-fill"><i class="fa-solid fa-circle-check me-2"></i>Conferma configurazione</button>
+                            <button type="submit" name="regen" value="1" class="btn btn-outline-warning flex-fill"><i class="fa-solid fa-arrows-rotate me-2"></i>Genera un nuovo codice</button>
+                        </div>
+                    </form>
+
+                    <?php if ($mode === 'manage'): ?>
+                        <div class="login-meta mt-4 text-center text-md-start">
+                            Una volta confermato, l'autenticazione a due fattori sarà attiva per gli accessi futuri. Tornerai automaticamente al profilo.
+                        </div>
                     <?php else: ?>
-                        <div class="alert alert-warning" role="alert">
-                            Impossibile generare il QR code automaticamente. Usa la chiave manuale qui sotto.
+                        <div class="login-meta mt-4 text-center text-md-start">
+                            Dopo la conferma verrai reindirizzato alla tua dashboard.
                         </div>
                     <?php endif; ?>
                 </div>
-
-                <div class="card bg-body-secondary border-0 mb-4">
-                    <div class="card-body">
-                        <span class="text-muted small d-block">Chiave segreta</span>
-                        <span class="fs-5 fw-semibold text-monospace"><?php echo sanitize_output($displaySecret); ?></span>
-                        <div class="form-text">Se non puoi scansionare il QR, inserisci questa chiave manualmente.</div>
-                    </div>
-                </div>
-
-                <form method="post" novalidate>
-                    <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-                    <div class="mb-4">
-                        <label for="code" class="form-label">Codice a 6 cifre</label>
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text"><i class="fa-solid fa-shield-halved"></i></span>
-                            <input type="text" class="form-control" id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" placeholder="000000" autocomplete="one-time-code" required>
-                        </div>
-                    </div>
-                    <div class="d-flex flex-column flex-md-row gap-3">
-                        <button type="submit" class="btn btn-warning fw-semibold flex-fill"><i class="fa-solid fa-circle-check me-2"></i>Conferma configurazione</button>
-                        <button type="submit" name="regen" value="1" class="btn btn-outline-warning flex-fill"><i class="fa-solid fa-arrows-rotate me-2"></i>Genera un nuovo codice</button>
-                    </div>
-                </form>
-
-                <?php if ($mode === 'manage'): ?>
-                    <div class="login-meta mt-4 text-center text-md-start">
-                        Una volta confermato, l'autenticazione a due fattori sarà attiva per gli accessi futuri. Tornerai automaticamente al profilo.
-                    </div>
-                <?php else: ?>
-                    <div class="login-meta mt-4 text-center text-md-start">
-                        Dopo la conferma verrai reindirizzato alla tua dashboard.
-                    </div>
-                <?php endif; ?>
-            </div>
+            </section>
         </div>
     </main>
     <script src="<?php echo asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js'); ?>"></script>
