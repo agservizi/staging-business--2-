@@ -127,7 +127,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                 </div>
             </section>
             <section class="auth-panel auth-panel-form login-form-area">
-                <div class="auth-panel-content">
                     <div class="mb-4 text-center text-md-start">
                         <h2 class="h4 fw-semibold mb-2">Accedi al tuo workspace</h2>
                         <p class="login-meta mb-0">Hai bisogno di assistenza? <a class="link-warning text-decoration-none" href="forgot_password.php">Recupera l'accesso</a>.</p>
@@ -168,7 +167,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                     <div class="login-meta mt-5">
                         Accesso riservato al personale autorizzato. Ogni attività viene registrata per motivi di sicurezza e compliance.
                     </div>
-                </div>
             </section>
         </div>
     </main>

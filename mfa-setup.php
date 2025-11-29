@@ -197,7 +197,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </section>
             <section class="auth-panel auth-panel-form login-form-area">
-                <div class="auth-panel-content">
                     <div class="mb-4 text-center text-md-start">
                         <h2 class="h4 fw-semibold mb-2">Autenticazione a due fattori</h2>
                         <p class="login-meta mb-0">Titolo account: <strong><?php echo sanitize_output($sessionUser['username']); ?></strong></p>
@@ -260,7 +259,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             Dopo la conferma verrai reindirizzato alla tua dashboard.
                         </div>
                     <?php endif; ?>
-                </div>
             </section>
         </div>
     </main>

@@ -117,7 +117,6 @@ $userDisplay = format_user_display_name(
                 </div>
             </section>
             <section class="auth-panel auth-panel-form login-form-area">
-                <div class="auth-panel-content">
                     <div class="mb-4 text-center text-md-start">
                         <h2 class="h4 fw-semibold mb-2">Inserisci il codice di verifica</h2>
                         <p class="login-meta mb-0">Il codice contiene 6 cifre. Usa l'opzione di ri-sincronizzazione dell'app se i codici risultano sempre errati.</p>
@@ -143,7 +142,6 @@ $userDisplay = format_user_display_name(
                     <div class="login-meta mt-5">
                         Non hai accesso al generatore di codici? Contatta l'assistenza per il reset MFA.
                     </div>
-                </div>
             </section>
         </div>
     </main>

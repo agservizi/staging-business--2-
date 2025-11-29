@@ -1,15 +1,3 @@
-.auth-panel-content {
-    width: 100%;
-    margin: 0;
-}
-
-@media (min-width: 992px) {
-    .auth-panel-content {
-        width: min(100%, 520px);
-        margin: 0 auto;
-    }
-}
-
 .login-meta {
     font-size: 0.9rem;
     color: var(--ag-muted);
@@ -378,7 +366,7 @@ body.login-body {
 .auth-panel,
 .login-side-brand,
 .login-form-area {
-    padding: clamp(2rem, 3vw, 5rem);
+    padding: clamp(1.25rem, 3vw, 4rem);
     min-height: 100%;
 }
 
