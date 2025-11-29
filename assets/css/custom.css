@@ -285,10 +285,9 @@ body.login-body {
         radial-gradient(circle at bottom right, rgba(var(--ag-accent-rgb), 0.14), transparent 60%),
         var(--ag-surface-alt);
     color: var(--ag-text);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1.75rem 1rem;
+    display: block;
+    padding: 0;
+    overflow-x: hidden;
 }
 
 #csToastContainer {
@@ -344,24 +343,33 @@ body.login-body {
 
 .auth-layout,
 .login-shell {
-    width: min(100%, 1200px);
-    margin: 0 auto;
-    border-radius: 1.5rem;
-    border: 1px solid var(--ag-border);
-    background: rgba(255, 255, 255, 0.94);
-    box-shadow: 0 24px 48px rgba(8, 28, 60, 0.12);
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
     overflow: hidden;
+    min-height: 100vh;
 }
 
 .auth-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    min-height: 100vh;
+}
+
+@media (min-width: 1200px) {
+    .auth-grid {
+        grid-template-columns: minmax(520px, 1fr) minmax(480px, 1fr);
+    }
 }
 
 .auth-panel,
 .login-side-brand,
 .login-form-area {
-    padding: clamp(1.75rem, 2.5vw, 2.75rem);
+    padding: clamp(2rem, 3vw, 5rem);
     min-height: 100%;
 }
 
