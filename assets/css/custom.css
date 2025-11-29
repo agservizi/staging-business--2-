@@ -286,6 +286,7 @@ body.login-body {
         var(--ag-surface-alt);
     color: var(--ag-text);
     display: block;
+    margin: 0;
     padding: 0;
     overflow-x: hidden;
 }
@@ -356,13 +357,14 @@ body.login-body {
 
 .auth-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     min-height: 100vh;
+    width: 100%;
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 992px) {
     .auth-grid {
-        grid-template-columns: minmax(520px, 1fr) minmax(480px, 1fr);
+        grid-template-columns: minmax(460px, 1fr) minmax(420px, 1fr);
     }
 }
 
