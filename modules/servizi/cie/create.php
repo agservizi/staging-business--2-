@@ -234,7 +234,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="disponibilita_fascia">Fascia oraria</label>
-                                <input class="form-control" id="disponibilita_fascia" name="disponibilita_fascia" value="<?php echo sanitize_output($data['disponibilita_fascia']); ?>" placeholder="Es. Mattina/Pomeriggio">
+                                <select class="form-select" id="disponibilita_fascia" name="disponibilita_fascia">
+                                    <option value="">Seleziona fascia</option>
+                                    <option value="Mattina" <?php echo $data['disponibilita_fascia'] === 'Mattina' ? 'selected' : ''; ?>>Mattina</option>
+                                    <option value="Pomeriggio" <?php echo $data['disponibilita_fascia'] === 'Pomeriggio' ? 'selected' : ''; ?>>Pomeriggio</option>
+                                </select>
                             </div>
                         </div>
                     </div>
