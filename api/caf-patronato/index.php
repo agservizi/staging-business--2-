@@ -2,9 +2,6 @@
 declare(strict_types=1);
 
 use App\Services\CAFPatronato\PracticesService;
-use JsonException;
-use RuntimeException;
-use Throwable;
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';
@@ -172,6 +169,18 @@ try {
             }
             $notes = $service->addNote($practiceId, $content, $userId, $operatorId, $visibleAdmin, $visibleOperator);
             respondWithData(['notes' => $notes]);
+            break;
+
+        case 'delete_practice':
+            if (!$canManagePractices) {
+                respondWithError('Non hai i permessi per eliminare pratiche.', 403);
+            }
+            $practiceId = (int) ($bodyParams['id'] ?? 0);
+            if ($practiceId <= 0) {
+                respondWithError('ID pratica non valido.', 400);
+            }
+            $service->deletePractice($practiceId, $canManagePractices, $operatorId);
+            respondWithData(['deleted' => true]);
             break;
 
         case 'delete_note':

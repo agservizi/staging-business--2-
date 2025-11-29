@@ -5,7 +5,6 @@ use App\Services\Brt\BrtConfig;
 use App\Services\Brt\BrtException;
 use App\Services\Brt\BrtShipmentService;
 use App\Services\Brt\BrtTrackingService;
-use Throwable;
 
 define('CORESUITE_BRT_BOOTSTRAP', true);
 
@@ -19,7 +18,7 @@ if (is_file($autoloadPath)) {
 require_once __DIR__ . '/functions.php';
 
 require_role('Admin', 'Operatore', 'Manager');
-$pageTitle = 'BRT Spedizioni';
+$pageTitle = 'Spedizioni BRT';
 
 $csrfToken = csrf_token();
 
@@ -99,8 +98,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 } catch (BrtException $exception) {
                     $cleanMessage = brt_normalize_remote_warning($exception->getMessage());
-                    $errors[] = sprintf('Conferma spedizione #%d non riuscita: %s', $selectedId, $cleanMessage);
-                    continue;
+                    if (brt_is_remote_already_confirmed_message($cleanMessage)) {
+                        brt_mark_shipment_confirmed_from_remote_status($selectedId, $cleanMessage);
+                        brt_log_event('info', 'Spedizione già confermata da BRT rilevata durante il borderò', [
+                            'shipment_id' => $selectedId,
+                            'numeric_reference' => $shipment['numeric_sender_reference'] ?? null,
+                            'message' => $cleanMessage,
+                            'user' => current_user_display_name(),
+                        ]);
+                    } else {
+                        $errors[] = sprintf('Conferma spedizione #%d non riuscita: %s', $selectedId, $cleanMessage);
+                        continue;
+                    }
                 } catch (Throwable $exception) {
                     $errors[] = sprintf('Conferma spedizione #%d non riuscita: %s', $selectedId, $exception->getMessage());
                     continue;
@@ -200,9 +209,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'user' => current_user_display_name(),
                 ]);
             } elseif ($action === 'refresh_tracking') {
-                $trackingId = (string) ($_POST['tracking_by_parcel_id'] ?? $shipment['tracking_by_parcel_id'] ?? '');
+                $trackingId = brt_normalize_tracking_identifier($_POST['tracking_by_parcel_id'] ?? ($shipment['tracking_by_parcel_id'] ?? ''));
                 if ($trackingId === '') {
-                    $trackingId = (string) ($_POST['parcel_id'] ?? $shipment['parcel_id'] ?? '');
+                    $trackingId = brt_normalize_tracking_identifier($_POST['parcel_id'] ?? ($shipment['parcel_id'] ?? ''));
                 }
 
                 if ($trackingId === '') {
@@ -348,6 +357,10 @@ $statusOptions = [
     'created' => 'Create',
     'confirmed' => 'Confermate',
     'warning' => 'Con avvisi',
+    'in_transit' => 'In transito',
+    'out_for_delivery' => 'In consegna',
+    'delivered' => 'Consegnate',
+    'returned' => 'In reso',
     'cancelled' => 'Annullate',
 ];
 
@@ -362,9 +375,98 @@ if ($searchFilter !== '') {
     $filters['search'] = $searchFilter;
 }
 
-$shipments = brt_get_shipments($filters);
+$manifestsPerPage = 5;
+$manifestsPage = max(1, (int) ($_GET['manifests_page'] ?? 1));
+
+$shipmentsPerPage = 10;
+$currentPage = max(1, (int) ($_GET['page'] ?? 1));
+$totalShipments = 0;
+$shipments = brt_get_shipments($filters, $shipmentsPerPage, ($currentPage - 1) * $shipmentsPerPage, $totalShipments);
+$totalPages = $totalShipments > 0 ? (int) ceil($totalShipments / $shipmentsPerPage) : 0;
+if ($totalPages > 0 && $currentPage > $totalPages) {
+    $currentPage = $totalPages;
+    $shipments = brt_get_shipments($filters, $shipmentsPerPage, ($currentPage - 1) * $shipmentsPerPage, $totalShipments);
+}
+$currentOffset = max(0, ($currentPage - 1) * $shipmentsPerPage);
+$shipmentsRangeStart = $totalShipments > 0 ? ($currentOffset + 1) : 0;
+$shipmentsRangeEnd = $totalShipments > 0 ? min($totalShipments, $currentOffset + count($shipments)) : 0;
+$paginationFilters = [];
+if ($statusFilter !== '') {
+    $paginationFilters['status'] = $statusFilter;
+}
+if ($searchFilter !== '') {
+    $paginationFilters['search'] = $searchFilter;
+}
+if ($manifestsPage > 1) {
+    $paginationFilters['manifests_page'] = $manifestsPage;
+}
+$paginationUrlBuilder = static function (int $targetPage) use ($paginationFilters): string {
+    $params = $paginationFilters;
+    if ($targetPage > 1) {
+        $params['page'] = $targetPage;
+    } else {
+        unset($params['page']);
+    }
+    $query = http_build_query($params);
+    return $query === '' ? 'index.php' : 'index.php?' . $query;
+};
+$paginationPages = [];
+if ($totalPages > 1) {
+    $paginationPages = [1, $totalPages];
+    for ($i = $currentPage - 1; $i <= $currentPage + 1; $i++) {
+        if ($i > 1 && $i < $totalPages) {
+            $paginationPages[] = $i;
+        }
+    }
+    $paginationPages = array_values(array_unique(array_filter($paginationPages, static function (int $pageNumber) use ($totalPages): bool {
+        return $pageNumber >= 1 && $pageNumber <= $totalPages;
+    })));
+    sort($paginationPages);
+}
 $recentOrmRequests = brt_get_recent_orm_requests();
-$recentManifests = brt_get_recent_manifests();
+$totalManifests = 0;
+$recentManifests = brt_get_recent_manifests($manifestsPerPage, ($manifestsPage - 1) * $manifestsPerPage, $totalManifests);
+$totalManifestPages = $totalManifests > 0 ? (int) ceil($totalManifests / $manifestsPerPage) : 0;
+if ($totalManifestPages > 0 && $manifestsPage > $totalManifestPages) {
+    $manifestsPage = $totalManifestPages;
+    $recentManifests = brt_get_recent_manifests($manifestsPerPage, ($manifestsPage - 1) * $manifestsPerPage, $totalManifests);
+}
+$manifestsOffset = max(0, ($manifestsPage - 1) * $manifestsPerPage);
+$manifestsRangeStart = $totalManifests > 0 ? ($manifestsOffset + 1) : 0;
+$manifestsRangeEnd = $totalManifests > 0 ? min($totalManifests, $manifestsOffset + count($recentManifests)) : 0;
+$manifestPaginationFilters = [];
+if ($statusFilter !== '') {
+    $manifestPaginationFilters['status'] = $statusFilter;
+}
+if ($searchFilter !== '') {
+    $manifestPaginationFilters['search'] = $searchFilter;
+}
+if ($currentPage > 1) {
+    $manifestPaginationFilters['page'] = $currentPage;
+}
+$manifestPaginationUrlBuilder = static function (int $targetPage) use ($manifestPaginationFilters): string {
+    $params = $manifestPaginationFilters;
+    if ($targetPage > 1) {
+        $params['manifests_page'] = $targetPage;
+    } else {
+        unset($params['manifests_page']);
+    }
+    $query = http_build_query($params);
+    return $query === '' ? 'index.php' : 'index.php?' . $query;
+};
+$manifestPaginationPages = [];
+if ($totalManifestPages > 1) {
+    $manifestPaginationPages = [1, $totalManifestPages];
+    for ($i = $manifestsPage - 1; $i <= $manifestsPage + 1; $i++) {
+        if ($i > 1 && $i < $totalManifestPages) {
+            $manifestPaginationPages[] = $i;
+        }
+    }
+    $manifestPaginationPages = array_values(array_unique(array_filter($manifestPaginationPages, static function (int $pageNumber) use ($totalManifestPages): bool {
+        return $pageNumber >= 1 && $pageNumber <= $totalManifestPages;
+    })));
+    sort($manifestPaginationPages);
+}
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -374,7 +476,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     <main class="content-wrapper">
         <div class="page-toolbar mb-4">
             <div>
-                <h1 class="h3 mb-0">BRT Spedizioni</h1>
+                <h1 class="h3 mb-0">Spedizioni BRT</h1>
                 <p class="text-muted mb-0">Gestione spedizioni, etichette e tracking tramite webservice BRT.</p>
             </div>
             <div class="toolbar-actions d-flex align-items-center gap-2">
@@ -417,7 +519,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <div class="card ag-card mb-5">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h2 class="card-title h5 mb-0">Ultime spedizioni</h2>
-                <span class="text-muted small">Mostrate al massimo 200 spedizioni</span>
+                <?php if ($totalShipments > 0): ?>
+                    <span class="text-muted small">
+                        <?php echo sanitize_output(sprintf('Mostrate %d-%d di %d | Pagina %d di %d | %d per pagina', $shipmentsRangeStart, $shipmentsRangeEnd, $totalShipments, $currentPage, max(1, $totalPages), $shipmentsPerPage)); ?>
+                    </span>
+                <?php else: ?>
+                    <span class="text-muted small">Nessuna spedizione trovata</span>
+                <?php endif; ?>
             </div>
             <div class="card-body p-0">
                 <?php if (!$shipments): ?>
@@ -461,6 +569,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         if (is_array($requestCustomerId)) {
                                             $requestCustomerId = implode(', ', array_map('strval', $requestCustomerId));
                                         }
+                                        $canGenerateCustomerNotice = !empty($shipment['label_path'])
+                                            && empty($shipment['deleted_at'])
+                                            && (string) ($shipment['status'] ?? '') !== 'cancelled';
                                     ?>
                                     <tr>
                                         <td class="text-center">
@@ -527,6 +638,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                     'created' => 'bg-warning text-white',
                                                     'confirmed' => 'bg-success',
                                                     'warning' => 'bg-danger',
+                                                    'in_transit' => 'bg-info text-dark',
+                                                    'out_for_delivery' => 'bg-primary',
+                                                    'delivered' => 'bg-success',
+                                                    'returned' => 'bg-dark',
                                                     'cancelled' => 'bg-secondary',
                                                 ][$status] ?? 'bg-secondary';
                                                 $statusLabel = brt_translate_status($status) ?: $status;
@@ -566,42 +681,53 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-end">
-                                            <div class="d-inline-flex flex-wrap justify-content-end gap-2">
-                                                <a class="btn btn-icon btn-outline-secondary btn-sm" href="view.php?id=<?php echo (int) $shipment['id']; ?>" title="Dettagli spedizione">
+                                            <div class="shipment-actions" role="group">
+                                                <a class="btn btn-icon btn-outline-secondary btn-sm shipment-action-btn" href="view.php?id=<?php echo (int) $shipment['id']; ?>" title="Dettagli spedizione">
                                                     <i class="fa-solid fa-eye fa-sm fa-fw"></i>
                                                 </a>
                                                 <?php if ((string) ($shipment['status'] ?? '') !== 'cancelled' && empty($shipment['deleted_at'])): ?>
-                                                    <a class="btn btn-icon btn-outline-warning btn-sm" href="orm.php?from_shipment=<?php echo (int) $shipment['id']; ?>" title="Precompila ordine di ritiro (ORM)">
+                                                    <a class="btn btn-icon btn-outline-warning btn-sm shipment-action-btn" href="orm.php?from_shipment=<?php echo (int) $shipment['id']; ?>" title="Precompila ordine di ritiro (ORM)">
                                                         <i class="fa-solid fa-truck-ramp-box fa-sm fa-fw"></i>
                                                     </a>
                                                 <?php endif; ?>
                                                 <?php if (in_array($shipment['status'], ['created', 'warning'], true) && empty($shipment['manifest_id']) && empty($shipment['deleted_at'])): ?>
-                                                    <a class="btn btn-icon btn-outline-primary btn-sm" href="edit.php?id=<?php echo (int) $shipment['id']; ?>" title="Modifica spedizione">
+                                                    <a class="btn btn-icon btn-outline-primary btn-sm shipment-action-btn" href="edit.php?id=<?php echo (int) $shipment['id']; ?>" title="Modifica spedizione">
                                                         <i class="fa-solid fa-pen fa-sm fa-fw"></i>
                                                     </a>
                                                 <?php endif; ?>
                                                 <?php if ((string) ($shipment['status'] ?? '') === 'confirmed' && empty($shipment['deleted_at'])): ?>
-                                                    <form method="post" class="d-inline">
+                                                    <form method="post" class="shipment-action-form">
                                                         <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                         <input type="hidden" name="action" value="refresh_details">
                                                         <input type="hidden" name="shipment_id" value="<?php echo (int) $shipment['id']; ?>">
-                                                        <button class="btn btn-icon btn-outline-info btn-sm" type="submit" title="Aggiorna dettagli da BRT">
+                                                        <button class="btn btn-icon btn-outline-info btn-sm shipment-action-btn" type="submit" title="Aggiorna dettagli da BRT">
                                                             <i class="fa-solid fa-arrows-rotate fa-sm fa-fw"></i>
                                                         </button>
                                                     </form>
-                                                    <form method="post" class="d-inline">
+                                                    <form method="post" class="shipment-action-form">
                                                         <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                         <input type="hidden" name="action" value="reprint_label">
                                                         <input type="hidden" name="shipment_id" value="<?php echo (int) $shipment['id']; ?>">
-                                                        <button class="btn btn-icon btn-outline-secondary btn-sm" type="submit" title="Rigenera etichetta PDF">
+                                                        <button class="btn btn-icon btn-outline-secondary btn-sm shipment-action-btn" type="submit" title="Rigenera etichetta PDF">
                                                             <i class="fa-solid fa-print fa-sm fa-fw"></i>
                                                         </button>
                                                     </form>
                                                 <?php endif; ?>
+                                                <?php if ($canGenerateCustomerNotice): ?>
+                                                    <a
+                                                        class="btn btn-icon btn-outline-success btn-sm shipment-action-btn"
+                                                        href="customer_notice.php?id=<?php echo (int) $shipment['id']; ?>"
+                                                        title="Genera comunicazione per il cliente"
+                                                        target="_blank"
+                                                        rel="noopener"
+                                                    >
+                                                        <i class="fa-solid fa-file-signature fa-sm fa-fw"></i>
+                                                    </a>
+                                                <?php endif; ?>
                                                 <?php if ($shipment['status'] !== 'cancelled' && empty($shipment['deleted_at'])): ?>
                                                     <form
                                                         method="post"
-                                                        class="d-inline"
+                                                        class="shipment-action-form"
                                                         data-confirm="Confermi l'annullamento della spedizione?"
                                                         data-confirm-title="Annulla spedizione"
                                                         data-confirm-confirm-label="Sì, annulla"
@@ -610,17 +736,17 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                         <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                         <input type="hidden" name="action" value="cancel">
                                                         <input type="hidden" name="shipment_id" value="<?php echo (int) $shipment['id']; ?>">
-                                                        <button class="btn btn-icon btn-outline-danger btn-sm" type="submit" title="Annulla spedizione">
+                                                        <button class="btn btn-icon btn-outline-danger btn-sm shipment-action-btn" type="submit" title="Annulla spedizione">
                                                             <i class="fa-solid fa-xmark fa-sm fa-fw"></i>
                                                         </button>
                                                     </form>
                                                 <?php endif; ?>
                                                 <?php if (!empty($shipment['tracking_by_parcel_id']) || !empty($shipment['parcel_id'])): ?>
-                                                    <form method="post" class="d-inline">
+                                                    <form method="post" class="shipment-action-form">
                                                         <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                         <input type="hidden" name="action" value="refresh_tracking">
                                                         <input type="hidden" name="shipment_id" value="<?php echo (int) $shipment['id']; ?>">
-                                                        <button class="btn btn-icon btn-outline-info btn-sm" type="submit" title="Aggiorna tracking">
+                                                        <button class="btn btn-icon btn-outline-info btn-sm shipment-action-btn" type="submit" title="Aggiorna tracking">
                                                             <i class="fa-solid fa-location-crosshairs fa-sm fa-fw"></i>
                                                         </button>
                                                     </form>
@@ -628,7 +754,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                 <?php if ($shipment['status'] !== 'confirmed' && empty($shipment['manifest_id'])): ?>
                                                     <form
                                                         method="post"
-                                                        class="d-inline"
+                                                        class="shipment-action-form"
                                                         data-confirm="Eliminare definitivamente la spedizione selezionata? Questa operazione non può essere annullata."
                                                         data-confirm-title="Elimina spedizione"
                                                         data-confirm-confirm-label="Elimina"
@@ -637,7 +763,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                         <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                         <input type="hidden" name="action" value="delete_local">
                                                         <input type="hidden" name="shipment_id" value="<?php echo (int) $shipment['id']; ?>">
-                                                        <button class="btn btn-icon btn-outline-danger btn-sm" type="submit" title="Elimina definitivamente">
+                                                        <button class="btn btn-icon btn-outline-danger btn-sm shipment-action-btn" type="submit" title="Elimina definitivamente">
                                                             <i class="fa-solid fa-trash fa-sm fa-fw"></i>
                                                         </button>
                                                     </form>
@@ -649,6 +775,51 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </tbody>
                         </table>
                     </div>
+                    <?php if ($totalPages > 1): ?>
+                        <div class="p-3 border-top">
+                            <nav aria-label="Paginazione spedizioni">
+                                <ul class="pagination pagination-sm justify-content-center mb-0 flex-wrap gap-1">
+                                    <?php if ($currentPage > 1): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="<?php echo sanitize_output($paginationUrlBuilder($currentPage - 1)); ?>" aria-label="Pagina precedente">&laquo;</a>
+                                        </li>
+                                    <?php else: ?>
+                                        <li class="page-item disabled" aria-disabled="true">
+                                            <span class="page-link">&laquo;</span>
+                                        </li>
+                                    <?php endif; ?>
+                                    <?php $lastRenderedPage = 0; ?>
+                                    <?php foreach ($paginationPages as $pageNumber): ?>
+                                        <?php if ($lastRenderedPage > 0 && $pageNumber - $lastRenderedPage > 1): ?>
+                                            <li class="page-item disabled" aria-disabled="true">
+                                                <span class="page-link">&hellip;</span>
+                                            </li>
+                                        <?php endif; ?>
+                                        <?php $isActive = $pageNumber === $currentPage; ?>
+                                        <?php if ($isActive): ?>
+                                            <li class="page-item active" aria-current="page">
+                                                <span class="page-link"><?php echo (int) $pageNumber; ?></span>
+                                            </li>
+                                        <?php else: ?>
+                                            <li class="page-item">
+                                                <a class="page-link" href="<?php echo sanitize_output($paginationUrlBuilder($pageNumber)); ?>" aria-label="Vai a pagina <?php echo (int) $pageNumber; ?>"><?php echo (int) $pageNumber; ?></a>
+                                            </li>
+                                        <?php endif; ?>
+                                        <?php $lastRenderedPage = $pageNumber; ?>
+                                    <?php endforeach; ?>
+                                    <?php if ($currentPage < $totalPages): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="<?php echo sanitize_output($paginationUrlBuilder($currentPage + 1)); ?>" aria-label="Pagina successiva">&raquo;</a>
+                                        </li>
+                                    <?php else: ?>
+                                        <li class="page-item disabled" aria-disabled="true">
+                                            <span class="page-link">&raquo;</span>
+                                        </li>
+                                    <?php endif; ?>
+                                </ul>
+                            </nav>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>
@@ -656,6 +827,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <div class="card ag-card mb-5">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h2 class="card-title h5 mb-0">Borderò generati</h2>
+                <?php if ($totalManifests > 0): ?>
+                    <span class="text-muted small">
+                        <?php echo sanitize_output(sprintf('Mostrati %d-%d di %d | Pagina %d di %d | %d per pagina', $manifestsRangeStart, $manifestsRangeEnd, $totalManifests, $manifestsPage, max(1, $totalManifestPages), $manifestsPerPage)); ?>
+                    </span>
+                <?php else: ?>
+                    <span class="text-muted small">Nessun borderò disponibile</span>
+                <?php endif; ?>
             </div>
             <div class="card-body p-0">
                 <?php if (!$recentManifests): ?>
@@ -688,8 +866,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <td><?php echo sanitize_output(number_format((float) $manifest['total_weight_kg'], 2, ',', '.')); ?></td>
                                         <td class="text-end">
                                             <div class="btn-group btn-group-sm" role="group">
-                                                <?php if (!empty($manifest['pdf_path'])): ?>
-                                                    <a class="btn btn-outline-secondary" href="<?php echo asset($manifest['pdf_path']); ?>" target="_blank" rel="noopener">
+                                                <?php if (!empty($manifest['id'])): ?>
+                                                    <a class="btn btn-outline-secondary" href="manifest.php?id=<?php echo (int) $manifest['id']; ?>" target="_blank" rel="noopener">
                                                         <i class="fa-solid fa-file-pdf me-1"></i>Locale
                                                     </a>
                                                 <?php endif; ?>
@@ -709,6 +887,51 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </tbody>
                         </table>
                     </div>
+                    <?php if ($totalManifestPages > 1): ?>
+                        <div class="p-3 border-top">
+                            <nav aria-label="Paginazione borderò">
+                                <ul class="pagination pagination-sm justify-content-center mb-0 flex-wrap gap-1">
+                                    <?php if ($manifestsPage > 1): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="<?php echo sanitize_output($manifestPaginationUrlBuilder($manifestsPage - 1)); ?>" aria-label="Pagina precedente">&laquo;</a>
+                                        </li>
+                                    <?php else: ?>
+                                        <li class="page-item disabled" aria-disabled="true">
+                                            <span class="page-link">&laquo;</span>
+                                        </li>
+                                    <?php endif; ?>
+                                    <?php $lastManifestPage = 0; ?>
+                                    <?php foreach ($manifestPaginationPages as $pageNumber): ?>
+                                        <?php if ($lastManifestPage > 0 && $pageNumber - $lastManifestPage > 1): ?>
+                                            <li class="page-item disabled" aria-disabled="true">
+                                                <span class="page-link">&hellip;</span>
+                                            </li>
+                                        <?php endif; ?>
+                                        <?php $isCurrent = $pageNumber === $manifestsPage; ?>
+                                        <?php if ($isCurrent): ?>
+                                            <li class="page-item active" aria-current="page">
+                                                <span class="page-link"><?php echo (int) $pageNumber; ?></span>
+                                            </li>
+                                        <?php else: ?>
+                                            <li class="page-item">
+                                                <a class="page-link" href="<?php echo sanitize_output($manifestPaginationUrlBuilder($pageNumber)); ?>" aria-label="Vai a pagina <?php echo (int) $pageNumber; ?>"><?php echo (int) $pageNumber; ?></a>
+                                            </li>
+                                        <?php endif; ?>
+                                        <?php $lastManifestPage = $pageNumber; ?>
+                                    <?php endforeach; ?>
+                                    <?php if ($manifestsPage < $totalManifestPages): ?>
+                                        <li class="page-item">
+                                            <a class="page-link" href="<?php echo sanitize_output($manifestPaginationUrlBuilder($manifestsPage + 1)); ?>" aria-label="Pagina successiva">&raquo;</a>
+                                        </li>
+                                    <?php else: ?>
+                                        <li class="page-item disabled" aria-disabled="true">
+                                            <span class="page-link">&raquo;</span>
+                                        </li>
+                                    <?php endif; ?>
+                                </ul>
+                            </nav>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>

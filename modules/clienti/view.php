@@ -81,7 +81,7 @@ $latestPracticesStmt = $pdo->prepare($latestPracticesQuery);
 $latestPracticesStmt->execute(array_fill(0, count($practiceParts), $id));
 $practices = $latestPracticesStmt->fetchAll();
 
-$ticketsStmt = $pdo->prepare('SELECT id, titolo, stato, created_at FROM ticket WHERE cliente_id = :id ORDER BY created_at DESC LIMIT 5');
+$ticketsStmt = $pdo->prepare('SELECT id, codice, subject, status, created_at FROM tickets WHERE customer_id = :id ORDER BY created_at DESC LIMIT 5');
 $ticketsStmt->execute([':id' => $id]);
 $tickets = $ticketsStmt->fetchAll();
 
@@ -201,12 +201,19 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <?php if ($tickets): ?>
                             <ul class="list-group list-group-flush">
                                 <?php foreach ($tickets as $ticket): ?>
+                                    <?php
+                                        $ticketCode = $ticket['codice'] ?? $ticket['id'];
+                                        $subject = trim((string) ($ticket['subject'] ?? ''));
+                                        if ($subject === '') {
+                                            $subject = 'Ticket #' . $ticketCode;
+                                        }
+                                    ?>
                                     <li class="list-group-item bg-transparent text-light d-flex justify-content-between align-items-start">
                                         <div>
-                                            <a class="link-warning fw-semibold" href="../ticket/view.php?id=<?php echo (int) $ticket['id']; ?>">#<?php echo (int) $ticket['id']; ?> &middot; <?php echo sanitize_output($ticket['titolo']); ?></a>
+                                            <a class="link-warning fw-semibold" href="../ticket/view.php?id=<?php echo (int) $ticket['id']; ?>">#<?php echo sanitize_output($ticketCode); ?> &middot; <?php echo sanitize_output($subject); ?></a>
                                             <div class="small text-muted">Aperto il <?php echo sanitize_output(date('d/m/Y H:i', strtotime($ticket['created_at']))); ?></div>
                                         </div>
-                                        <span class="badge ag-badge text-uppercase ms-2 flex-shrink-0"><?php echo sanitize_output($ticket['stato']); ?></span>
+                                        <span class="badge ag-badge text-uppercase ms-2 flex-shrink-0"><?php echo sanitize_output($ticket['status']); ?></span>
                                     </li>
                                 <?php endforeach; ?>
                             </ul>

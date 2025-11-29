@@ -106,18 +106,19 @@ try {
 
     $response['stats']['anprInProgress'] = (int) $pdo->query("SELECT COUNT(*) FROM anpr_pratiche WHERE stato = 'In lavorazione'")->fetchColumn();
 
-    $ticketStmt = $pdo->prepare('SELECT id, titolo, stato, created_at FROM ticket ORDER BY created_at DESC LIMIT 5');
+    $ticketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, updated_at FROM tickets ORDER BY updated_at DESC LIMIT 5");
     $ticketStmt->execute();
-    $tickets = $ticketStmt->fetchAll();
-    $response['tickets'] = array_map(static function ($ticket) {
+    $tickets = $ticketStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $response['tickets'] = array_map(static function (array $ticket): array {
         return [
             'id' => (int) $ticket['id'],
-            'title' => $ticket['titolo'],
-            'status' => $ticket['stato'],
-            'createdAt' => $ticket['created_at'],
+            'code' => $ticket['codice'] ?? null,
+            'subject' => $ticket['subject'] ?? null,
+            'status' => $ticket['status'] ?? null,
+            'createdAt' => $ticket['created_at'] ?? null,
         ];
     }, $tickets);
-    $response['stats']['openTickets'] = count($tickets);
+    $response['stats']['openTickets'] = (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE status NOT IN ('RESOLVED','CLOSED','ARCHIVED')")->fetchColumn();
 
     $revenueChartStmt = $pdo->prepare("SELECT DATE_FORMAT(DATE(COALESCE(data_pagamento, updated_at, created_at)), '%Y-%m') AS month_key,
            SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END) AS totale
@@ -217,14 +218,20 @@ try {
         error_log('Dashboard API email campaign reminder failed: ' . $emailReminderException->getMessage());
     }
 
-    $oldestTicketStmt = $pdo->prepare("SELECT id, titolo, created_at FROM ticket WHERE stato IN ('Aperto', 'In corso') ORDER BY created_at ASC LIMIT 1");
+    $oldestTicketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, COALESCE(last_message_at, created_at) AS reference_date
+        FROM tickets
+        WHERE status IN ('OPEN','IN_PROGRESS','WAITING_CLIENT','WAITING_PARTNER')
+        ORDER BY reference_date ASC
+        LIMIT 1");
     $oldestTicketStmt->execute();
     if ($oldestTicket = $oldestTicketStmt->fetch()) {
+        $ticketCode = $oldestTicket['codice'] ?? $oldestTicket['id'];
+        $ticketSubject = trim((string) ($oldestTicket['subject'] ?? 'Ticket ' . $ticketCode));
         $reminders[] = [
             'icon' => 'fa-life-ring',
             'title' => 'Ticket da prendere in carico',
-            'detail' => sprintf('Ticket #%d aperto il %s.', $oldestTicket['id'], format_datetime($oldestTicket['created_at'] ?? '')),
-            'url' => base_url('modules/ticket/view.php?id=' . $oldestTicket['id']),
+            'detail' => sprintf('Ticket #%s · %s aperto il %s.', $ticketCode, $ticketSubject, format_datetime($oldestTicket['created_at'] ?? '')),
+            'url' => base_url('modules/ticket/view.php?id=' . (int) $oldestTicket['id']),
         ];
     }
 

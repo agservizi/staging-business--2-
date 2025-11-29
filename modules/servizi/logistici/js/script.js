@@ -4,6 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    const resolveFormAction = form => {
+        if (!form) {
+            return window.location.href;
+        }
+        const attr = typeof form.getAttribute === 'function' ? form.getAttribute('action') : '';
+        return typeof attr === 'string' && attr.trim() !== '' ? attr.trim() : window.location.href;
+    };
+
     const showToast = (message, type = 'info') => {
         if (window.CSToast && typeof window.CSToast.show === 'function') {
             window.CSToast.show(message, type);
@@ -48,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
             select.disabled = true;
 
             try {
-                const targetUrl = typeof form.action === 'string' && form.action.trim() !== '' ? form.action : window.location.href;
+                const targetUrl = resolveFormAction(form);
                 const response = await fetch(targetUrl, {
                     method: 'POST',
                     headers: {
@@ -106,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 submit.disabled = true;
             }
             try {
-                const targetUrl = typeof form.action === 'string' && form.action.trim() !== '' ? form.action : window.location.href;
+                const targetUrl = resolveFormAction(form);
                 const response = await fetch(targetUrl, {
                     method: 'POST',
                     headers: {
@@ -224,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const response = await fetch(form.action || window.location.href, {
+                const response = await fetch(resolveFormAction(form), {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',

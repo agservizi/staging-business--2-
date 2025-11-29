@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data['first_name'] = mb_convert_case(mb_strtolower($data['first_name'], 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
         $data['last_name'] = mb_convert_case(mb_strtolower($data['last_name'], 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
 
-    $formValues = array_merge($formValues, $data);
+        $formValues = array_merge($formValues, $data);
 
         if ($data['first_name'] === '' || mb_strlen($data['first_name']) < 2) {
             $alerts[] = ['type' => 'danger', 'text' => 'Il nome deve contenere almeno 2 caratteri.'];

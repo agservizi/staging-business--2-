@@ -30,6 +30,20 @@ $stats = cie_fetch_stats($pdo);
 $clients = cie_fetch_clients($pdo);
 $statuses = cie_status_map();
 
+$summaryCards = [
+    [
+        'label' => 'Richieste totali',
+        'value' => (int) ($stats['total'] ?? 0),
+    ],
+];
+
+foreach ($statuses as $key => $config) {
+    $summaryCards[] = [
+        'label' => (string) ($config['label'] ?? ucfirst($key)),
+        'value' => (int) ($stats['by_status'][$key] ?? 0),
+    ];
+}
+
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
@@ -47,21 +61,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         </div>
         <section class="mb-4">
-            <div class="row g-3">
-                <div class="col-sm-6 col-xl-3">
-                    <div class="card ag-card h-100">
-                        <div class="card-body">
-                            <p class="text-muted mb-1">Richieste totali</p>
-                            <h3 class="fw-bold mb-0"><?php echo (int) ($stats['total'] ?? 0); ?></h3>
-                        </div>
-                    </div>
-                </div>
-                <?php foreach ($statuses as $key => $config): ?>
-                    <div class="col-sm-6 col-xl-2">
-                        <div class="card ag-card h-100">
+            <div class="row g-3 row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6">
+                <?php foreach ($summaryCards as $card): ?>
+                    <div class="col d-flex">
+                        <div class="card ag-card text-center w-100 h-100">
                             <div class="card-body">
-                                <p class="text-muted mb-1"><?php echo sanitize_output($config['label']); ?></p>
-                                <h4 class="fw-bold mb-0"><?php echo (int) ($stats['by_status'][$key] ?? 0); ?></h4>
+                                <p class="text-muted mb-1"><?php echo sanitize_output($card['label']); ?></p>
+                                <h3 class="fw-bold mb-0"><?php echo (int) $card['value']; ?></h3>
                             </div>
                         </div>
                     </div>

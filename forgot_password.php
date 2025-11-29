@@ -51,31 +51,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Recupero password | Coresuite Business</title>
     <link href="<?php echo asset('assets/vendor/bootstrap/css/bootstrap.min.css'); ?>" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" referrerpolicy="no-referrer" />
     <link href="<?php echo asset('assets/css/custom.css'); ?>" rel="stylesheet">
 </head>
-<body class="login-body">
-    <main class="auth-wrapper">
-        <div class="auth-card">
-            <h1 class="h4 text-center mb-4">Recupera password</h1>
-            <p class="text-muted">Inserisci l'email associata al tuo account. Riceverai un link per reimpostare la password.</p>
-            <?php if ($success): ?>
-                <div class="alert alert-success">Se l'email è registrata riceverai un messaggio con le istruzioni.</div>
-            <?php elseif ($error): ?>
-                <div class="alert alert-warning"><?php echo sanitize_output($error); ?></div>
-            <?php endif; ?>
-            <form method="post" novalidate>
-                <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-                <div class="mb-3">
-                    <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="email" name="email" required>
+<body class="login-body" data-bs-theme="light">
+    <main class="auth-layout login-shell">
+        <div class="auth-grid">
+            <section class="auth-panel auth-panel-brand login-side-brand">
+                <div>
+                    <span class="badge rounded-pill px-3 py-2 mb-4">Recupera l'accesso</span>
+                    <h1 class="display-6 fw-semibold mb-3">Hai dimenticato la password?</h1>
+                    <p class="text-secondary mb-4">Nessun problema. Inserisci l'email aziendale e riceverai un link temporaneo per impostare una nuova password in modo sicuro.</p>
+                    <ul class="mb-4">
+                        <li><i class="fa-solid fa-envelope-circle-check"></i><span>Link valido per 60 minuti</span></li>
+                        <li><i class="fa-solid fa-shield"></i><span>Le richieste vengono registrate per motivi di sicurezza</span></li>
+                        <li><i class="fa-solid fa-arrow-rotate-left"></i><span>Potrai accedere nuovamente subito dopo il reset</span></li>
+                    </ul>
                 </div>
-                <div class="d-grid">
-                    <button type="submit" class="btn btn-warning">Invia istruzioni</button>
+                <div class="login-meta auth-meta">
+                    &copy; <?php echo date('Y'); ?> Coresuite Business
                 </div>
-            </form>
-            <div class="mt-3 text-center">
-                <a class="link-warning" href="index.php">Torna al login</a>
-            </div>
+            </section>
+            <section class="auth-panel auth-panel-form login-form-area">
+                <div class="auth-panel-inner">
+                    <div class="mb-4 text-center text-md-start">
+                        <h2 class="h4 fw-semibold mb-2">Recupera la tua password</h2>
+                        <p class="login-meta mb-0">Inserisci l'indirizzo email associato all'account.</p>
+                    </div>
+                    <?php if ($success): ?>
+                        <div class="alert alert-success border-0 shadow-sm mb-4" role="alert">
+                            Se l'email è registrata riceverai un messaggio con le istruzioni entro pochi minuti.
+                        </div>
+                    <?php elseif ($error): ?>
+                        <div class="alert alert-warning border-0 shadow-sm mb-4" role="alert">
+                            <?php echo sanitize_output($error); ?>
+                        </div>
+                    <?php endif; ?>
+                    <form method="post" novalidate>
+                        <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                        <div class="mb-4">
+                            <label for="email" class="form-label">Email aziendale</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
+                                <input type="email" class="form-control" id="email" name="email" placeholder="nome.cognome@azienda.it" required autocomplete="email">
+                            </div>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-warning fw-semibold">Invia istruzioni di reset</button>
+                        </div>
+                    </form>
+                    <div class="login-meta mt-4 text-center text-md-start">
+                        Ti sei ricordato la password? <a class="link-warning text-decoration-none" href="index.php">Torna al login</a>.
+                    </div>
+                </div>
+            </section>
         </div>
     </main>
     <script src="<?php echo asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js'); ?>"></script>

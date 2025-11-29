@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileBreakpoint = window.matchMedia('(max-width: 991.98px)');
     const toastContainer = document.getElementById('csToastContainer');
     const initialFlashes = Array.isArray(window.CS_INITIAL_FLASHES) ? window.CS_INITIAL_FLASHES : [];
+    const SIDEBAR_HOVER_CLASS = 'hover-expand';
+    let sidebarHoverTimer = null;
 
     const toastVariants = {
         success: { className: 'text-bg-success text-white', icon: 'fa-circle-check' },
@@ -41,15 +43,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const inner = document.createElement('div');
         inner.className = 'd-flex align-items-center';
 
-    const body = document.createElement('div');
-    body.className = 'toast-body d-flex align-items-center gap-2 flex-grow-1 text-white';
+        const body = document.createElement('div');
+        body.className = 'toast-body d-flex align-items-center gap-2 flex-grow-1 text-white';
 
         const icon = document.createElement('i');
         icon.className = `fa-solid ${variant.icon} flex-shrink-0`;
         icon.setAttribute('aria-hidden', 'true');
 
-    const text = document.createElement('span');
-    text.className = 'flex-grow-1';
+        const text = document.createElement('span');
+        text.className = 'flex-grow-1';
         text.textContent = safeMessage;
 
         body.append(icon, text);
@@ -145,15 +147,20 @@ document.addEventListener('DOMContentLoaded', () => {
         tooltipElements.forEach((element) => {
             // eslint-disable-next-line no-undef
             const existing = bootstrap.Tooltip.getInstance(element);
-            if (existing) {
-                existing.dispose();
-            }
             const inSidebar = sidebar?.contains(element);
             const sidebarCollapsed = sidebar?.classList.contains('collapsed');
             const sidebarOpen = sidebar?.classList.contains('open');
-            if (inSidebar && (!sidebarCollapsed || sidebarOpen)) {
+            const sidebarHovering = sidebar?.classList.contains(SIDEBAR_HOVER_CLASS);
+            const shouldDisable = Boolean(inSidebar && (!sidebarCollapsed || sidebarOpen || sidebarHovering));
+
+            if (shouldDisable) {
+                if (existing) {
+                    existing.hide();
+                    existing.disable();
+                }
                 return;
             }
+
             const options = { container: 'body' };
             const trigger = element.getAttribute('data-bs-trigger');
             if (trigger) {
@@ -166,8 +173,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!options.trigger) {
                 options.trigger = 'hover focus';
             }
+
+            const optionsSignature = JSON.stringify(options);
+            const previousSignature = element.dataset.csTooltipOptions || '';
+            const optionsChanged = optionsSignature !== previousSignature;
+
+            if (existing && !optionsChanged) {
+                existing.enable();
+                return;
+            }
+
+            if (existing && optionsChanged) {
+                existing.hide();
+                existing.dispose();
+            }
+
             // eslint-disable-next-line no-undef
-            new bootstrap.Tooltip(element, options);
+            bootstrap.Tooltip.getOrCreateInstance(element, options);
+            element.dataset.csTooltipOptions = optionsSignature;
         });
     };
 
@@ -176,6 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const shouldCollapse = localStorage.getItem('csSidebar') === 'collapsed';
+        sidebar.classList.remove(SIDEBAR_HOVER_CLASS);
         if (mobileBreakpoint.matches) {
             sidebar.classList.remove('collapsed');
             sidebarToggle?.setAttribute('aria-expanded', 'false');
@@ -224,6 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sidebarMobileToggle?.setAttribute('aria-expanded', String(isOpen));
             return;
         }
+        sidebar.classList.remove(SIDEBAR_HOVER_CLASS);
         const shouldCollapse = !sidebar.classList.contains('collapsed');
         sidebar.classList.toggle('collapsed', shouldCollapse);
         localStorage.setItem('csSidebar', shouldCollapse ? 'collapsed' : 'expanded');
@@ -239,6 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!sidebar) {
             return;
         }
+        sidebar.classList.remove(SIDEBAR_HOVER_CLASS);
         const isOpen = sidebar.classList.toggle('open');
         document.body.classList.toggle('offcanvas-active', isOpen);
         sidebarMobileToggle.setAttribute('aria-expanded', String(isOpen));
@@ -257,6 +283,61 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    const cancelSidebarHoverTimer = () => {
+        if (sidebarHoverTimer) {
+            window.clearTimeout(sidebarHoverTimer);
+            sidebarHoverTimer = null;
+        }
+    };
+
+    const scheduleSidebarHoverCollapse = () => {
+        if (!sidebar) {
+            return;
+        }
+        cancelSidebarHoverTimer();
+        sidebarHoverTimer = window.setTimeout(() => {
+            sidebar.classList.remove(SIDEBAR_HOVER_CLASS);
+            sidebarHoverTimer = null;
+            initializeTooltips();
+        }, 120);
+    };
+
+    const enableSidebarHoverPeek = () => {
+        if (!sidebar) {
+            return;
+        }
+        sidebar.addEventListener('mouseenter', () => {
+            if (mobileBreakpoint.matches || !sidebar.classList.contains('collapsed')) {
+                return;
+            }
+            cancelSidebarHoverTimer();
+            sidebar.classList.add(SIDEBAR_HOVER_CLASS);
+            initializeTooltips();
+        });
+        sidebar.addEventListener('mouseleave', () => {
+            if (mobileBreakpoint.matches) {
+                return;
+            }
+            scheduleSidebarHoverCollapse();
+        });
+        sidebar.addEventListener('focusin', () => {
+            if (mobileBreakpoint.matches || !sidebar.classList.contains('collapsed')) {
+                return;
+            }
+            cancelSidebarHoverTimer();
+            sidebar.classList.add(SIDEBAR_HOVER_CLASS);
+            initializeTooltips();
+        });
+        sidebar.addEventListener('focusout', (event) => {
+            const nextTarget = event.relatedTarget;
+            if (!nextTarget || !sidebar.contains(nextTarget)) {
+                scheduleSidebarHoverCollapse();
+            }
+        });
+    };
+
+    enableSidebarHoverPeek();
 
     document.querySelectorAll('[data-datatable="true"]').forEach((table) => {
         // eslint-disable-next-line no-undef
@@ -383,17 +464,19 @@ document.addEventListener('DOMContentLoaded', () => {
             tickets.forEach((ticket) => {
                 const row = document.createElement('tr');
 
-                const idCell = document.createElement('td');
-                if (ticket.id !== undefined && ticket.id !== null && ticket.id !== '') {
-                    idCell.textContent = `#${ticket.id}`;
-                } else {
-                    idCell.textContent = '—';
-                }
-                row.appendChild(idCell);
+                const ticketCell = document.createElement('td');
+                const codeLabel = document.createElement('div');
+                const codeValue = ticket.code || ticket.id || '—';
+                codeLabel.className = 'fw-semibold';
+                codeLabel.textContent = `#${codeValue}`;
+                ticketCell.appendChild(codeLabel);
 
-                const titleCell = document.createElement('td');
-                titleCell.textContent = ticket.title || '—';
-                row.appendChild(titleCell);
+                const subjectLine = document.createElement('small');
+                subjectLine.className = 'text-muted d-block';
+                subjectLine.textContent = ticket.subject || `Ticket #${codeValue}`;
+                ticketCell.appendChild(subjectLine);
+
+                row.appendChild(ticketCell);
 
                 const statusCell = document.createElement('td');
                 const statusBadge = document.createElement('span');
@@ -405,6 +488,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dateCell = document.createElement('td');
                 dateCell.textContent = formatDate(ticket.createdAt);
                 row.appendChild(dateCell);
+
+                const actionCell = document.createElement('td');
+                actionCell.className = 'text-end';
+                if (ticket.id !== undefined && ticket.id !== null) {
+                    const link = document.createElement('a');
+                    link.className = 'btn btn-sm btn-outline-warning';
+                    link.href = `modules/ticket/view.php?id=${ticket.id}`;
+                    link.textContent = 'Apri';
+                    actionCell.appendChild(link);
+                }
+                row.appendChild(actionCell);
 
                 fragment.appendChild(row);
             });
@@ -695,6 +789,427 @@ document.addEventListener('DOMContentLoaded', () => {
         scheduleFetch(Math.min(5000, pollInterval));
     }
 
+    const initAiAssistant = () => {
+        const root = document.querySelector('[data-ai-assistant]');
+        if (!root) {
+            return;
+        }
+
+        const panel = root.querySelector('.ai-assistant-panel');
+        const toggleBtn = root.querySelector('[data-ai-toggle]');
+        const closeBtn = root.querySelector('[data-ai-close]');
+        const refreshBtn = root.querySelector('[data-ai-refresh]');
+        const form = root.querySelector('[data-ai-form]');
+        const questionInput = root.querySelector('[data-ai-question]');
+        const periodSelect = root.querySelector('[data-ai-period]');
+        const customRange = root.querySelector('[data-ai-custom-range]');
+        const customStart = root.querySelector('[data-ai-custom-start]');
+        const customEnd = root.querySelector('[data-ai-custom-end]');
+        const statusEl = root.querySelector('[data-ai-status]');
+        const logContainer = root.querySelector('[data-ai-log]');
+        const contextEl = root.querySelector('[data-ai-context]');
+        const hintBtn = root.querySelector('[data-ai-hint]');
+        const thinkingWrap = root.querySelector('[data-ai-thinking]');
+        const thinkingToggle = root.querySelector('[data-ai-thinking-toggle]');
+        const thinkingContent = root.querySelector('[data-ai-thinking-content]');
+        const timestampEl = root.querySelector('[data-ai-timestamp]');
+        const endpoint = root.dataset.endpoint || 'api/ai/advisor.php';
+        const defaultPeriod = root.dataset.defaultPeriod || 'last30';
+        const showToast = window?.CS?.showToast ?? (() => {});
+        const pageContext = {
+            title: root.dataset.pageTitle || document.title || '',
+            section: root.dataset.pageSection || '',
+            description: root.dataset.pageDescription || '',
+            path: root.dataset.pagePath || window.location.pathname
+        };
+
+        const hintLibrary = {
+            default: [
+                'Dammi una panoramica sintetica e indica 3 azioni ad alto impatto per oggi.',
+                'Quali rischi operativi o finanziari devo gestire con priorità questa settimana?',
+                'Suggeriscimi come migliorare il cash-flow nei prossimi 7 giorni con dati attuali.'
+            ],
+            clienti: [
+                'Quali clienti mostrano segnali di churn e come posso intervenire subito?',
+                'Aiutami a pianificare le prossime campagne di upsell sui clienti più profittevoli.',
+                'Che tipo di follow-up dovrei inviare ai clienti senza attività negli ultimi 30 giorni?'
+            ],
+            servizi: [
+                'Quali appuntamenti o consegne richiedono azioni urgenti per evitare ritardi?',
+                'Come posso ottimizzare le risorse operative e ridurre eventuali colli di bottiglia?',
+                'Suggerisci un piano per alzare il tasso di completamento servizi entro la settimana.'
+            ],
+            reportistica: [
+                'Aiutami a leggere i KPI principali di questo report e ricavare 3 insight azionabili.',
+                'Quali metriche stanno peggiorando rispetto al periodo precedente e perché?',
+                'Suggerisci un briefing per il team partendo dai dati in evidenza su questa pagina.'
+            ],
+            ticket: [
+                'Come posso ridurre il backlog dei ticket aperti nelle prossime 48 ore?',
+                'Quali ticket critici rischiano di sforare gli SLA e come posso prevenirlo?',
+                'Dammi un piano per migliorare la soddisfazione clienti dai ticket attuali.'
+            ],
+            'email marketing': [
+                'Quali segmenti meritano una campagna urgente basata sui dati di oggi?',
+                'Suggerisci 3 miglioramenti per aumentare apertura e click delle ultime newsletter.',
+                'Come posso recuperare gli iscritti inattivi registrati in questo periodo?'
+            ],
+            documenti: [
+                'Segnalami eventuali documenti critici in scadenza o con anomalie.',
+                'Quali procedure dovrei aggiornare per migliorare la compliance documentale?',
+                'Come posso organizzare meglio i documenti condivisi per ridurre gli errori?' 
+            ],
+            impostazioni: [
+                'Quali controlli di sicurezza o permessi dovrei verificare in questa pagina?',
+                'Dammi un elenco di impostazioni critiche da rivedere per evitare misconfigurazioni.',
+                'Quali automatismi potrei ottimizzare per ridurre interventi manuali?' 
+            ],
+            'customer portal': [
+                "Come migliorare l'esperienza dei clienti sul portale partendo dai dati attuali?",
+                'Quali richieste ricorrenti dovrei anticipare per alleggerire il supporto?',
+                "Suggerisci iniziative per aumentare l'adozione del portale dai clienti inattivi."
+            ],
+            tools: [
+                'Quali verifiche tecniche devo completare prima di usare questo strumento oggi?',
+                'Suggerisci una checklist rapida per evitare errori con questo tool.',
+                'Come posso validare i dati generati da questo strumento prima di inviarli al cliente?'
+            ]
+        };
+
+        const normalizedSection = (pageContext.section || '').trim().toLowerCase();
+        const hintPool = [...(hintLibrary[normalizedSection] ?? hintLibrary.default)];
+        let lastHint = '';
+
+        const pickHint = () => {
+            const pool = hintPool.length > 0 ? hintPool : hintLibrary.default;
+            if (pool.length === 0) {
+                return hintBtn?.dataset.aiHint || 'Suggeriscimi tre priorità operative basate sui dati più recenti.';
+            }
+            let candidate = pool[Math.floor(Math.random() * pool.length)];
+            if (pool.length > 1) {
+                let attempts = 0;
+                while (candidate === lastHint && attempts < 4) {
+                    candidate = pool[Math.floor(Math.random() * pool.length)];
+                    attempts += 1;
+                }
+            }
+            lastHint = candidate;
+            return candidate;
+        };
+
+        let isOpen = false;
+        let inFlight = false;
+        let history = [];
+        let latestQuestion = '';
+        const idleTimeoutMs = 10000;
+        let idleTimerId = null;
+        let isIdle = false;
+        let autoRequested = false;
+
+        const exitIdleState = () => {
+            if (!toggleBtn || !isIdle) {
+                return;
+            }
+            toggleBtn.classList.remove('is-idle');
+            isIdle = false;
+        };
+
+        const enterIdleState = () => {
+            if (!toggleBtn || isOpen) {
+                return;
+            }
+            toggleBtn.classList.add('is-idle');
+            isIdle = true;
+        };
+
+        const clearIdleTimer = () => {
+            if (idleTimerId !== null) {
+                window.clearTimeout(idleTimerId);
+                idleTimerId = null;
+            }
+        };
+
+        const scheduleIdleState = () => {
+            if (!toggleBtn) {
+                return;
+            }
+            clearIdleTimer();
+            if (isOpen) {
+                return;
+            }
+            idleTimerId = window.setTimeout(() => {
+                enterIdleState();
+            }, idleTimeoutMs);
+        };
+
+        const tryAutoRequest = () => {
+            if (autoRequested || inFlight) {
+                return;
+            }
+            const autoQuestion = pickHint();
+            autoRequested = true;
+            latestQuestion = autoQuestion;
+            renderMessage('user', autoQuestion);
+            requestAdvisor(autoQuestion);
+        };
+
+        const togglePanel = (open) => {
+            if (!panel) {
+                return;
+            }
+            isOpen = open;
+            panel.hidden = !open;
+            if (toggleBtn) {
+                toggleBtn.setAttribute('aria-expanded', String(open));
+            }
+            if (open) {
+                clearIdleTimer();
+                exitIdleState();
+                if (!logContainer?.children.length) {
+                    tryAutoRequest();
+                }
+            } else {
+                scheduleIdleState();
+            }
+            if (open && questionInput instanceof HTMLTextAreaElement) {
+                setTimeout(() => questionInput.focus(), 120);
+            }
+        };
+
+        const setStatus = (message, variant = 'info') => {
+            if (!statusEl) {
+                return;
+            }
+            if (!message) {
+                statusEl.hidden = true;
+                statusEl.textContent = '';
+                statusEl.classList.remove('text-danger', 'text-success', 'text-muted');
+                statusEl.classList.add('text-muted');
+                return;
+            }
+            statusEl.hidden = false;
+            statusEl.textContent = message;
+            statusEl.classList.remove('text-danger', 'text-success', 'text-muted');
+            if (variant === 'error') {
+                statusEl.classList.add('text-danger');
+            } else if (variant === 'success') {
+                statusEl.classList.add('text-success');
+            } else {
+                statusEl.classList.add('text-muted');
+            }
+        };
+
+        const renderMessage = (role, content) => {
+            if (!logContainer) {
+                return;
+            }
+            const bubble = document.createElement('div');
+            bubble.className = `ai-assistant-message ${role}`;
+            const chunks = String(content ?? '').split(/\n{2,}/).map((chunk) => chunk.trim()).filter((chunk) => chunk !== '');
+            if (chunks.length === 0) {
+                const p = document.createElement('p');
+                p.className = 'mb-0';
+                p.textContent = String(content ?? '').trim();
+                bubble.appendChild(p);
+            } else {
+                chunks.forEach((chunk, index) => {
+                    const p = document.createElement('p');
+                    p.className = index === chunks.length - 1 ? 'mb-0' : 'mb-2';
+                    p.textContent = chunk;
+                    bubble.appendChild(p);
+                });
+            }
+            logContainer.appendChild(bubble);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        };
+
+        const updateContext = (lines) => {
+            if (!contextEl) {
+                return;
+            }
+            contextEl.innerHTML = '';
+            if (!Array.isArray(lines) || lines.length === 0) {
+                contextEl.hidden = true;
+                return;
+            }
+            const list = document.createElement('ul');
+            list.className = 'mb-0 ps-3';
+            lines.forEach((line) => {
+                const item = document.createElement('li');
+                item.textContent = line;
+                list.appendChild(item);
+            });
+            contextEl.appendChild(list);
+            contextEl.hidden = false;
+        };
+
+        const updateThinking = (content) => {
+            if (!thinkingWrap || !thinkingContent || !thinkingToggle) {
+                return;
+            }
+            const hasContent = typeof content === 'string' && content.trim() !== '';
+            thinkingWrap.hidden = !hasContent;
+            thinkingToggle.hidden = !hasContent;
+            if (!hasContent) {
+                thinkingContent.textContent = '';
+                return;
+            }
+            thinkingContent.textContent = content.trim();
+            const labelEl = thinkingToggle.querySelector('span');
+            if (labelEl) {
+                labelEl.textContent = thinkingWrap.open ? 'Nascondi ragionamento' : 'Mostra ragionamento';
+            }
+        };
+
+        thinkingToggle?.addEventListener('click', () => {
+            if (!thinkingWrap) {
+                return;
+            }
+            thinkingWrap.open = !thinkingWrap.open;
+            const label = thinkingWrap.open ? 'Nascondi ragionamento' : 'Mostra ragionamento';
+            const labelEl = thinkingToggle.querySelector('span');
+            if (labelEl) {
+                labelEl.textContent = label;
+            }
+        });
+
+        const formatTimestamp = (value) => {
+            if (!value || !timestampEl) {
+                return;
+            }
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return;
+            }
+            const formatted = date.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            timestampEl.textContent = `Aggiornato alle ${formatted}`;
+        };
+
+        const buildPayload = (question) => {
+            const payload = {
+                question,
+                period: periodSelect?.value || defaultPeriod,
+                history,
+                focus: root.dataset.userRole === 'Manager' ? 'Bilanciare finanza e operation' : '',
+                page: pageContext,
+            };
+            if (payload.period === 'custom' && customStart && customEnd) {
+                payload.customStart = customStart.value;
+                payload.customEnd = customEnd.value;
+            }
+            return payload;
+        };
+
+        const requestAdvisor = async (question) => {
+            if (inFlight) {
+                return;
+            }
+            inFlight = true;
+            setStatus('Sto analizzando il periodo selezionato…', 'info');
+            try {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                };
+                if (csrfToken) {
+                    headers['X-CSRF-Token'] = csrfToken;
+                }
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers,
+                    credentials: 'same-origin',
+                    body: JSON.stringify(buildPayload(question))
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data?.ok) {
+                    throw new Error(data?.error || 'Impossibile ottenere consigli.');
+                }
+
+                history = Array.isArray(data.history) ? data.history : history;
+                updateContext(data.contextLines || []);
+                renderMessage('assistant', data.answer || 'Nessuna risposta disponibile.');
+                updateThinking(data.thinking || '');
+                setStatus('Consigli aggiornati.', 'success');
+                formatTimestamp(data.generatedAt || new Date().toISOString());
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Errore sconosciuto.';
+                setStatus(message, 'error');
+                showToast(message, 'danger');
+                renderMessage('assistant', 'Non riesco a completare la richiesta in questo momento. Riprova più tardi.');
+            } finally {
+                inFlight = false;
+            }
+        };
+
+        toggleBtn?.addEventListener('click', () => {
+            exitIdleState();
+            clearIdleTimer();
+            togglePanel(!isOpen);
+        });
+
+        toggleBtn?.addEventListener('mouseenter', () => {
+            exitIdleState();
+            scheduleIdleState();
+        });
+
+        toggleBtn?.addEventListener('focus', () => {
+            exitIdleState();
+            scheduleIdleState();
+        });
+
+        closeBtn?.addEventListener('click', () => togglePanel(false));
+
+        refreshBtn?.addEventListener('click', () => {
+            if (latestQuestion) {
+                requestAdvisor(latestQuestion);
+            }
+        });
+
+        if (periodSelect) {
+            periodSelect.value = defaultPeriod;
+            if (customRange) {
+                customRange.hidden = periodSelect.value !== 'custom';
+            }
+            periodSelect.addEventListener('change', () => {
+                if (customRange) {
+                    customRange.hidden = periodSelect.value !== 'custom';
+                }
+            });
+        }
+
+        hintBtn?.addEventListener('click', () => {
+            if (!(questionInput instanceof HTMLTextAreaElement)) {
+                return;
+            }
+            const hint = pickHint();
+            questionInput.value = hint;
+            questionInput.focus();
+        });
+
+        form?.addEventListener('submit', (event) => {
+            event.preventDefault();
+            if (!(questionInput instanceof HTMLTextAreaElement)) {
+                return;
+            }
+            const question = questionInput.value.trim();
+            if (question === '') {
+                questionInput.focus();
+                return;
+            }
+            latestQuestion = question;
+            renderMessage('user', question);
+            questionInput.value = '';
+            requestAdvisor(question);
+        });
+
+        scheduleIdleState();
+    };
+
+    initAiAssistant();
+
     if (Array.isArray(window.CS_INITIAL_FLASHES)) {
         window.CS_INITIAL_FLASHES.forEach((flash) => {
             if (flash?.message) {
@@ -803,8 +1318,8 @@ const FlashModal = (() => {
             bodyEl.textContent = message;
         }
 
-    // eslint-disable-next-line no-undef
-    const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+        // eslint-disable-next-line no-undef
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
         modalElement.addEventListener('hidden.bs.modal', () => {
             showNext();
         }, { once: true });

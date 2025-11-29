@@ -2,12 +2,14 @@
 declare(strict_types=1);
 
 namespace App\Services\CAFPatronato;
+use App\Services\SettingsService;
 
 use DateTimeImmutable;
 use PDO;
 use RuntimeException;
 use Throwable;
 use function caf_patronato_build_download_url;
+use function caf_patronato_decrypt_file;
 use function caf_patronato_encrypt_uploaded_file;
 use function caf_patronato_generate_standard_filename;
 use function caf_patronato_get_encryption_key;
@@ -602,7 +604,8 @@ SQL;
 
         $this->cachePracticeCustomerEmail($practice, $recipient);
 
-        if (!function_exists('send_system_mail')) {
+        $mailCallable = $this->resolveMailCallable();
+        if ($mailCallable === null) {
             throw new RuntimeException('Servizio email non disponibile sul server.', 503);
         }
 
@@ -619,7 +622,7 @@ SQL;
             : $mailContent;
 
         try {
-            $sent = send_system_mail($recipient, $subject, $htmlBody);
+            $sent = $mailCallable($recipient, $subject, $htmlBody);
         } catch (Throwable $exception) {
             error_log('CAF/Patronato customer mail dispatch error: ' . $exception->getMessage());
             throw new RuntimeException('Invio email al cliente non riuscito. Verifica i log del servizio email.', 502, $exception);
@@ -652,11 +655,34 @@ SQL;
             $path .= '?code=' . rawurlencode($trackingCode);
         }
 
-        if (function_exists('base_url')) {
-            return base_url($path);
+        $baseUrlCallable = null;
+        if (function_exists(__NAMESPACE__ . '\\base_url')) {
+            $baseUrlCallable = __NAMESPACE__ . '\\base_url';
+        } elseif (function_exists('base_url')) {
+            $baseUrlCallable = 'base_url';
+        }
+
+        if ($baseUrlCallable !== null) {
+            return $baseUrlCallable($path);
         }
 
         return '/' . ltrim($path, '/');
+    }
+
+    /**
+     * @return callable|null
+     */
+    private function resolveMailCallable(): ?callable
+    {
+        if (function_exists(__NAMESPACE__ . '\\send_system_mail')) {
+            return __NAMESPACE__ . '\\send_system_mail';
+        }
+
+        if (function_exists('send_system_mail')) {
+            return 'send_system_mail';
+        }
+
+        return null;
     }
 
     /**
@@ -797,6 +823,7 @@ SQL;
             $ctaMarkup = '<div style="margin-top:32px;">'
                 . '<a href="' . $safeLink . '" style="display:inline-block;padding:14px 30px;border-radius:999px;background:#ffffff;color:' . $accent . ';font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 18px 28px rgba(0,0,0,0.16);">Monitora lo stato della pratica</a>'
                 . '<div style="margin-top:12px;font-size:12px;color:rgba(255,255,255,0.85);line-height:1.6;">Se il pulsante non dovesse funzionare copia e incolla questo link nel tuo browser:<br><a href="' . $safeLink . '" style="color:#ffffff;font-weight:600;">' . $safeLink . '</a></div>'
+                . '<p style="margin:18px 0 0;font-size:13px;color:rgba(255,255,255,0.92);line-height:1.6;font-weight:600;">Apri il portale di tracking per seguire tutti gli aggiornamenti e condividere eventuali documenti richiesti.</p>'
                 . '</div>';
         }
 
@@ -862,6 +889,7 @@ SQL;
         if ($metadataSection !== '') {
             $parts[] = $metadataSection;
         }
+        $parts[] = '<div style="margin:36px 0 0;"><h2 style="margin:0 0 16px;font-size:17px;color:' . $accent . ';">Informazioni aggiuntive</h2><p style="margin:0;color:#1a2433;font-size:14px;line-height:1.6;">Usa il portale di tracking per caricare documenti integrativi, comunicare con il tuo referente e ricevere promemoria automatici sulle scadenze.</p></div>';
         if ($timelineHtml !== '') {
             $parts[] = $timelineHtml;
         }
@@ -1483,10 +1511,17 @@ SQL;
             }
 
             $this->recordEvent($practiceId, 'creazione', 'Pratica creata dall\'utente #' . $adminUserId, ['stato' => $data['stato']], $adminUserId, null);
+            $this->registerFinancialMovement($practiceId, $data, $trackingCode);
             $this->pdo->commit();
         } catch (Throwable $exception) {
             $this->pdo->rollBack();
             throw new RuntimeException('Impossibile creare la pratica: ' . $exception->getMessage(), (int) $exception->getCode(), $exception);
+        }
+
+        try {
+            $this->ensureFinancialMovementForPractice($practiceId);
+        } catch (Throwable $exception) {
+            error_log('CAF/Patronato financial movement ensure warning: ' . $exception->getMessage());
         }
 
         $practice = $this->getPractice($practiceId, true, null);
@@ -1498,6 +1533,108 @@ SQL;
         }
 
         return $practice;
+    }
+
+    public function ensureFinancialMovementForPractice(int $practiceId): void
+    {
+        if ($practiceId <= 0) {
+            return;
+        }
+
+        $stmt = $this->pdo->prepare('SELECT id, categoria, cliente_id, tracking_code, metadati, scadenza, titolo, tipo_pratica, stato FROM pratiche WHERE id = :id LIMIT 1');
+        $stmt->execute([':id' => $practiceId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return;
+        }
+
+        $payload = [
+            'categoria' => $row['categoria'] ?? null,
+            'cliente_id' => $row['cliente_id'] ?? null,
+            'scadenza' => $row['scadenza'] ?? null,
+            'titolo' => $row['titolo'] ?? null,
+            'tipo_pratica' => $row['tipo_pratica'] ?? null,
+            'stato' => $row['stato'] ?? null,
+            'metadati' => $this->decodeJson($row['metadati'] ?? null),
+        ];
+
+        if (!is_array($payload['metadati'])) {
+            $payload['metadati'] = [];
+        }
+
+        $trackingCode = isset($row['tracking_code']) ? (string) $row['tracking_code'] : '';
+        $this->registerFinancialMovement($practiceId, $payload, $trackingCode);
+    }
+
+    /**
+     * @return array{scanned:int,created:int,remaining:int}
+     */
+    public function syncMissingFinancialMovements(?int $limit = null): array
+    {
+        $limitClause = '';
+        if ($limit !== null) {
+            $limitValue = max(1, (int) $limit);
+            $limitClause = ' LIMIT ' . $limitValue;
+        }
+
+        $practiceReferenceExpr = $this->buildPracticeReferenceSql('p');
+
+        $sql = <<<SQL
+SELECT p.id, COALESCE(p.tracking_code, '') AS tracking_code
+FROM pratiche p
+WHERE NOT EXISTS (
+    SELECT 1 FROM entrate_uscite eu
+    WHERE (
+        (p.tracking_code IS NOT NULL AND p.tracking_code <> '' AND eu.riferimento = p.tracking_code)
+        OR eu.riferimento = {$practiceReferenceExpr}
+    )
+)
+ORDER BY p.id ASC{$limitClause}
+SQL;
+
+        $stmt = $this->pdo->query($sql);
+        $rows = $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+
+        if (!$rows) {
+            return [
+                'scanned' => 0,
+                'created' => 0,
+                'remaining' => $this->countMissingFinancialMovements(),
+            ];
+        }
+
+        $trackingCodeStmt = $this->pdo->prepare('SELECT tracking_code FROM pratiche WHERE id = :id');
+        $created = 0;
+
+        foreach ($rows as $row) {
+            $practiceId = (int) ($row['id'] ?? 0);
+            if ($practiceId <= 0) {
+                continue;
+            }
+
+            try {
+                $this->ensureFinancialMovementForPractice($practiceId);
+                if ($trackingCodeStmt) {
+                    $trackingCodeStmt->execute([':id' => $practiceId]);
+                    $trackingCode = (string) $trackingCodeStmt->fetchColumn();
+                } else {
+                    $trackingCode = (string) ($row['tracking_code'] ?? '');
+                }
+
+                $references = $this->buildMovementReferences($practiceId, $trackingCode);
+                if ($references && $this->financialMovementExists($references)) {
+                    $created++;
+                }
+            } catch (Throwable $exception) {
+                error_log('CAF/Patronato financial movement backfill warning: ' . $exception->getMessage());
+            }
+        }
+
+        return [
+            'scanned' => count($rows),
+            'created' => $created,
+            'remaining' => $this->countMissingFinancialMovements(),
+        ];
     }
 
     public function sendCustomerConfirmationMail(int $practiceId, int $requestUserId, ?string $recipientOverride = null): bool
@@ -1527,6 +1664,40 @@ SQL;
         }
 
         return $this->sendCustomerCreationMail($practice, $requestUserId, $recipientOverride);
+    }
+
+    public function deletePractice(int $practiceId, bool $canManageAll, ?int $operatorId): void
+    {
+        if ($practiceId <= 0) {
+            throw new RuntimeException('ID pratica non valido.');
+        }
+
+        $practice = $this->getPractice($practiceId, $canManageAll, $operatorId);
+        $documents = isset($practice['documenti']) && is_array($practice['documenti']) ? $practice['documenti'] : [];
+        $trackingCode = (string) ($practice['tracking_code'] ?? '');
+        $references = $this->buildMovementReferences($practiceId, $trackingCode);
+
+        $this->pdo->beginTransaction();
+        try {
+            if ($references) {
+                $deleteMovementStmt = $this->pdo->prepare('DELETE FROM entrate_uscite WHERE riferimento = :riferimento');
+                foreach ($references as $reference) {
+                    if ($reference === '') {
+                        continue;
+                    }
+                    $deleteMovementStmt->execute([':riferimento' => $reference]);
+                }
+            }
+
+            $deletePracticeStmt = $this->pdo->prepare('DELETE FROM pratiche WHERE id = :id');
+            $deletePracticeStmt->execute([':id' => $practiceId]);
+            $this->pdo->commit();
+        } catch (Throwable $exception) {
+            $this->pdo->rollBack();
+            throw new RuntimeException('Impossibile eliminare la pratica: ' . $exception->getMessage(), (int) $exception->getCode(), $exception);
+        }
+
+        $this->deletePracticeStorage($practiceId, $documents);
     }
 
     /**
@@ -1859,7 +2030,102 @@ SQL;
             error_log('CAF/Patronato timeline append warning (document upload): ' . $exception->getMessage());
         }
 
+        $this->notifyCustomerDocumentUploaded($practiceId, $safeName, $relativePath, $detectedMime, $requestUserId, $operatorId);
+
         return $this->listDocuments($practiceId);
+    }
+
+    private function notifyCustomerDocumentUploaded(int $practiceId, string $displayName, string $relativePath, string $mimeType, int $requestUserId, ?int $operatorId): void
+    {
+        if ($operatorId === null) {
+            return;
+        }
+
+        try {
+            $practice = $this->getPractice($practiceId, true, null);
+        } catch (Throwable $exception) {
+            error_log('CAF/Patronato document mail skipped: pratica non disponibile - ' . $exception->getMessage());
+            return;
+        }
+
+        $recipient = $this->resolvePracticeCustomerEmail($practice);
+        if ($recipient === null) {
+            return;
+        }
+
+        $mailCallable = $this->resolveMailCallable();
+        if ($mailCallable === null) {
+            error_log('CAF/Patronato document mail skipped: servizio email non disponibile.');
+            return;
+        }
+
+        $relativeClean = ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativePath), DIRECTORY_SEPARATOR);
+        $absolutePath = $this->projectRoot . DIRECTORY_SEPARATOR . $relativeClean;
+
+        try {
+            $attachmentContent = caf_patronato_decrypt_file($absolutePath);
+        } catch (Throwable $exception) {
+            error_log('CAF/Patronato document mail skipped: decifratura allegato non riuscita - ' . $exception->getMessage());
+            return;
+        }
+
+        $trackingCode = (string) ($practice['tracking_code'] ?? '');
+        $subjectReference = $trackingCode !== '' ? $trackingCode : sprintf('#%d', $practiceId);
+        $subject = 'Nuovo documento per la pratica ' . $subjectReference;
+        $trackingLink = $this->buildTrackingLink($trackingCode);
+        $practiceTitle = trim((string) ($practice['titolo'] ?? ''));
+        if ($practiceTitle === '') {
+            $practiceTitle = 'la tua pratica';
+        }
+
+        $body = '<p>Buongiorno,</p>';
+        $body .= '<p>In allegato trovi il documento <strong>' . htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') . '</strong> caricato dall&#39;operatore Patronato per la tua pratica <strong>' . htmlspecialchars($practiceTitle, ENT_QUOTES, 'UTF-8') . '</strong>.</p>';
+        if ($trackingLink !== '') {
+            $body .= '<p>Puoi seguire l&#39;avanzamento della pratica da questo link: <a href="' . htmlspecialchars($trackingLink, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($trackingLink, ENT_QUOTES, 'UTF-8') . '</a>.</p>';
+        }
+        $body .= '<p>Per ulteriori informazioni rispondi a questa email o contatta il tuo operatore di riferimento.</p>';
+        $body .= '<p>Grazie,<br>Ufficio Patronato</p>';
+
+        $htmlBody = function_exists('render_mail_template')
+            ? render_mail_template('Aggiornamento pratica CAF & Patronato', $body)
+            : $body;
+
+        $options = [
+            'attachments' => [[
+                'name' => $displayName,
+                'mime' => $mimeType,
+                'content' => $attachmentContent,
+            ]],
+            'metadata' => [
+                'practice_id' => (string) $practiceId,
+                'event' => 'document_upload',
+            ],
+        ];
+
+        try {
+            $sent = $mailCallable($recipient, $subject, $htmlBody, $options);
+        } catch (Throwable $exception) {
+            error_log('CAF/Patronato document mail dispatch error: ' . $exception->getMessage());
+            return;
+        }
+
+        if (!$sent) {
+            error_log('CAF/Patronato document mail dispatch failed for pratica #' . $practiceId . ' verso ' . $recipient);
+            return;
+        }
+
+        $payload = [
+            'email' => $recipient,
+            'documento' => $displayName,
+        ];
+        $this->recordEvent($practiceId, 'notifica_cliente', 'Documento inviato via email al cliente', $payload, $requestUserId, $operatorId);
+
+        try {
+            $message = sprintf('Documento inviato al cliente: %s', $displayName);
+            $this->appendTrackingStepInternal($practiceId, $message, 'patronato', false);
+        } catch (Throwable $exception) {
+            error_log('CAF/Patronato timeline append warning (document mail notify): ' . $exception->getMessage());
+        }
     }
 
     public function deleteDocument(int $documentId, int $practiceId, bool $canManageAll, ?int $operatorId): void
@@ -2383,6 +2649,411 @@ SQL;
         }
 
         return $data;
+    }
+
+    /**
+     * @param array<string,mixed> $data
+     */
+    private function registerFinancialMovement(int $practiceId, array $data, string $trackingCode): void
+    {
+        $references = $this->buildMovementReferences($practiceId, $trackingCode);
+        if (!$references) {
+            return;
+        }
+
+        if ($this->financialMovementExists($references)) {
+            return;
+        }
+
+        $reference = $references[0];
+
+        $metadata = [];
+        if (isset($data['metadati']) && is_array($data['metadati'])) {
+            $metadata = $data['metadati'];
+        }
+
+        $serviceLabel = $this->extractMetadataValue($metadata, ['servizio', 'service', 'prestazione']);
+        $nominativo = $this->extractMetadataValue($metadata, ['nominativo', 'cliente', 'assistito', 'intestatario']);
+
+        $amount = $this->extractAmountFromMetadata($metadata);
+        if ($amount === null && $serviceLabel !== null) {
+            $amount = $this->resolveServicePrice($data['categoria'] ?? null, $serviceLabel);
+        }
+        if ($amount === null) {
+            $amount = 0.0;
+        }
+
+        $description = $this->buildMovementDescription($data, $metadata, $serviceLabel, $nominativo);
+        $note = sprintf('Movimento generato automaticamente dalla pratica #%d', $practiceId);
+        if (trim($trackingCode) !== '') {
+            $note .= ' (tracking ' . trim($trackingCode) . ')';
+        }
+
+        $clienteId = $data['cliente_id'] ?? null;
+        if ($clienteId !== null) {
+            $clienteId = (int) $clienteId;
+            if ($clienteId <= 0) {
+                $clienteId = null;
+            }
+        }
+
+        $amountString = number_format($amount, 2, '.', '');
+        $scadenza = isset($data['scadenza']) && $data['scadenza'] !== '' ? $data['scadenza'] : null;
+
+        $stmt = $this->pdo->prepare('INSERT INTO entrate_uscite (
+            cliente_id,
+            descrizione,
+            riferimento,
+            metodo,
+            stato,
+            tipo_movimento,
+            importo,
+            quantita,
+            prezzo_unitario,
+            data_scadenza,
+            data_pagamento,
+            note,
+            allegato_path,
+            allegato_hash,
+            created_at,
+            updated_at
+        ) VALUES (
+            :cliente_id,
+            :descrizione,
+            :riferimento,
+            :metodo,
+            :stato,
+            :tipo_movimento,
+            :importo,
+            1,
+            :prezzo_unitario,
+            :data_scadenza,
+            NULL,
+            :note,
+            NULL,
+            NULL,
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+        )');
+
+        $stmt->execute([
+            ':cliente_id' => $clienteId,
+            ':descrizione' => $description,
+            ':riferimento' => $reference,
+            ':metodo' => 'Bonifico',
+            ':stato' => 'In lavorazione',
+            ':tipo_movimento' => 'Entrata',
+            ':importo' => $amountString,
+            ':prezzo_unitario' => $amountString,
+            ':data_scadenza' => $scadenza,
+            ':note' => $note,
+        ]);
+    }
+
+    /**
+     * @return array<int,string>
+     */
+    private function buildMovementReferences(int $practiceId, ?string $trackingCode): array
+    {
+        $references = [];
+        $cleanTracking = trim((string) $trackingCode);
+        if ($cleanTracking !== '') {
+            $references[] = $this->limitLength($cleanTracking, 80);
+        }
+        $references[] = $this->limitLength('PRATICA-' . $practiceId, 80);
+
+        $references = array_values(array_filter(array_unique($references), static fn($value) => is_string($value) && $value !== ''));
+
+        return $references;
+    }
+
+    /**
+     * @param array<int,string> $references
+     */
+    private function financialMovementExists(array $references): bool
+    {
+        if (!$references) {
+            return false;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($references), '?'));
+        $stmt = $this->pdo->prepare('SELECT 1 FROM entrate_uscite WHERE riferimento IN (' . $placeholders . ') LIMIT 1');
+        $stmt->execute($references);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    private function countMissingFinancialMovements(): int
+    {
+        $practiceReferenceExpr = $this->buildPracticeReferenceSql('p');
+
+        $sql = <<<SQL
+SELECT COUNT(*) FROM pratiche p
+WHERE NOT EXISTS (
+    SELECT 1 FROM entrate_uscite eu
+    WHERE (
+        (p.tracking_code IS NOT NULL AND p.tracking_code <> '' AND eu.riferimento = p.tracking_code)
+        OR eu.riferimento = {$practiceReferenceExpr}
+    )
+)
+SQL;
+
+        $stmt = $this->pdo->query($sql);
+
+        return (int) ($stmt ? $stmt->fetchColumn() : 0);
+    }
+
+    private function buildPracticeReferenceSql(string $alias = 'p'): string
+    {
+        $sanitizedAlias = preg_replace('/[^a-zA-Z0-9_]/', '', $alias) ?: 'p';
+        $driver = (string) $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        if ($driver === 'sqlite') {
+            return "'PRATICA-' || CAST({$sanitizedAlias}.id AS TEXT)";
+        }
+
+        return "CONCAT('PRATICA-', {$sanitizedAlias}.id)";
+    }
+
+    /**
+     * @param array<string,mixed> $metadata
+     * @param array<int,string> $keys
+     */
+    private function extractMetadataValue(array $metadata, array $keys): ?string
+    {
+        foreach ($keys as $key) {
+            if (!array_key_exists($key, $metadata)) {
+                continue;
+            }
+            $value = $metadata[$key];
+            if (is_array($value)) {
+                continue;
+            }
+            $value = trim((string) $value);
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string,mixed> $metadata
+     */
+    private function extractAmountFromMetadata(array $metadata): ?float
+    {
+        $keys = ['importo', 'prezzo', 'price', 'amount', 'totale', 'costo'];
+        foreach ($keys as $key) {
+            if (!array_key_exists($key, $metadata)) {
+                continue;
+            }
+            $parsed = $this->parseMoneyValue($metadata[$key]);
+            if ($parsed !== null) {
+                return $parsed;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param mixed $raw
+     */
+    private function parseMoneyValue($raw): ?float
+    {
+        if (is_int($raw) || is_float($raw)) {
+            return (float) $raw;
+        }
+
+        if (!is_string($raw)) {
+            return null;
+        }
+
+        $value = trim($raw);
+        if ($value === '') {
+            return null;
+        }
+
+        $value = str_replace(['€', 'EUR', 'eur', ' ', "\u{00A0}"], '', $value);
+        if ($value === '') {
+            return null;
+        }
+
+        $lastComma = strrpos($value, ',');
+        $lastDot = strrpos($value, '.');
+        if ($lastComma !== false && $lastDot !== false) {
+            if ($lastComma > $lastDot) {
+                $value = str_replace('.', '', $value);
+                $value = str_replace(',', '.', $value);
+            } else {
+                $value = str_replace(',', '', $value);
+            }
+        } elseif ($lastComma !== false) {
+            $value = str_replace(',', '.', $value);
+        }
+
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        return (float) $value;
+    }
+
+    private function resolveServicePrice(?string $category, ?string $serviceName): ?float
+    {
+        $categoryKey = strtoupper(trim((string) $category));
+        $serviceLabel = trim((string) $serviceName);
+        if ($categoryKey === '' || $serviceLabel === '') {
+            return null;
+        }
+
+        try {
+            $settings = new SettingsService($this->pdo, $this->projectRoot);
+            $services = $settings->getCafPatronatoServices();
+        } catch (Throwable $exception) {
+            error_log('CAF/Patronato service price lookup failed: ' . $exception->getMessage());
+            $services = SettingsService::defaultCafPatronatoServices();
+        }
+
+        $list = $services[$categoryKey] ?? null;
+        if (!is_array($list)) {
+            return null;
+        }
+
+        $comparison = function_exists('mb_strtolower') ? mb_strtolower($serviceLabel, 'UTF-8') : strtolower($serviceLabel);
+        foreach ($list as $entry) {
+            if (!is_array($entry) || empty($entry['name'])) {
+                continue;
+            }
+            $candidate = function_exists('mb_strtolower') ? mb_strtolower((string) $entry['name'], 'UTF-8') : strtolower((string) $entry['name']);
+            if ($candidate === $comparison) {
+                $price = $entry['price'] ?? null;
+                if ($price !== null && is_numeric($price)) {
+                    return (float) $price;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string,mixed> $data
+     * @param array<string,mixed> $metadata
+     */
+    private function buildMovementDescription(array $data, array $metadata, ?string $serviceLabel, ?string $nominativo): string
+    {
+        $parts = [];
+
+        $category = strtoupper((string) ($data['categoria'] ?? ''));
+        if ($category !== '') {
+            $parts[] = 'Pratica ' . ucfirst(strtolower($category));
+        } else {
+            $parts[] = 'Pratica CAF/Patronato';
+        }
+
+        if ($serviceLabel === null) {
+            $serviceLabel = $this->extractMetadataValue($metadata, ['servizio', 'service', 'prestazione']);
+        }
+
+        if ($serviceLabel !== null) {
+            $parts[] = $serviceLabel;
+        } elseif (!empty($data['titolo'])) {
+            $parts[] = (string) $data['titolo'];
+        }
+
+        if ($nominativo === null) {
+            $nominativo = $this->extractMetadataValue($metadata, ['nominativo', 'cliente', 'assistito', 'intestatario']);
+        }
+
+        if ($nominativo !== null) {
+            $parts[] = $nominativo;
+        }
+
+        $description = implode(' - ', array_values(array_filter(array_map('trim', $parts))));
+        if ($description === '') {
+            $description = 'Pratica CAF/Patronato';
+        }
+
+        return $this->limitLength($description, 180);
+    }
+
+    private function limitLength(string $value, int $maxLength): string
+    {
+        if ($maxLength <= 0) {
+            return '';
+        }
+
+        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+            if (mb_strlen($value, 'UTF-8') <= $maxLength) {
+                return $value;
+            }
+            return mb_substr($value, 0, $maxLength, 'UTF-8');
+        }
+
+        if (strlen($value) <= $maxLength) {
+            return $value;
+        }
+
+        return substr($value, 0, $maxLength);
+    }
+
+    /**
+     * @param array<int,array<string,mixed>> $documents
+     */
+    private function deletePracticeStorage(int $practiceId, array $documents): void
+    {
+        foreach ($documents as $document) {
+            if (!is_array($document)) {
+                continue;
+            }
+            $relativePath = isset($document['file_path']) ? (string) $document['file_path'] : '';
+            $absolutePath = $this->resolveAbsolutePath($relativePath);
+            if ($absolutePath !== null && is_file($absolutePath)) {
+                @unlink($absolutePath);
+            }
+        }
+
+        $practiceDir = $this->storagePath . DIRECTORY_SEPARATOR . $practiceId;
+        $this->deleteDirectoryIfExists($practiceDir);
+    }
+
+    private function resolveAbsolutePath(string $relativePath): ?string
+    {
+        $trimmed = trim($relativePath);
+        if ($trimmed === '') {
+            return null;
+        }
+        $normalized = ltrim($trimmed, '\\/');
+        $normalized = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $normalized);
+        return $this->projectRoot . DIRECTORY_SEPARATOR . $normalized;
+    }
+
+    private function deleteDirectoryIfExists(string $directory): void
+    {
+        if (!is_dir($directory)) {
+            return;
+        }
+
+        $items = @scandir($directory);
+        if ($items === false) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+            $path = $directory . DIRECTORY_SEPARATOR . $item;
+            if (is_dir($path) && !is_link($path)) {
+                $this->deleteDirectoryIfExists($path);
+            } else {
+                @unlink($path);
+            }
+        }
+
+        @rmdir($directory);
     }
 
     /**

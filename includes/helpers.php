@@ -44,13 +44,17 @@ function redirect_by_role(string $role): void
     }
 }
 
-function sanitize_output(?string $value): string
+function sanitize_output(string|int|float|bool|null $value): string
 {
     if ($value === null) {
         return '';
     }
 
-    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    if (is_bool($value)) {
+        $value = $value ? '1' : '0';
+    }
+
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
 function format_currency(?float $amount): string
@@ -61,19 +65,103 @@ function format_currency(?float $amount): string
     return '€ ' . number_format($amount, 2, ',', '.');
 }
 
+function app_base_path(): string
+{
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $docRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: '';
+    $projectRoot = realpath(__DIR__ . '/..') ?: __DIR__ . '/..';
+
+    $docRoot = rtrim(str_replace('\\', '/', $docRoot), '/');
+    $projectRoot = rtrim(str_replace('\\', '/', $projectRoot), '/');
+
+    if ($docRoot !== '' && str_starts_with($projectRoot, $docRoot)) {
+        $relative = trim(substr($projectRoot, strlen($docRoot)), '/');
+        $cached = $relative === '' ? '' : '/' . $relative;
+        return $cached;
+    }
+
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    $scriptName = str_replace('\\', '/', $scriptName);
+    if ($scriptName !== '') {
+        $dir = trim(dirname($scriptName), '/');
+        if ($dir !== '') {
+            $segments = explode('/', $dir);
+            $baseSegments = [];
+            foreach ($segments as $segment) {
+                if ($segment === '' || $segment === 'modules' || $segment === 'api' || $segment === 'customer-portal') {
+                    break;
+                }
+                $baseSegments[] = $segment;
+            }
+            if ($baseSegments !== []) {
+                $cached = '/' . implode('/', $baseSegments);
+                return $cached;
+            }
+        }
+    }
+
+    $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+    if ($requestUri !== '') {
+        $path = parse_url($requestUri, PHP_URL_PATH) ?: '';
+        $path = str_replace('\\', '/', $path);
+        if ($path !== '') {
+            $candidates = ['/modules/', '/api/', '/customer-portal/', '/dashboard', '/index.php'];
+            $positions = [];
+            foreach ($candidates as $needle) {
+                $pos = strpos($path, $needle);
+                if ($pos !== false) {
+                    $positions[] = $pos;
+                }
+            }
+            if ($positions !== []) {
+                $cut = min($positions);
+                $base = rtrim(substr($path, 0, $cut), '/');
+                if ($base !== '') {
+                    $cached = $base;
+                    return $cached;
+                }
+            }
+
+            if (!str_contains(basename($path), '.')) {
+                $base = rtrim($path, '/');
+                if ($base !== '') {
+                    $cached = $base;
+                    return $cached;
+                }
+            }
+        }
+    }
+
+    $cached = '';
+    return $cached;
+}
+
 function base_url(string $path = ''): string
 {
     static $cached;
     if ($cached === null) {
         $currentHost = $_SERVER['HTTP_HOST'] ?? null;
         $appUrl = env('APP_URL');
+        $strictAppUrl = filter_var(env('APP_URL_STRICT', false), FILTER_VALIDATE_BOOL);
+
         if ($appUrl) {
             $appUrl = rtrim($appUrl, '/');
             $appHost = parse_url($appUrl, PHP_URL_HOST);
-            $strictAppUrl = filter_var(env('APP_URL_STRICT', false), FILTER_VALIDATE_BOOL);
 
             if ($currentHost && $appHost && strcasecmp((string) $appHost, (string) $currentHost) !== 0 && !$strictAppUrl) {
                 $appUrl = null;
+            } else {
+                $appPath = parse_url($appUrl, PHP_URL_PATH) ?: '';
+                if (($appPath === '' || $appPath === '/') && !$strictAppUrl) {
+                    $basePath = app_base_path();
+                    if ($basePath !== '') {
+                        $appUrl .= $basePath;
+                    }
+                }
             }
         }
 
@@ -82,21 +170,7 @@ function base_url(string $path = ''): string
         } else {
             $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
             $host = $currentHost ?: 'localhost';
-            $docRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: '';
-            $projectRoot = realpath(__DIR__ . '/..') ?: '';
-            $basePath = '';
-
-            if ($docRoot !== '' && $projectRoot !== '' && strncmp($projectRoot, $docRoot, strlen($docRoot)) === 0) {
-                $relative = str_replace('\\', '/', substr($projectRoot, strlen($docRoot)));
-                $basePath = '/' . ltrim($relative, '/');
-                if ($basePath === '/') {
-                    $basePath = '';
-                }
-            } else {
-                $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
-                $basePath = $scriptDir && $scriptDir !== '.' ? $scriptDir : '';
-            }
-
+            $basePath = app_base_path();
             $cached = rtrim($scheme . '://' . $host . $basePath, '/');
         }
     }
@@ -336,6 +410,95 @@ function asset(string $path): string
     $file = public_path($relative);
     $timestamp = is_file($file) ? filemtime($file) : time();
     return base_url($relative) . '?v=' . $timestamp;
+}
+
+function ai_assistant_enabled(): bool
+{
+    static $cached;
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $flag = filter_var(env('AI_THINKING_ASSISTANT_ENABLED', true), FILTER_VALIDATE_BOOL);
+    $cached = $flag;
+
+    return $cached;
+}
+
+/**
+ * @return array{title:string,path:string,section:string,description:string,slug:string}
+ */
+function ai_assistant_page_context(): array
+{
+    $script = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
+    $path = '/' . ltrim($script, '/');
+    $normalized = trim(str_replace('.php', '', $path), '/');
+    $segments = $normalized === '' ? [] : explode('/', $normalized);
+    $defaultTitle = $GLOBALS['pageTitle'] ?? '';
+    $defaultSection = 'Dashboard';
+    $defaultDescription = 'Panoramica generale sul controllo operativo di Coresuite Business.';
+
+    $map = [
+        'dashboard' => ['Dashboard', 'Monitora KPI, pipeline e anomalie generali.'],
+        'modules/clienti' => ['Clienti', 'Gestisci anagrafiche, opportunità e contratti dei clienti.'],
+        'modules/servizi' => ['Servizi', 'Coordina erogazioni, logistics e follow-up dei servizi.'],
+        'modules/report' => ['Reportistica', 'Analizza trend e scarica report operativi/finanziari.'],
+        'modules/ticket' => ['Ticket', 'Gestisci richieste di assistenza e SLA.'],
+        'modules/email-marketing' => ['Email marketing', 'Programma e analizza campagne marketing.'],
+        'modules/documenti' => ['Documenti', 'Archivia e condividi documentazione ufficiale.'],
+        'modules/impostazioni' => ['Impostazioni', 'Configura utenti, permessi e parametri di sistema.'],
+        'customer-portal' => ['Customer portal', 'Supporta i clienti finali nelle operazioni self-service.'],
+        'tools' => ['Tools', 'Utility amministrative e script di manutenzione.'],
+    ];
+
+    $section = $defaultSection;
+    $description = $defaultDescription;
+    foreach ($map as $needle => $info) {
+        $needle = trim($needle, '/');
+        if ($needle === '') {
+            continue;
+        }
+        if ($normalized === '' && $needle === 'dashboard') {
+            [$section, $description] = $info;
+            break;
+        }
+        if ($needle !== '' && str_starts_with($normalized, $needle)) {
+            [$section, $description] = $info;
+            break;
+        }
+    }
+
+    $slug = $normalized !== '' ? str_replace('/', '-', $normalized) : 'dashboard';
+    $title = trim((string) $defaultTitle) !== '' ? (string) $defaultTitle : ucfirst(str_replace('-', ' ', $slug));
+
+    return [
+        'title' => $title,
+        'path' => $path,
+        'section' => $section,
+        'description' => $description,
+        'slug' => $slug,
+    ];
+}
+
+/**
+ * @return array{enabled:bool,endpoint?:string,defaultPeriod?:string,user?:array{name:string,role:string}}
+ */
+function ai_assistant_frontend_config(): array
+{
+    $config = ['enabled' => ai_assistant_enabled()];
+    if (!$config['enabled']) {
+        return $config;
+    }
+
+    $config['endpoint'] = base_url('api/ai/advisor.php');
+    $config['defaultPeriod'] = 'last30';
+    $config['user'] = [
+        'name' => current_user_display_name(),
+        'role' => (string) ($_SESSION['role'] ?? ''),
+    ];
+    $config['page'] = ai_assistant_page_context();
+
+    return $config;
 }
 
 function format_datetime(?string $value, string $format = 'd/m/Y H:i'): string

@@ -1,199 +1,231 @@
 <?php
+declare(strict_types=1);
+
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/db_connect.php';
 require_once __DIR__ . '/../../includes/helpers.php';
-require_once __DIR__ . '/../../includes/mailer.php';
+require_once __DIR__ . '/../../includes/ticket_functions.php';
 
-require_role('Admin', 'Operatore', 'Manager');
-$pageTitle = 'Dettaglio ticket';
-$csrfToken = csrf_token();
+require_role('Admin', 'Operatore', 'Manager', 'Support');
 
-$id = (int) ($_GET['id'] ?? 0);
-if ($id <= 0) {
+$ticketId = (int) ($_GET['id'] ?? 0);
+if ($ticketId <= 0) {
     header('Location: index.php');
     exit;
 }
 
-$ticketStmt = $pdo->prepare('SELECT t.*, c.nome, c.cognome, c.email FROM ticket t LEFT JOIN clienti c ON t.cliente_id = c.id WHERE t.id = :id');
-$ticketStmt->execute([':id' => $id]);
-$ticket = $ticketStmt->fetch();
+$ticket = ticket_find($pdo, $ticketId);
 if (!$ticket) {
-    header('Location: index.php?notfound=1');
+    header('Location: index.php?ticket_not_found=1');
     exit;
 }
 
-$statusOptions = ['Aperto', 'In corso', 'Chiuso'];
-$errors = [];
+$messages = ticket_messages($pdo, $ticketId);
+$statusOptions = ticket_status_options();
+$priorityOptions = ticket_priority_options();
+$agents = ticket_assignments($pdo);
+$csrfToken = csrf_token();
+$pageTitle = 'Ticket #' . sanitize_output((string) ($ticket['codice'] ?? $ticket['id']));
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    if ($action === 'message') {
-        $message = trim($_POST['messaggio'] ?? '');
-        if ($message === '') {
-            $errors[] = 'Il messaggio non può essere vuoto.';
-        }
-
-        $attachmentPath = null;
-        if (!empty($_FILES['allegato']['name'])) {
-            $file = $_FILES['allegato'];
-            if ($file['error'] === UPLOAD_ERR_OK) {
-                $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-                if (!in_array($ext, ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xlsx', 'zip'], true)) {
-                    $errors[] = 'Formato allegato non supportato.';
-                } else {
-                    $fileName = sprintf('ticket_%s.%s', uniqid('', true), $ext);
-                    $destination = __DIR__ . '/../../assets/uploads/ticket/' . $fileName;
-                    if (!move_uploaded_file($file['tmp_name'], $destination)) {
-                        $errors[] = 'Errore caricamento allegato.';
-                    } else {
-                        $attachmentPath = 'assets/uploads/ticket/' . $fileName;
-                    }
-                }
-            } else {
-                $errors[] = 'Errore caricamento allegato.';
-            }
-        }
-
-        if (!$errors) {
-            $insert = $pdo->prepare('INSERT INTO ticket_messaggi (ticket_id, utente_id, messaggio, allegato_path) VALUES (:ticket_id, :utente_id, :messaggio, :allegato_path)');
-            $insert->execute([
-                ':ticket_id' => $id,
-                ':utente_id' => $_SESSION['user_id'],
-                ':messaggio' => $message,
-                ':allegato_path' => $attachmentPath,
-            ]);
-            if (!empty($ticket['email'])) {
-                $baseUrl = env('APP_URL', sprintf('%s://%s', isset($_SERVER['HTTPS']) ? 'https' : 'http', $_SERVER['HTTP_HOST'] ?? 'localhost'));
-                $ticketLink = rtrim($baseUrl, '/') . '/modules/ticket/view.php?id=' . $id;
-                $mailContent = sprintf('<p>Ciao %s,</p><p>Abbiamo aggiunto una nuova risposta al ticket <strong>#%d - %s</strong>.</p><p>Messaggio:</p><blockquote>%s</blockquote><p>Puoi seguire l\'avanzamento <a href="%s">a questo link</a>.</p>',
-                    sanitize_output(trim(($ticket['cognome'] ?? '') . ' ' . ($ticket['nome'] ?? '')) ?: 'cliente'),
-                    $ticket['id'],
-                    sanitize_output($ticket['titolo']),
-                    nl2br(sanitize_output($message)),
-                    $ticketLink
-                );
-                send_system_mail($ticket['email'], 'Aggiornamento ticket #' . $ticket['id'], render_mail_template('Aggiornamento ticket', $mailContent));
-            }
-            add_flash('success', 'Risposta inviata.');
-            header('Location: view.php?id=' . $id . '#messaggi');
-            exit;
-        }
-    } elseif ($action === 'status' && in_array($_POST['stato'] ?? '', $statusOptions, true)) {
-        $update = $pdo->prepare('UPDATE ticket SET stato = :stato WHERE id = :id');
-        $update->execute([':stato' => $_POST['stato'], ':id' => $id]);
-        if (!empty($ticket['email'])) {
-            $baseUrl = env('APP_URL', sprintf('%s://%s', isset($_SERVER['HTTPS']) ? 'https' : 'http', $_SERVER['HTTP_HOST'] ?? 'localhost'));
-            $ticketLink = rtrim($baseUrl, '/') . '/modules/ticket/view.php?id=' . $id;
-            $mailContent = sprintf('<p>Ciao,</p><p>Il ticket <strong>#%d - %s</strong> è passato allo stato <strong>%s</strong>.</p><p>Consulta i dettagli <a href="%s">qui</a>.</p>',
-                $ticket['id'],
-                sanitize_output($ticket['titolo']),
-                sanitize_output($_POST['stato']),
-                $ticketLink
-            );
-            send_system_mail($ticket['email'], 'Aggiornamento stato ticket #' . $ticket['id'], render_mail_template('Aggiornamento stato', $mailContent));
-        }
-        add_flash('success', 'Stato aggiornato.');
-        header('Location: view.php?id=' . $id . '&updated=1');
-        exit;
+$tags = [];
+if (!empty($ticket['tags'])) {
+    $decoded = json_decode((string) $ticket['tags'], true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+        $tags = array_filter(array_map('trim', $decoded));
     }
 }
 
-$msgStmt = $pdo->prepare('SELECT tm.*, u.username FROM ticket_messaggi tm LEFT JOIN users u ON tm.utente_id = u.id WHERE tm.ticket_id = :ticket_id ORDER BY tm.created_at ASC');
-$msgStmt->execute([':ticket_id' => $id]);
-$messages = $msgStmt->fetchAll();
+$creatorLabel = trim((string) (($ticket['creator_lastname'] ?? '') . ' ' . ($ticket['creator_name'] ?? '')));
+if ($creatorLabel === '') {
+    $creatorLabel = (string) ($ticket['creator_username'] ?? 'Sistema');
+}
 
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
 ?>
-<div class="flex-grow-1 d-flex flex-column min-vh-100">
+<div class="flex-grow-1 d-flex flex-column min-vh-100" data-ticket-id="<?php echo (int) $ticketId; ?>" data-ticket-csrf="<?php echo sanitize_output($csrfToken); ?>" data-ticket-base="/modules/ticket">
     <?php require_once __DIR__ . '/../../includes/topbar.php'; ?>
     <main class="content-wrapper">
-        <div class="page-toolbar mb-4">
-            <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Tutti i ticket</a>
-            <div class="toolbar-actions">
-                <form method="post" class="stack-sm align-items-center">
-                    <input type="hidden" name="action" value="status">
-                    <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-                    <label class="form-label mb-0" for="stato">Stato</label>
-                    <select class="form-select" name="stato" id="stato">
-                        <?php foreach ($statusOptions as $status): ?>
-                            <option value="<?php echo $status; ?>" <?php echo $ticket['stato'] === $status ? 'selected' : ''; ?>><?php echo $status; ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <button class="btn btn-warning text-dark" type="submit">Aggiorna</button>
-                </form>
+        <div class="page-toolbar mb-4 d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <a class="btn btn-outline-secondary btn-sm mb-2" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Tutti i ticket</a>
+                <h1 class="h3 mb-1">Ticket #<?php echo sanitize_output($ticket['codice'] ?? $ticket['id']); ?></h1>
+                <p class="text-muted mb-0">Creato il <?php echo sanitize_output(date('d/m/Y H:i', strtotime((string) $ticket['created_at']))); ?> · Ultimo aggiornamento <?php echo sanitize_output(date('d/m/Y H:i', strtotime((string) $ticket['updated_at']))); ?></p>
+            </div>
+            <div class="toolbar-actions d-flex flex-wrap gap-2">
+                <button class="btn btn-soft-secondary" type="button" data-ticket-action="copy-link">
+                    <i class="fa-solid fa-link me-2"></i>Copia link
+                </button>
+                <button class="btn btn-danger" type="button" data-ticket-action="archive">
+                    <i class="fa-solid fa-box-archive me-2"></i>Archivia
+                </button>
             </div>
         </div>
+
         <div class="row g-4">
-            <div class="col-lg-4">
-                <div class="card ag-card h-100">
-                    <div class="card-header bg-transparent border-0">
-                        <h5 class="card-title mb-0">Informazioni ticket</h5>
+            <div class="col-12 col-xl-4">
+                <div class="card ag-card mb-4">
+                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                        <h2 class="h5 mb-0">Stato e SLA</h2>
+                        <span class="badge <?php echo ticket_status_badge((string) $ticket['status']); ?> text-uppercase"><?php echo sanitize_output($ticket['status']); ?></span>
                     </div>
                     <div class="card-body">
-                        <dl class="row mb-0">
-                            <dt class="col-sm-5">ID</dt>
-                            <dd class="col-sm-7">#<?php echo (int) $ticket['id']; ?></dd>
-                            <dt class="col-sm-5">Titolo</dt>
-                            <dd class="col-sm-7"><?php echo sanitize_output($ticket['titolo']); ?></dd>
-                            <dt class="col-sm-5">Stato</dt>
-                            <dd class="col-sm-7"><span class="badge ag-badge text-uppercase"><?php echo sanitize_output($ticket['stato']); ?></span></dd>
-                            <dt class="col-sm-5">Cliente</dt>
-                            <dd class="col-sm-7"><?php echo sanitize_output(trim(($ticket['cognome'] ?? '') . ' ' . ($ticket['nome'] ?? '')) ?: 'Interno'); ?></dd>
-                            <dt class="col-sm-5">Creato</dt>
-                            <dd class="col-sm-7"><?php echo sanitize_output(date('d/m/Y H:i', strtotime($ticket['created_at']))); ?></dd>
-                            <dt class="col-sm-5">Descrizione</dt>
-                            <dd class="col-sm-7"><?php echo nl2br(sanitize_output($ticket['descrizione'])); ?></dd>
-                        </dl>
+                        <form id="ticket-status-form" class="row g-3" data-ticket-form="status">
+                            <input type="hidden" name="ticket_id" value="<?php echo (int) $ticketId; ?>">
+                            <div class="col-12">
+                                <label class="form-label" for="status">Stato</label>
+                                <select class="form-select" id="status" name="status">
+                                    <?php foreach ($statusOptions as $value => $label): ?>
+                                        <option value="<?php echo sanitize_output($value); ?>" <?php echo $ticket['status'] === $value ? 'selected' : ''; ?>><?php echo sanitize_output($label); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="priority">Priorità</label>
+                                <select class="form-select" id="priority" name="priority">
+                                    <?php foreach ($priorityOptions as $value => $label): ?>
+                                        <option value="<?php echo sanitize_output($value); ?>" <?php echo $ticket['priority'] === $value ? 'selected' : ''; ?>><?php echo sanitize_output($label); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="assigned_to">Assegnato a</label>
+                                <select class="form-select" id="assigned_to" name="assigned_to">
+                                    <option value="">Team ticket</option>
+                                    <?php foreach ($agents as $agent): ?>
+                                        <?php $label = trim(($agent['cognome'] ?? '') . ' ' . ($agent['nome'] ?? '') . ' · ' . ($agent['username'] ?? '')); ?>
+                                        <option value="<?php echo (int) $agent['id']; ?>" <?php echo (int) ($ticket['assigned_to'] ?? 0) === (int) $agent['id'] ? 'selected' : ''; ?>><?php echo sanitize_output($label); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="sla_due_at">Scadenza SLA</label>
+                                <input type="datetime-local" class="form-control" id="sla_due_at" name="sla_due_at" value="<?php echo $ticket['sla_due_at'] ? sanitize_output(date('Y-m-d\TH:i', strtotime((string) $ticket['sla_due_at']))) : ''; ?>">
+                            </div>
+                            <div class="col-12">
+                                <button class="btn btn-primary w-100" type="submit">Aggiorna</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card ag-card mb-4">
+                    <div class="card-header bg-transparent border-0">
+                        <h2 class="h5 mb-0">Cliente</h2>
+                    </div>
+                    <div class="card-body">
+                        <p class="fw-semibold mb-1"><?php echo sanitize_output($ticket['customer_name'] ?? $ticket['company_name'] ?? 'Cliente non specificato'); ?></p>
+                        <?php if (!empty($ticket['customer_email'])): ?>
+                            <p class="mb-1"><i class="fa-solid fa-envelope me-2 text-warning"></i><a href="mailto:<?php echo sanitize_output($ticket['customer_email']); ?>" class="link-light"><?php echo sanitize_output($ticket['customer_email']); ?></a></p>
+                        <?php endif; ?>
+                        <?php if (!empty($ticket['customer_phone'])): ?>
+                            <p class="mb-0"><i class="fa-solid fa-phone me-2 text-warning"></i><a href="tel:<?php echo sanitize_output($ticket['customer_phone']); ?>" class="link-light"><?php echo sanitize_output($ticket['customer_phone']); ?></a></p>
+                        <?php endif; ?>
+                        <hr>
+                        <p class="text-muted small mb-0">Creato da <?php echo sanitize_output($creatorLabel); ?></p>
+                    </div>
+                </div>
+
+                <div class="card ag-card">
+                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                        <h2 class="h5 mb-0">Tag</h2>
+                        <button class="btn btn-sm btn-soft-secondary" type="button" data-ticket-action="edit-tags">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap gap-2 <?php echo $tags ? '' : 'd-none'; ?>" id="ticket-tags">
+                            <?php foreach ($tags as $tag): ?>
+                                <span class="badge bg-dark text-uppercase"><?php echo sanitize_output($tag); ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                        <p class="text-muted mb-0 <?php echo $tags ? 'd-none' : ''; ?>" id="ticket-tags-empty">Nessun tag impostato.</p>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-8" id="messaggi">
+
+            <div class="col-12 col-xl-8">
                 <div class="card ag-card mb-4">
                     <div class="card-header bg-transparent border-0">
-                        <h5 class="card-title mb-0">Conversazione</h5>
+                        <h2 class="h5 mb-0">Conversazione</h2>
                     </div>
-                    <div class="card-body">
-                        <?php if ($errors): ?>
-                            <div class="alert alert-warning mb-3"><?php echo implode('<br>', array_map('sanitize_output', $errors)); ?></div>
+                    <div class="card-body" id="ticket-thread">
+                        <?php if (!$messages): ?>
+                            <p class="text-muted mb-0">Nessun messaggio registrato. Aggiungi una nota per iniziare la conversazione.</p>
                         <?php endif; ?>
                         <?php foreach ($messages as $message): ?>
-                            <div class="border rounded-3 p-3 mb-3">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
+                            <?php
+                                $isInternal = !empty($message['is_internal']);
+                                $messageVisibility = $isInternal ? 'Nota interna' : 'Cliente';
+                                $attachments = json_decode((string) ($message['attachments'] ?? '[]'), true);
+                                $attachments = is_array($attachments) ? $attachments : [];
+                            ?>
+                            <article class="border rounded-3 p-3 mb-3" data-ticket-message-id="<?php echo (int) $message['id']; ?>">
+                                <header class="d-flex justify-content-between align-items-start mb-2">
                                     <div>
-                                        <strong><?php echo sanitize_output($message['username'] ?? 'Utente'); ?></strong>
-                                        <span class="text-muted small ms-2"><?php echo sanitize_output(date('d/m/Y H:i', strtotime($message['created_at']))); ?></span>
+                                        <strong><?php echo sanitize_output($message['author_name'] ?? 'Operatore'); ?></strong>
+                                        <span class="badge <?php echo $isInternal ? 'bg-secondary' : 'bg-primary'; ?> ms-2"><?php echo $isInternal ? 'Interno' : 'Cliente'; ?></span>
+                                        <span class="text-muted small ms-2"><?php echo sanitize_output(date('d/m/Y H:i', strtotime((string) $message['created_at']))); ?></span>
                                     </div>
-                                    <?php if ($message['allegato_path']): ?>
-                                        <a class="btn btn-sm btn-outline-warning" href="../../<?php echo sanitize_output($message['allegato_path']); ?>" target="_blank">Allegato</a>
-                                    <?php endif; ?>
-                                </div>
-                                <p class="mb-0"><?php echo nl2br(sanitize_output($message['messaggio'])); ?></p>
-                            </div>
+                                    <div class="text-end small text-uppercase text-muted">
+                                        Stato: <?php echo sanitize_output($message['status_snapshot']); ?>
+                                    </div>
+                                </header>
+                                <p class="mb-2"><?php echo nl2br(sanitize_output($message['body'])); ?></p>
+                                <?php if ($attachments): ?>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <?php foreach ($attachments as $attachment): ?>
+                                            <a class="btn btn-outline-warning btn-sm" href="/<?php echo sanitize_output(ltrim((string) $attachment, '/')); ?>" target="_blank">
+                                                <i class="fa-solid fa-paperclip me-1"></i>Allegato
+                                            </a>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </article>
                         <?php endforeach; ?>
-                        <?php if (!$messages): ?>
-                            <p class="text-muted mb-0">Nessun messaggio ancora presente.</p>
-                        <?php endif; ?>
                     </div>
                 </div>
-                <div class="card ag-card">
+
+                <div class="card ag-card" id="ticket-reply-card">
                     <div class="card-header bg-transparent border-0">
-                        <h5 class="card-title mb-0">Aggiungi risposta</h5>
+                        <h2 class="h5 mb-0">Aggiungi aggiornamento</h2>
                     </div>
                     <div class="card-body">
-                        <form method="post" enctype="multipart/form-data" novalidate>
-                            <input type="hidden" name="action" value="message">
-                            <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                        <form id="ticket-message-form" enctype="multipart/form-data" data-ticket-form="message">
+                            <input type="hidden" name="ticket_id" value="<?php echo (int) $ticketId; ?>">
                             <div class="mb-3">
-                                <label class="form-label" for="messaggio">Messaggio</label>
-                                <textarea class="form-control" id="messaggio" name="messaggio" rows="4" required></textarea>
+                                <label class="form-label" for="message-body">Messaggio</label>
+                                <textarea class="form-control" id="message-body" name="body" rows="5" required placeholder="Scrivi un aggiornamento per il cliente o una nota interna..."></textarea>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label" for="allegato">Allegato (opzionale)</label>
-                                <input class="form-control" id="allegato" name="allegato" type="file">
+                                <label class="form-label" for="message-attachments">Allegati</label>
+                                <input class="form-control" id="message-attachments" name="attachments[]" type="file" multiple>
+                                <small class="text-muted">Max 10MB per file, formati supportati: pdf, docx, immagini, zip.</small>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="message-internal" name="is_internal">
+                                        <label class="form-check-label" for="message-internal">Nota interna</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="message-notify-client" name="notify_client" checked>
+                                        <label class="form-check-label" for="message-notify-client">Notifica cliente</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="message-notify-admin" name="notify_admin" checked>
+                                        <label class="form-check-label" for="message-notify-admin">Notifica team</label>
+                                    </div>
+                                </div>
                             </div>
                             <div class="d-flex justify-content-end">
-                                <button class="btn btn-warning text-dark" type="submit">Invia risposta</button>
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="fa-solid fa-paper-plane me-2"></i>Invia
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -202,4 +234,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </div>
     </main>
 </div>
+
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
+<script src="<?php echo asset('assets/js/ticket.js'); ?>" defer></script>

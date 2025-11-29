@@ -106,9 +106,9 @@ try {
 
     $stats['anprInProgress'] = (int) $pdo->query("SELECT COUNT(*) FROM anpr_pratiche WHERE stato = 'In lavorazione'")->fetchColumn();
 
-    $ticketStmt = $pdo->prepare("SELECT id, titolo, stato, created_at FROM ticket ORDER BY created_at DESC LIMIT 5");
+    $ticketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, updated_at FROM tickets ORDER BY updated_at DESC LIMIT 5");
     $ticketStmt->execute();
-    $stats['openTickets'] = $ticketStmt->fetchAll();
+    $stats['openTickets'] = $ticketStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     $revenueChartStmt = $pdo->prepare("SELECT DATE_FORMAT(DATE(COALESCE(data_pagamento, updated_at, created_at)), '%Y-%m') AS month_key,
            SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END) AS totale
@@ -179,6 +179,24 @@ try {
 
     $charts['services']['values'] = array_values($serviceTotals);
 
+    $serviceBreakdown = [];
+    $serviceBreakdownTotal = array_sum($charts['services']['values']);
+    foreach ($charts['services']['labels'] as $index => $label) {
+        $value = $charts['services']['values'][$index] ?? 0;
+        $percentage = $serviceBreakdownTotal > 0 ? ($value / $serviceBreakdownTotal) * 100 : 0;
+        $serviceBreakdown[] = [
+            'label' => $label,
+            'value' => $value,
+            'percentage' => $percentage,
+        ];
+    }
+
+    $serviceBreakdownTop = $serviceBreakdown;
+    usort($serviceBreakdownTop, static function (array $a, array $b): int {
+        return $b['value'] <=> $a['value'];
+    });
+    $serviceBreakdownTop = array_slice($serviceBreakdownTop, 0, 5);
+
     try {
         $latestMovementsStmt = $pdo->query("SELECT id, descrizione, tipo_movimento, importo, stato, cliente_id, COALESCE(data_pagamento, data_scadenza, updated_at, created_at) AS movimento_data FROM entrate_uscite ORDER BY COALESCE(data_pagamento, updated_at, created_at) DESC LIMIT 6");
         if ($latestMovementsStmt) {
@@ -218,7 +236,20 @@ try {
     }
 
     try {
-        $topClientsSql = "SELECT c.id, COALESCE(NULLIF(c.ragione_sociale, ''), CONCAT(c.nome, ' ', c.cognome)) AS cliente_nome, SUM(CASE WHEN eu.tipo_movimento = 'Entrata' THEN eu.importo ELSE 0 END) AS totale_entrate, SUM(CASE WHEN eu.tipo_movimento = 'Uscita' THEN eu.importo ELSE 0 END) AS totale_uscite FROM entrate_uscite eu LEFT JOIN clienti c ON c.id = eu.cliente_id WHERE eu.cliente_id IS NOT NULL AND YEAR(COALESCE(eu.data_pagamento, eu.created_at)) = YEAR(CURRENT_DATE) GROUP BY c.id, cliente_nome ORDER BY (totale_entrate - totale_uscite) DESC LIMIT 5";
+        $topClientsSql = "SELECT ranked.* FROM (
+                SELECT 
+                    c.id,
+                    COALESCE(NULLIF(c.ragione_sociale, ''), CONCAT(c.nome, ' ', c.cognome)) AS cliente_nome,
+                    SUM(CASE WHEN eu.tipo_movimento = 'Entrata' THEN eu.importo ELSE 0 END) AS totale_entrate,
+                    SUM(CASE WHEN eu.tipo_movimento = 'Uscita' THEN eu.importo ELSE 0 END) AS totale_uscite
+                FROM entrate_uscite eu
+                LEFT JOIN clienti c ON c.id = eu.cliente_id
+                WHERE eu.cliente_id IS NOT NULL
+                  AND YEAR(COALESCE(eu.data_pagamento, eu.created_at)) = YEAR(CURRENT_DATE)
+                GROUP BY c.id, cliente_nome
+            ) AS ranked
+            ORDER BY (ranked.totale_entrate - ranked.totale_uscite) DESC
+            LIMIT 5";
         $topClientsStmt = $pdo->prepare($topClientsSql);
         $topClientsStmt->execute();
         $topFinanceClients = $topClientsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -264,14 +295,20 @@ try {
         error_log('Dashboard email marketing reminder failed: ' . $emailReminderException->getMessage());
     }
 
-    $oldestTicketStmt = $pdo->prepare("SELECT id, titolo, created_at FROM ticket WHERE stato IN ('Aperto', 'In corso') ORDER BY created_at ASC LIMIT 1");
+    $oldestTicketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, COALESCE(last_message_at, created_at) AS reference_date
+        FROM tickets
+        WHERE status IN ('OPEN','IN_PROGRESS','WAITING_CLIENT','WAITING_PARTNER')
+        ORDER BY reference_date ASC
+        LIMIT 1");
     $oldestTicketStmt->execute();
     if ($oldestTicket = $oldestTicketStmt->fetch()) {
+        $ticketCode = $oldestTicket['codice'] ?? $oldestTicket['id'];
+        $ticketSubject = trim((string) ($oldestTicket['subject'] ?? 'Ticket ' . $ticketCode));
         $reminders[] = [
             'icon' => 'fa-life-ring',
             'title' => 'Ticket da prendere in carico',
-            'detail' => sprintf('Ticket #%d aperto il %s.', $oldestTicket['id'], format_datetime($oldestTicket['created_at'] ?? '')),
-            'url' => base_url('modules/ticket/view.php?id=' . $oldestTicket['id']),
+            'detail' => sprintf('Ticket #%s · %s aperto il %s.', $ticketCode, $ticketSubject, format_datetime($oldestTicket['created_at'] ?? '')),
+            'url' => base_url('modules/ticket/view.php?id=' . (int) $oldestTicket['id']),
         ];
     }
 
@@ -301,6 +338,67 @@ require_once __DIR__ . '/includes/sidebar.php';
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once __DIR__ . '/includes/topbar.php'; ?>
     <main class="content-wrapper" data-dashboard-root data-dashboard-endpoint="api/dashboard.php" data-refresh-interval="60000">
+            <style>
+                .chart-card-body {
+                    min-height: 220px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .chart-canvas {
+                    max-height: 180px;
+                    width: 100%;
+                }
+                .revenue-chart-canvas {
+                    max-height: 320px;
+                }
+                .service-chart-canvas {
+                    max-height: 320px;
+                }
+                .services-card-body {
+                    justify-content: space-between;
+                    align-items: stretch;
+                    gap: 1.5rem;
+                }
+                .services-card-body .service-chart-column {
+                    flex: 0 0 48%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .services-card-body .service-details-column {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: flex-start;
+                    gap: 0.75rem;
+                }
+                .service-breakdown-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.75rem;
+                }
+                .service-breakdown-item {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding-bottom: 0.35rem;
+                    border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+                }
+                .service-breakdown-item:last-child {
+                    border-bottom: none;
+                    padding-bottom: 0;
+                }
+                @media (max-width: 991.98px) {
+                    .services-card-body {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+                    .services-card-body .service-chart-column {
+                        flex: 1 1 auto;
+                    }
+                }
+            </style>
         <?php if ($view === 'cliente' && $_SESSION['role'] === 'Cliente'): ?>
             <div class="row g-4 mb-4">
                 <div class="col-12">
@@ -423,8 +521,8 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <h5 class="card-title mb-0">Trend Entrate/Uscite</h5>
                             <span class="text-muted small">Ultimi 6 mesi</span>
                         </div>
-                        <div class="card-body">
-                            <canvas id="chartRevenue" height="180"></canvas>
+                        <div class="card-body chart-card-body">
+                            <canvas id="chartRevenue" class="chart-canvas revenue-chart-canvas" height="320"></canvas>
                         </div>
                     </div>
                 </div>
@@ -434,8 +532,31 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <h5 class="card-title mb-0">Ripartizione servizi</h5>
                             <span class="text-muted small">Pratiche per tipologia</span>
                         </div>
-                        <div class="card-body">
-                            <canvas id="chartServices" height="200"></canvas>
+                        <div class="card-body chart-card-body services-card-body">
+                            <div class="service-chart-column">
+                                <canvas id="chartServices" class="chart-canvas service-chart-canvas" height="320"></canvas>
+                            </div>
+                            <div class="service-details-column">
+                                <p class="text-muted text-uppercase small mb-1">Totale pratiche monitorate</p>
+                                <div class="h3 mb-3 fw-semibold"><?php echo number_format($serviceBreakdownTotal); ?></div>
+                                <?php if (!empty($serviceBreakdownTop)): ?>
+                                    <div class="service-breakdown-list">
+                                        <?php foreach ($serviceBreakdownTop as $serviceItem): ?>
+                                            <div class="service-breakdown-item">
+                                                <div>
+                                                    <div class="fw-semibold"><?php echo sanitize_output($serviceItem['label']); ?></div>
+                                                    <small class="text-muted"><?php echo number_format($serviceItem['percentage'], 1, ',', '.'); ?>% del totale</small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <span class="badge bg-light text-dark"><?php echo number_format($serviceItem['value']); ?></span>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <p class="text-muted mb-0">Nessun dato disponibile.</p>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -660,8 +781,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 <table class="table table-hover align-middle mb-0" data-dashboard-table="tickets">
                                     <thead>
                                         <tr>
-                                            <th>ID</th>
-                                            <th>Titolo</th>
+                                            <th>Ticket</th>
                                             <th>Stato</th>
                                             <th>Aperto il</th>
                                             <th></th>
@@ -670,11 +790,20 @@ require_once __DIR__ . '/includes/sidebar.php';
                                     <tbody id="dashboardTicketsBody">
                                         <?php if ($stats['openTickets']): ?>
                                             <?php foreach ($stats['openTickets'] as $ticket): ?>
-                                                <?php $ticketDate = $ticket['created_at'] ?? null; ?>
+                                                <?php
+                                                    $ticketDate = $ticket['created_at'] ?? null;
+                                                    $ticketCode = $ticket['codice'] ?? $ticket['id'];
+                                                    $ticketSubject = trim((string) ($ticket['subject'] ?? ''));
+                                                    if ($ticketSubject === '') {
+                                                        $ticketSubject = 'Ticket #' . $ticketCode;
+                                                    }
+                                                ?>
                                                 <tr>
-                                                    <td>#<?php echo sanitize_output($ticket['id']); ?></td>
-                                                    <td><?php echo sanitize_output($ticket['titolo']); ?></td>
-                                                    <td><span class="badge ag-badge text-uppercase"><?php echo sanitize_output($ticket['stato']); ?></span></td>
+                                                    <td>
+                                                        <div class="fw-semibold">#<?php echo sanitize_output($ticketCode); ?></div>
+                                                        <small class="text-muted"><?php echo sanitize_output($ticketSubject); ?></small>
+                                                    </td>
+                                                    <td><span class="badge ag-badge text-uppercase"><?php echo sanitize_output($ticket['status']); ?></span></td>
                                                     <td><?php echo sanitize_output($ticketDate ? format_datetime($ticketDate, 'd/m/Y') : 'N/D'); ?></td>
                                                     <td class="text-end"><a class="btn btn-sm btn-outline-warning" href="modules/ticket/view.php?id=<?php echo (int) $ticket['id']; ?>">Apri</a></td>
                                                 </tr>

@@ -173,6 +173,25 @@ final class PracticesServiceTest extends TestCase
                 FOREIGN KEY (pratica_id) REFERENCES pratiche(id) ON DELETE CASCADE,
                 FOREIGN KEY (destinatario_user_id) REFERENCES users(id) ON DELETE SET NULL,
                 FOREIGN KEY (destinatario_operatore_id) REFERENCES utenti_caf_patronato(id) ON DELETE SET NULL
+            )',
+            'CREATE TABLE entrate_uscite (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cliente_id INTEGER NULL,
+                descrizione TEXT NOT NULL,
+                riferimento TEXT,
+                metodo TEXT,
+                stato TEXT,
+                tipo_movimento TEXT,
+                importo TEXT NOT NULL DEFAULT "0",
+                quantita INTEGER NOT NULL DEFAULT 1,
+                prezzo_unitario TEXT NOT NULL DEFAULT "0",
+                data_scadenza TEXT,
+                data_pagamento TEXT,
+                note TEXT,
+                allegato_path TEXT,
+                allegato_hash TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )'
         ];
 
@@ -195,6 +214,9 @@ final class PracticesServiceTest extends TestCase
 
         // Insert practice types with custom fields schema
         $cafFields = json_encode([
+            ['slug' => 'servizio', 'label' => 'Servizio richiesto', 'type' => 'text'],
+            ['slug' => 'nominativo', 'label' => 'Nominativo', 'type' => 'text'],
+            ['slug' => 'importo', 'label' => 'Importo', 'type' => 'number'],
             ['slug' => 'email_contatto', 'label' => 'Email contatto', 'type' => 'text'],
             ['slug' => 'note_interne', 'label' => 'Note interne', 'type' => 'textarea'],
             ['slug' => 'privacy_consenso', 'label' => 'Consenso privacy', 'type' => 'checkbox'],
@@ -267,6 +289,286 @@ final class PracticesServiceTest extends TestCase
         self::assertEquals('in_lavorazione', $practice['stato']);
         self::assertEquals(1, $practice['cliente']['id']);
         self::assertEquals(1, $practice['assegnatario']['id']);
+    }
+
+    public function testCreatePracticeRegistersFinancialMovement(): void
+    {
+        $practiceData = [
+            'titolo' => 'Mario Rossi - ISEE',
+            'tipo_pratica' => 1,
+            'categoria' => 'CAF',
+            'cliente_id' => 1,
+            'metadati' => [
+                'servizio' => 'ISEE',
+                'nominativo' => 'Mario Rossi',
+                'importo' => '120,50',
+            ],
+        ];
+
+        $practice = $this->service->createPractice($practiceData, 1);
+
+        $stmt = $this->pdo->query('SELECT * FROM entrate_uscite');
+        $entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        self::assertCount(1, $entries);
+        $entry = $entries[0];
+
+        self::assertEquals($practice['tracking_code'], $entry['riferimento']);
+        self::assertEquals('Entrata', $entry['tipo_movimento']);
+        self::assertEquals('In lavorazione', $entry['stato']);
+        self::assertEquals('Bonifico', $entry['metodo']);
+        self::assertEquals(1, (int) $entry['cliente_id']);
+        self::assertEquals(1, (int) $entry['quantita']);
+        self::assertEquals(120.5, (float) $entry['importo']);
+        self::assertEquals(120.5, (float) $entry['prezzo_unitario']);
+        self::assertNull($entry['data_scadenza']);
+        self::assertStringContainsString('ISEE', $entry['descrizione']);
+        self::assertStringContainsString('Mario Rossi', $entry['descrizione']);
+        self::assertStringContainsString((string) $practice['id'], (string) $entry['note']);
+    }
+
+    public function testEnsureFinancialMovementForExistingPractice(): void
+    {
+        $metadata = json_encode([
+            'servizio' => 'ISEE',
+            'nominativo' => 'Carmine Cavaliere',
+            'importo' => '5,00€',
+        ], JSON_THROW_ON_ERROR);
+
+        $stmt = $this->pdo->prepare('INSERT INTO pratiche (
+            titolo,
+            descrizione,
+            tipo_pratica,
+            categoria,
+            stato,
+            data_creazione,
+            data_aggiornamento,
+            scadenza,
+            id_admin,
+            id_utente_caf_patronato,
+            cliente_id,
+            allegati,
+            note,
+            metadati,
+            tracking_code,
+            tracking_steps
+        ) VALUES (
+            :titolo,
+            :descrizione,
+            :tipo_pratica,
+            :categoria,
+            :stato,
+            :data_creazione,
+            :data_aggiornamento,
+            :scadenza,
+            :id_admin,
+            NULL,
+            :cliente_id,
+            :allegati,
+            NULL,
+            :metadati,
+            :tracking_code,
+            :tracking_steps
+        )');
+
+        $stmt->execute([
+            ':titolo' => 'Carmine Cavaliere - ISEE',
+            ':descrizione' => 'Pratica creata dal modulo legacy',
+            ':tipo_pratica' => 1,
+            ':categoria' => 'CAF',
+            ':stato' => 'in_lavorazione',
+            ':data_creazione' => '2025-01-01 10:00:00',
+            ':data_aggiornamento' => '2025-01-01 10:00:00',
+            ':scadenza' => '2025-12-31',
+            ':id_admin' => 1,
+            ':cliente_id' => 1,
+            ':allegati' => json_encode([], JSON_THROW_ON_ERROR),
+            ':metadati' => $metadata,
+            ':tracking_code' => 'CAFTEST-123',
+            ':tracking_steps' => json_encode([], JSON_THROW_ON_ERROR),
+        ]);
+
+        $practiceId = (int) $this->pdo->lastInsertId();
+
+        $this->service->ensureFinancialMovementForPractice($practiceId);
+        $this->service->ensureFinancialMovementForPractice($practiceId);
+
+        $entries = $this->pdo->query('SELECT * FROM entrate_uscite')->fetchAll(PDO::FETCH_ASSOC);
+        self::assertCount(1, $entries);
+
+        $entry = $entries[0];
+        self::assertEquals('CAFTEST-123', $entry['riferimento']);
+        self::assertEquals('Entrata', $entry['tipo_movimento']);
+        self::assertEquals(1, (int) $entry['cliente_id']);
+        self::assertEquals(5.0, (float) $entry['importo']);
+        self::assertStringContainsString('Carmine Cavaliere', $entry['descrizione']);
+        self::assertStringContainsString('ISEE', $entry['descrizione']);
+    }
+
+    public function testDeletePracticeRemovesRecordsAndMovements(): void
+    {
+        $practice = $this->service->createPractice([
+            'titolo' => 'Pratica da eliminare',
+            'tipo_pratica' => 1,
+            'categoria' => 'CAF',
+            'cliente_id' => 1,
+            'metadati' => [
+                'servizio' => 'ISEE',
+                'nominativo' => 'Cliente Test',
+                'importo' => '35,00',
+            ],
+        ], 1);
+
+        $practiceId = (int) $practice['id'];
+        self::assertTrue($practiceId > 0);
+
+        $countBefore = (int) $this->pdo->query('SELECT COUNT(*) FROM pratiche')->fetchColumn();
+        self::assertSame(1, $countBefore);
+
+        $movementBefore = (int) $this->pdo->query('SELECT COUNT(*) FROM entrate_uscite')->fetchColumn();
+        self::assertSame(1, $movementBefore);
+
+        $this->service->deletePractice($practiceId, true, null);
+
+        $countAfter = (int) $this->pdo->query('SELECT COUNT(*) FROM pratiche')->fetchColumn();
+        self::assertSame(0, $countAfter);
+
+        $movementAfter = (int) $this->pdo->query('SELECT COUNT(*) FROM entrate_uscite')->fetchColumn();
+        self::assertSame(0, $movementAfter);
+    }
+
+    public function testEnsureFinancialMovementDoesNotDuplicateWhenTrackingCodeAssignedLater(): void
+    {
+        $metadata = json_encode([
+            'servizio' => 'ISEE',
+            'nominativo' => 'Erika Conti',
+            'importo' => '75,00',
+        ], JSON_THROW_ON_ERROR);
+
+        $stmt = $this->pdo->prepare('INSERT INTO pratiche (
+            titolo,
+            descrizione,
+            tipo_pratica,
+            categoria,
+            stato,
+            data_creazione,
+            data_aggiornamento,
+            scadenza,
+            id_admin,
+            id_utente_caf_patronato,
+            cliente_id,
+            allegati,
+            note,
+            metadati,
+            tracking_steps
+        ) VALUES (
+            :titolo,
+            :descrizione,
+            :tipo_pratica,
+            :categoria,
+            :stato,
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP,
+            NULL,
+            1,
+            NULL,
+            1,
+            :allegati,
+            NULL,
+            :metadati,
+            :steps
+        )');
+        $stmt->execute([
+            ':titolo' => 'Erika Conti - ISEE',
+            ':descrizione' => 'Pratica generata dal modulo legacy.',
+            ':tipo_pratica' => 1,
+            ':categoria' => 'CAF',
+            ':stato' => 'in_lavorazione',
+            ':allegati' => json_encode([], JSON_THROW_ON_ERROR),
+            ':metadati' => $metadata,
+            ':steps' => json_encode([], JSON_THROW_ON_ERROR),
+        ]);
+
+        $practiceId = (int) $this->pdo->lastInsertId();
+        self::assertTrue($practiceId > 0);
+
+        $this->service->ensureFinancialMovementForPractice($practiceId);
+        $initialEntries = (int) $this->pdo->query('SELECT COUNT(*) FROM entrate_uscite')->fetchColumn();
+        self::assertEquals(1, $initialEntries);
+
+        $update = $this->pdo->prepare('UPDATE pratiche SET tracking_code = :tracking_code WHERE id = :id');
+        $update->execute([
+            ':tracking_code' => 'CAF-PRAT-90001',
+            ':id' => $practiceId,
+        ]);
+
+        $this->service->ensureFinancialMovementForPractice($practiceId);
+
+        $entries = $this->pdo->query('SELECT riferimento FROM entrate_uscite')->fetchAll(PDO::FETCH_COLUMN);
+        self::assertCount(1, $entries);
+        self::assertEquals('PRATICA-' . $practiceId, $entries[0]);
+    }
+
+    public function testSyncMissingFinancialMovementsBackfillsEntries(): void
+    {
+        $stmt = $this->pdo->prepare('INSERT INTO pratiche (
+            titolo,
+            descrizione,
+            tipo_pratica,
+            categoria,
+            stato,
+            data_creazione,
+            data_aggiornamento,
+            scadenza,
+            id_admin,
+            id_utente_caf_patronato,
+            cliente_id,
+            allegati,
+            note,
+            metadati,
+            tracking_code,
+            tracking_steps
+        ) VALUES (
+            :titolo,
+            :descrizione,
+            :tipo_pratica,
+            :categoria,
+            :stato,
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP,
+            NULL,
+            1,
+            NULL,
+            1,
+            :allegati,
+            NULL,
+            :metadati,
+            NULL,
+            :steps
+        )');
+        $stmt->execute([
+            ':titolo' => 'Backfill Practice',
+            ':descrizione' => 'Pratica senza movimento.',
+            ':tipo_pratica' => 1,
+            ':categoria' => 'CAF',
+            ':stato' => 'in_lavorazione',
+            ':allegati' => json_encode([], JSON_THROW_ON_ERROR),
+            ':metadati' => json_encode([
+                'servizio' => 'ISEE',
+                'nominativo' => 'Arianna Test',
+                'importo' => '45,00',
+            ], JSON_THROW_ON_ERROR),
+            ':steps' => json_encode([], JSON_THROW_ON_ERROR),
+        ]);
+
+        $result = $this->service->syncMissingFinancialMovements();
+
+        self::assertSame(1, $result['scanned']);
+        self::assertSame(1, $result['created']);
+        self::assertSame(0, $result['remaining']);
+
+        $entries = $this->pdo->query('SELECT COUNT(*) FROM entrate_uscite')->fetchColumn();
+        self::assertEquals(1, (int) $entries);
     }
 
     public function testCreatePracticeSendsCustomerMail(): void

@@ -323,28 +323,56 @@ CREATE TABLE IF NOT EXISTS document_tag_map (
     FOREIGN KEY (tag_id) REFERENCES document_tags(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS ticket (
-    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    cliente_id INT UNSIGNED NULL,
-    titolo VARCHAR(180) NOT NULL,
-    descrizione TEXT NOT NULL,
-    stato VARCHAR(40) NOT NULL DEFAULT 'Aperto',
+CREATE TABLE IF NOT EXISTS tickets (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codice VARCHAR(32) NOT NULL,
+    customer_id INT UNSIGNED NULL,
+    customer_name VARCHAR(190) NULL,
+    customer_email VARCHAR(190) NULL,
+    customer_phone VARCHAR(60) NULL,
+    subject VARCHAR(200) NOT NULL,
+    type ENUM('SUPPORT','TECH','ADMIN','SALES') NOT NULL DEFAULT 'SUPPORT',
+    priority ENUM('LOW','MEDIUM','HIGH','URGENT') NOT NULL DEFAULT 'MEDIUM',
+    status ENUM('OPEN','IN_PROGRESS','WAITING_CLIENT','WAITING_PARTNER','RESOLVED','CLOSED','ARCHIVED') NOT NULL DEFAULT 'OPEN',
+    channel ENUM('PORTAL','EMAIL','PHONE','INTERNAL') NOT NULL DEFAULT 'PORTAL',
+    assigned_to INT UNSIGNED NULL,
+    tags JSON NULL,
+    sla_due_at DATETIME NULL,
+    created_by INT UNSIGNED NULL,
+    last_message_at DATETIME NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_ticket_cliente (cliente_id),
-    FOREIGN KEY (cliente_id) REFERENCES clienti(id) ON DELETE SET NULL
+    UNIQUE KEY uniq_tickets_codice (codice),
+    INDEX idx_tickets_status (status),
+    INDEX idx_tickets_priority (priority),
+    INDEX idx_tickets_type (type),
+    INDEX idx_tickets_channel (channel),
+    INDEX idx_tickets_customer (customer_id),
+    INDEX idx_tickets_assigned (assigned_to),
+    INDEX idx_tickets_sla (sla_due_at),
+    INDEX idx_tickets_last_message (last_message_at),
+    CONSTRAINT fk_tickets_customer FOREIGN KEY (customer_id) REFERENCES clienti(id) ON DELETE SET NULL,
+    CONSTRAINT fk_tickets_assigned FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_tickets_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS ticket_messaggi (
-    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    ticket_id INT UNSIGNED NOT NULL,
-    utente_id INT UNSIGNED NOT NULL,
-    messaggio TEXT NOT NULL,
-    allegato_path VARCHAR(255) NULL,
+CREATE TABLE IF NOT EXISTS ticket_messages (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    ticket_id BIGINT UNSIGNED NOT NULL,
+    author_id INT UNSIGNED NULL,
+    author_name VARCHAR(190) NOT NULL,
+    body TEXT NOT NULL,
+    attachments JSON NULL,
+    is_internal TINYINT(1) NOT NULL DEFAULT 0,
+    visibility ENUM('customer','internal','system') NOT NULL DEFAULT 'customer',
+    status_snapshot VARCHAR(40) NOT NULL,
+    notified_client TINYINT(1) NOT NULL DEFAULT 0,
+    notified_admin TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_ticket_messaggi_ticket (ticket_id),
-    FOREIGN KEY (ticket_id) REFERENCES ticket(id) ON DELETE CASCADE,
-    FOREIGN KEY (utente_id) REFERENCES users(id) ON DELETE CASCADE
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_ticket_messages_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ticket_messages_author FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_ticket_messages_ticket_created (ticket_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS email_subscribers (
@@ -583,6 +611,31 @@ CREATE TABLE IF NOT EXISTS pratiche_notifiche (
     INDEX idx_pratiche_notifiche_destinatario_user (destinatario_user_id),
     INDEX idx_pratiche_notifiche_destinatario_operatore (destinatario_operatore_id),
     INDEX idx_pratiche_notifiche_stato (stato)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS ai_conversations (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    session_id VARCHAR(64) NOT NULL,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    context TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_ai_conversations_user_id (user_id),
+    INDEX idx_ai_conversations_session_id (session_id),
+    INDEX idx_ai_conversations_created_at (created_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS ai_user_preferences (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NOT NULL,
+    preference_key VARCHAR(100) NOT NULL,
+    preference_value TEXT NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_preference (user_id, preference_key),
+    INDEX idx_ai_user_preferences_user_id (user_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Utente amministratore di default
