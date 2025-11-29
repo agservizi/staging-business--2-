@@ -67,7 +67,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <div class="card ag-card text-center w-100 h-100">
                             <div class="card-body">
                                 <p class="text-muted mb-1"><?php echo sanitize_output($card['label']); ?></p>
-                                <p class="display-6 fw-bold mb-0"><?php echo (int) $card['value']; ?></p>
+                                <h3 class="fw-bold mb-0"><?php echo (int) $card['value']; ?></h3>
                             </div>
                         </div>
                     </div>
