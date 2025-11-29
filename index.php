@@ -1,5 +1,7 @@
 <?php
 use App\Security\SecurityAuditLogger;
+use App\Services\Security\MfaQrService;
+use Throwable;
 
 session_start();
 require_once __DIR__ . '/includes/db_connect.php';
@@ -78,12 +80,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
             ];
 
             $hasMfaSecret = isset($user['mfa_secret']) && $user['mfa_secret'] !== '';
+            $hasQrDevices = false;
+            try {
+                $qrService = new MfaQrService($pdo);
+                $hasQrDevices = $qrService->hasActiveDevices((int) $user['id']);
+            } catch (Throwable $qrCheckException) {
+                error_log('QR MFA availability check failed: ' . $qrCheckException->getMessage());
+            }
 
-            if ((int) ($user['mfa_enabled'] ?? 0) === 1 && $hasMfaSecret) {
+            if ((int) ($user['mfa_enabled'] ?? 0) === 1 && ($hasMfaSecret || $hasQrDevices)) {
                 $_SESSION['mfa_challenge'] = array_merge($pendingLogin, [
                     'expires_at' => time() + 300,
                 ]);
-                header('Location: mfa-verify.php');
+                unset($_SESSION['mfa_qr_challenge']);
+                header('Location: mfa-choice.php');
                 exit;
             }
 
