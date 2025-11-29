@@ -104,7 +104,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <div class="col-sm-6 col-lg-3">
                 <div class="card ag-card shadow-sm">
                     <div class="card-body">
-                        <p class="text-muted text-uppercase fw-semibold small mb-1">SLA scaduti</p>
+                        <p class="text-muted text-uppercase fw-semibold small mb-1">Ticket fuori SLA</p>
                         <div class="d-flex align-items-center justify-content-between">
                             <span class="display-6 mb-0 fw-bold text-danger"><?php echo (int) $summary['overdue']; ?></span>
                             <i class="fa-solid fa-triangle-exclamation fa-2x text-danger"></i>
