@@ -7,10 +7,14 @@ require_once __DIR__ . '/includes/helpers.php';
 
 $pageTitle = 'Scanner QR + PIN';
 $extraScripts = $extraScripts ?? [];
+
 $extraScripts[] = asset('assets/vendor/jsqr/jsQR.js');
 $extraScripts[] = asset('assets/js/mfa-qr-scanner.js');
 
 $completeEndpoint = base_url('api/mfa/qr/devices/complete.php');
+$challengeLookupEndpoint = base_url('api/mfa/qr/challenges/lookup.php');
+$challengeDecisionEndpoint = base_url('api/mfa/qr/challenges/decision.php');
+$csrfToken = csrf_token();
 $tokenExample = '00000000000000000000000000000000';
 
 require_once __DIR__ . '/includes/header.php';
@@ -45,8 +49,11 @@ require_once __DIR__ . '/includes/sidebar.php';
 
         <div class="row g-4" data-qr-layout>
             <div class="col-12 col-xl-7">
-                <div class="card ag-card h-100" data-qr-scanner
-                     data-complete-endpoint="<?php echo sanitize_output($completeEndpoint); ?>">
+                 <div class="card ag-card h-100" data-qr-scanner
+                     data-complete-endpoint="<?php echo sanitize_output($completeEndpoint); ?>"
+                     data-challenge-lookup="<?php echo sanitize_output($challengeLookupEndpoint); ?>"
+                     data-challenge-decision="<?php echo sanitize_output($challengeDecisionEndpoint); ?>"
+                     data-csrf="<?php echo sanitize_output($csrfToken); ?>">
                     <div class="card-header bg-transparent border-0 d-flex flex-column flex-lg-row gap-2 align-items-lg-center">
                         <div>
                             <h5 class="card-title mb-1">Scanner live</h5>
@@ -120,6 +127,15 @@ require_once __DIR__ . '/includes/sidebar.php';
                         <div class="alert alert-info" role="status" data-qr-activation-status>
                             <i class="fa-solid fa-circle-info me-2"></i>Nessuna scansione ancora rilevata.
                         </div>
+                        <div class="border rounded-3 p-3 bg-body-tertiary" data-qr-device-panel>
+                            <div class="small text-muted">Dispositivo collegato su questo browser</div>
+                            <div class="fw-semibold" data-qr-device-name>Nessun dispositivo associato a questa web app</div>
+                            <div class="text-muted small">UUID: <span data-qr-device-id>—</span></div>
+                            <div class="form-text mt-2" data-qr-device-hint>Attiva un dispositivo dal profilo per collegarlo qui.</div>
+                            <button type="button" class="btn btn-outline-danger btn-sm mt-3 d-none" data-qr-device-clear>
+                                <i class="fa-solid fa-trash-can me-1"></i>Dimentica questo dispositivo
+                            </button>
+                        </div>
                         <dl class="row small mb-0 d-none" data-qr-activation-details>
                             <dt class="col-sm-4 text-muted">Dispositivo</dt>
                             <dd class="col-sm-8" data-qr-device-label>—</dd>
@@ -147,6 +163,43 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 </div>
                             </form>
                         </div>
+                    </div>
+                </div>
+                <div class="card ag-card mt-4" data-qr-approval>
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-1">Approvazione richieste login</h5>
+                        <p class="text-muted small mb-0">Inquadra il QR dinamico dalla schermata di login per approvare con il PIN del dispositivo salvato.</p>
+                    </div>
+                    <div class="card-body d-flex flex-column gap-3">
+                        <div class="alert alert-info" role="status" data-qr-approval-alert>
+                            <i class="fa-solid fa-circle-info me-2"></i>Inquadra un QR dinamico per iniziare.
+                        </div>
+                        <dl class="row small mb-0 d-none" data-qr-challenge-details>
+                            <dt class="col-sm-4 text-muted">Token</dt>
+                            <dd class="col-sm-8 text-break" data-qr-challenge-token>—</dd>
+                            <dt class="col-sm-4 text-muted">IP origine</dt>
+                            <dd class="col-sm-8" data-qr-challenge-ip>—</dd>
+                            <dt class="col-sm-4 text-muted">Browser</dt>
+                            <dd class="col-sm-8" data-qr-challenge-agent>—</dd>
+                            <dt class="col-sm-4 text-muted">Richiesta</dt>
+                            <dd class="col-sm-8" data-qr-challenge-issued>—</dd>
+                            <dt class="col-sm-4 text-muted">Scadenza</dt>
+                            <dd class="col-sm-8" data-qr-challenge-expiry>—</dd>
+                        </dl>
+                        <form class="d-flex flex-column gap-2 d-none" data-qr-approval-form novalidate>
+                            <div>
+                                <label class="form-label" for="qr_pin_input">PIN dispositivo</label>
+                                <input class="form-control" id="qr_pin_input" type="password" inputmode="numeric" pattern="[0-9]*" minlength="4" maxlength="8" autocomplete="one-time-code" placeholder="PIN scelto sul dispositivo" data-qr-pin-input required>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="submit" class="btn btn-success flex-fill" data-qr-approve>
+                                    <i class="fa-solid fa-check me-1"></i>Approva con PIN
+                                </button>
+                                <button type="button" class="btn btn-outline-danger flex-fill" data-qr-deny>
+                                    <i class="fa-solid fa-ban me-1"></i>Nega richiesta
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>

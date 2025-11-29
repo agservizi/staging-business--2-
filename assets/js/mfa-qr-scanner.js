@@ -15,6 +15,9 @@
     }
 
     const completeEndpoint = scannerRoot.getAttribute('data-complete-endpoint') || '';
+    const challengeLookupEndpoint = scannerRoot.getAttribute('data-challenge-lookup') || '';
+    const challengeDecisionEndpoint = scannerRoot.getAttribute('data-challenge-decision') || '';
+    const csrfToken = scannerRoot.getAttribute('data-csrf') || '';
     const videoEl = scannerRoot.querySelector('[data-qr-video]');
     const placeholderEl = scannerRoot.querySelector('[data-qr-placeholder]');
     const statusEl = scannerRoot.querySelector('[data-qr-status]');
@@ -38,9 +41,27 @@
     const deviceLabelEl = activationBox ? activationBox.querySelector('[data-qr-device-label]') : null;
     const deviceUuidEl = activationBox ? activationBox.querySelector('[data-qr-device-uuid]') : null;
     const userDisplayEl = activationBox ? activationBox.querySelector('[data-qr-user-display]') : null;
+    const devicePanel = activationBox ? activationBox.querySelector('[data-qr-device-panel]') : null;
+    const deviceSummaryLabel = activationBox ? activationBox.querySelector('[data-qr-device-name]') : null;
+    const deviceSummaryUuid = activationBox ? activationBox.querySelector('[data-qr-device-id]') : null;
+    const deviceSummaryHint = activationBox ? activationBox.querySelector('[data-qr-device-hint]') : null;
+    const deviceClearButton = activationBox ? activationBox.querySelector('[data-qr-device-clear]') : null;
     const manualForm = activationBox ? activationBox.querySelector('[data-qr-manual-form]') : null;
     const manualResetButton = activationBox ? activationBox.querySelector('[data-qr-manual-reset]') : null;
     const manualSubmitButton = activationBox ? activationBox.querySelector('[data-qr-manual-submit]') : null;
+
+    const approvalCard = document.querySelector('[data-qr-approval]');
+    const approvalAlert = approvalCard ? approvalCard.querySelector('[data-qr-approval-alert]') : null;
+    const challengeDetailsList = approvalCard ? approvalCard.querySelector('[data-qr-challenge-details]') : null;
+    const challengeTokenEl = approvalCard ? approvalCard.querySelector('[data-qr-challenge-token]') : null;
+    const challengeIpEl = approvalCard ? approvalCard.querySelector('[data-qr-challenge-ip]') : null;
+    const challengeAgentEl = approvalCard ? approvalCard.querySelector('[data-qr-challenge-agent]') : null;
+    const challengeIssuedEl = approvalCard ? approvalCard.querySelector('[data-qr-challenge-issued]') : null;
+    const challengeExpiresEl = approvalCard ? approvalCard.querySelector('[data-qr-challenge-expiry]') : null;
+    const approvalForm = approvalCard ? approvalCard.querySelector('[data-qr-approval-form]') : null;
+    const pinInput = approvalCard ? approvalCard.querySelector('[data-qr-pin-input]') : null;
+    const approveButton = approvalCard ? approvalCard.querySelector('[data-qr-approve]') : null;
+    const denyButton = approvalCard ? approvalCard.querySelector('[data-qr-deny]') : null;
 
     let deferredInstallPrompt = null;
     const supportsNativeDetector = 'BarcodeDetector' in window;
@@ -48,6 +69,8 @@
     const fallbackCanvas = supportsJsQr ? document.createElement('canvas') : null;
     const fallbackContext = fallbackCanvas ? fallbackCanvas.getContext('2d') : null;
     let fallbackNoticeShown = false;
+    const DEVICE_STORAGE_KEY = 'coresuite.mfaDevice';
+    const dateFormatter = new Intl.DateTimeFormat('it-IT', { dateStyle: 'short', timeStyle: 'medium' });
 
     const state = {
         detector: null,
@@ -59,6 +82,284 @@
         activationBusy: false,
         cameraOptions: [],
         selectedDeviceId: '',
+    };
+    const challengeState = {
+        token: '',
+        status: 'idle',
+        expiresAt: null,
+    };
+    const parseJsonResponse = async (response) => {
+        const payload = await response.json().catch(() => {
+            throw new Error('Risposta non valida dal server.');
+        });
+        if (!response.ok || payload.ok === false) {
+            const message = payload.error || 'Operazione non riuscita.';
+            throw new Error(message);
+        }
+        return payload;
+    };
+
+    const formatDateTime = (value) => {
+        if (!value) {
+            return '—';
+        }
+        const normalized = typeof value === 'string' ? value.replace(' ', 'T') : value;
+        const date = new Date(normalized);
+        if (Number.isNaN(date.getTime())) {
+            return value;
+        }
+        return dateFormatter.format(date);
+    };
+
+    const loadStoredDevice = () => {
+        try {
+            const raw = localStorage.getItem(DEVICE_STORAGE_KEY);
+            if (!raw) {
+                return null;
+            }
+            const parsed = JSON.parse(raw);
+            if (!parsed || typeof parsed.device_uuid !== 'string') {
+                return null;
+            }
+            return parsed;
+        } catch (error) {
+            console.warn('Impossibile leggere il dispositivo salvato', error);
+            return null;
+        }
+    };
+
+    const saveStoredDevice = (device, user) => {
+        if (!device || !device.device_uuid) {
+            return;
+        }
+        const payload = {
+            device_uuid: device.device_uuid,
+            label: device.label || device.device_label || 'Dispositivo QR',
+            user_id: device.user_id || user?.id || null,
+            user_display: user?.display || null,
+        };
+        try {
+            localStorage.setItem(DEVICE_STORAGE_KEY, JSON.stringify(payload));
+        } catch (error) {
+            console.warn('Impossibile salvare il dispositivo locale', error);
+        }
+        storedDevice = payload;
+        renderDeviceSummary();
+        return payload;
+    };
+
+    const clearStoredDevice = () => {
+        try {
+            localStorage.removeItem(DEVICE_STORAGE_KEY);
+        } catch (error) {
+            console.warn('Impossibile rimuovere il dispositivo locale', error);
+        }
+        storedDevice = null;
+        renderDeviceSummary();
+    };
+
+    let storedDevice = loadStoredDevice();
+
+    const renderDeviceSummary = () => {
+        if (!devicePanel || !deviceSummaryLabel || !deviceSummaryUuid || !deviceSummaryHint) {
+            return;
+        }
+        if (storedDevice) {
+            devicePanel.classList.remove('opacity-50');
+            deviceSummaryLabel.textContent = storedDevice.label || 'Dispositivo QR';
+            deviceSummaryUuid.textContent = storedDevice.device_uuid || '—';
+            deviceSummaryHint.textContent = 'Questo dispositivo verrà usato per approvare i login con PIN.';
+            deviceClearButton?.classList.remove('d-none');
+        } else {
+            deviceSummaryLabel.textContent = 'Nessun dispositivo associato a questa web app';
+            deviceSummaryUuid.textContent = '—';
+            deviceSummaryHint.textContent = 'Attiva un dispositivo dal profilo per collegarlo qui.';
+            deviceClearButton?.classList.add('d-none');
+        }
+    };
+
+    const setApprovalAlert = (type, message, icon = 'circle-info') => {
+        if (!approvalAlert) {
+            return;
+        }
+        approvalAlert.className = `alert alert-${type}`;
+        approvalAlert.innerHTML = '';
+        const iconEl = document.createElement('i');
+        const iconClasses = icon
+            .split(' ')
+            .filter(Boolean)
+            .map((cls) => (cls.startsWith('fa-') ? cls : `fa-${cls}`));
+        iconEl.className = ['fa-solid', ...iconClasses, 'me-2'].join(' ');
+        approvalAlert.appendChild(iconEl);
+        approvalAlert.appendChild(document.createTextNode(message));
+    };
+
+    const setApprovalBusy = (busy) => {
+        if (approveButton) {
+            approveButton.disabled = busy;
+        }
+        if (denyButton) {
+            denyButton.disabled = busy;
+        }
+        if (pinInput) {
+            pinInput.disabled = busy;
+        }
+    };
+
+    const resetApprovalState = () => {
+        challengeState.token = '';
+        challengeState.status = 'idle';
+        challengeState.expiresAt = null;
+        challengeDetailsList?.classList.add('d-none');
+        approvalForm?.classList.add('d-none');
+        if (pinInput) {
+            pinInput.value = '';
+            pinInput.disabled = false;
+        }
+        setApprovalAlert('info', 'Inquadra un QR dinamico per iniziare.');
+    };
+
+    const updateChallengeDetails = (challenge) => {
+        if (!challenge) {
+            return;
+        }
+        challengeDetailsList?.classList.remove('d-none');
+        if (challengeTokenEl) {
+            challengeTokenEl.textContent = challenge.token || '—';
+        }
+        if (challengeIpEl) {
+            challengeIpEl.textContent = challenge.ip_address || '—';
+        }
+        if (challengeAgentEl) {
+            challengeAgentEl.textContent = challenge.user_agent || '—';
+        }
+        if (challengeIssuedEl) {
+            challengeIssuedEl.textContent = formatDateTime(challenge.created_at);
+        }
+        if (challengeExpiresEl) {
+            challengeExpiresEl.textContent = formatDateTime(challenge.expires_at);
+        }
+        challengeState.expiresAt = challenge.expires_at || null;
+    };
+
+    const ensureDeviceReadyForApproval = () => {
+        if (storedDevice) {
+            return true;
+        }
+        setApprovalAlert('warning', 'Questo browser non ha un dispositivo associato. Completa prima l\'attivazione.', 'triangle-exclamation');
+        approvalForm?.classList.add('d-none');
+        return false;
+    };
+
+    const fetchChallengeDetails = async (token) => {
+        if (!challengeLookupEndpoint) {
+            setApprovalAlert('danger', 'Endpoint dettagli challenge non configurato.', 'triangle-exclamation');
+            return;
+        }
+        setApprovalBusy(true);
+        setApprovalAlert('info', 'Richiesta rilevata. Recupero dettagli...', 'circle-notch fa-spin');
+        try {
+            const response = await fetch(challengeLookupEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
+                body: JSON.stringify({ token }),
+            });
+            const data = await parseJsonResponse(response);
+            updateChallengeDetails(data.challenge);
+            challengeState.status = data.challenge?.status || 'pending';
+            if (ensureDeviceReadyForApproval()) {
+                approvalForm?.classList.remove('d-none');
+                pinInput?.focus();
+                setApprovalAlert('success', 'Inserisci il PIN per approvare questa richiesta.', 'shield-keyhole');
+            }
+        } catch (error) {
+            console.warn('Impossibile recuperare la challenge', error);
+            setApprovalAlert('danger', error.message || 'Impossibile ottenere i dettagli della richiesta.', 'triangle-exclamation');
+            resetApprovalState();
+        } finally {
+            setApprovalBusy(false);
+        }
+    };
+
+    const handleChallengeToken = (token) => {
+        if (!token) {
+            return;
+        }
+        challengeState.token = token;
+        challengeState.status = 'pending';
+        approvalForm?.classList.add('d-none');
+        pinInput && (pinInput.value = '');
+        fetchChallengeDetails(token);
+    };
+
+    const submitChallengeDecision = async (action) => {
+        if (!challengeState.token) {
+            setApprovalAlert('warning', 'Non c\'è alcuna richiesta attiva da gestire.', 'triangle-exclamation');
+            return;
+        }
+        if (!storedDevice) {
+            setApprovalAlert('warning', 'Collega prima un dispositivo a questa web app.', 'triangle-exclamation');
+            return;
+        }
+        const pin = (pinInput?.value || '').trim();
+        if (!/^[0-9]{4,8}$/.test(pin)) {
+            setApprovalAlert('danger', 'Inserisci il PIN (4-8 cifre).', 'triangle-exclamation');
+            pinInput?.focus();
+            return;
+        }
+        if (!challengeDecisionEndpoint) {
+            setApprovalAlert('danger', 'Endpoint decisione non configurato.', 'triangle-exclamation');
+            return;
+        }
+        setApprovalBusy(true);
+        setApprovalAlert('info', action === 'approve' ? 'Invio approvazione...' : 'Invio annullamento...', 'circle-notch fa-spin');
+        try {
+            const response = await fetch(challengeDecisionEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
+                body: JSON.stringify({
+                    token: challengeState.token,
+                    device_uuid: storedDevice.device_uuid,
+                    pin,
+                    action,
+                }),
+            });
+            const data = await parseJsonResponse(response);
+            challengeState.status = data.challenge?.status || action;
+            if (challengeState.status === 'approved') {
+                setApprovalAlert('success', 'Richiesta approvata. Torna alla schermata di login per completare l\'accesso.', 'circle-check');
+            } else if (challengeState.status === 'denied') {
+                setApprovalAlert('warning', 'Richiesta negata. Aggiorna la schermata di login.', 'triangle-exclamation');
+            } else {
+                setApprovalAlert('info', `Richiesta aggiornata (${challengeState.status}).`, 'circle-info');
+            }
+            approvalForm?.classList.add('d-none');
+        } catch (error) {
+            console.warn('Decisione challenge fallita', error);
+            setApprovalAlert('danger', error.message || 'Impossibile aggiornare la richiesta.', 'triangle-exclamation');
+        } finally {
+            setApprovalBusy(false);
+            if (pinInput) {
+                pinInput.value = '';
+            }
+        }
+    };
+
+    const handleApprovalSubmit = (event) => {
+        event.preventDefault();
+        submitChallengeDecision('approve');
+    };
+
+    const handleApprovalDeny = () => {
+        submitChallengeDecision('deny');
     };
 
     window.addEventListener('beforeinstallprompt', (event) => {
@@ -293,6 +594,8 @@
         if (userDisplayEl) {
             userDisplayEl.textContent = user.display || user.username || '—';
         }
+        saveStoredDevice(device, user);
+        setApprovalAlert('info', 'Dispositivo associato. Da ora puoi approvare i login con questo browser.', 'shield-keyhole');
     };
 
     const handleActivationError = (errorMessage) => {
@@ -323,10 +626,7 @@
                 },
                 body: JSON.stringify({ token }),
             });
-            const data = await response.json().catch(() => ({ ok: false, error: 'Risposta non valida dal server.' }));
-            if (!response.ok || !data.ok) {
-                throw new Error(data.error || 'Impossibile completare l\'attivazione.');
-            }
+            const data = await parseJsonResponse(response);
             handleActivationSuccess(data);
         } catch (error) {
             handleActivationError(error.message || 'Errore imprevisto durante l\'attivazione.');
@@ -440,10 +740,25 @@
             token = normalizeToken(parsed.token);
             message = 'Provisioning token riconosciuto. Avvio attivazione...';
             void activateToken(token, 'Attivazione da scansione');
-        } else {
-            message = 'QR letto, ma non contiene un provisioning token valido.';
+            updateResultBox(token, message, payload);
+            return;
         }
-        updateResultBox(token, message, payload);
+        if (parsed && parsed.type === 'coresuite:mfa-login-challenge' && typeof parsed.token === 'string') {
+            token = normalizeToken(parsed.token);
+            message = 'Richiesta login rilevata. Recupero dettagli...';
+            updateResultBox(token, message, payload);
+            handleChallengeToken(token);
+            return;
+        }
+        const fallbackToken = normalizeToken(payload);
+        if (fallbackToken.length >= 40) {
+            message = 'QR dinamico riconosciuto. Recupero dettagli della richiesta...';
+            updateResultBox(fallbackToken, message, payload);
+            handleChallengeToken(fallbackToken);
+            return;
+        }
+        message = 'QR letto, ma non contiene un token di provisioning o una richiesta di login validi.';
+        updateResultBox('', message, payload);
     };
 
     const startScanning = async () => {
@@ -597,6 +912,13 @@
     copyButton && copyButton.addEventListener('click', handleCopy);
     manualForm && manualForm.addEventListener('submit', handleManualSubmit);
     manualResetButton && manualResetButton.addEventListener('click', handleManualReset);
+    approvalForm && approvalForm.addEventListener('submit', handleApprovalSubmit);
+    denyButton && denyButton.addEventListener('click', handleApprovalDeny);
+    deviceClearButton && deviceClearButton.addEventListener('click', () => {
+        clearStoredDevice();
+        resetApprovalState();
+        setApprovalAlert('info', 'Dispositivo rimosso. Attiva nuovamente il pairing per approvare i login.', 'circle-info');
+    });
     cameraSelect && cameraSelect.addEventListener('change', () => {
         state.selectedDeviceId = cameraSelect.value || '';
         if (state.scanning) {
@@ -623,5 +945,7 @@
     resetScanner();
     toggleButtons();
     setActivationAlert('info', 'Nessuna scansione ancora rilevata.', 'circle-info');
+    renderDeviceSummary();
+    resetApprovalState();
     refreshCameraOptions();
 })();
