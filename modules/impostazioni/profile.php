@@ -32,16 +32,6 @@ $formValues = [
     'theme' => $user['theme_preference'],
 ];
 
-$extraScripts = $extraScripts ?? [];
-$extraScripts[] = asset('assets/vendor/qrcodejs/qrcode.min.js');
-$extraScripts[] = asset('assets/js/mfa-qr-devices.js');
-
-$mfaQrEndpoints = [
-    'list' => base_url('api/mfa/qr/devices/index.php'),
-    'create' => base_url('api/mfa/qr/devices/create.php'),
-    'revoke' => base_url('api/mfa/qr/devices/revoke.php'),
-];
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_valid_csrf();
     $action = $_POST['action'] ?? '';
@@ -57,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data['first_name'] = mb_convert_case(mb_strtolower($data['first_name'], 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
         $data['last_name'] = mb_convert_case(mb_strtolower($data['last_name'], 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
 
-    $formValues = array_merge($formValues, $data);
+        $formValues = array_merge($formValues, $data);
 
         if ($data['first_name'] === '' || mb_strlen($data['first_name']) < 2) {
             $alerts[] = ['type' => 'danger', 'text' => 'Il nome deve contenere almeno 2 caratteri.'];
@@ -390,113 +380,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </form>
                         <?php endif; ?>
                         <div class="form-text">Durante la configurazione verrà richiesto di scannerizzare un nuovo QR code.</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-xl-6">
-                <div
-                    class="card ag-card h-100"
-                    data-mfa-qr-root
-                    data-endpoint-list="<?php echo sanitize_output($mfaQrEndpoints['list']); ?>"
-                    data-endpoint-create="<?php echo sanitize_output($mfaQrEndpoints['create']); ?>"
-                    data-endpoint-revoke="<?php echo sanitize_output($mfaQrEndpoints['revoke']); ?>"
-                    data-csrf="<?php echo sanitize_output($csrfToken); ?>"
-                >
-                    <div class="card-header bg-transparent border-0 d-flex flex-column flex-lg-row gap-3 align-items-lg-center">
-                        <div>
-                            <h5 class="card-title mb-1">Dispositivi MFA via QR</h5>
-                            <p class="text-muted mb-0 small">Approva gli accessi scannerizzando il QR dal dispositivo mobile e confermando il PIN.</p>
-                        </div>
-                        <div class="ms-lg-auto d-flex flex-wrap gap-2">
-                            <button type="button" class="btn btn-outline-light btn-sm" data-mfa-qr-refresh>
-                                <i class="fa-solid fa-rotate me-1"></i>Ricarica
-                            </button>
-                            <button type="button" class="btn btn-warning btn-sm" data-mfa-qr-toggle-form>
-                                <i class="fa-solid fa-qrcode me-1"></i>Abbina dispositivo
-                            </button>
-                            <a class="btn btn-outline-warning btn-sm" href="<?php echo base_url('mfa-qr-scanner.php'); ?>" target="_blank" rel="noopener">
-                                <i class="fa-solid fa-mobile-screen-button me-1"></i>Apri web app scanner
-                            </a>
-                        </div>
-                    </div>
-                    <div class="card-body d-flex flex-column gap-3">
-                        <div class="alert alert-danger d-none" role="alert" data-mfa-qr-alert></div>
-                        <div class="alert alert-secondary d-none small" role="status" data-mfa-qr-pin-policy></div>
-
-                        <div class="text-center py-4 d-none" data-mfa-qr-loading>
-                            <div class="spinner-border text-warning" role="status"></div>
-                            <p class="text-muted small mt-3 mb-0">Caricamento dispositivi...</p>
-                        </div>
-
-                        <div class="list-group" data-mfa-qr-devices-list></div>
-                        <div class="text-muted small" data-mfa-qr-empty>Nessun dispositivo QR registrato.</div>
-
-                        <div class="alert alert-info d-none" data-mfa-qr-provisioning>
-                            <div class="d-flex justify-content-between align-items-start gap-3">
-                                <div>
-                                    <h6 class="fw-semibold mb-1">Dispositivo in attesa di scansione</h6>
-                                    <p class="mb-0 small">Apri l'app mobile e inquadra il QR entro <span data-mfa-qr-provisioning-expiry>—</span>.</p>
-                                </div>
-                                <button type="button" class="btn-close" aria-label="Chiudi" data-mfa-qr-dismiss></button>
-                            </div>
-                            <div class="bg-white border rounded-3 p-3 mt-3">
-                                <div class="small text-muted">QR dinamico</div>
-                                <div class="ratio ratio-1x1 border rounded-3 d-flex align-items-center justify-content-center bg-body-secondary" data-mfa-qr-code>
-                                    <span class="text-muted small">In attesa di generazione QR…</span>
-                                </div>
-                            </div>
-                            <div class="bg-white border rounded-3 p-3 mt-3">
-                                <div class="small text-muted">Token di provisioning</div>
-                                <code class="d-block text-break" data-mfa-qr-provisioning-token>—</code>
-                            </div>
-                            <div class="bg-white border rounded-3 p-3 mt-3">
-                                <div class="small text-muted">Payload da convertire in QR</div>
-                                <pre class="small mb-0 text-break" data-mfa-qr-provisioning-payload>{}</pre>
-                            </div>
-                            <div class="d-flex flex-wrap gap-2 mt-3">
-                                <button type="button" class="btn btn-outline-light btn-sm" data-mfa-qr-copy>
-                                    <i class="fa-solid fa-copy me-1"></i>Copia payload
-                                </button>
-                                <button type="button" class="btn btn-outline-warning btn-sm" data-mfa-qr-refresh-after>
-                                    <i class="fa-solid fa-circle-check me-1"></i>Ho completato l'abbinamento
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="border rounded-3 bg-body-secondary p-3 d-none" data-mfa-qr-form-wrapper>
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div>
-                                    <h6 class="mb-1">Abbina un nuovo dispositivo</h6>
-                                    <p class="mb-0 text-muted small">Imposta un PIN numerico: verrà richiesto sull'app ad ogni approvazione.</p>
-                                </div>
-                                <button type="button" class="btn-close" aria-label="Chiudi" data-mfa-qr-toggle-form></button>
-                            </div>
-                            <form data-mfa-qr-form autocomplete="off">
-                                <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-                                <div class="mb-3">
-                                    <label class="form-label" for="qr_device_label">Nome dispositivo</label>
-                                    <input class="form-control" id="qr_device_label" name="label" type="text" minlength="3" maxlength="100" required placeholder="es. iPhone assistenza">
-                                </div>
-                                <div class="row g-3">
-                                    <div class="col-sm-6">
-                                        <label class="form-label" for="qr_device_pin">PIN</label>
-                                        <input class="form-control" id="qr_device_pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" required placeholder="4-8 cifre">
-                                    </div>
-                                    <div class="col-sm-6">
-                                        <label class="form-label" for="qr_device_pin_confirm">Conferma PIN</label>
-                                        <input class="form-control" id="qr_device_pin_confirm" name="pin_confirmation" type="password" inputmode="numeric" pattern="[0-9]{4,8}" maxlength="8" required placeholder="Ripeti PIN">
-                                    </div>
-                                </div>
-                                <div class="form-text">Condividi il PIN solo con chi utilizzerà il dispositivo.</div>
-                                <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
-                                    <button type="submit" class="btn btn-warning flex-fill" data-mfa-qr-submit>
-                                        <i class="fa-solid fa-link me-2"></i>Genera QR di pairing
-                                    </button>
-                                    <button type="button" class="btn btn-outline-light flex-fill" data-mfa-qr-toggle-form>Chiudi</button>
-                                </div>
-                            </form>
-                        </div>
                     </div>
                 </div>
             </div>
