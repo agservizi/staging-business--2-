@@ -21,6 +21,9 @@
             this.copyTokenBtn = document.querySelector('[data-mfa-qr-copy-token]');
             this.timerLabel = document.querySelector('[data-mfa-qr-timer]');
             this.alertBox = document.querySelector('[data-mfa-alert]');
+            this.qrContainer = document.querySelector('[data-mfa-qr-code]');
+            this.qrHint = document.querySelector('[data-mfa-qr-hint]');
+            this.qrInstance = null;
 
             this.activeToken = this.initialToken;
             this.pollTimer = null;
@@ -70,7 +73,7 @@
                 return;
             }
             this.toggleButtons(true);
-            this.showProgress('Richiesta attiva. Inquadra il QR e conferma dal dispositivo.', 50);
+            this.showProgress('Richiesta attiva. Inquadra il QR e conferma dal dispositivo.', 50, this.activeToken);
             this.schedulePolling();
             this.startExpiryCountdown();
         }
@@ -224,13 +227,21 @@
             if (token && this.tokenDisplay) {
                 this.tokenDisplay.textContent = token;
             }
+            if (token) {
+                this.renderQrCode(token);
+            }
             this.cancelButton?.classList.remove('d-none');
         }
 
         hideProgress() {
             this.progressBox?.classList.add('d-none');
-            this.tokenDisplay.textContent = '';
-            this.timerLabel.textContent = '';
+            if (this.tokenDisplay) {
+                this.tokenDisplay.textContent = '';
+            }
+            if (this.timerLabel) {
+                this.timerLabel.textContent = '';
+            }
+            this.clearQrCode();
             this.cancelButton?.classList.add('d-none');
         }
 
@@ -266,6 +277,40 @@
         clearAlert() {
             this.alertBox?.classList.add('d-none');
             this.alertBox.textContent = '';
+        }
+
+        renderQrCode(token) {
+            if (!this.qrContainer || !token) {
+                return;
+            }
+            if (typeof QRCode === 'undefined') {
+                if (this.qrHint) {
+                    this.qrHint.textContent = 'QR non disponibile, usa il token qui sotto.';
+                    this.qrHint.classList.add('text-danger');
+                }
+                return;
+            }
+            if (!this.qrInstance) {
+                this.qrInstance = new QRCode(this.qrContainer, {
+                    width: 220,
+                    height: 220,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+            }
+            this.qrInstance.clear();
+            this.qrInstance.makeCode(token);
+        }
+
+        clearQrCode() {
+            if (!this.qrContainer) {
+                return;
+            }
+            if (this.qrInstance) {
+                this.qrInstance.clear();
+            }
+            this.qrContainer.innerHTML = '';
         }
     }
 

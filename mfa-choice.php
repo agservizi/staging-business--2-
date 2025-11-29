@@ -140,6 +140,10 @@ $qrPinLockMinutes = $qrPinLockSeconds ? (int) max(1, ceil($qrPinLockSeconds / 60
                                         <div class="progress mt-3" role="progressbar" aria-valuemin="0" aria-valuemax="100">
                                             <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 25%" data-mfa-qr-progressbar></div>
                                         </div>
+                                        <div class="mt-3 text-center">
+                                            <div class="ratio ratio-1x1 w-100 w-sm-50 mx-auto bg-white rounded-3 p-3" data-mfa-qr-code></div>
+                                            <div class="small text-muted mt-2" data-mfa-qr-hint>Inquadra il QR con l'app mobile registrata.</div>
+                                        </div>
                                         <div class="mt-3 d-flex flex-column flex-sm-row gap-2 align-items-sm-center">
                                             <code class="text-break flex-fill" data-mfa-qr-token></code>
                                             <button type="button" class="btn btn-outline-secondary btn-sm" data-mfa-qr-copy-token>
@@ -161,6 +165,7 @@ $qrPinLockMinutes = $qrPinLockSeconds ? (int) max(1, ceil($qrPinLockSeconds / 60
         </div>
     </main>
     <script src="<?php echo asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js'); ?>"></script>
+    <script src="<?php echo asset('assets/vendor/qrcodejs/qrcode.min.js'); ?>"></script>
     <script src="<?php echo asset('assets/js/mfa-choice.js'); ?>"></script>
 </body>
 </html>
