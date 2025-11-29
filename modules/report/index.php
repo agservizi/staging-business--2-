@@ -253,7 +253,7 @@ if ($current) {
 
 $summary = [
     'clients' => (int) $pdo->query('SELECT COUNT(*) FROM clienti')->fetchColumn(),
-    'tickets' => (int) $pdo->query('SELECT COUNT(*) FROM ticket WHERE stato != "Chiuso"')->fetchColumn(),
+    'tickets' => (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE status NOT IN ('RESOLVED','CLOSED','ARCHIVED')")->fetchColumn(),
     'revenue' => 0.0,
 ];
 

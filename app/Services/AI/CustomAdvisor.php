@@ -197,7 +197,10 @@ final class CustomAdvisor
     private function answerAboutTickets(array $contextLines, array $period, array $preferences, array $pastInsights, string $question): string
     {
         $tickets = $this->queryTicketsData($period);
-        $open = count(array_filter($tickets, fn($t) => $t['stato'] === 'aperto'));
+        $open = count(array_filter($tickets, static function (array $ticket): bool {
+            $status = strtoupper($ticket['status'] ?? '');
+            return in_array($status, ['OPEN', 'IN_PROGRESS', 'WAITING_CLIENT', 'WAITING_PARTNER'], true);
+        }));
         $insight = $pastInsights['ticket_insight'] ?? 'Risolvi entro SLA.';
 
         $this->updatePreferences($this->input['user_id'] ?? null, 'frequent_topics', 'ticket');
@@ -233,7 +236,7 @@ final class CustomAdvisor
     private function queryTicketsData(array $period): array
     {
         try {
-            $stmt = $this->pdo->prepare("SELECT id, stato FROM ticket WHERE created_at BETWEEN ? AND ?");
+            $stmt = $this->pdo->prepare("SELECT id, status FROM tickets WHERE created_at BETWEEN ? AND ?");
             $stmt->execute([$period['start']->format('Y-m-d'), $period['end']->format('Y-m-d')]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -512,7 +515,10 @@ final class CustomAdvisor
         }
         if (preg_match('/\bticket\b/i', $question)) {
             $tickets = $this->queryTicketsData($period);
-            $open = count(array_filter($tickets, fn($t) => $t['stato'] === 'aperto'));
+            $open = count(array_filter($tickets, static function (array $ticket): bool {
+                $status = strtoupper($ticket['status'] ?? '');
+                return in_array($status, ['OPEN', 'IN_PROGRESS', 'WAITING_CLIENT', 'WAITING_PARTNER'], true);
+            }));
             $total = count($tickets);
             return "Statistiche ticket: {$total} totali, {$open} aperti nel periodo {$period['label']}.";
         }

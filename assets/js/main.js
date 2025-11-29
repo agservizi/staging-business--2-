@@ -464,17 +464,19 @@ document.addEventListener('DOMContentLoaded', () => {
             tickets.forEach((ticket) => {
                 const row = document.createElement('tr');
 
-                const idCell = document.createElement('td');
-                if (ticket.id !== undefined && ticket.id !== null && ticket.id !== '') {
-                    idCell.textContent = `#${ticket.id}`;
-                } else {
-                    idCell.textContent = '—';
-                }
-                row.appendChild(idCell);
+                const ticketCell = document.createElement('td');
+                const codeLabel = document.createElement('div');
+                const codeValue = ticket.code || ticket.id || '—';
+                codeLabel.className = 'fw-semibold';
+                codeLabel.textContent = `#${codeValue}`;
+                ticketCell.appendChild(codeLabel);
 
-                const titleCell = document.createElement('td');
-                titleCell.textContent = ticket.title || '—';
-                row.appendChild(titleCell);
+                const subjectLine = document.createElement('small');
+                subjectLine.className = 'text-muted d-block';
+                subjectLine.textContent = ticket.subject || `Ticket #${codeValue}`;
+                ticketCell.appendChild(subjectLine);
+
+                row.appendChild(ticketCell);
 
                 const statusCell = document.createElement('td');
                 const statusBadge = document.createElement('span');
@@ -486,6 +488,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dateCell = document.createElement('td');
                 dateCell.textContent = formatDate(ticket.createdAt);
                 row.appendChild(dateCell);
+
+                const actionCell = document.createElement('td');
+                actionCell.className = 'text-end';
+                if (ticket.id !== undefined && ticket.id !== null) {
+                    const link = document.createElement('a');
+                    link.className = 'btn btn-sm btn-outline-warning';
+                    link.href = `modules/ticket/view.php?id=${ticket.id}`;
+                    link.textContent = 'Apri';
+                    actionCell.appendChild(link);
+                }
+                row.appendChild(actionCell);
 
                 fragment.appendChild(row);
             });
