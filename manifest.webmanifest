@@ -1,0 +1,24 @@
+{
+  "name": "Coresuite QR Scanner",
+  "short_name": "QR Scanner",
+  "start_url": "/mfa-qr-scanner.php",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b2f6b",
+  "theme_color": "#0b2f6b",
+  "description": "Scanner PWA per l'approvazione MFA QR + PIN",
+  "icons": [
+    {
+      "src": "/assets/img/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/img/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

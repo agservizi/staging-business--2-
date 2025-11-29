@@ -33,7 +33,6 @@ $formValues = [
 ];
 
 $extraScripts = $extraScripts ?? [];
-$extraScripts[] = asset('assets/vendor/qrcodejs/qrcode.min.js');
 $extraScripts[] = asset('assets/js/mfa-qr-devices.js');
 
 $mfaQrEndpoints = [
@@ -415,6 +414,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <button type="button" class="btn btn-warning btn-sm" data-mfa-qr-toggle-form>
                                 <i class="fa-solid fa-qrcode me-1"></i>Abbina dispositivo
                             </button>
+                            <a class="btn btn-outline-warning btn-sm" href="<?php echo base_url('mfa-qr-scanner.php'); ?>" target="_blank" rel="noopener">
+                                <i class="fa-solid fa-mobile-screen-button me-1"></i>Apri web app scanner
+                            </a>
                         </div>
                     </div>
                     <div class="card-body d-flex flex-column gap-3">

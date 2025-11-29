@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="72" ry="72" fill="#0b2f6b"/>
+  <rect x="48" y="352" width="416" height="96" rx="32" fill="#fdbb2d" opacity="0.85"/>
+  <text x="256" y="230" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="180" font-weight="700" text-anchor="middle" fill="#ffffff">QR</text>
+</svg>

@@ -2,6 +2,10 @@
 declare(strict_types=1);
 
 use App\Services\Security\MfaQrService;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 
 require_once __DIR__ . '/../../../../includes/auth.php';
 require_once __DIR__ . '/../../../../includes/db_connect.php';
@@ -79,6 +83,25 @@ try {
     exit;
 }
 
+$qrSvgDataUri = null;
+try {
+    if (
+        class_exists(ImageRenderer::class) &&
+        class_exists(RendererStyle::class) &&
+        class_exists(SvgImageBackEnd::class) &&
+        class_exists(Writer::class)
+    ) {
+        $renderer = new ImageRenderer(new RendererStyle(220), new SvgImageBackEnd());
+        $writer = new Writer($renderer);
+        $svgString = $writer->writeString($qrPayload);
+        $qrSvgDataUri = 'data:image/svg+xml;base64,' . base64_encode($svgString);
+    } else {
+        throw new RuntimeException('QR renderer non disponibile.');
+    }
+} catch (Throwable $exception) {
+    error_log('MFA QR svg render failed: ' . $exception->getMessage());
+}
+
 $response = [
     'ok' => true,
     'device' => [
@@ -91,6 +114,7 @@ $response = [
         'token' => $device['provisioning_token'],
         'expires_at' => $device['provisioning_expires_at'],
         'qr_payload' => $qrPayload,
+        'qr_svg' => $qrSvgDataUri,
     ],
 ];
 

@@ -43,7 +43,6 @@
                 attemptLimit: null,
                 lockSeconds: null
             };
-            this.qrInstance = null;
 
             this.init();
         }
@@ -353,7 +352,7 @@
             if (this.provisioningPayloadEl) {
                 this.provisioningPayloadEl.textContent = provisioning.qr_payload || JSON.stringify({ token: provisioning.token }, null, 2);
             }
-            this.renderProvisioningQr(provisioning.qr_payload || provisioning.token || '');
+            this.renderProvisioningQr(provisioning);
             if (device && device.label) {
                 this.showAlert('success', `Dispositivo "${device.label}" creato. Completa l'abbinamento entro pochi minuti.`, 6000);
             }
@@ -384,45 +383,38 @@
             }
         }
 
-        renderProvisioningQr(value) {
+        renderProvisioningQr(provisioning) {
             if (!this.provisioningQrEl) {
                 return;
             }
-            const payload = typeof value === 'string' && value.trim() !== '' ? value.trim() : '';
-            if (!payload) {
-                this.resetProvisioningQr('QR non disponibile.');
+            const target = this.provisioningQrEl;
+            target.innerHTML = '';
+
+            const qrSrc = provisioning?.qr_svg;
+            if (typeof qrSrc === 'string' && qrSrc.startsWith('data:image')) {
+                const img = document.createElement('img');
+                img.src = qrSrc;
+                img.alt = 'QR di pairing';
+                img.className = 'img-fluid rounded-2';
+                target.appendChild(img);
                 return;
             }
 
-            if (typeof window.QRCode === 'undefined') {
-                this.resetProvisioningQr('Impossibile generare il QR sul browser.');
-                return;
-            }
-
-            if (!this.qrInstance) {
-                this.provisioningQrEl.innerHTML = '';
-                this.qrInstance = new window.QRCode(this.provisioningQrEl, {
-                    text: payload,
-                    width: 240,
-                    height: 240,
-                    colorDark: '#000000',
-                    colorLight: '#ffffff',
-                    correctLevel: window.QRCode.CorrectLevel.M,
-                    useSVG: true
-                });
-            } else {
-                this.qrInstance.clear();
-                this.qrInstance.makeCode(payload);
-            }
+            const fallback = document.createElement('span');
+            fallback.className = 'text-muted small text-center';
+            fallback.textContent = 'QR non disponibile. Usa il token riportato sotto.';
+            target.appendChild(fallback);
         }
 
         resetProvisioningQr(message) {
             if (!this.provisioningQrEl) {
                 return;
             }
-            this.qrInstance = null;
-            const fallback = message || 'Nessun QR attivo. Genera un nuovo dispositivo.';
-            this.provisioningQrEl.innerHTML = `<span class="text-muted small text-center">${escapeHtml(fallback)}</span>`;
+            this.provisioningQrEl.innerHTML = '';
+            const span = document.createElement('span');
+            span.className = 'text-muted small text-center';
+            span.textContent = message || 'Nessun QR attivo. Genera un nuovo dispositivo.';
+            this.provisioningQrEl.appendChild(span);
         }
 
         setLoading(state) {
