@@ -1,7 +1,6 @@
 <?php
 use App\Security\SecurityAuditLogger;
 use App\Services\Security\MfaQrService;
-use Throwable;
 
 session_start();
 require_once __DIR__ . '/includes/db_connect.php';
