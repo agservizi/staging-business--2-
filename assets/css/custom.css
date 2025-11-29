@@ -3,6 +3,18 @@
     color: var(--ag-muted);
 }
 
+.auth-panel-inner {
+    width: min(100%, 520px);
+    margin: 0 auto;
+}
+
+@media (max-width: 575px) {
+    .auth-panel-inner {
+        width: 100%;
+        margin: 0;
+    }
+}
+
 .auth-meta {
     color: rgba(255, 255, 255, 0.85);
 }
