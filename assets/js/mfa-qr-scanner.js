@@ -43,6 +43,11 @@
     const manualSubmitButton = activationBox ? activationBox.querySelector('[data-qr-manual-submit]') : null;
 
     let deferredInstallPrompt = null;
+    const supportsNativeDetector = 'BarcodeDetector' in window;
+    const supportsJsQr = typeof window.jsQR === 'function';
+    const fallbackCanvas = supportsJsQr ? document.createElement('canvas') : null;
+    const fallbackContext = fallbackCanvas ? fallbackCanvas.getContext('2d') : null;
+    let fallbackNoticeShown = false;
 
     const state = {
         detector: null,
@@ -84,6 +89,7 @@
     });
 
     const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    const hasDetectionEngine = () => supportsNativeDetector || supportsJsQr;
 
     const setStatus = (text) => {
         if (statusEl) {
@@ -93,7 +99,8 @@
 
     const toggleButtons = () => {
         if (startButton) {
-            startButton.disabled = state.scanning || !!state.detectorError;
+            const detectionReady = hasMediaDevices && hasDetectionEngine();
+            startButton.disabled = state.scanning || !detectionReady;
         }
         if (stopButton) {
             stopButton.disabled = !state.scanning;
@@ -110,6 +117,13 @@
         supportAlert.textContent = text;
         supportAlert.classList.remove('d-none', 'alert-warning', 'alert-danger', 'alert-info');
         supportAlert.classList.add(`alert-${type}`);
+    };
+
+    const showFallbackNotice = () => {
+        if (supportsJsQr && !fallbackNoticeShown) {
+            showSupportMessage('BarcodeDetector non disponibile: uso motore compatibilità jsQR.', 'info');
+            fallbackNoticeShown = true;
+        }
     };
 
     const updateCameraHint = (text) => {
@@ -328,8 +342,8 @@
         if (state.detectorError) {
             throw new Error(state.detectorError);
         }
-        if (!('BarcodeDetector' in window)) {
-            state.detectorError = 'Il browser non supporta BarcodeDetector. Usa l\'inserimento manuale.';
+        if (!supportsNativeDetector) {
+            state.detectorError = 'BarcodeDetector non disponibile in questo browser.';
             throw new Error(state.detectorError);
         }
         try {
@@ -347,27 +361,66 @@
         }
     };
 
+    const detectWithNative = async () => {
+        if (!state.detector || !videoEl) {
+            return '';
+        }
+        const results = await state.detector.detect(videoEl);
+        if (Array.isArray(results) && results.length > 0) {
+            return results[0].rawValue || '';
+        }
+        return '';
+    };
+
+    const detectWithJsQr = () => {
+        if (!supportsJsQr || !fallbackCanvas || !fallbackContext || !videoEl) {
+            return '';
+        }
+        const width = videoEl.videoWidth || videoEl.clientWidth || 640;
+        const height = videoEl.videoHeight || videoEl.clientHeight || 480;
+        if (!width || !height) {
+            return '';
+        }
+        fallbackCanvas.width = width;
+        fallbackCanvas.height = height;
+        fallbackContext.drawImage(videoEl, 0, 0, width, height);
+        try {
+            const imageData = fallbackContext.getImageData(0, 0, width, height);
+            const jsResult = window.jsQR(imageData.data, width, height, { inversionAttempts: 'attemptBoth' });
+            return jsResult && typeof jsResult.data === 'string' ? jsResult.data : '';
+        } catch (error) {
+            console.warn('jsQR detect error', error);
+            return '';
+        }
+    };
+
     const scheduleDetection = () => {
+        if (!state.scanning) {
+            return;
+        }
+        const delay = state.detector ? 350 : 650;
         state.detectionTimer = window.setTimeout(async () => {
-            if (!state.scanning || !state.detector || !videoEl || videoEl.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA) {
+            if (!state.scanning || !videoEl || videoEl.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA) {
                 scheduleDetection();
                 return;
             }
             try {
-                const results = await state.detector.detect(videoEl);
-                if (Array.isArray(results) && results.length > 0) {
-                    const value = results[0].rawValue || '';
-                    if (value && value !== state.lastPayload) {
-                        state.lastPayload = value;
-                        processPayload(value);
-                        return;
-                    }
+                let value = '';
+                if (state.detector) {
+                    value = await detectWithNative();
+                } else if (supportsJsQr) {
+                    value = detectWithJsQr();
+                }
+                if (value && value !== state.lastPayload) {
+                    state.lastPayload = value;
+                    processPayload(value);
+                    return;
                 }
             } catch (error) {
                 console.warn('QR detect error', error);
             }
             scheduleDetection();
-        }, 450);
+        }, delay);
     };
 
     const processPayload = (payload) => {
@@ -397,12 +450,28 @@
         if (state.scanning) {
             return;
         }
-        try {
-            await ensureDetector();
-        } catch (error) {
-            showSupportMessage(error.message || 'Funzionalità non supportata sul dispositivo.', 'danger');
+        if (!hasDetectionEngine()) {
+            showSupportMessage('Questo browser non supporta la scansione QR. Usa il token manuale.', 'danger');
             toggleButtons();
             return;
+        }
+        if (supportsNativeDetector) {
+            try {
+                await ensureDetector();
+            } catch (error) {
+                console.warn('BarcodeDetector initialization failed', error);
+                state.detector = null;
+                state.detectorError = error && error.message ? error.message : 'BarcodeDetector non disponibile.';
+                if (supportsJsQr) {
+                    showFallbackNotice();
+                } else {
+                    showSupportMessage(state.detectorError, 'danger');
+                    toggleButtons();
+                    return;
+                }
+            }
+        } else if (supportsJsQr) {
+            showFallbackNotice();
         }
         if (!hasMediaDevices) {
             showSupportMessage('Il dispositivo non espone l\'accesso alla fotocamera nel browser corrente.', 'danger');
@@ -510,6 +579,13 @@
 
     if (!hasMediaDevices) {
         showSupportMessage('Il browser non espone la fotocamera. Usa l\'inserimento manuale.', 'danger');
+        if (startButton) {
+            startButton.disabled = true;
+        }
+    }
+
+    if (!hasDetectionEngine()) {
+        showSupportMessage('Nessun motore di decodifica QR disponibile. Aggiorna il browser o usa il token manuale.', 'danger');
         if (startButton) {
             startButton.disabled = true;
         }

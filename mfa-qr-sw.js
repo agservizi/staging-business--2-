@@ -1,11 +1,13 @@
-const CACHE_NAME = 'mfa-qr-scanner-v1';
+const CACHE_NAME = 'mfa-qr-scanner-v2';
 const PRECACHE_URLS = [
   '/mfa-qr-scanner.php',
   '/assets/js/mfa-qr-scanner.js',
+  '/assets/vendor/jsqr/jsQR.js',
   '/assets/vendor/bootstrap/css/bootstrap.min.css',
   '/assets/vendor/bootstrap/js/bootstrap.bundle.min.js',
   '/assets/css/custom.css',
   '/assets/img/pwa-icon.svg',
+  '/manifest.webmanifest',
 ];
 
 self.addEventListener('install', (event) => {

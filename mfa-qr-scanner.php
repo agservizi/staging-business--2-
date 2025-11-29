@@ -7,6 +7,7 @@ require_once __DIR__ . '/includes/helpers.php';
 
 $pageTitle = 'Scanner QR + PIN';
 $extraScripts = $extraScripts ?? [];
+$extraScripts[] = asset('assets/vendor/jsqr/jsQR.js');
 $extraScripts[] = asset('assets/js/mfa-qr-scanner.js');
 
 $completeEndpoint = base_url('api/mfa/qr/devices/complete.php');
