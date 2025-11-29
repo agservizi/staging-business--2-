@@ -88,6 +88,7 @@
         status: 'idle',
         expiresAt: null,
     };
+
     const parseJsonResponse = async (response) => {
         const payload = await response.json().catch(() => {
             throw new Error('Risposta non valida dal server.');
