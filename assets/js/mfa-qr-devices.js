@@ -400,6 +400,25 @@
                 return;
             }
 
+            if (typeof window.QRCode === 'function' && typeof provisioning?.qr_payload === 'string') {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'd-inline-flex p-2 border rounded-3 bg-white';
+                target.appendChild(placeholder);
+                try {
+                    // eslint-disable-next-line no-new
+                    new window.QRCode(placeholder, {
+                        text: provisioning.qr_payload,
+                        width: 220,
+                        height: 220,
+                        correctLevel: window.QRCode.CorrectLevel.M,
+                    });
+                    return;
+                } catch (error) {
+                    console.warn('Fallback QR generation failed', error);
+                    placeholder.remove();
+                }
+            }
+
             const fallback = document.createElement('span');
             fallback.className = 'text-muted small text-center';
             fallback.textContent = 'QR non disponibile. Usa il token riportato sotto.';

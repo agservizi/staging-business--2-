@@ -33,6 +33,7 @@ $formValues = [
 ];
 
 $extraScripts = $extraScripts ?? [];
+$extraScripts[] = asset('assets/vendor/qrcodejs/qrcode.min.js');
 $extraScripts[] = asset('assets/js/mfa-qr-devices.js');
 
 $mfaQrEndpoints = [
