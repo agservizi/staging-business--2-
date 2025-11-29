@@ -31,6 +31,7 @@
             this.provisioningTokenEl = root.querySelector('[data-mfa-qr-provisioning-token]');
             this.provisioningExpiryEl = root.querySelector('[data-mfa-qr-provisioning-expiry]');
             this.provisioningPayloadEl = root.querySelector('[data-mfa-qr-provisioning-payload]');
+            this.provisioningQrEl = root.querySelector('[data-mfa-qr-code]');
             this.copyBtn = root.querySelector('[data-mfa-qr-copy]');
             this.refreshAfterBtn = root.querySelector('[data-mfa-qr-refresh-after]');
             this.policyHintEl = root.querySelector('[data-mfa-qr-pin-policy]');
@@ -42,6 +43,7 @@
                 attemptLimit: null,
                 lockSeconds: null
             };
+            this.qrInstance = null;
 
             this.init();
         }
@@ -351,6 +353,7 @@
             if (this.provisioningPayloadEl) {
                 this.provisioningPayloadEl.textContent = provisioning.qr_payload || JSON.stringify({ token: provisioning.token }, null, 2);
             }
+            this.renderProvisioningQr(provisioning.qr_payload || provisioning.token || '');
             if (device && device.label) {
                 this.showAlert('success', `Dispositivo "${device.label}" creato. Completa l'abbinamento entro pochi minuti.`, 6000);
             }
@@ -358,6 +361,7 @@
 
         hideProvisioning() {
             this.provisioningBox?.classList.add('d-none');
+            this.resetProvisioningQr();
         }
 
         async copyProvisioningPayload() {
@@ -378,6 +382,47 @@
             } catch (_) {
                 this.showAlert('warning', 'Impossibile copiare negli appunti. Copia manualmente il testo.');
             }
+        }
+
+        renderProvisioningQr(value) {
+            if (!this.provisioningQrEl) {
+                return;
+            }
+            const payload = typeof value === 'string' && value.trim() !== '' ? value.trim() : '';
+            if (!payload) {
+                this.resetProvisioningQr('QR non disponibile.');
+                return;
+            }
+
+            if (typeof window.QRCode === 'undefined') {
+                this.resetProvisioningQr('Impossibile generare il QR sul browser.');
+                return;
+            }
+
+            if (!this.qrInstance) {
+                this.provisioningQrEl.innerHTML = '';
+                this.qrInstance = new window.QRCode(this.provisioningQrEl, {
+                    text: payload,
+                    width: 240,
+                    height: 240,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: window.QRCode.CorrectLevel.M,
+                    useSVG: true
+                });
+            } else {
+                this.qrInstance.clear();
+                this.qrInstance.makeCode(payload);
+            }
+        }
+
+        resetProvisioningQr(message) {
+            if (!this.provisioningQrEl) {
+                return;
+            }
+            this.qrInstance = null;
+            const fallback = message || 'Nessun QR attivo. Genera un nuovo dispositivo.';
+            this.provisioningQrEl.innerHTML = `<span class="text-muted small text-center">${escapeHtml(fallback)}</span>`;
         }
 
         setLoading(state) {

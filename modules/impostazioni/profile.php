@@ -33,6 +33,7 @@ $formValues = [
 ];
 
 $extraScripts = $extraScripts ?? [];
+$extraScripts[] = asset('assets/vendor/qrcodejs/qrcode.min.js');
 $extraScripts[] = asset('assets/js/mfa-qr-devices.js');
 
 $mfaQrEndpoints = [
@@ -435,6 +436,12 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     <p class="mb-0 small">Apri l'app mobile e inquadra il QR entro <span data-mfa-qr-provisioning-expiry>—</span>.</p>
                                 </div>
                                 <button type="button" class="btn-close" aria-label="Chiudi" data-mfa-qr-dismiss></button>
+                            </div>
+                            <div class="bg-white border rounded-3 p-3 mt-3">
+                                <div class="small text-muted">QR dinamico</div>
+                                <div class="ratio ratio-1x1 border rounded-3 d-flex align-items-center justify-content-center bg-body-secondary" data-mfa-qr-code>
+                                    <span class="text-muted small">In attesa di generazione QR…</span>
+                                </div>
                             </div>
                             <div class="bg-white border rounded-3 p-3 mt-3">
                                 <div class="small text-muted">Token di provisioning</div>
