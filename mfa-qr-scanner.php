@@ -8,12 +8,14 @@ require_once __DIR__ . '/includes/helpers.php';
 $pageTitle = 'Scanner QR + PIN';
 $extraScripts = $extraScripts ?? [];
 
+
 $extraScripts[] = asset('assets/vendor/jsqr/jsQR.js');
 $extraScripts[] = asset('assets/js/mfa-qr-scanner.js');
 
 $completeEndpoint = base_url('api/mfa/qr/devices/complete.php');
 $challengeLookupEndpoint = base_url('api/mfa/qr/challenges/lookup.php');
 $challengeDecisionEndpoint = base_url('api/mfa/qr/challenges/decision.php');
+$devicesEndpoint = base_url('api/mfa/qr/devices/index.php');
 $csrfToken = csrf_token();
 $tokenExample = '00000000000000000000000000000000';
 
@@ -53,6 +55,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                      data-complete-endpoint="<?php echo sanitize_output($completeEndpoint); ?>"
                      data-challenge-lookup="<?php echo sanitize_output($challengeLookupEndpoint); ?>"
                      data-challenge-decision="<?php echo sanitize_output($challengeDecisionEndpoint); ?>"
+                     data-devices-endpoint="<?php echo sanitize_output($devicesEndpoint); ?>"
                      data-csrf="<?php echo sanitize_output($csrfToken); ?>">
                     <div class="card-header bg-transparent border-0 d-flex flex-column flex-lg-row gap-2 align-items-lg-center">
                         <div>
@@ -131,7 +134,17 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <div class="small text-muted">Dispositivo collegato su questo browser</div>
                             <div class="fw-semibold" data-qr-device-name>Nessun dispositivo associato a questa web app</div>
                             <div class="text-muted small">UUID: <span data-qr-device-id>—</span></div>
-                            <div class="form-text mt-2" data-qr-device-hint>Attiva un dispositivo dal profilo per collegarlo qui.</div>
+                            <div class="form-text mt-2" data-qr-device-hint>Attiva o seleziona un dispositivo per poter approvare i login da questo browser.</div>
+                            <div class="mt-3">
+                                <label class="form-label" for="qr_device_select">Seleziona dispositivo attivo</label>
+                                <select class="form-select" id="qr_device_select" data-qr-device-select disabled>
+                                    <option value="">Caricamento dispositivi...</option>
+                                </select>
+                                <div class="form-text">Scegli quale dispositivo userai per approvare le richieste QR.</div>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm mt-3" data-qr-device-save disabled>
+                                <i class="fa-solid fa-link me-1"></i>Associa a questo browser
+                            </button>
                             <button type="button" class="btn btn-outline-danger btn-sm mt-3 d-none" data-qr-device-clear>
                                 <i class="fa-solid fa-trash-can me-1"></i>Dimentica questo dispositivo
                             </button>

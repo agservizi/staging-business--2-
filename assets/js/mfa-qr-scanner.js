@@ -17,6 +17,7 @@
     const completeEndpoint = scannerRoot.getAttribute('data-complete-endpoint') || '';
     const challengeLookupEndpoint = scannerRoot.getAttribute('data-challenge-lookup') || '';
     const challengeDecisionEndpoint = scannerRoot.getAttribute('data-challenge-decision') || '';
+    const devicesEndpoint = scannerRoot.getAttribute('data-devices-endpoint') || '';
     const csrfToken = scannerRoot.getAttribute('data-csrf') || '';
     const videoEl = scannerRoot.querySelector('[data-qr-video]');
     const placeholderEl = scannerRoot.querySelector('[data-qr-placeholder]');
@@ -46,6 +47,8 @@
     const deviceSummaryUuid = activationBox ? activationBox.querySelector('[data-qr-device-id]') : null;
     const deviceSummaryHint = activationBox ? activationBox.querySelector('[data-qr-device-hint]') : null;
     const deviceClearButton = activationBox ? activationBox.querySelector('[data-qr-device-clear]') : null;
+    const deviceSelect = activationBox ? activationBox.querySelector('[data-qr-device-select]') : null;
+    const deviceSaveButton = activationBox ? activationBox.querySelector('[data-qr-device-save]') : null;
     const manualForm = activationBox ? activationBox.querySelector('[data-qr-manual-form]') : null;
     const manualResetButton = activationBox ? activationBox.querySelector('[data-qr-manual-reset]') : null;
     const manualSubmitButton = activationBox ? activationBox.querySelector('[data-qr-manual-submit]') : null;
@@ -88,6 +91,7 @@
         status: 'idle',
         expiresAt: null,
     };
+    let availableDevices = [];
 
     const parseJsonResponse = async (response) => {
         const payload = await response.json().catch(() => {
@@ -146,6 +150,10 @@
         }
         storedDevice = payload;
         renderDeviceSummary();
+        refreshDeviceControls();
+        if (challengeState.token) {
+            showApprovalForm();
+        }
         return payload;
     };
 
@@ -157,6 +165,7 @@
         }
         storedDevice = null;
         renderDeviceSummary();
+        refreshDeviceControls();
     };
 
     let storedDevice = loadStoredDevice();
@@ -176,6 +185,24 @@
             deviceSummaryUuid.textContent = '—';
             deviceSummaryHint.textContent = 'Attiva un dispositivo dal profilo per collegarlo qui.';
             deviceClearButton?.classList.add('d-none');
+        }
+    };
+
+    const refreshDeviceControls = () => {
+        if (!deviceSelect || !deviceSaveButton) {
+            return;
+        }
+        const selected = deviceSelect.value || '';
+        const alreadyLinked = storedDevice && storedDevice.device_uuid === selected;
+        if (!selected) {
+            deviceSaveButton.disabled = true;
+            deviceSaveButton.innerHTML = '<i class="fa-solid fa-link me-1"></i>Associa a questo browser';
+        } else if (alreadyLinked) {
+            deviceSaveButton.disabled = true;
+            deviceSaveButton.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i>Già associato';
+        } else {
+            deviceSaveButton.disabled = false;
+            deviceSaveButton.innerHTML = '<i class="fa-solid fa-link me-1"></i>Associa a questo browser';
         }
     };
 
@@ -220,6 +247,105 @@
         setApprovalAlert('info', 'Inquadra un QR dinamico per iniziare.');
     };
 
+    const showApprovalForm = () => {
+        if (!challengeState.token) {
+            return;
+        }
+        approvalForm?.classList.remove('d-none');
+        if (pinInput) {
+            pinInput.disabled = false;
+            pinInput.focus();
+        }
+        setApprovalAlert('success', 'Inserisci il PIN per approvare questa richiesta.', 'shield-keyhole');
+    };
+
+    const ensureStoredDeviceStillValid = () => {
+        if (!storedDevice) {
+            return;
+        }
+        const stillActive = availableDevices.some((device) => device.device_uuid === storedDevice.device_uuid && device.status === 'active');
+        if (!stillActive) {
+            clearStoredDevice();
+            setApprovalAlert('warning', 'Il dispositivo associato non è più attivo. Selezionane un altro.', 'triangle-exclamation');
+        }
+    };
+
+    const populateDeviceSelect = () => {
+        if (!deviceSelect) {
+            return;
+        }
+        const activeDevices = availableDevices.filter((device) => device.status === 'active');
+        deviceSelect.innerHTML = '';
+        if (!activeDevices.length) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Nessun dispositivo attivo disponibile';
+            deviceSelect.append(option);
+            deviceSelect.disabled = true;
+            refreshDeviceControls();
+            return;
+        }
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Scegli un dispositivo...';
+        deviceSelect.append(placeholder);
+        activeDevices.forEach((device) => {
+            const option = document.createElement('option');
+            option.value = device.device_uuid;
+            option.textContent = device.label || device.device_label || device.device_uuid;
+            deviceSelect.append(option);
+        });
+        deviceSelect.disabled = false;
+        if (storedDevice) {
+            deviceSelect.value = storedDevice.device_uuid;
+        }
+        refreshDeviceControls();
+    };
+
+    const fetchDeviceOptions = async () => {
+        if (!devicesEndpoint || !deviceSelect) {
+            return;
+        }
+        deviceSelect.disabled = true;
+        deviceSelect.innerHTML = '<option value="">Caricamento dispositivi...</option>';
+        try {
+            const response = await fetch(devicesEndpoint, {
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                },
+            });
+            const data = await parseJsonResponse(response);
+            availableDevices = Array.isArray(data.devices) ? data.devices : [];
+            ensureStoredDeviceStillValid();
+            populateDeviceSelect();
+        } catch (error) {
+            console.warn('Impossibile caricare i dispositivi attivi', error);
+            deviceSelect.innerHTML = '<option value="">Errore nel caricamento dei dispositivi</option>';
+            deviceSelect.disabled = true;
+            refreshDeviceControls();
+        }
+    };
+
+    const handleDeviceSave = () => {
+        if (!deviceSelect) {
+            return;
+        }
+        const selected = deviceSelect.value;
+        if (!selected) {
+            setApprovalAlert('warning', 'Seleziona un dispositivo attivo prima di procedere.', 'triangle-exclamation');
+            return;
+        }
+        const device = availableDevices.find((item) => item.device_uuid === selected);
+        if (!device || device.status !== 'active') {
+            setApprovalAlert('danger', 'Il dispositivo selezionato non è più disponibile.', 'triangle-exclamation');
+            fetchDeviceOptions();
+            return;
+        }
+        saveStoredDevice(device);
+        setApprovalAlert('success', 'Dispositivo associato. Da ora puoi approvare le richieste su questo browser.', 'shield-keyhole');
+    };
+
     const updateChallengeDetails = (challenge) => {
         if (!challenge) {
             return;
@@ -247,7 +373,7 @@
         if (storedDevice) {
             return true;
         }
-        setApprovalAlert('warning', 'Questo browser non ha un dispositivo associato. Completa prima l\'attivazione.', 'triangle-exclamation');
+        setApprovalAlert('warning', 'Seleziona o associa un dispositivo attivo per approvare la richiesta.', 'triangle-exclamation');
         approvalForm?.classList.add('d-none');
         return false;
     };
@@ -273,9 +399,7 @@
             updateChallengeDetails(data.challenge);
             challengeState.status = data.challenge?.status || 'pending';
             if (ensureDeviceReadyForApproval()) {
-                approvalForm?.classList.remove('d-none');
-                pinInput?.focus();
-                setApprovalAlert('success', 'Inserisci il PIN per approvare questa richiesta.', 'shield-keyhole');
+                showApprovalForm();
             }
         } catch (error) {
             console.warn('Impossibile recuperare la challenge', error);
@@ -597,6 +721,7 @@
         }
         saveStoredDevice(device, user);
         setApprovalAlert('info', 'Dispositivo associato. Da ora puoi approvare i login con questo browser.', 'shield-keyhole');
+        fetchDeviceOptions();
     };
 
     const handleActivationError = (errorMessage) => {
@@ -920,6 +1045,10 @@
         resetApprovalState();
         setApprovalAlert('info', 'Dispositivo rimosso. Attiva nuovamente il pairing per approvare i login.', 'circle-info');
     });
+    deviceSelect && deviceSelect.addEventListener('change', () => {
+        refreshDeviceControls();
+    });
+    deviceSaveButton && deviceSaveButton.addEventListener('click', handleDeviceSave);
     cameraSelect && cameraSelect.addEventListener('change', () => {
         state.selectedDeviceId = cameraSelect.value || '';
         if (state.scanning) {
@@ -948,5 +1077,6 @@
     setActivationAlert('info', 'Nessuna scansione ancora rilevata.', 'circle-info');
     renderDeviceSummary();
     resetApprovalState();
+    fetchDeviceOptions();
     refreshCameraOptions();
 })();
