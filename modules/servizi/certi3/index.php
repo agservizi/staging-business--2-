@@ -46,8 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                         </div>
                         <h5 class="card-title">Certificati Comunali</h5>
                         <p class="card-text text-muted small">Anagrafici, residenza, stato civile e altri documenti comunali</p>
+                        <small class="text-warning d-block mb-2">
+                            <i class="fa-solid fa-info-circle me-1"></i>
+                            Temporaneamente non disponibili
+                        </small>
                         <div class="mt-auto">
-                            <button class="btn btn-primary btn-lg w-100" type="button" data-bs-toggle="modal" data-bs-target="#comunaliModal">
+                            <button class="btn btn-primary btn-lg w-100" type="button" disabled title="Temporaneamente non disponibile">
                                 <i class="fa-solid fa-plus me-2"></i>Richiedi Certificato
                             </button>
                         </div>
@@ -466,11 +470,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                                             </td>
                                             <td>
                                                 <?php if ($richiesta['stato'] === 'done' && !empty($richiesta['documenti'])): ?>
-                                                    <button class="btn btn-sm btn-outline-success" title="Scarica">
+                                                    <a href="api/<?php echo $richiesta['categoria']; ?>.php?action=download&request_id=<?php echo $richiesta['request_id']; ?>"
+                                                       class="btn btn-sm btn-outline-success" title="Scarica" target="_blank">
                                                         <i class="fa-solid fa-download"></i>
-                                                    </button>
+                                                    </a>
                                                 <?php endif; ?>
-                                                <button class="btn btn-sm btn-outline-info" title="Dettagli">
+                                                <button class="btn btn-sm btn-outline-info" title="Dettagli" onclick="mostraDettagli(<?php echo $richiesta['id']; ?>)">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </button>
                                             </td>
@@ -517,14 +522,19 @@ function caricaTipiDocumento() {
             const select = document.getElementById('comunale_tipo');
             select.innerHTML = '<option value="">Seleziona...</option>';
 
-            if (data.success && data.tipi.length > 0) {
-                data.tipi.forEach(tipo => {
-                    const option = document.createElement('option');
-                    option.value = tipo.categoria;
-                    option.textContent = tipo.nome;
-                    option.setAttribute('data-id', tipo.id);
-                    select.appendChild(option);
-                });
+            if (data.success) {
+                if (data.tipi.length > 0) {
+                    data.tipi.forEach(tipo => {
+                        const option = document.createElement('option');
+                        option.value = tipo.categoria;
+                        option.textContent = tipo.nome;
+                        option.setAttribute('data-id', tipo.id);
+                        select.appendChild(option);
+                    });
+                } else {
+                    select.innerHTML = '<option value="">Nessun tipo certificato disponibile</option>';
+                    console.log('API riuscita ma nessun tipo certificato comunale disponibile');
+                }
             } else {
                 const errorMsg = data.error ? `Errore API: ${data.error}` : 'Errore caricamento tipi';
                 select.innerHTML = `<option value="">${errorMsg}</option>`;
@@ -566,14 +576,19 @@ function caricaTipiDocumentoCatastali() {
             const select = document.getElementById('catastale_tipo');
             select.innerHTML = '<option value="">Seleziona...</option>';
 
-            if (data.success && data.tipi.length > 0) {
-                data.tipi.forEach(tipo => {
-                    const option = document.createElement('option');
-                    option.value = tipo.categoria;
-                    option.textContent = tipo.nome;
-                    option.setAttribute('data-id', tipo.id);
-                    select.appendChild(option);
-                });
+            if (data.success) {
+                if (data.tipi.length > 0) {
+                    data.tipi.forEach(tipo => {
+                        const option = document.createElement('option');
+                        option.value = tipo.categoria;
+                        option.textContent = tipo.nome;
+                        option.setAttribute('data-id', tipo.id);
+                        select.appendChild(option);
+                    });
+                } else {
+                    select.innerHTML = '<option value="">Nessun tipo certificato disponibile</option>';
+                    console.log('API riuscita ma nessun tipo certificato catastale disponibile');
+                }
             } else {
                 const errorMsg = data.error ? `Errore API: ${data.error}` : 'Errore caricamento tipi';
                 select.innerHTML = `<option value="">${errorMsg}</option>`;
@@ -593,10 +608,65 @@ function caricaTipiDocumentoCatastali() {
     });
 }
 
+// Carica i tipi di documento disponibili per certificati camerali
+function caricaTipiDocumentoCamerali() {
+    console.log('Iniziando caricamento tipi documento camerali...');
+    
+    fetch('api/camerali.php?action=get_tipi', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        console.log('Risposta ricevuta camerali:', response);
+        return response.text();
+    })
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            console.log('JSON parsato camerali:', data);
+            
+            const select = document.getElementById('camerali_tipo');
+            select.innerHTML = '<option value="">Seleziona...</option>';
+
+            if (data.success) {
+                if (data.tipi.length > 0) {
+                    data.tipi.forEach(tipo => {
+                        const option = document.createElement('option');
+                        option.value = tipo.categoria;
+                        option.textContent = tipo.nome;
+                        option.setAttribute('data-id', tipo.id);
+                        select.appendChild(option);
+                    });
+                } else {
+                    select.innerHTML = '<option value="">Nessun tipo certificato disponibile</option>';
+                    console.log('API riuscita ma nessun tipo certificato camerali disponibile');
+                }
+            } else {
+                const errorMsg = data.error ? `Errore API: ${data.error}` : 'Errore caricamento tipi';
+                select.innerHTML = `<option value="">${errorMsg}</option>`;
+                console.error('Errore caricamento tipi camerali:', data.error || 'Nessun dettaglio errore disponibile');
+                console.error('Risposta completa camerali:', data);
+            }
+        } catch (e) {
+            console.error('Errore parsing JSON camerali:', e);
+            console.error('Testo che ha causato l\'errore:', text);
+        }
+    })
+    .catch(error => {
+        console.error('Errore richiesta tipi documento camerali:', error);
+        console.error('Tipo errore:', error.constructor.name);
+        const select = document.getElementById('camerali_tipo');
+        select.innerHTML = '<option value="">Errore connessione</option>';
+    });
+}
+
 // Carica i tipi quando la pagina è pronta
 document.addEventListener('DOMContentLoaded', function() {
     caricaTipiDocumento();
     caricaTipiDocumentoCatastali();
+    caricaTipiDocumentoCamerali();
 });
 
 // Gestione invio form certificati comunali
@@ -641,5 +711,55 @@ if (comunaliForm) {
             submitBtn.innerHTML = originalText;
         });
     });
+}
+
+// Gestione invio form certificati camerali
+const cameraliForm = document.querySelector('#cameraliModal form');
+if (cameraliForm) {
+    cameraliForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Invio richiesta...';
+
+        fetch('api/camerali.php', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Chiudi modal e mostra messaggio successo
+                const modal = bootstrap.Modal.getInstance(document.getElementById('cameraliModal'));
+                modal.hide();
+
+                // Ricarica la pagina per aggiornare la tabella richieste
+                location.reload();
+            } else {
+                alert('Errore: ' + (data.error || 'Errore sconosciuto'));
+            }
+        })
+        .catch(error => {
+            console.error('Errore:', error);
+            alert('Errore di connessione');
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+    });
+}
+
+// Funzione per mostrare i dettagli della richiesta
+function mostraDettagli(richiestaId) {
+    // Per ora mostriamo un alert semplice, in futuro possiamo implementare un modal
+    alert('Funzionalità dettagli richiesta in sviluppo. ID richiesta: ' + richiestaId);
 }
 </script>
