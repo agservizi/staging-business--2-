@@ -884,7 +884,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const pickHint = () => {
             const pool = hintPool.length > 0 ? hintPool : hintLibrary.default;
             if (pool.length === 0) {
-                return hintBtn?.dataset.aiHint || 'Suggeriscimi tre priorità operative basate sui dati più recenti.';
+                return 'Suggeriscimi tre priorità operative basate sui dati più recenti.';
             }
             let candidate = pool[Math.floor(Math.random() * pool.length)];
             if (pool.length > 1) {
@@ -1145,12 +1145,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             history = [];
             showToast('Storico cancellato.', 'info');
-        });
-
-        refreshBtn?.addEventListener('click', () => {
-            if (latestQuestion) {
-                requestAdvisor(latestQuestion);
-            }
         });
 
         if (periodSelect) {
