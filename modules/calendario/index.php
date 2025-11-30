@@ -12,6 +12,12 @@ use App\Services\GoogleCalendarService;
 
 $calendarService = new GoogleCalendarService();
 
+// Array dei mesi
+$monthNames = [
+    1 => 'Gennaio', 2 => 'Febbraio', 3 => 'Marzo', 4 => 'Aprile', 5 => 'Maggio', 6 => 'Giugno',
+    7 => 'Luglio', 8 => 'Agosto', 9 => 'Settembre', 10 => 'Ottobre', 11 => 'Novembre', 12 => 'Dicembre'
+];
+
 // Parametri per la vista
 $view = $_GET['view'] ?? 'month';
 $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
