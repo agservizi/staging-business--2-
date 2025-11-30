@@ -1,0 +1,6 @@
+*
+!.gitignore
+!.gitkeep
+!branding/
+branding/*
+!branding/sidebar-logo.png
