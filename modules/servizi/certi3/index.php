@@ -127,7 +127,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="comunale_comune">Comune *</label>
-                                <input class="form-control" id="comunale_comune" name="comune" required>
+                                <input class="form-control" id="comunale_comune" name="comune" required data-istat-comune="true" data-istat-min-chars="3">
+                                <small class="text-muted">Digita almeno 3 caratteri per vedere i suggerimenti ISTAT</small>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="comunale_provincia">Provincia</label>
@@ -758,4 +759,17 @@ function mostraDettagli(richiestaId) {
     // Per ora mostriamo un alert semplice, in futuro possiamo implementare un modal
     alert('Funzionalità dettagli richiesta in sviluppo. ID richiesta: ' + richiestaId);
 }
+
+// Configurazione ISTAT per ricerca comuni
+<?php
+$istatDatasetUrl = asset('customer-portal/assets/data/comuni.json');
+?>
+window.CIEIstatLookupConfig = {
+    datasetUrl: '<?php echo sanitize_output($istatDatasetUrl); ?>',
+    fallbackUrl: 'https://raw.githubusercontent.com/matteocontrini/comuni-json/master/comuni.json',
+    maxResults: 12,
+    minChars: 3
+};
+</script>
+<script src="<?php echo asset('assets/js/cie-istat-lookup.js'); ?>"></script>
 </script>
