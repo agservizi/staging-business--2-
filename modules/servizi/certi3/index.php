@@ -8,7 +8,7 @@ require_once '../../../includes/header.php';
 require_once '../../../includes/sidebar.php';
 
 // Determina il ruolo dell'utente
-$userRole = $_SESSION['ruolo'] ?? '';
+$userRole = $_SESSION['role'] ?? '';
 
 // Controlla se è admin
 $isAdmin = ($userRole === 'Admin');
