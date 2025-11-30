@@ -240,7 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                                         <div class="col-md-8">
                                             <div class="form-floating">
                                                 <input type="text" class="form-control form-control-lg" id="comunale_comune" name="comune" required
-                                                       data-istat-comune="true" data-istat-min-chars="3">
+                                                       data-istat-comune="true" data-istat-min-chars="3" data-istat-province-target="#comunale_provincia">
                                                 <label for="comunale_comune">
                                                     <i class="fa-solid fa-city text-primary me-2"></i>Comune *
                                                 </label>
@@ -436,6 +436,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
         </div>
     </main>
 </div>
+
+<?php
+// Configurazione ISTAT per il lookup dei comuni
+$istatDatasetUrl = asset('customer-portal/assets/data/comuni.json');
+?>
+
+<script>
+    // Configurazione globale per il lookup ISTAT
+    window.CIEIstatLookupConfig = {
+        datasetUrl: '<?php echo sanitize_output($istatDatasetUrl); ?>',
+        maxResults: 12,
+        minChars: 3,
+        debounceMs: 160
+    };
+</script>
+
+<script src="<?php echo asset('assets/js/cie-istat-lookup.js'); ?>"></script>
 
 <style>
 .page-header {
