@@ -274,8 +274,7 @@ class ComuniAPI {
 
 // Utilizzo
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_tipi') {
-    require_once '../../../includes/auth.php';
-
+    // I tipi documento sono pubblici, non richiedono autenticazione
     $api = new ComuniAPI();
     $result = $api->getTipiDocumentoDisponibili();
 
