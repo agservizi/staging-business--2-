@@ -7,6 +7,26 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
+// Filtra statistiche per operatori in base ai moduli permessi
+$userRole = $_SESSION['role'] ?? '';
+$userModules = [];
+$hasFinanceAccess = true;
+$hasAppointmentsAccess = true;
+$hasCurriculumAccess = true;
+$hasLogisticsAccess = true;
+$hasClientsAccess = true;
+$hasEmailMarketingAccess = true;
+
+if ($userRole === 'Operatore') {
+    $userModules = get_user_allowed_modules($pdo);
+    $hasFinanceAccess = in_array('modules/servizi/entrate-uscite', $userModules) || in_array('all', $userModules);
+    $hasAppointmentsAccess = in_array('modules/servizi/appuntamenti', $userModules) || in_array('all', $userModules);
+    $hasCurriculumAccess = in_array('modules/servizi/curriculum', $userModules) || in_array('all', $userModules);
+    $hasLogisticsAccess = in_array('modules/servizi/logistici', $userModules) || in_array('all', $userModules);
+    $hasClientsAccess = in_array('modules/clienti', $userModules) || in_array('all', $userModules);
+    $hasEmailMarketingAccess = in_array('modules/email-marketing', $userModules) || in_array('all', $userModules);
+}
+
 $response = [
     'stats' => [
         'totalClients' => 0,
@@ -55,57 +75,46 @@ if (!$activeAppointmentStatuses) {
 $activeStatusPlaceholders = implode(', ', array_fill(0, count($activeAppointmentStatuses), '?'));
 
 try {
-    $response['stats']['totalClients'] = (int) $pdo->query('SELECT COUNT(*) FROM clienti')->fetchColumn();
+    $response['stats']['totalClients'] = $hasClientsAccess ? (int) $pdo->query('SELECT COUNT(*) FROM clienti')->fetchColumn() : 0;
 
-    $servicesInProgressParams = [];
-    if ($activeStatusPlaceholders !== '') {
-        $servicesInProgressSql = "SELECT COUNT(*) FROM (
-            SELECT id FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')
-            UNION ALL
-            SELECT id FROM servizi_appuntamenti WHERE stato IN ($activeStatusPlaceholders)
-            UNION ALL
-            SELECT id FROM curriculum WHERE status <> 'Archiviato'
-            UNION ALL
-            SELECT id FROM spedizioni WHERE stato IN ('Registrato', 'In attesa di ritiro', 'Problema', 'In corso', 'Aperto')
-        ) AS in_progress";
-        $servicesInProgressParams = $activeAppointmentStatuses;
-    } else {
-        $servicesInProgressSql = "SELECT COUNT(*) FROM (
-            SELECT id FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')
-            UNION ALL
-            SELECT id FROM servizi_appuntamenti
-            UNION ALL
-            SELECT id FROM curriculum WHERE status <> 'Archiviato'
-            UNION ALL
-            SELECT id FROM spedizioni WHERE stato IN ('Registrato', 'In attesa di ritiro', 'Problema', 'In corso', 'Aperto')
-        ) AS in_progress";
+    // Costruisci la query per servizi in progress filtrando per moduli permessi
+    $servicesInProgressParts = [];
+    if ($hasFinanceAccess) {
+        $servicesInProgressParts[] = "SELECT id FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')";
     }
-    $servicesInProgressStmt = $pdo->prepare($servicesInProgressSql);
-    $servicesInProgressStmt->execute($servicesInProgressParams);
-    $response['stats']['servicesInProgress'] = (int) $servicesInProgressStmt->fetchColumn();
-
-    $appointmentsTodaySql = 'SELECT COUNT(*) FROM servizi_appuntamenti WHERE DATE(data_inizio) = CURRENT_DATE';
-    if ($activeStatusPlaceholders !== '') {
-        $appointmentsTodaySql .= ' AND stato IN (' . $activeStatusPlaceholders . ')';
-        $appointmentsTodayStmt = $pdo->prepare($appointmentsTodaySql);
-        $appointmentsTodayStmt->execute($activeAppointmentStatuses);
-    } else {
-        $appointmentsTodayStmt = $pdo->query($appointmentsTodaySql);
+    if ($hasAppointmentsAccess) {
+        $servicesInProgressParts[] = "SELECT id FROM servizi_appuntamenti WHERE stato IN ($activeStatusPlaceholders)";
     }
-    $response['stats']['appointmentsToday'] = (int) $appointmentsTodayStmt->fetchColumn();
+    if ($hasCurriculumAccess) {
+        $servicesInProgressParts[] = "SELECT id FROM curriculum WHERE status <> 'Archiviato'";
+    }
+    if ($hasLogisticsAccess) {
+        $servicesInProgressParts[] = "SELECT id FROM spedizioni WHERE stato IN ('Registrato', 'In attesa di ritiro', 'Problema', 'In corso', 'Aperto')";
+    }
 
-    $dailyRevenueStmt = $pdo->prepare("SELECT COALESCE(SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END), 0)
+    if (!empty($servicesInProgressParts)) {
+        $servicesInProgressSql = "SELECT COUNT(*) FROM (" . implode(' UNION ALL ', $servicesInProgressParts) . ") AS in_progress";
+        $servicesInProgressStmt = $pdo->prepare($servicesInProgressSql);
+        $servicesInProgressStmt->execute($hasAppointmentsAccess ? $activeAppointmentStatuses : []);
+        $response['stats']['servicesInProgress'] = (int) $servicesInProgressStmt->fetchColumn();
+    } else {
+        $response['stats']['servicesInProgress'] = 0;
+    }
+
+    $response['stats']['appointmentsToday'] = $hasAppointmentsAccess ? (int) $pdo->query('SELECT COUNT(*) FROM servizi_appuntamenti WHERE DATE(data_inizio) = CURRENT_DATE' . 
+        ($activeStatusPlaceholders !== '' ? ' AND stato IN (' . $activeStatusPlaceholders . ')' : ''))->fetchColumn() : 0;
+
+    $response['stats']['dailyRevenue'] = $hasFinanceAccess ? (float) $pdo->query("SELECT COALESCE(SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END), 0)
         FROM entrate_uscite
-        WHERE stato = 'Completato' AND DATE(COALESCE(data_pagamento, updated_at)) = CURRENT_DATE");
-    $dailyRevenueStmt->execute();
-    $response['stats']['dailyRevenue'] = (float) $dailyRevenueStmt->fetchColumn();
+        WHERE stato = 'Completato' AND DATE(COALESCE(data_pagamento, updated_at)) = CURRENT_DATE")->fetchColumn() : 0.0;
 
-    $response['stats']['financePending'] = (int) $pdo->query("SELECT COUNT(*) FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')")->fetchColumn();
+    $response['stats']['financePending'] = $hasFinanceAccess ? (int) $pdo->query("SELECT COUNT(*) FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')")->fetchColumn() : 0;
 
-    $response['stats']['energyContracts'] = (int) $pdo->query('SELECT COUNT(*) FROM energia_contratti')->fetchColumn();
+    $response['stats']['energyContracts'] = $hasAppointmentsAccess ? (int) $pdo->query('SELECT COUNT(*) FROM energia_contratti')->fetchColumn() : 0;
 
-    $response['stats']['anprInProgress'] = (int) $pdo->query("SELECT COUNT(*) FROM anpr_pratiche WHERE stato = 'In lavorazione'")->fetchColumn();
+    $response['stats']['anprInProgress'] = $hasAppointmentsAccess ? (int) $pdo->query("SELECT COUNT(*) FROM anpr_pratiche WHERE stato = 'In lavorazione'")->fetchColumn() : 0;
 
+    // Tickets - visibili a tutti gli operatori
     $ticketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, updated_at FROM tickets ORDER BY updated_at DESC LIMIT 5");
     $ticketStmt->execute();
     $tickets = $ticketStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -120,18 +129,23 @@ try {
     }, $tickets);
     $response['stats']['openTickets'] = (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE status NOT IN ('RESOLVED','CLOSED','ARCHIVED')")->fetchColumn();
 
-    $revenueChartStmt = $pdo->prepare("SELECT DATE_FORMAT(DATE(COALESCE(data_pagamento, updated_at, created_at)), '%Y-%m') AS month_key,
-           SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END) AS totale
-        FROM entrate_uscite
-        WHERE stato = 'Completato'
-          AND DATE(COALESCE(data_pagamento, updated_at, created_at)) >= DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH), '%Y-%m-01')
-        GROUP BY month_key
-        ORDER BY month_key");
-    $revenueChartStmt->execute();
+    // Filtra il grafico delle revenue se l'operatore non ha accesso alle finanze
+    if ($hasFinanceAccess) {
+        $revenueChartStmt = $pdo->prepare("SELECT DATE_FORMAT(DATE(COALESCE(data_pagamento, updated_at, created_at)), '%Y-%m') AS month_key,
+               SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END) AS totale
+            FROM entrate_uscite
+            WHERE stato = 'Completato'
+              AND DATE(COALESCE(data_pagamento, updated_at, created_at)) >= DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH), '%Y-%m-01')
+            GROUP BY month_key
+            ORDER BY month_key");
+        $revenueChartStmt->execute();
 
-    $monthlyRevenue = [];
-    while ($row = $revenueChartStmt->fetch(PDO::FETCH_ASSOC)) {
-        $monthlyRevenue[$row['month_key']] = (float) $row['totale'];
+        $monthlyRevenue = [];
+        while ($row = $revenueChartStmt->fetch(PDO::FETCH_ASSOC)) {
+            $monthlyRevenue[$row['month_key']] = (float) $row['totale'];
+        }
+    } else {
+        $monthlyRevenue = [];
     }
 
     $response['charts']['revenue']['labels'] = [];
@@ -160,7 +174,34 @@ try {
         'email_campaign_recipients' => 0,
     ];
 
+    // Filtra i totali dei servizi in base ai permessi dell'operatore
+    if (!$hasFinanceAccess) {
+        $serviceTotals['entrate_uscite'] = 0;
+    }
+    if (!$hasAppointmentsAccess) {
+        $serviceTotals['servizi_appuntamenti'] = 0;
+        $serviceTotals['energia_contratti'] = 0;
+        $serviceTotals['anpr_pratiche'] = 0;
+        $serviceTotals['servizi_visure'] = 0;
+        $serviceTotals['servizi_web_progetti'] = 0;
+    }
+    if (!$hasCurriculumAccess) {
+        $serviceTotals['curriculum'] = 0;
+    }
+    if (!$hasLogisticsAccess) {
+        $serviceTotals['spedizioni'] = 0;
+        $serviceTotals['brt_shipments'] = 0;
+    }
+    if (!$hasEmailMarketingAccess) {
+        $serviceTotals['email_campaigns'] = 0;
+        $serviceTotals['email_campaign_recipients'] = 0;
+    }
+
     foreach ($serviceTotals as $table => &$value) {
+        if ($value === 0) {
+            // Salta le query per i servizi non permessi
+            continue;
+        }
         try {
             $stmt = $pdo->query("SELECT COUNT(*) FROM {$table}");
             $value = (int) $stmt->fetchColumn();
@@ -171,53 +212,64 @@ try {
     }
     unset($value);
 
-    try {
-        $brtCountStmt = $pdo->query("SELECT COUNT(*) FROM brt_shipments WHERE deleted_at IS NULL");
-        $serviceTotals['brt_shipments'] = (int) $brtCountStmt->fetchColumn();
-    } catch (PDOException $brtException) {
-        error_log('Dashboard API BRT shipment count failed: ' . $brtException->getMessage());
-        $serviceTotals['brt_shipments'] = 0;
+    if ($hasLogisticsAccess) {
+        try {
+            $brtCountStmt = $pdo->query("SELECT COUNT(*) FROM brt_shipments WHERE deleted_at IS NULL");
+            $serviceTotals['brt_shipments'] = (int) $brtCountStmt->fetchColumn();
+        } catch (PDOException $brtException) {
+            error_log('Dashboard API BRT shipment count failed: ' . $brtException->getMessage());
+            $serviceTotals['brt_shipments'] = 0;
+        }
     }
 
-    try {
-        $sentRecipientsStmt = $pdo->query("SELECT COUNT(*) FROM email_campaign_recipients WHERE status = 'sent'");
-        $serviceTotals['email_campaign_recipients'] = (int) $sentRecipientsStmt->fetchColumn();
-    } catch (PDOException $sentException) {
-        error_log('Dashboard API sent email count failed: ' . $sentException->getMessage());
-        $serviceTotals['email_campaign_recipients'] = 0;
+    if ($hasEmailMarketingAccess) {
+        try {
+            $sentRecipientsStmt = $pdo->query("SELECT COUNT(*) FROM email_campaign_recipients WHERE status = 'sent'");
+            $serviceTotals['email_campaign_recipients'] = (int) $sentRecipientsStmt->fetchColumn();
+        } catch (PDOException $sentException) {
+            error_log('Dashboard API sent email count failed: ' . $sentException->getMessage());
+            $serviceTotals['email_campaign_recipients'] = 0;
+        }
     }
 
     $response['charts']['services']['values'] = array_values($serviceTotals);
 
     $reminders = [];
     try {
-        $response['stats']['emailSubscribers'] = (int) $pdo->query("SELECT COUNT(*) FROM email_subscribers WHERE status = 'active'")->fetchColumn();
+        if ($hasEmailMarketingAccess) {
+            $response['stats']['emailSubscribers'] = (int) $pdo->query("SELECT COUNT(*) FROM email_subscribers WHERE status = 'active'")->fetchColumn();
+        }
     } catch (PDOException $emailStatsException) {
         error_log('Dashboard API email subscriber stat failed: ' . $emailStatsException->getMessage());
     }
 
     try {
-        $response['stats']['campaignsScheduled'] = (int) $pdo->query("SELECT COUNT(*) FROM email_campaigns WHERE status IN ('draft','scheduled')")->fetchColumn();
+        if ($hasEmailMarketingAccess) {
+            $response['stats']['campaignsScheduled'] = (int) $pdo->query("SELECT COUNT(*) FROM email_campaigns WHERE status IN ('draft','scheduled')")->fetchColumn();
+        }
     } catch (PDOException $campaignStatException) {
         error_log('Dashboard API campaign stat failed: ' . $campaignStatException->getMessage());
     }
 
     try {
-        $pendingCampaignsStmt = $pdo->query("SELECT id, name, status, scheduled_at, updated_at FROM email_campaigns WHERE status IN ('draft','scheduled') ORDER BY COALESCE(scheduled_at, updated_at) ASC LIMIT 1");
-        if ($pendingCampaign = $pendingCampaignsStmt->fetch()) {
-            $statusLabel = $pendingCampaign['status'] === 'scheduled' ? 'programmata' : 'in bozza';
-            $scheduleInfo = $pendingCampaign['scheduled_at'] ? 'Invio previsto: ' . format_datetime($pendingCampaign['scheduled_at']) : 'Non ancora programmata';
-            $reminders[] = [
-                'icon' => 'fa-envelope-open-text',
-                'title' => 'Campagna email da seguire',
-                'detail' => sprintf('%s (%s). %s.', $pendingCampaign['name'] ?: ('Campagna #' . $pendingCampaign['id']), $statusLabel, $scheduleInfo),
-                'url' => base_url('modules/email-marketing/view.php?id=' . (int) $pendingCampaign['id']),
-            ];
+        if ($hasEmailMarketingAccess) {
+            $pendingCampaignsStmt = $pdo->query("SELECT id, name, status, scheduled_at, updated_at FROM email_campaigns WHERE status IN ('draft','scheduled') ORDER BY COALESCE(scheduled_at, updated_at) ASC LIMIT 1");
+            if ($pendingCampaign = $pendingCampaignsStmt->fetch()) {
+                $statusLabel = $pendingCampaign['status'] === 'scheduled' ? 'programmata' : 'in bozza';
+                $scheduleInfo = $pendingCampaign['scheduled_at'] ? 'Invio previsto: ' . format_datetime($pendingCampaign['scheduled_at']) : 'Non ancora programmata';
+                $reminders[] = [
+                    'icon' => 'fa-envelope-open-text',
+                    'title' => 'Campagna email da seguire',
+                    'detail' => sprintf('%s (%s). %s.', $pendingCampaign['name'] ?: ('Campagna #' . $pendingCampaign['id']), $statusLabel, $scheduleInfo),
+                    'url' => base_url('modules/email-marketing/view.php?id=' . (int) $pendingCampaign['id']),
+                ];
+            }
         }
     } catch (PDOException $emailReminderException) {
         error_log('Dashboard API email campaign reminder failed: ' . $emailReminderException->getMessage());
     }
 
+    // Ticket reminder - visibile a tutti gli operatori
     $oldestTicketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, COALESCE(last_message_at, created_at) AS reference_date
         FROM tickets
         WHERE status IN ('OPEN','IN_PROGRESS','WAITING_CLIENT','WAITING_PARTNER')
@@ -235,21 +287,27 @@ try {
         ];
     }
 
-    $pendingMovimentiStmt = $pdo->prepare("SELECT id, descrizione, stato, tipo_movimento, data_scadenza, updated_at FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa') ORDER BY COALESCE(data_scadenza, updated_at) ASC LIMIT 1");
-    $pendingMovimentiStmt->execute();
-    if ($pendingMovimento = $pendingMovimentiStmt->fetch()) {
-        $movimentoLabel = $pendingMovimento['tipo_movimento'] ?? 'Entrata';
-        $icon = $movimentoLabel === 'Uscita' ? 'fa-arrow-trend-down' : 'fa-arrow-trend-up';
-        $reminders[] = [
-            'icon' => $icon,
-            'title' => sprintf('%s da completare', $movimentoLabel),
-            'detail' => sprintf('%s in stato %s. Scadenza %s.',
-                $pendingMovimento['descrizione'] ?: ($movimentoLabel . ' #' . $pendingMovimento['id']),
-                strtoupper($pendingMovimento['stato'] ?? ''),
-                $pendingMovimento['data_scadenza'] ? format_datetime($pendingMovimento['data_scadenza'], 'd/m/Y') : 'N/D'
-            ),
-            'url' => base_url('modules/servizi/entrate-uscite/view.php?id=' . $pendingMovimento['id']),
-        ];
+    try {
+        if ($hasFinanceAccess) {
+            $pendingMovimentiStmt = $pdo->prepare("SELECT id, descrizione, stato, tipo_movimento, data_scadenza, updated_at FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa') ORDER BY COALESCE(data_scadenza, updated_at) ASC LIMIT 1");
+            $pendingMovimentiStmt->execute();
+            if ($pendingMovimento = $pendingMovimentiStmt->fetch()) {
+                $movimentoLabel = $pendingMovimento['tipo_movimento'] ?? 'Entrata';
+                $icon = $movimentoLabel === 'Uscita' ? 'fa-arrow-trend-down' : 'fa-arrow-trend-up';
+                $reminders[] = [
+                    'icon' => $icon,
+                    'title' => sprintf('%s da completare', $movimentoLabel),
+                    'detail' => sprintf('%s in stato %s. Scadenza %s.',
+                        $pendingMovimento['descrizione'] ?: ($movimentoLabel . ' #' . $pendingMovimento['id']),
+                        strtoupper($pendingMovimento['stato'] ?? ''),
+                        $pendingMovimento['data_scadenza'] ? format_datetime($pendingMovimento['data_scadenza'], 'd/m/Y') : 'N/D'
+                    ),
+                    'url' => base_url('modules/servizi/entrate-uscite/view.php?id=' . $pendingMovimento['id']),
+                ];
+            }
+        }
+    } catch (PDOException $financeReminderException) {
+        error_log('Dashboard API finance reminder failed: ' . $financeReminderException->getMessage());
     }
 
     $response['reminders'] = $reminders;

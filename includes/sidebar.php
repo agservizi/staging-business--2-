@@ -179,7 +179,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                 </li>
             <?php endif; ?>
 
-            <?php if ($role !== 'Cliente'): ?>
+            <?php if ($role !== 'Cliente' && $role !== 'Operatore'): ?>
                 <?php if ($isPatronato): ?>
                     <?php $cafActive = nav_active('modules/servizi/caf-patronato', $currentPath); ?>
                     <li class="nav-item">
@@ -239,7 +239,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                     </li>
                 <?php endif; ?>
 
-                <?php if (!$isPatronato && current_user_has_capability('email.marketing.manage', 'email.marketing.view')): ?>
+                <?php if (!$isPatronato && $role !== 'Operatore' && current_user_has_capability('email.marketing.manage', 'email.marketing.view')): ?>
                     <?php $emailMarketingActive = nav_active('modules/email-marketing', $currentPath); ?>
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center <?php echo $emailMarketingActive; ?>" href="<?php echo base_url('modules/email-marketing/index.php'); ?>" aria-label="Email marketing" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Email marketing"<?php echo $emailMarketingActive ? ' aria-current="page"' : ''; ?>>
@@ -251,7 +251,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                     </li>
                 <?php endif; ?>
 
-                <?php if (!$isPatronato): ?>
+                <?php if (!$isPatronato && $role !== 'Operatore'): ?>
                     <?php $calendarioActive = nav_active('modules/calendario', $currentPath); ?>
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center <?php echo $calendarioActive; ?>" href="<?php echo base_url('modules/calendario/index.php'); ?>" aria-label="Calendario" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Calendario"<?php echo $calendarioActive ? ' aria-current="page"' : ''; ?>>
@@ -284,7 +284,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                 <?php endif; ?>
             <?php endif; ?>
 
-            <?php if (!$isPatronato && current_user_has_capability('settings.manage', 'settings.view')): ?>
+            <?php if (!$isPatronato && $role !== 'Operatore' && current_user_has_capability('settings.manage', 'settings.view')): ?>
                 <?php $settingsActive = nav_active('modules/impostazioni', $currentPath); ?>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center <?php echo $settingsActive; ?>" href="<?php echo base_url('modules/impostazioni/index.php'); ?>" aria-label="Impostazioni" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Impostazioni"<?php echo $settingsActive ? ' aria-current="page"' : ''; ?>>

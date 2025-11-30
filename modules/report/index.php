@@ -164,6 +164,7 @@ $serviceMap = [
         'date_column' => 'created_at',
         'label' => 'Entrate/Uscite',
         'limit' => 500,
+        'module' => 'modules/servizi/entrate-uscite',
     ],
     'appuntamenti' => [
         'table' => 'servizi_appuntamenti',
@@ -171,6 +172,7 @@ $serviceMap = [
         'date_column' => 'data_inizio',
         'label' => 'Appuntamenti',
         'limit' => 500,
+        'module' => 'modules/servizi/appuntamenti',
     ],
     'fedelta' => [
         'table' => 'fedelta_movimenti',
@@ -178,6 +180,7 @@ $serviceMap = [
         'date_column' => 'data_movimento',
         'label' => 'Programma Fedeltà',
         'limit' => 500,
+        'module' => 'modules/servizi/fedelta',
     ],
     'curriculum' => [
         'table' => 'curriculum',
@@ -185,6 +188,7 @@ $serviceMap = [
         'date_column' => 'updated_at',
         'label' => 'Gestione Curriculum',
         'limit' => 500,
+        'module' => 'modules/servizi/curriculum',
     ],
     'logistica' => [
         'table' => 'spedizioni',
@@ -192,8 +196,18 @@ $serviceMap = [
         'date_column' => 'created_at',
         'label' => 'Pickup',
         'limit' => 500,
+        'module' => 'modules/servizi/logistici',
     ],
 ];
+
+// Filtra i servizi per gli operatori in base ai moduli permessi
+$userRole = $_SESSION['role'] ?? '';
+if ($userRole === 'Operatore') {
+    $userModules = get_user_allowed_modules($pdo);
+    $serviceMap = array_filter($serviceMap, function($config) use ($userModules) {
+        return in_array($config['module'], $userModules) || in_array('all', $userModules);
+    });
+}
 
 $defaultFrom = date('Y-m-01');
 $defaultTo = date('Y-m-t');

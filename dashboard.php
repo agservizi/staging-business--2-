@@ -9,6 +9,25 @@ if ($currentRole === 'Patronato') {
     exit;
 }
 
+// Filtra statistiche per operatori in base ai moduli permessi
+$userModules = [];
+$hasFinanceAccess = true;
+$hasAppointmentsAccess = true;
+$hasCurriculumAccess = true;
+$hasLogisticsAccess = true;
+$hasClientsAccess = true;
+$hasEmailMarketingAccess = true;
+
+if ($currentRole === 'Operatore') {
+    $userModules = get_user_allowed_modules($pdo);
+    $hasFinanceAccess = in_array('modules/servizi/entrate-uscite', $userModules) || in_array('all', $userModules);
+    $hasAppointmentsAccess = in_array('modules/servizi/appuntamenti', $userModules) || in_array('all', $userModules);
+    $hasCurriculumAccess = in_array('modules/servizi/curriculum', $userModules) || in_array('all', $userModules);
+    $hasLogisticsAccess = in_array('modules/servizi/logistici', $userModules) || in_array('all', $userModules);
+    $hasClientsAccess = in_array('modules/clienti', $userModules) || in_array('all', $userModules);
+    $hasEmailMarketingAccess = in_array('modules/email-marketing', $userModules) || in_array('all', $userModules);
+}
+
 $pageTitle = 'Dashboard';
 $view = $_GET['view'] ?? '';
 
@@ -66,62 +85,67 @@ $dueSoonMovements = [];
 $scheduledCampaigns = [];
 
 try {
-    $stats['totalClients'] = (int) $pdo->query('SELECT COUNT(*) FROM clienti')->fetchColumn();
+    $stats['totalClients'] = $hasClientsAccess ? (int) $pdo->query('SELECT COUNT(*) FROM clienti')->fetchColumn() : 0;
 
-    $servicesInProgressSql = "SELECT COUNT(*) FROM (
-            SELECT id FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')
-            UNION ALL
-        SELECT id FROM servizi_appuntamenti WHERE stato IN ($activeStatusPlaceholders)
-            UNION ALL
-        SELECT id FROM curriculum WHERE status <> 'Archiviato'
-            UNION ALL
-        SELECT id FROM spedizioni WHERE stato IN ('Registrato', 'In attesa di ritiro', 'Problema', 'In corso', 'Aperto')
-        ) AS in_progress";
-    $servicesInProgressStmt = $pdo->prepare($servicesInProgressSql);
-    $servicesInProgressStmt->execute($activeAppointmentStatuses);
-    $stats['servicesInProgress'] = (int) $servicesInProgressStmt->fetchColumn();
+    // Costruisci la query per servizi in progress filtrando per moduli permessi
+    $servicesInProgressParts = [];
+    if ($hasFinanceAccess) {
+        $servicesInProgressParts[] = "SELECT id FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')";
+    }
+    if ($hasAppointmentsAccess) {
+        $servicesInProgressParts[] = "SELECT id FROM servizi_appuntamenti WHERE stato IN ($activeStatusPlaceholders)";
+    }
+    if ($hasCurriculumAccess) {
+        $servicesInProgressParts[] = "SELECT id FROM curriculum WHERE status <> 'Archiviato'";
+    }
+    if ($hasLogisticsAccess) {
+        $servicesInProgressParts[] = "SELECT id FROM spedizioni WHERE stato IN ('Registrato', 'In attesa di ritiro', 'Problema', 'In corso', 'Aperto')";
+    }
 
-    $dailyRevenueStmt = $pdo->prepare("SELECT COALESCE(SUM(importo), 0) FROM (
+    if (!empty($servicesInProgressParts)) {
+        $servicesInProgressSql = "SELECT COUNT(*) FROM (" . implode(' UNION ALL ', $servicesInProgressParts) . ") AS in_progress";
+        $servicesInProgressStmt = $pdo->prepare($servicesInProgressSql);
+        $servicesInProgressStmt->execute($hasAppointmentsAccess ? $activeAppointmentStatuses : []);
+        $stats['servicesInProgress'] = (int) $servicesInProgressStmt->fetchColumn();
+    } else {
+        $stats['servicesInProgress'] = 0;
+    }
+
+    $stats['dailyRevenue'] = $hasFinanceAccess ? (float) $pdo->query("SELECT COALESCE(SUM(importo), 0) FROM (
         SELECT CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END AS importo
         FROM entrate_uscite
         WHERE stato = 'Completato' AND DATE(COALESCE(data_pagamento, updated_at)) = CURRENT_DATE
-    ) AS revenues");
-    $dailyRevenueStmt->execute();
-    $stats['dailyRevenue'] = (float) $dailyRevenueStmt->fetchColumn();
+    ) AS revenues")->fetchColumn() : 0.0;
 
-    $stats['financePending'] = (int) $pdo->query("SELECT COUNT(*) FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')")->fetchColumn();
+    $stats['financePending'] = $hasFinanceAccess ? (int) $pdo->query("SELECT COUNT(*) FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa')")->fetchColumn() : 0;
 
-    $stats['energyContracts'] = (int) $pdo->query('SELECT COUNT(*) FROM energia_contratti')->fetchColumn();
+    $stats['energyContracts'] = $hasAppointmentsAccess ? (int) $pdo->query('SELECT COUNT(*) FROM energia_contratti')->fetchColumn() : 0;
 
     $appointmentsTodaySql = 'SELECT COUNT(*) FROM servizi_appuntamenti WHERE DATE(data_inizio) = CURRENT_DATE';
-    if ($activeStatusPlaceholders !== '') {
-        $appointmentsTodaySql .= ' AND stato IN (' . $activeStatusPlaceholders . ')';
-        $appointmentsTodayStmt = $pdo->prepare($appointmentsTodaySql);
-        $appointmentsTodayStmt->execute($activeAppointmentStatuses);
-        $stats['appointmentsToday'] = (int) $appointmentsTodayStmt->fetchColumn();
+    $stats['appointmentsToday'] = $hasAppointmentsAccess ? (int) $pdo->query('SELECT COUNT(*) FROM servizi_appuntamenti WHERE DATE(data_inizio) = CURRENT_DATE' . 
+        ($activeStatusPlaceholders !== '' ? ' AND stato IN (' . $activeStatusPlaceholders . ')' : ''))->fetchColumn() : 0;
+
+    $stats['anprInProgress'] = $hasAppointmentsAccess ? (int) $pdo->query("SELECT COUNT(*) FROM anpr_pratiche WHERE stato = 'In lavorazione'")->fetchColumn() : 0;
+
+    $stats['openTickets'] = $pdo->query("SELECT id, codice, subject, status, created_at, updated_at FROM tickets ORDER BY updated_at DESC LIMIT 5")->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    // Filtra il grafico delle revenue se l'operatore non ha accesso alle finanze
+    if ($hasFinanceAccess) {
+        $revenueChartStmt = $pdo->prepare("SELECT DATE_FORMAT(DATE(COALESCE(data_pagamento, updated_at, created_at)), '%Y-%m') AS month_key,
+               SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END) AS totale
+            FROM entrate_uscite
+            WHERE stato = 'Completato'
+              AND DATE(COALESCE(data_pagamento, updated_at, created_at)) >= DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH), '%Y-%m-01')
+            GROUP BY month_key
+            ORDER BY month_key");
+        $revenueChartStmt->execute();
+
+        $monthlyRevenue = [];
+        while ($row = $revenueChartStmt->fetch(PDO::FETCH_ASSOC)) {
+            $monthlyRevenue[$row['month_key']] = (float) $row['totale'];
+        }
     } else {
-        $appointmentsTodayStmt = $pdo->query($appointmentsTodaySql);
-        $stats['appointmentsToday'] = (int) $appointmentsTodayStmt->fetchColumn();
-    }
-
-    $stats['anprInProgress'] = (int) $pdo->query("SELECT COUNT(*) FROM anpr_pratiche WHERE stato = 'In lavorazione'")->fetchColumn();
-
-    $ticketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, updated_at FROM tickets ORDER BY updated_at DESC LIMIT 5");
-    $ticketStmt->execute();
-    $stats['openTickets'] = $ticketStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-    $revenueChartStmt = $pdo->prepare("SELECT DATE_FORMAT(DATE(COALESCE(data_pagamento, updated_at, created_at)), '%Y-%m') AS month_key,
-           SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END) AS totale
-        FROM entrate_uscite
-        WHERE stato = 'Completato'
-          AND DATE(COALESCE(data_pagamento, updated_at, created_at)) >= DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH), '%Y-%m-01')
-        GROUP BY month_key
-        ORDER BY month_key");
-    $revenueChartStmt->execute();
-
-    $monthlyRevenue = [];
-    while ($row = $revenueChartStmt->fetch(PDO::FETCH_ASSOC)) {
-        $monthlyRevenue[$row['month_key']] = (float) $row['totale'];
+        $monthlyRevenue = [];
     }
 
     $charts['revenue']['labels'] = [];
@@ -150,7 +174,34 @@ try {
         'email_campaign_recipients' => 0,
     ];
 
+    // Filtra i totali dei servizi in base ai permessi dell'operatore
+    if (!$hasFinanceAccess) {
+        $serviceTotals['entrate_uscite'] = 0;
+    }
+    if (!$hasAppointmentsAccess) {
+        $serviceTotals['servizi_appuntamenti'] = 0;
+        $serviceTotals['energia_contratti'] = 0;
+        $serviceTotals['anpr_pratiche'] = 0;
+        $serviceTotals['servizi_visure'] = 0;
+        $serviceTotals['servizi_web_progetti'] = 0;
+    }
+    if (!$hasCurriculumAccess) {
+        $serviceTotals['curriculum'] = 0;
+    }
+    if (!$hasLogisticsAccess) {
+        $serviceTotals['spedizioni'] = 0;
+        $serviceTotals['brt_shipments'] = 0;
+    }
+    if (!$hasEmailMarketingAccess) {
+        $serviceTotals['email_campaigns'] = 0;
+        $serviceTotals['email_campaign_recipients'] = 0;
+    }
+
     foreach ($serviceTotals as $table => &$value) {
+        if ($value === 0) {
+            // Salta le query per i servizi non permessi
+            continue;
+        }
         try {
             $stmt = $pdo->query("SELECT COUNT(*) FROM {$table}");
             $value = (int) $stmt->fetchColumn();
@@ -161,20 +212,24 @@ try {
     }
     unset($value);
 
-    try {
-        $brtCountStmt = $pdo->query("SELECT COUNT(*) FROM brt_shipments WHERE deleted_at IS NULL");
-        $serviceTotals['brt_shipments'] = (int) $brtCountStmt->fetchColumn();
-    } catch (PDOException $brtException) {
-        error_log('Dashboard BRT shipment count failed: ' . $brtException->getMessage());
-        $serviceTotals['brt_shipments'] = 0;
+    if ($hasLogisticsAccess) {
+        try {
+            $brtCountStmt = $pdo->query("SELECT COUNT(*) FROM brt_shipments WHERE deleted_at IS NULL");
+            $serviceTotals['brt_shipments'] = (int) $brtCountStmt->fetchColumn();
+        } catch (PDOException $brtException) {
+            error_log('Dashboard BRT shipment count failed: ' . $brtException->getMessage());
+            $serviceTotals['brt_shipments'] = 0;
+        }
     }
 
-    try {
-        $sentRecipientsStmt = $pdo->query("SELECT COUNT(*) FROM email_campaign_recipients WHERE status = 'sent'");
-        $serviceTotals['email_campaign_recipients'] = (int) $sentRecipientsStmt->fetchColumn();
-    } catch (PDOException $sentException) {
-        error_log('Dashboard sent email count failed: ' . $sentException->getMessage());
-        $serviceTotals['email_campaign_recipients'] = 0;
+    if ($hasEmailMarketingAccess) {
+        try {
+            $sentRecipientsStmt = $pdo->query("SELECT COUNT(*) FROM email_campaign_recipients WHERE status = 'sent'");
+            $serviceTotals['email_campaign_recipients'] = (int) $sentRecipientsStmt->fetchColumn();
+        } catch (PDOException $sentException) {
+            error_log('Dashboard sent email count failed: ' . $sentException->getMessage());
+            $serviceTotals['email_campaign_recipients'] = 0;
+        }
     }
 
     $charts['services']['values'] = array_values($serviceTotals);
@@ -198,28 +253,34 @@ try {
     $serviceBreakdownTop = array_slice($serviceBreakdownTop, 0, 5);
 
     try {
-        $latestMovementsStmt = $pdo->query("SELECT id, descrizione, tipo_movimento, importo, stato, cliente_id, COALESCE(data_pagamento, data_scadenza, updated_at, created_at) AS movimento_data FROM entrate_uscite ORDER BY COALESCE(data_pagamento, updated_at, created_at) DESC LIMIT 6");
-        if ($latestMovementsStmt) {
-            $latestMovements = $latestMovementsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        if ($hasFinanceAccess) {
+            $latestMovementsStmt = $pdo->query("SELECT id, descrizione, tipo_movimento, importo, stato, cliente_id, COALESCE(data_pagamento, data_scadenza, updated_at, created_at) AS movimento_data FROM entrate_uscite ORDER BY COALESCE(data_pagamento, updated_at, created_at) DESC LIMIT 6");
+            if ($latestMovementsStmt) {
+                $latestMovements = $latestMovementsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            }
         }
     } catch (PDOException $latestMovementsException) {
         error_log('Dashboard latest movements failed: ' . $latestMovementsException->getMessage());
     }
 
     try {
-        $upcomingAppointmentsSql = "SELECT a.id, a.titolo, a.data_inizio, a.stato, COALESCE(NULLIF(c.ragione_sociale, ''), CONCAT(c.nome, ' ', c.cognome)) AS cliente_nome FROM servizi_appuntamenti a LEFT JOIN clienti c ON c.id = a.cliente_id WHERE a.data_inizio >= NOW() ORDER BY a.data_inizio ASC LIMIT 6";
-        $upcomingAppointmentsStmt = $pdo->query($upcomingAppointmentsSql);
-        if ($upcomingAppointmentsStmt) {
-            $upcomingAppointmentsList = $upcomingAppointmentsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        if ($hasAppointmentsAccess) {
+            $upcomingAppointmentsSql = "SELECT a.id, a.titolo, a.data_inizio, a.stato, COALESCE(NULLIF(c.ragione_sociale, ''), CONCAT(c.nome, ' ', c.cognome)) AS cliente_nome FROM servizi_appuntamenti a LEFT JOIN clienti c ON c.id = a.cliente_id WHERE a.data_inizio >= NOW() ORDER BY a.data_inizio ASC LIMIT 6";
+            $upcomingAppointmentsStmt = $pdo->query($upcomingAppointmentsSql);
+            if ($upcomingAppointmentsStmt) {
+                $upcomingAppointmentsList = $upcomingAppointmentsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            }
         }
     } catch (PDOException $upcomingAppointmentsException) {
         error_log('Dashboard upcoming appointments failed: ' . $upcomingAppointmentsException->getMessage());
     }
 
     try {
-        $recentShipmentsStmt = $pdo->query("SELECT id, consignee_name, status, confirmed_at, created_at, numeric_sender_reference FROM brt_shipments WHERE deleted_at IS NULL ORDER BY COALESCE(confirmed_at, created_at) DESC LIMIT 6");
-        if ($recentShipmentsStmt) {
-            $recentShipments = $recentShipmentsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        if ($hasLogisticsAccess) {
+            $recentShipmentsStmt = $pdo->query("SELECT id, consignee_name, status, confirmed_at, created_at, numeric_sender_reference FROM brt_shipments WHERE deleted_at IS NULL ORDER BY COALESCE(confirmed_at, created_at) DESC LIMIT 6");
+            if ($recentShipmentsStmt) {
+                $recentShipments = $recentShipmentsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            }
         }
     } catch (PDOException $recentShipmentsException) {
         error_log('Dashboard recent BRT shipments failed: ' . $recentShipmentsException->getMessage());
@@ -236,65 +297,76 @@ try {
     }
 
     try {
-        $topClientsSql = "SELECT ranked.* FROM (
-                SELECT 
-                    c.id,
-                    COALESCE(NULLIF(c.ragione_sociale, ''), CONCAT(c.nome, ' ', c.cognome)) AS cliente_nome,
-                    SUM(CASE WHEN eu.tipo_movimento = 'Entrata' THEN eu.importo ELSE 0 END) AS totale_entrate,
-                    SUM(CASE WHEN eu.tipo_movimento = 'Uscita' THEN eu.importo ELSE 0 END) AS totale_uscite
-                FROM entrate_uscite eu
-                LEFT JOIN clienti c ON c.id = eu.cliente_id
-                WHERE eu.cliente_id IS NOT NULL
-                  AND YEAR(COALESCE(eu.data_pagamento, eu.created_at)) = YEAR(CURRENT_DATE)
-                GROUP BY c.id, cliente_nome
-            ) AS ranked
-            ORDER BY (ranked.totale_entrate - ranked.totale_uscite) DESC
-            LIMIT 5";
-        $topClientsStmt = $pdo->prepare($topClientsSql);
-        $topClientsStmt->execute();
-        $topFinanceClients = $topClientsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        if ($hasFinanceAccess) {
+            $topClientsSql = "SELECT ranked.* FROM (
+                    SELECT 
+                        c.id,
+                        COALESCE(NULLIF(c.ragione_sociale, ''), CONCAT(c.nome, ' ', c.cognome)) AS cliente_nome,
+                        SUM(CASE WHEN eu.tipo_movimento = 'Entrata' THEN eu.importo ELSE 0 END) AS totale_entrate,
+                        SUM(CASE WHEN eu.tipo_movimento = 'Uscita' THEN eu.importo ELSE 0 END) AS totale_uscite
+                    FROM entrate_uscite eu
+                    LEFT JOIN clienti c ON c.id = eu.cliente_id
+                    WHERE eu.cliente_id IS NOT NULL
+                      AND YEAR(COALESCE(eu.data_pagamento, eu.created_at)) = YEAR(CURRENT_DATE)
+                    GROUP BY c.id, cliente_nome
+                ) AS ranked
+                ORDER BY (ranked.totale_entrate - ranked.totale_uscite) DESC
+                LIMIT 5";
+            $topClientsStmt = $pdo->prepare($topClientsSql);
+            $topClientsStmt->execute();
+            $topFinanceClients = $topClientsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
     } catch (PDOException $topClientsException) {
         error_log('Dashboard top clients stat failed: ' . $topClientsException->getMessage());
     }
 
     try {
-        $scheduledCampaignsSql = "SELECT id, name, status, scheduled_at, updated_at FROM email_campaigns WHERE status = 'scheduled' ORDER BY scheduled_at ASC LIMIT 6";
-        $scheduledCampaignsStmt = $pdo->query($scheduledCampaignsSql);
-        if ($scheduledCampaignsStmt) {
-            $scheduledCampaigns = $scheduledCampaignsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        if ($hasEmailMarketingAccess) {
+            $scheduledCampaignsSql = "SELECT id, name, status, scheduled_at, updated_at FROM email_campaigns WHERE status = 'scheduled' ORDER BY scheduled_at ASC LIMIT 6";
+            $scheduledCampaignsStmt = $pdo->query($scheduledCampaignsSql);
+            if ($scheduledCampaignsStmt) {
+                $scheduledCampaigns = $scheduledCampaignsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            }
         }
     } catch (PDOException $scheduledCampaignsException) {
         error_log('Dashboard scheduled campaigns stat failed: ' . $scheduledCampaignsException->getMessage());
     }
 
     try {
-        $stats['emailSubscribers'] = (int) $pdo->query("SELECT COUNT(*) FROM email_subscribers WHERE status = 'active'")->fetchColumn();
+        if ($hasEmailMarketingAccess) {
+            $stats['emailSubscribers'] = (int) $pdo->query("SELECT COUNT(*) FROM email_subscribers WHERE status = 'active'")->fetchColumn();
+        }
     } catch (PDOException $emailStatsException) {
         error_log('Dashboard email subscriber stat failed: ' . $emailStatsException->getMessage());
     }
 
     try {
-        $stats['campaignsScheduled'] = (int) $pdo->query("SELECT COUNT(*) FROM email_campaigns WHERE status IN ('draft','scheduled')")->fetchColumn();
+        if ($hasEmailMarketingAccess) {
+            $stats['campaignsScheduled'] = (int) $pdo->query("SELECT COUNT(*) FROM email_campaigns WHERE status IN ('draft','scheduled')")->fetchColumn();
+        }
     } catch (PDOException $campaignStatException) {
         error_log('Dashboard campaign stat failed: ' . $campaignStatException->getMessage());
     }
 
     try {
-        $pendingCampaignsStmt = $pdo->query("SELECT id, name, status, scheduled_at, updated_at FROM email_campaigns WHERE status IN ('draft','scheduled') ORDER BY COALESCE(scheduled_at, updated_at) ASC LIMIT 1");
-        if ($pendingCampaign = $pendingCampaignsStmt->fetch()) {
-            $statusLabel = $pendingCampaign['status'] === 'scheduled' ? 'programmata' : 'in bozza';
-            $scheduleInfo = $pendingCampaign['scheduled_at'] ? 'Invio previsto: ' . format_datetime($pendingCampaign['scheduled_at']) : 'Non ancora programmata';
-            $reminders[] = [
-                'icon' => 'fa-envelope-open-text',
-                'title' => 'Campagna email da seguire',
-                'detail' => sprintf('%s (%s). %s.', $pendingCampaign['name'] ?: ('Campagna #' . $pendingCampaign['id']), $statusLabel, $scheduleInfo),
-                'url' => base_url('modules/email-marketing/view.php?id=' . (int) $pendingCampaign['id']),
-            ];
+        if ($hasEmailMarketingAccess) {
+            $pendingCampaignsStmt = $pdo->query("SELECT id, name, status, scheduled_at, updated_at FROM email_campaigns WHERE status IN ('draft','scheduled') ORDER BY COALESCE(scheduled_at, updated_at) ASC LIMIT 1");
+            if ($pendingCampaign = $pendingCampaignsStmt->fetch()) {
+                $statusLabel = $pendingCampaign['status'] === 'scheduled' ? 'programmata' : 'in bozza';
+                $scheduleInfo = $pendingCampaign['scheduled_at'] ? 'Invio previsto: ' . format_datetime($pendingCampaign['scheduled_at']) : 'Non ancora programmata';
+                $reminders[] = [
+                    'icon' => 'fa-envelope-open-text',
+                    'title' => 'Campagna email da seguire',
+                    'detail' => sprintf('%s (%s). %s.', $pendingCampaign['name'] ?: ('Campagna #' . $pendingCampaign['id']), $statusLabel, $scheduleInfo),
+                    'url' => base_url('modules/email-marketing/view.php?id=' . (int) $pendingCampaign['id']),
+                ];
+            }
         }
     } catch (PDOException $emailReminderException) {
         error_log('Dashboard email marketing reminder failed: ' . $emailReminderException->getMessage());
     }
 
+    // Promemoria ticket - visibile a tutti gli operatori
     $oldestTicketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, COALESCE(last_message_at, created_at) AS reference_date
         FROM tickets
         WHERE status IN ('OPEN','IN_PROGRESS','WAITING_CLIENT','WAITING_PARTNER')
@@ -312,21 +384,27 @@ try {
         ];
     }
 
-    $pendingMovimentiStmt = $pdo->prepare("SELECT id, descrizione, stato, tipo_movimento, data_scadenza, updated_at FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa') ORDER BY COALESCE(data_scadenza, updated_at) ASC LIMIT 1");
-    $pendingMovimentiStmt->execute();
-    if ($pendingMovimento = $pendingMovimentiStmt->fetch()) {
-        $movimentoLabel = $pendingMovimento['tipo_movimento'] ?? 'Entrata';
-        $icon = $movimentoLabel === 'Uscita' ? 'fa-arrow-trend-down' : 'fa-arrow-trend-up';
-        $reminders[] = [
-            'icon' => $icon,
-            'title' => sprintf('%s da completare', $movimentoLabel),
-            'detail' => sprintf('%s in stato %s. Scadenza %s.',
-                $pendingMovimento['descrizione'] ?: ($movimentoLabel . ' #' . $pendingMovimento['id']),
-                strtoupper($pendingMovimento['stato'] ?? ''),
-                $pendingMovimento['data_scadenza'] ? format_datetime($pendingMovimento['data_scadenza'], 'd/m/Y') : 'N/D'
-            ),
-            'url' => base_url('modules/servizi/entrate-uscite/view.php?id=' . $pendingMovimento['id']),
-        ];
+    try {
+        if ($hasFinanceAccess) {
+            $pendingMovimentiStmt = $pdo->prepare("SELECT id, descrizione, stato, tipo_movimento, data_scadenza, updated_at FROM entrate_uscite WHERE stato IN ('In lavorazione', 'In attesa') ORDER BY COALESCE(data_scadenza, updated_at) ASC LIMIT 1");
+            $pendingMovimentiStmt->execute();
+            if ($pendingMovimento = $pendingMovimentiStmt->fetch()) {
+                $movimentoLabel = $pendingMovimento['tipo_movimento'] ?? 'Entrata';
+                $icon = $movimentoLabel === 'Uscita' ? 'fa-arrow-trend-down' : 'fa-arrow-trend-up';
+                $reminders[] = [
+                    'icon' => $icon,
+                    'title' => sprintf('%s da completare', $movimentoLabel),
+                    'detail' => sprintf('%s in stato %s. Scadenza %s.',
+                        $pendingMovimento['descrizione'] ?: ($movimentoLabel . ' #' . $pendingMovimento['id']),
+                        strtoupper($pendingMovimento['stato'] ?? ''),
+                        $pendingMovimento['data_scadenza'] ? format_datetime($pendingMovimento['data_scadenza'], 'd/m/Y') : 'N/D'
+                    ),
+                    'url' => base_url('modules/servizi/entrate-uscite/view.php?id=' . $pendingMovimento['id']),
+                ];
+            }
+        }
+    } catch (PDOException $financeReminderException) {
+        error_log('Dashboard finance reminder failed: ' . $financeReminderException->getMessage());
     }
 } catch (PDOException $e) {
     error_log('Dashboard query failed: ' . $e->getMessage());
