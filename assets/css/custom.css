@@ -2761,6 +2761,12 @@ a.link-warning:hover {
     background: rgba(0, 0, 0, 0.5);
     z-index: 1089;
     backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.ai-assistant-overlay.open {
+    opacity: 1;
 }
 
 .ai-assistant-sidebar {
@@ -2782,7 +2788,7 @@ a.link-warning:hover {
     display: none;
 }
 
-.ai-assistant-sidebar:not([hidden]) {
+.ai-assistant-sidebar.open {
     transform: translateX(0);
 }
 

@@ -959,23 +959,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             isOpen = open;
-            sidebar.hidden = !open;
-            overlay.hidden = !open;
             document.body.classList.toggle('ai-assistant-open', open);
             if (toggleBtn) {
                 toggleBtn.setAttribute('aria-expanded', String(open));
             }
             if (open) {
+                sidebar.hidden = false;
+                overlay.hidden = false;
+                sidebar.classList.add('open');
+                overlay.classList.add('open');
                 clearIdleTimer();
                 exitIdleState();
                 if (!messagesContainer?.children.length) {
                     tryAutoRequest();
                 }
             } else {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('open');
+                setTimeout(() => {
+                    sidebar.hidden = true;
+                    overlay.hidden = true;
+                }, 300); // Match transition duration
                 scheduleIdleState();
             }
             if (open && questionInput instanceof HTMLTextAreaElement) {
-                setTimeout(() => questionInput.focus(), 120);
+                setTimeout(() => questionInput.focus(), 320);
             }
         };
 
