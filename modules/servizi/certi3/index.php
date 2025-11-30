@@ -24,9 +24,9 @@ if ($isAdmin) {
     $stats = $pdo->query("
         SELECT
             COUNT(*) as total_richieste,
-            SUM(CASE WHEN stato = 'completato' THEN 1 ELSE 0 END) as completate,
-            SUM(CASE WHEN stato = 'in_elaborazione' THEN 1 ELSE 0 END) as in_elaborazione,
-            SUM(CASE WHEN stato = 'rifiutato' THEN 1 ELSE 0 END) as rifiutate
+            SUM(CASE WHEN stato = 'done' THEN 1 ELSE 0 END) as completate,
+            SUM(CASE WHEN stato = 'processing' THEN 1 ELSE 0 END) as in_elaborazione,
+            SUM(CASE WHEN stato = 'error' THEN 1 ELSE 0 END) as rifiutate
         FROM certificati_richieste
         WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
     ")->fetch();
@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
             <div class="card ag-card">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fa-solid fa-list-check me-2"></i>Gestione Richieste
+                        <i class="fa-solid fa-list-check me-2"></i>Gestione Richieste Operatori
                     </h5>
                 </div>
                 <div class="card-body">
@@ -122,7 +122,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                                 <thead>
                                     <tr>
                                         <th>ID</th>
-                                        <th>Utente</th>
+                                        <th>Operatore</th>
+                                        <th>Categoria</th>
                                         <th>Tipo</th>
                                         <th>Stato</th>
                                         <th>Data</th>
@@ -134,22 +135,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                                         <tr>
                                             <td>#<?php echo htmlspecialchars($richiesta['id']); ?></td>
                                             <td><?php echo htmlspecialchars($richiesta['nome'] . ' ' . $richiesta['cognome']); ?></td>
-                                            <td><?php echo htmlspecialchars($richiesta['categoria'] . ' - ' . ($richiesta['tipo'] ?? 'N/A')); ?></td>
+                                            <td>
+                                                <span class="badge bg-<?php
+                                                    echo match($richiesta['categoria']) {
+                                                        'comunali' => 'primary',
+                                                        'catastali' => 'success',
+                                                        'camerali' => 'warning',
+                                                        default => 'secondary'
+                                                    };
+                                                ?>">
+                                                    <?php echo htmlspecialchars(ucfirst($richiesta['categoria'])); ?>
+                                                </span>
+                                            </td>
+                                            <td><?php echo htmlspecialchars($richiesta['tipo'] ?? 'N/A'); ?></td>
                                             <td>
                                                 <span class="badge bg-<?php
                                                     echo match($richiesta['stato']) {
-                                                        'completato' => 'success',
-                                                        'in_elaborazione' => 'warning',
-                                                        'rifiutato' => 'danger',
+                                                        'done' => 'success',
+                                                        'processing' => 'warning',
+                                                        'error' => 'danger',
+                                                        'pending' => 'info',
                                                         default => 'secondary'
                                                     };
                                                 ?>">
                                                     <?php
                                                     echo match($richiesta['stato']) {
-                                                        'completato' => 'Completato',
-                                                        'in_elaborazione' => 'In elaborazione',
-                                                        'rifiutato' => 'Rifiutato',
-                                                        'pending' => 'In attesa',
+                                                        'done' => 'Completato',
+                                                        'processing' => 'In elaborazione',
+                                                        'error' => 'Rifiutato',
+                                                        'pending' => 'Da gestire',
                                                         default => htmlspecialchars($richiesta['stato'] ?? 'Sconosciuto')
                                                     };
                                                     ?>
@@ -161,9 +175,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                                                     <button class="btn btn-outline-primary" onclick="gestisciRichiesta(<?php echo $richiesta['id']; ?>)">
                                                         <i class="fa-solid fa-eye"></i>
                                                     </button>
-                                                    <button class="btn btn-outline-success" onclick="approvaRichiesta(<?php echo $richiesta['id']; ?>)">
-                                                        <i class="fa-solid fa-check"></i>
-                                                    </button>
+                                                    <?php if ($richiesta['categoria'] !== 'comunali'): ?>
+                                                        <button class="btn btn-outline-success" onclick="caricaAllegato(<?php echo $richiesta['id']; ?>)">
+                                                            <i class="fa-solid fa-upload"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-success" onclick="completaRichiesta(<?php echo $richiesta['id']; ?>)">
+                                                            <i class="fa-solid fa-check"></i>
+                                                        </button>
+                                                    <?php endif; ?>
                                                     <button class="btn btn-outline-danger" onclick="rifiutaRichiesta(<?php echo $richiesta['id']; ?>)">
                                                         <i class="fa-solid fa-times"></i>
                                                     </button>
@@ -175,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                             </table>
                         </div>
                     <?php else: ?>
-                        <p class="text-muted mb-0">Nessuna richiesta trovata.</p>
+                        <p class="text-muted mb-0">Nessuna richiesta da gestire.</p>
                     <?php endif; ?>
                 </div>
             </div>
@@ -266,17 +285,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                                                     <td>
                                                         <span class="badge bg-<?php
                                                             echo match($richiesta['stato']) {
-                                                                'completato' => 'success',
-                                                                'in_elaborazione' => 'warning',
-                                                                'rifiutato' => 'danger',
+                                                                'done' => 'success',
+                                                                'processing' => 'warning',
+                                                                'error' => 'danger',
                                                                 default => 'secondary'
                                                             };
                                                         ?>">
                                                             <?php
                                                             echo match($richiesta['stato']) {
-                                                                'completato' => 'Completato',
-                                                                'in_elaborazione' => 'In elaborazione',
-                                                                'rifiutato' => 'Rifiutato',
+                                                                'done' => 'Completato',
+                                                                'processing' => 'In elaborazione',
+                                                                'error' => 'Rifiutato',
                                                                 'pending' => 'In attesa',
                                                                 default => htmlspecialchars($richiesta['stato'] ?? 'Sconosciuto')
                                                             };
@@ -316,20 +335,215 @@ function mostraDettagli(richiestaId) {
 
 // Funzioni per admin
 function gestisciRichiesta(richiestaId) {
-    alert('Gestione richiesta #' + richiestaId + ' - Funzionalità in sviluppo');
+    // Carica i dettagli della richiesta via AJAX
+    fetch('api/admin_actions.php?action=get_details&id=' + richiestaId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostraModalDettagli(data.richiesta);
+            } else {
+                alert('Errore nel caricamento dei dettagli: ' + (data.error || 'Errore sconosciuto'));
+            }
+        })
+        .catch(error => {
+            console.error('Errore:', error);
+            alert('Errore di connessione');
+        });
 }
 
-function approvaRichiesta(richiestaId) {
-    if (confirm('Sei sicuro di voler approvare questa richiesta?')) {
-        alert('Richiesta #' + richiestaId + ' approvata');
-        // Qui andrebbe la logica per aggiornare lo stato
+function caricaAllegato(richiestaId) {
+    // Crea un input file nascosto e triggeralo
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
+    input.onchange = function(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            caricaFile(richiestaId, files);
+        }
+    };
+    input.click();
+}
+
+function caricaFile(richiestaId, files) {
+    const formData = new FormData();
+    formData.append('action', 'upload_attachment');
+    formData.append('richiesta_id', richiestaId);
+    formData.append('csrf_token', '<?php echo $csrfToken; ?>');
+
+    for (let i = 0; i < files.length; i++) {
+        formData.append('files[]', files[i]);
+    }
+
+    fetch('api/admin_actions.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Allegati caricati con successo!');
+            location.reload(); // Ricarica la pagina per aggiornare la tabella
+        } else {
+            alert('Errore nel caricamento: ' + (data.error || 'Errore sconosciuto'));
+        }
+    })
+    .catch(error => {
+        console.error('Errore:', error);
+        alert('Errore di connessione');
+    });
+}
+
+function completaRichiesta(richiestaId) {
+    if (confirm('Sei sicuro di voler completare questa richiesta? L\'operatore riceverà una notifica.')) {
+        fetch('api/admin_actions.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'action=complete&richiesta_id=' + richiestaId + '&csrf_token=<?php echo $csrfToken; ?>'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Richiesta completata con successo!');
+                location.reload(); // Ricarica la pagina per aggiornare la tabella
+            } else {
+                alert('Errore nel completamento: ' + (data.error || 'Errore sconosciuto'));
+            }
+        })
+        .catch(error => {
+            console.error('Errore:', error);
+            alert('Errore di connessione');
+        });
     }
 }
 
 function rifiutaRichiesta(richiestaId) {
-    if (confirm('Sei sicuro di voler rifiutare questa richiesta?')) {
-        alert('Richiesta #' + richiestaId + ' rifiutata');
-        // Qui andrebbe la logica per aggiornare lo stato
+    const motivo = prompt('Inserisci il motivo del rifiuto (opzionale):');
+    if (motivo !== null) { // L'utente non ha annullato
+        fetch('api/admin_actions.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'action=reject&richiesta_id=' + richiestaId + '&motivo=' + encodeURIComponent(motivo) + '&csrf_token=<?php echo $csrfToken; ?>'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Richiesta rifiutata.');
+                location.reload(); // Ricarica la pagina per aggiornare la tabella
+            } else {
+                alert('Errore nel rifiuto: ' + (data.error || 'Errore sconosciuto'));
+            }
+        })
+        .catch(error => {
+            console.error('Errore:', error);
+            alert('Errore di connessione');
+        });
+    }
+}
+
+function mostraModalDettagli(richiesta) {
+    // Crea un modal per mostrare i dettagli
+    const modalHtml = `
+        <div class="modal fade" id="dettagliModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Dettagli Richiesta #${richiesta.id}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Informazioni Richiesta</h6>
+                                <p><strong>Categoria:</strong> ${richiesta.categoria}</p>
+                                <p><strong>Tipo:</strong> ${richiesta.tipo || 'N/A'}</p>
+                                <p><strong>Stato:</strong> ${richiesta.stato}</p>
+                                <p><strong>Data:</strong> ${new Date(richiesta.created_at).toLocaleString('it-IT')}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Dati Richiesta</h6>
+                                <div id="datiRichiesta">
+                                    ${formattaDatiRichiesta(richiesta.dati_richiesta)}
+                                </div>
+                            </div>
+                        </div>
+                        ${richiesta.documenti ? `
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h6>Documenti Allegati</h6>
+                                <div id="documentiAllegati">
+                                    ${formattaDocumenti(richiesta.documenti)}
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Rimuovi modal precedente se esiste
+    const existingModal = document.getElementById('dettagliModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    // Aggiungi il modal al body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Mostra il modal
+    const modal = new bootstrap.Modal(document.getElementById('dettagliModal'));
+    modal.show();
+}
+
+function formattaDatiRichiesta(datiJson) {
+    try {
+        const dati = JSON.parse(datiJson);
+        let html = '<dl class="row">';
+        for (const [key, value] of Object.entries(dati)) {
+            if (value !== null && value !== '') {
+                const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                html += `<dt class="col-sm-4">${label}:</dt><dd class="col-sm-8">${value}</dd>`;
+            }
+        }
+        html += '</dl>';
+        return html;
+    } catch (e) {
+        return '<p class="text-muted">Errore nel caricamento dei dati</p>';
+    }
+}
+
+function formattaDocumenti(documentiJson) {
+    try {
+        const documenti = JSON.parse(documentiJson);
+        if (!Array.isArray(documenti) || documenti.length === 0) {
+            return '<p class="text-muted">Nessun documento allegato</p>';
+        }
+
+        let html = '<ul class="list-group">';
+        documenti.forEach(doc => {
+            html += `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${doc.nome || doc.filename}
+                    <a href="${doc.url || '#'}" target="_blank" class="btn btn-sm btn-outline-primary">
+                        <i class="fa-solid fa-download"></i> Scarica
+                    </a>
+                </li>
+            `;
+        });
+        html += '</ul>';
+        return html;
+    } catch (e) {
+        return '<p class="text-muted">Errore nel caricamento dei documenti</p>';
     }
 }
 

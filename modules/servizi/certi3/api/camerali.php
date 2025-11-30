@@ -1,53 +1,98 @@
 <?php
-// API per certificati camerali - DocuEngine
-require_once __DIR__ . '/../../../../includes/env.php';
-require_once __DIR__ . '/../../../../includes/db_connect.php';
-require_once __DIR__ . '/../../../../includes/helpers.php';
+require_once '../../../includes/db_connect.php';
+require_once '../../../includes/auth.php';
 
-// Carica variabili d'ambiente
-load_env(__DIR__ . '/../../../../.env');
+header('Content-Type: application/json');
 
-class CameraliAPI {
-    private $baseUrl;
-    private $apiKey;
-    private $token;
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Metodo non consentito']);
+    exit;
+}
 
-    public function __construct() {
-        $this->baseUrl = env('DOCUENGINE_BASE_URL', 'https://docuengine.openapi.com');
-        $this->apiKey = env('DOCUENGINE_API_KEY', '');
-        $this->token = env('DOCUENGINE_TOKEN', '');
+// Verifica CSRF
+if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Token CSRF non valido']);
+    exit;
+}
+
+// Verifica autenticazione
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'Utente non autenticato']);
+    exit;
+}
+
+try {
+    // Validazione dati
+    $required_fields = ['categoria', 'tipo', 'partita_iva', 'ragione_sociale', 'comune', 'provincia'];
+    foreach ($required_fields as $field) {
+        if (empty($_POST[$field])) {
+            throw new Exception("Campo obbligatorio mancante: $field");
+        }
     }
 
-    /**
-     * Richiedi certificato camerale
-     */
-    public function richiediCertificato($tipo, $dati) {
-        try {
-            // Prima ottieni l'elenco documenti per trovare l'ID del tipo richiesto
-            $documenti = $this->getDocumentiDisponibili();
+    // Validazione partita IVA
+    if (!preg_match('/^[0-9]{11}$/', $_POST['partita_iva'])) {
+        throw new Exception('Partita IVA non valida');
+    }
 
-            // Trova documento per il tipo richiesto
-            $documentoId = $this->trovaDocumentoPerTipo($documenti, $tipo);
+    // Validazione codice fiscale se fornito
+    if (!empty($_POST['codice_fiscale']) && !preg_match('/^[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]$/', $_POST['codice_fiscale'])) {
+        throw new Exception('Codice fiscale non valido');
+    }
 
-            if (!$documentoId) {
-                throw new Exception("Documento per tipo '{$tipo}' non trovato");
-            }
+    // Prepara dati per il database
+    $dati_richiesta = [
+        'partita_iva' => $_POST['partita_iva'],
+        'ragione_sociale' => trim($_POST['ragione_sociale']),
+        'codice_fiscale' => !empty($_POST['codice_fiscale']) ? strtoupper($_POST['codice_fiscale']) : null,
+        'comune' => trim($_POST['comune']),
+        'provincia' => strtoupper(trim($_POST['provincia'])),
+        'anno_riferimento' => !empty($_POST['anno_riferimento']) ? (int)$_POST['anno_riferimento'] : null,
+        'numero_rea' => !empty($_POST['numero_rea']) ? trim($_POST['numero_rea']) : null,
+        'note' => !empty($_POST['note']) ? trim($_POST['note']) : null,
+        'urgente' => isset($_POST['urgente']) ? 1 : 0
+    ];
 
-            // Prepara i dati per la richiesta
-            $requestData = [
-                'documentId' => $documentoId,
-                'search' => $this->preparaDatiRichiesta($dati),
-                'callback' => env('APP_URL') . '/api/callback/docuengine' // Per notifiche asincrone
-            ];
+    $data = [
+        'user_id' => $_SESSION['user_id'],
+        'categoria' => 'camerali',
+        'tipo' => $_POST['tipo'],
+        'dati_richiesta' => json_encode($dati_richiesta),
+        'stato' => 'pending', // In attesa di approvazione admin
+        'created_at' => date('Y-m-d H:i:s'),
+        'updated_at' => date('Y-m-d H:i:s')
+    ];
 
-            // Effettua la richiesta
-            $response = $this->postRequest('/requests', $requestData);
+    // Inserisci nel database
+    $columns = implode(', ', array_keys($data));
+    $placeholders = ':' . implode(', :', array_keys($data));
 
-            return [
-                'success' => true,
-                'request_id' => $response['id'] ?? null,
-                'state' => $response['state'] ?? 'pending',
-                'results' => $response['results'] ?? []
+    $stmt = $pdo->prepare("INSERT INTO certificati_richieste ($columns) VALUES ($placeholders)");
+
+    foreach ($data as $key => $value) {
+        $stmt->bindValue(":$key", $value);
+    }
+
+    $stmt->execute();
+    $request_id = $pdo->lastInsertId();
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Richiesta certificato camerale inviata con successo',
+        'request_id' => $request_id
+    ]);
+
+} catch (Exception $e) {
+    error_log("Errore richiesta certificato camerale: " . $e->getMessage());
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ]);
+}
+?>
             ];
 
         } catch (Exception $e) {
