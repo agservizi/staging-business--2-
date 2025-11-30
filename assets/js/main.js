@@ -795,10 +795,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const panel = root.querySelector('.ai-assistant-panel');
+        const sidebar = root.querySelector('.ai-assistant-sidebar');
+        const overlay = root.querySelector('.ai-assistant-overlay');
         const toggleBtn = root.querySelector('[data-ai-toggle]');
         const closeBtn = root.querySelector('[data-ai-close]');
-        const refreshBtn = root.querySelector('[data-ai-refresh]');
+        const navItems = root.querySelectorAll('[data-ai-nav]');
+        const tabs = root.querySelectorAll('[data-ai-tab]');
         const form = root.querySelector('[data-ai-form]');
         const questionInput = root.querySelector('[data-ai-question]');
         const periodSelect = root.querySelector('[data-ai-period]');
@@ -806,22 +808,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const customStart = root.querySelector('[data-ai-custom-start]');
         const customEnd = root.querySelector('[data-ai-custom-end]');
         const statusEl = root.querySelector('[data-ai-status]');
-        const logContainer = root.querySelector('[data-ai-log]');
-        const contextEl = root.querySelector('[data-ai-context]');
-        const hintBtn = root.querySelector('[data-ai-hint]');
-        const thinkingWrap = root.querySelector('[data-ai-thinking]');
+        const messagesContainer = root.querySelector('[data-ai-messages]');
+        const submitBtn = root.querySelector('[data-ai-submit]');
+        const suggestionBtns = root.querySelectorAll('[data-ai-suggestion]');
         const thinkingToggle = root.querySelector('[data-ai-thinking-toggle]');
-        const thinkingContent = root.querySelector('[data-ai-thinking-content]');
-        const timestampEl = root.querySelector('[data-ai-timestamp]');
-        const endpoint = root.dataset.endpoint || 'api/ai/advisor.php';
-        const defaultPeriod = root.dataset.defaultPeriod || 'last30';
-        const showToast = window?.CS?.showToast ?? (() => {});
-        const pageContext = {
-            title: root.dataset.pageTitle || document.title || '',
-            section: root.dataset.pageSection || '',
-            description: root.dataset.pageDescription || '',
-            path: root.dataset.pagePath || window.location.pathname
-        };
+        const autoRefreshToggle = root.querySelector('[data-ai-auto-refresh-toggle]');
+        const clearHistoryBtn = root.querySelector('[data-ai-clear-history]');
 
         const hintLibrary = {
             default: [
@@ -954,18 +946,20 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const togglePanel = (open) => {
-            if (!panel) {
+            if (!sidebar || !overlay) {
                 return;
             }
             isOpen = open;
-            panel.hidden = !open;
+            sidebar.hidden = !open;
+            overlay.hidden = !open;
+            document.body.classList.toggle('ai-assistant-open', open);
             if (toggleBtn) {
                 toggleBtn.setAttribute('aria-expanded', String(open));
             }
             if (open) {
                 clearIdleTimer();
                 exitIdleState();
-                if (!logContainer?.children.length) {
+                if (!messagesContainer?.children.length) {
                     tryAutoRequest();
                 }
             } else {
@@ -1000,7 +994,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const renderMessage = (role, content) => {
-            if (!logContainer) {
+            if (!messagesContainer) {
                 return;
             }
             const bubble = document.createElement('div');
@@ -1019,70 +1013,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     bubble.appendChild(p);
                 });
             }
-            logContainer.appendChild(bubble);
-            logContainer.scrollTop = logContainer.scrollHeight;
-        };
-
-        const updateContext = (lines) => {
-            if (!contextEl) {
-                return;
-            }
-            contextEl.innerHTML = '';
-            if (!Array.isArray(lines) || lines.length === 0) {
-                contextEl.hidden = true;
-                return;
-            }
-            const list = document.createElement('ul');
-            list.className = 'mb-0 ps-3';
-            lines.forEach((line) => {
-                const item = document.createElement('li');
-                item.textContent = line;
-                list.appendChild(item);
-            });
-            contextEl.appendChild(list);
-            contextEl.hidden = false;
+            messagesContainer.appendChild(bubble);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         };
 
         const updateThinking = (content) => {
-            if (!thinkingWrap || !thinkingContent || !thinkingToggle) {
-                return;
-            }
-            const hasContent = typeof content === 'string' && content.trim() !== '';
-            thinkingWrap.hidden = !hasContent;
-            thinkingToggle.hidden = !hasContent;
-            if (!hasContent) {
-                thinkingContent.textContent = '';
-                return;
-            }
-            thinkingContent.textContent = content.trim();
-            const labelEl = thinkingToggle.querySelector('span');
-            if (labelEl) {
-                labelEl.textContent = thinkingWrap.open ? 'Nascondi ragionamento' : 'Mostra ragionamento';
-            }
+            // Thinking is now handled in settings, no need to update UI here
         };
 
-        thinkingToggle?.addEventListener('click', () => {
-            if (!thinkingWrap) {
-                return;
-            }
-            thinkingWrap.open = !thinkingWrap.open;
-            const label = thinkingWrap.open ? 'Nascondi ragionamento' : 'Mostra ragionamento';
-            const labelEl = thinkingToggle.querySelector('span');
-            if (labelEl) {
-                labelEl.textContent = label;
-            }
+        thinkingToggle?.addEventListener('change', () => {
+            // Toggle thinking display if needed
         });
 
         const formatTimestamp = (value) => {
-            if (!value || !timestampEl) {
-                return;
-            }
-            const date = new Date(value);
-            if (Number.isNaN(date.getTime())) {
-                return;
-            }
-            const formatted = date.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-            timestampEl.textContent = `Aggiornato alle ${formatted}`;
+            // Not used in new design
         };
 
         const buildPayload = (question) => {
@@ -1129,11 +1073,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 history = Array.isArray(data.history) ? data.history : history;
-                updateContext(data.contextLines || []);
                 renderMessage('assistant', data.answer || 'Nessuna risposta disponibile.');
-                updateThinking(data.thinking || '');
                 setStatus('Consigli aggiornati.', 'success');
-                formatTimestamp(data.generatedAt || new Date().toISOString());
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Errore sconosciuto.';
                 setStatus(message, 'error');
@@ -1162,6 +1103,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
         closeBtn?.addEventListener('click', () => togglePanel(false));
 
+        overlay?.addEventListener('click', () => togglePanel(false));
+
+        navItems.forEach((item) => {
+            item.addEventListener('click', () => {
+                const target = item.dataset.aiNav;
+                navItems.forEach((nav) => nav.classList.remove('active'));
+                item.classList.add('active');
+                tabs.forEach((tab) => {
+                    tab.classList.toggle('hidden', tab.dataset.aiTab !== target);
+                });
+            });
+        });
+
+        suggestionBtns.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const suggestion = btn.dataset.aiSuggestion;
+                if (questionInput && suggestion) {
+                    questionInput.value = suggestion;
+                    questionInput.focus();
+                }
+            });
+        });
+
+        submitBtn?.addEventListener('click', () => {
+            form?.dispatchEvent(new Event('submit'));
+        });
+
+        clearHistoryBtn?.addEventListener('click', () => {
+            if (messagesContainer) {
+                messagesContainer.innerHTML = '';
+            }
+            history = [];
+            showToast('Storico cancellato.', 'info');
+        });
+
         refreshBtn?.addEventListener('click', () => {
             if (latestQuestion) {
                 requestAdvisor(latestQuestion);
@@ -1180,14 +1156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        hintBtn?.addEventListener('click', () => {
-            if (!(questionInput instanceof HTMLTextAreaElement)) {
-                return;
-            }
-            const hint = pickHint();
-            questionInput.value = hint;
-            questionInput.focus();
-        });
+        // Hint button removed in new design
 
         form?.addEventListener('submit', (event) => {
             event.preventDefault();
