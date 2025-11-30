@@ -721,4 +721,38 @@ class GoogleCalendarService
 
         return (bool) preg_match('#^[A-Za-z0-9+/]+={0,2}$#', $value);
     }
+
+    /**
+     * Lista eventi dal calendario Google in un intervallo di tempo.
+     *
+     * @param DateTimeInterface $start Data di inizio
+     * @param DateTimeInterface $end Data di fine
+     * @return array Lista di eventi
+     */
+    public function listEvents(DateTimeInterface $start, DateTimeInterface $end): array
+    {
+        if (!$this->isEnabled()) {
+            return [];
+        }
+
+        $this->ensureCredentialsLoaded();
+
+        $calendarId = rawurlencode($this->calendarId ?? 'primary');
+        $timeMin = $start->format(DateTimeInterface::RFC3339);
+        $timeMax = $end->format(DateTimeInterface::RFC3339);
+
+        $query = [
+            'timeMin' => $timeMin,
+            'timeMax' => $timeMax,
+            'singleEvents' => 'true',
+            'orderBy' => 'startTime',
+        ];
+
+        $response = $this->makeRequest('GET', "https://www.googleapis.com/calendar/v3/calendars/{$calendarId}/events", null, $query);
+        if ($response['status'] !== 200) {
+            return [];
+        }
+
+        return $response['body']['items'] ?? [];
+    }
 }
