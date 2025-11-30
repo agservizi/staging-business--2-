@@ -179,13 +179,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
             const formData = new FormData(form);
             formData.append('categoria', categoria);
 
+            // Determina l'endpoint API corretto
+            let apiEndpoint;
+            switch (categoria) {
+                case 'comunali':
+                    apiEndpoint = 'api/comunali.php';
+                    break;
+                case 'catastali':
+                    apiEndpoint = 'api/catasto.php';
+                    break;
+                case 'camerali':
+                    apiEndpoint = 'api/camerali.php'; // Per ora, da implementare
+                    break;
+                default:
+                    showAlert('danger', 'Categoria non supportata');
+                    return;
+            }
+
             // Mostra loading
             const submitBtn = form.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Elaborazione...';
             submitBtn.disabled = true;
 
-            fetch(window.location.href, {
+            fetch(apiEndpoint, {
                 method: 'POST',
                 body: formData
             })
@@ -474,7 +491,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
 <script>
 // Carica i tipi di documento disponibili per certificati comunali
 function caricaTipiDocumento() {
-    console.log('Iniziando caricamento tipi documento...');
+    console.log('Iniziando caricamento tipi documento comunali...');
     
     fetch('api/comunali.php?action=get_tipi', {
         method: 'GET',
@@ -509,7 +526,8 @@ function caricaTipiDocumento() {
                     select.appendChild(option);
                 });
             } else {
-                select.innerHTML = '<option value="">Errore caricamento tipi</option>';
+                const errorMsg = data.error ? `Errore API: ${data.error}` : 'Errore caricamento tipi';
+                select.innerHTML = `<option value="">${errorMsg}</option>`;
                 console.error('Errore caricamento tipi:', data.error);
             }
         } catch (e) {
@@ -524,9 +542,57 @@ function caricaTipiDocumento() {
     });
 }
 
+// Carica i tipi di documento disponibili per certificati catastali
+function caricaTipiDocumentoCatastali() {
+    console.log('Iniziando caricamento tipi documento catastali...');
+    
+    fetch('api/catasto.php?action=get_tipi', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        console.log('Risposta ricevuta catastali:', response);
+        return response.text();
+    })
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            console.log('JSON parsato catastali:', data);
+            
+            const select = document.getElementById('catastale_tipo');
+            select.innerHTML = '<option value="">Seleziona...</option>';
+
+            if (data.success && data.tipi.length > 0) {
+                data.tipi.forEach(tipo => {
+                    const option = document.createElement('option');
+                    option.value = tipo.categoria;
+                    option.textContent = tipo.nome;
+                    option.setAttribute('data-id', tipo.id);
+                    select.appendChild(option);
+                });
+            } else {
+                const errorMsg = data.error ? `Errore API: ${data.error}` : 'Errore caricamento tipi';
+                select.innerHTML = `<option value="">${errorMsg}</option>`;
+                console.error('Errore caricamento tipi catastali:', data.error);
+            }
+        } catch (e) {
+            console.error('Errore parsing JSON catastali:', e);
+            console.error('Testo che ha causato l\'errore:', text);
+        }
+    })
+    .catch(error => {
+        console.error('Errore richiesta tipi documento catastali:', error);
+        const select = document.getElementById('catastale_tipo');
+        select.innerHTML = '<option value="">Errore caricamento tipi</option>';
+    });
+}
+
 // Carica i tipi quando la pagina è pronta
 document.addEventListener('DOMContentLoaded', function() {
     caricaTipiDocumento();
+    caricaTipiDocumentoCatastali();
 });
 
 // Gestione invio form certificati comunali

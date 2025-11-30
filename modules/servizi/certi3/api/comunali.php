@@ -1,7 +1,7 @@
 <?php
 // API per certificati comunali - DocuEngine
-require_once '../../../includes/db_connect.php';
-require_once '../../../includes/helpers.php';
+require_once '../../../../includes/db_connect.php';
+require_once '../../../../includes/helpers.php';
 
 class ComuniAPI {
     private $baseUrl;
@@ -289,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria']) && $_POST['categoria'] === 'comunali') {
-    require_once '../../../includes/auth.php';
+    require_once '../../../../includes/auth.php';
 
     $api = new ComuniAPI();
     $result = $api->richiediCertificato($_POST['tipo'] ?? 'anagrafico', $_POST);
