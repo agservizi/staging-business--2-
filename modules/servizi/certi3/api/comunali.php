@@ -35,19 +35,24 @@ class ComuniAPI {
             }
 
             // Prepara i dati per la richiesta
-            $searchData = $this->preparaDatiRichiesta($dati);
             $requestData = [
                 'documentId' => $documentoId,
-                'search' => $searchData,
+                'search' => [], // Inizializza sempre search
                 'callback' => [
                     'url' => 'https://business.coresuite.it/api/callback/docuengine'
                 ] // Per notifiche asincrone
             ];
 
-            // Gestisci file separatamente se presenti
-            if (!empty($files['exemption_document']) && $files['exemption_document']['error'] === UPLOAD_ERR_OK) {
-                $fileContent = file_get_contents($files['exemption_document']['tmp_name']);
-                $requestData['search']['field9'] = base64_encode($fileContent); // Usa field9 per il documento
+            // Aggiungi search data se disponibile
+            $searchData = $this->preparaDatiRichiesta($dati);
+            if (!empty($searchData)) {
+                $requestData['search'] = $searchData;
+
+                // Gestisci file separatamente se presenti
+                if (!empty($files['exemption_document']) && $files['exemption_document']['error'] === UPLOAD_ERR_OK) {
+                    $fileContent = file_get_contents($files['exemption_document']['tmp_name']);
+                    $requestData['search']['field7'] = base64_encode($fileContent); // exemptionDocument
+                }
             }
 
             // Effettua la richiesta
@@ -203,13 +208,28 @@ class ComuniAPI {
     }
 
     private function trovaDocumentoPerTipo($documenti, $tipo) {
+        $candidati = [];
         foreach ($documenti as $doc) {
             $categoria = $this->categorizzaDocumento($doc);
             if ($categoria === $tipo) {
-                return $doc['id'];
+                $candidati[] = $doc;
             }
         }
-        return null;
+        
+        if (empty($candidati)) {
+            return null;
+        }
+        
+        // Se ci sono multiple opzioni, preferisci quella con meno fields richiesti (senza exemption)
+        if (count($candidati) > 1) {
+            usort($candidati, function($a, $b) {
+                $fieldsA = count($a['requestStructure']['fields'] ?? []);
+                $fieldsB = count($b['requestStructure']['fields'] ?? []);
+                return $fieldsA <=> $fieldsB; // Preferisci meno fields
+            });
+        }
+        
+        return $candidati[0]['id'];
     }
 
     private function getDocumentiDisponibili() {
@@ -232,25 +252,25 @@ class ComuniAPI {
         // L'API richiede almeno field0-field7 o field0-field8
         $search = [];
 
-        // Converti data di nascita in formato DD/MM/YYYY se presente
+        // Converti data di nascita in formato YYYY-MM-DD se presente
         $dataNascita = '';
         if (!empty($dati['data_nascita'])) {
-            $date = DateTime::createFromFormat('Y-m-d', $dati['data_nascita']);
-            if ($date) {
-                $dataNascita = $date->format('d/m/Y');
-            }
+            // Mantieni il formato YYYY-MM-DD originale
+            $dataNascita = $dati['data_nascita'];
         }
 
-        // Mappatura campi - data in field2 come richiesto dall'errore API
+        // Mappatura campi determinata sperimentalmente per "Certificato Di Residenza Anagrafica Con Marca Da Bollo"
+        // field0: taxCode (codice fiscale), field1: name (nome), field2: birthDate (data nascita),
+        // field3: surname (cognome), field4: birthTown (comune nascita), field5: residenceTown (comune residenza), field6: notes
         $search['field0'] = $dati['codice_fiscale'] ?? ''; // Codice fiscale
         $search['field1'] = $dati['nome'] ?? ''; // Nome
-        $search['field2'] = $dataNascita; // Data di nascita (DD/MM/YYYY)
+        $search['field2'] = $dataNascita; // Data di nascita
         $search['field3'] = $dati['cognome'] ?? ''; // Cognome
         $search['field4'] = $dati['luogo_nascita'] ?? ''; // Comune di nascita
         $search['field5'] = $dati['comune'] ?? ''; // Comune di residenza
-        $search['field6'] = $dati['sesso'] ?? ''; // Sesso
-        $search['field7'] = $dati['indirizzo'] ?? ''; // Indirizzo
-        $search['field8'] = $dati['provincia'] ?? ''; // Provincia
+        if (!empty($dati['note'] ?? $dati['indirizzo'] ?? '')) {
+            $search['field6'] = $dati['note'] ?? $dati['indirizzo'] ?? ''; // Note
+        }
 
         // Rimuovi campi vuoti per evitare problemi
         $search = array_filter($search, function($value) {
