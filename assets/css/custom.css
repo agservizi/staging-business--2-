@@ -3090,26 +3090,147 @@ a.link-warning:hover {
 /* Responsive Design for AI Assistant */
 @media (max-width: 768px) {
     .ai-assistant-sidebar {
-        width: 100vw;
+        width: 90vw;
+        max-width: 400px;
+        left: 50%;
+        top: 50%;
+        height: 80vh;
+        max-height: 600px;
+        transform: translate(-50%, -50%) translateX(100vw);
+        border-radius: 16px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    }
+
+    .ai-assistant-sidebar.open {
+        transform: translate(-50%, -50%) translateX(0);
+    }
+
+    .ai-assistant-overlay {
+        background: rgba(0, 0, 0, 0.6);
+    }
+
+    .ai-assistant-sidebar-header {
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .ai-assistant-sidebar-title {
+        font-size: 1.1rem;
+    }
+
+    .ai-assistant-sidebar-subtitle {
+        font-size: 0.8rem;
+    }
+
+    .ai-assistant-nav {
+        padding: 0 1.5rem;
+        justify-content: center;
+    }
+
+    .ai-assistant-nav-item {
+        flex: none;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .ai-assistant-content {
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .ai-assistant-welcome {
+        padding: 1.5rem 1rem;
+    }
+
+    .ai-assistant-welcome-icon {
+        font-size: 2.5rem;
+    }
+
+    .ai-assistant-welcome h3 {
+        font-size: 1.1rem;
+    }
+
+    .ai-assistant-chat-form {
+        padding-top: 1rem;
+    }
+
+    .ai-assistant-chat-input-group {
+        gap: 0.75rem;
+    }
+
+    .ai-assistant-period-selector select,
+    .ai-assistant-custom-range input {
+        font-size: 0.8rem;
+    }
+
+    .ai-assistant-chat-form textarea {
+        font-size: 0.8rem;
+        min-height: 60px;
+    }
+
+    .ai-assistant-send-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+
+    .ai-assistant-suggestion-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    .ai-assistant-suggestion-btn {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .ai-assistant-settings h4 {
+        font-size: 1rem;
+    }
+
+    .ai-assistant-footer {
+        padding: 0.75rem 1rem;
+        text-align: center;
+    }
+
+    .ai-assistant-footer small {
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .ai-assistant-sidebar {
+        width: 95vw;
+        height: 85vh;
+        max-height: 500px;
     }
 
     .ai-assistant-sidebar-header {
         padding: 1rem;
     }
 
-    .ai-assistant-nav {
-        padding: 0 1rem;
-    }
-
     .ai-assistant-content {
-        padding: 1rem;
+        padding: 0.75rem;
     }
 
     .ai-assistant-welcome {
-        padding: 1.5rem 0.75rem;
+        padding: 1rem 0.5rem;
     }
 
-    .ai-assistant-chat-input-group {
-        gap: 0.75rem;
+    .ai-assistant-welcome-icon {
+        font-size: 2rem;
+    }
+
+    .ai-assistant-welcome h3 {
+        font-size: 1rem;
+    }
+
+    .ai-assistant-nav-item {
+        padding: 0.4rem 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    .ai-assistant-chat-form textarea {
+        min-height: 50px;
     }
 }
