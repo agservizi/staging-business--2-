@@ -1,14 +1,14 @@
 <?php
-require_once __DIR__ . '/../../includes/auth.php';
+require_once '../../../includes/auth.php';
 require_role('Admin', 'Manager', 'Operatore');
 $pageTitle = 'Certi³ - Gestione Certificati';
 $csrfToken = csrf_token();
 
-require_once __DIR__ . '/../../includes/header.php';
-require_once __DIR__ . '/../../includes/sidebar.php';
+require_once '../../../includes/header.php';
+require_once '../../../includes/sidebar.php';
 ?>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
-    <?php require_once __DIR__ . '/../../includes/topbar.php'; ?>
+    <?php require_once '../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="page-toolbar mb-4">
             <div>
@@ -165,4 +165,4 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </div>
     </main>
 </div>
-<?php require_once __DIR__ . '/../../includes/footer.php'; ?>
+<?php require_once '../../../includes/footer.php'; ?>
