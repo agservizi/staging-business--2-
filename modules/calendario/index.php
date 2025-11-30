@@ -62,9 +62,14 @@ $googleEvents = [];
 if ($calendarService->isEnabled()) {
     try {
         $googleEvents = $calendarService->listEvents($eventsStart, $eventsEnd);
+        // Debug
+        echo "<!-- Debug Google Events: " . count($googleEvents) . " from " . $eventsStart->format('Y-m-d') . " to " . $eventsEnd->format('Y-m-d') . " -->";
     } catch (Exception $e) {
         error_log('Errore nel recupero eventi Google Calendar: ' . $e->getMessage());
+        echo "<!-- Debug Error: " . $e->getMessage() . " -->";
     }
+} else {
+    echo "<!-- Debug: Google Calendar not enabled -->";
 }
 
 // Eventi dagli appuntamenti locali
@@ -79,6 +84,8 @@ $appuntamentiStmt = $pdo->prepare("
 ");
 $appuntamentiStmt->execute([$eventsStart->format('Y-m-d H:i:s'), $eventsEnd->format('Y-m-d H:i:s')]);
 $appuntamenti = $appuntamentiStmt->fetchAll(PDO::FETCH_ASSOC);
+// Debug
+echo "<!-- Debug Appointments: " . count($appuntamenti) . " -->";
 
 // Organizza eventi per giorno (per vista mese)
 global $eventsByDay;

@@ -19,6 +19,9 @@
                     // $eventsByDay è già calcolato globalmente
                     global $eventsByDay, $googleEvents, $appuntamenti;
 
+                    // Debug
+                    echo "<!-- Debug in month_view: googleEvents " . count($googleEvents) . ", appointments " . count($appuntamenti) . " -->";
+
                     // Ricalcola eventi per giorno se necessario
                     $eventsByDay = [];
                     foreach ($googleEvents as $event) {
