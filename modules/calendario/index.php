@@ -63,7 +63,17 @@ $monthNames = [
 ];
 
 require_once __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../includes/sidebar.php';
 ?>
+<div class="flex-grow-1 d-flex flex-column min-vh-100">
+    <?php require_once __DIR__ . '/../../includes/topbar.php'; ?>
+    <main class="content-wrapper">
+        <div class="page-toolbar mb-4">
+            <div>
+                <h1 class="h3 mb-0">Calendario</h1>
+                <p class="text-muted mb-0">Visualizza appuntamenti e eventi dal calendario Google.</p>
+            </div>
+        </div>
 
 <div class="container-fluid">
     <div class="row">
@@ -142,6 +152,8 @@ require_once __DIR__ . '/../../includes/header.php';
     </div>
 </div>
 
+    </main>
+</div>
 <?php
 require_once __DIR__ . '/../../includes/footer.php';
 ?>
