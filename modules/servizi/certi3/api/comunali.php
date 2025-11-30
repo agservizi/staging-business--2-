@@ -15,18 +15,18 @@ class ComuniAPI {
     }
 
     /**
-     * Richiedi certificato anagrafico
+     * Richiedi certificato comunale
      */
-    public function richiediCertificatoAnagrafico($dati) {
+    public function richiediCertificato($tipo, $dati) {
         try {
-            // Prima ottieni l'elenco documenti per trovare l'ID del certificato anagrafico
+            // Prima ottieni l'elenco documenti per trovare l'ID del tipo richiesto
             $documenti = $this->getDocumentiDisponibili();
 
-            // Cerca documento per certificato anagrafico
-            $documentoId = $this->trovaDocumentoAnagrafico($documenti);
+            // Trova documento per il tipo richiesto
+            $documentoId = $this->trovaDocumentoPerTipo($documenti, $tipo);
 
             if (!$documentoId) {
-                throw new Exception('Documento certificato anagrafico non trovato');
+                throw new Exception("Documento per tipo '{$tipo}' non trovato");
             }
 
             // Prepara i dati per la richiesta
@@ -52,6 +52,13 @@ class ComuniAPI {
                 'error' => $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Richiedi certificato anagrafico (legacy)
+     */
+    public function richiediCertificatoAnagrafico($dati) {
+        return $this->richiediCertificato('anagrafico', $dati);
     }
 
     /**
@@ -100,6 +107,84 @@ class ComuniAPI {
                 'error' => $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Ottieni tipi di documento disponibili per certificati comunali
+     */
+    public function getTipiDocumentoDisponibili() {
+        try {
+            $documenti = $this->getDocumentiDisponibili();
+
+            $tipi = [];
+            foreach ($documenti as $doc) {
+                // Filtro solo documenti comunali/anagrafici
+                if ($this->isDocumentoComunale($doc)) {
+                    $tipi[] = [
+                        'id' => $doc['id'],
+                        'nome' => $doc['name'] ?? 'Documento senza nome',
+                        'descrizione' => $doc['description'] ?? '',
+                        'categoria' => $this->categorizzaDocumento($doc)
+                    ];
+                }
+            }
+
+            return [
+                'success' => true,
+                'tipi' => $tipi
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'tipi' => []
+            ];
+        }
+    }
+
+    private function isDocumentoComunale($documento) {
+        $nome = strtolower($documento['name'] ?? '');
+        $descrizione = strtolower($documento['description'] ?? '');
+
+        // Parole chiave per documenti comunali
+        $keywords = [
+            'comunale', 'comune', 'anagrafico', 'certificato',
+            'residenza', 'stato civile', 'nascita', 'morte',
+            'famiglia', 'convivenza'
+        ];
+
+        foreach ($keywords as $keyword) {
+            if (strpos($nome, $keyword) !== false || strpos($descrizione, $keyword) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function categorizzaDocumento($documento) {
+        $nome = strtolower($documento['name'] ?? '');
+
+        if (strpos($nome, 'anagrafico') !== false) return 'anagrafico';
+        if (strpos($nome, 'residenza') !== false) return 'residenza';
+        if (strpos($nome, 'stato civile') !== false || strpos($nome, 'stato_civile') !== false) return 'stato_civile';
+        if (strpos($nome, 'nascita') !== false) return 'nascita';
+        if (strpos($nome, 'morte') !== false) return 'morte';
+        if (strpos($nome, 'famiglia') !== false) return 'famiglia';
+        if (strpos($nome, 'convivenza') !== false) return 'convivenza';
+
+        return 'altro';
+    }
+
+    private function trovaDocumentoPerTipo($documenti, $tipo) {
+        foreach ($documenti as $doc) {
+            $categoria = $this->categorizzaDocumento($doc);
+            if ($categoria === $tipo) {
+                return $doc['id'];
+            }
+        }
+        return null;
     }
 
     private function getDocumentiDisponibili() {
@@ -188,11 +273,21 @@ class ComuniAPI {
 }
 
 // Utilizzo
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria']) && $_POST['categoria'] === 'comunali') {
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_tipi') {
     require_once '../../../includes/auth.php';
 
     $api = new ComuniAPI();
-    $result = $api->richiediCertificatoAnagrafico($_POST);
+    $result = $api->getTipiDocumentoDisponibili();
+
+    header('Content-Type: application/json');
+    echo json_encode($result);
+    exit;
+
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria']) && $_POST['categoria'] === 'comunali') {
+    require_once '../../../includes/auth.php';
+
+    $api = new ComuniAPI();
+    $result = $api->richiediCertificato($_POST['tipo'] ?? 'anagrafico', $_POST);
 
     // Salva nel database
     global $pdo;

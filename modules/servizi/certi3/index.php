@@ -110,13 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                             <div class="mb-3">
                                 <label class="form-label" for="comunale_tipo">Tipo Certificato *</label>
                                 <select class="form-select" id="comunale_tipo" name="tipo" required>
-                                    <option value="">Seleziona...</option>
-                                    <option value="anagrafico">Anagrafico</option>
-                                    <option value="residenza">Residenza</option>
-                                    <option value="stato_civile">Stato Civile</option>
-                                    <option value="nascita">Nascita</option>
-                                    <option value="morte">Morte</option>
-                                    <option value="altro">Altro</option>
+                                    <option value="">Caricamento tipi...</option>
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -476,3 +470,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
     </main>
 </div>
 <?php require_once '../../../includes/footer.php'; ?>
+
+<script>
+// Carica i tipi di documento disponibili per certificati comunali
+function caricaTipiDocumento() {
+    fetch('api/comunali.php?action=get_tipi', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const select = document.getElementById('comunale_tipo');
+        select.innerHTML = '<option value="">Seleziona...</option>';
+
+        if (data.success && data.tipi.length > 0) {
+            data.tipi.forEach(tipo => {
+                const option = document.createElement('option');
+                option.value = tipo.categoria;
+                option.textContent = tipo.nome;
+                option.setAttribute('data-id', tipo.id);
+                select.appendChild(option);
+            });
+        } else {
+            select.innerHTML = '<option value="">Errore caricamento tipi</option>';
+            console.error('Errore caricamento tipi:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Errore richiesta tipi documento:', error);
+        const select = document.getElementById('comunale_tipo');
+        select.innerHTML = '<option value="">Errore caricamento tipi</option>';
+    });
+}
+
+// Carica i tipi quando la pagina è pronta
+document.addEventListener('DOMContentLoaded', function() {
+    caricaTipiDocumento();
+});
+
+// Gestione invio form certificati comunali
+const comunaliForm = document.querySelector('#comunaliModal form');
+if (comunaliForm) {
+    comunaliForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Invio richiesta...';
+
+        fetch('api/comunali.php', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Chiudi modal e mostra messaggio successo
+                const modal = bootstrap.Modal.getInstance(document.getElementById('comunaliModal'));
+                modal.hide();
+
+                // Ricarica la pagina per aggiornare la tabella richieste
+                location.reload();
+            } else {
+                alert('Errore: ' + (data.error || 'Errore sconosciuto'));
+            }
+        })
+        .catch(error => {
+            console.error('Errore:', error);
+            alert('Errore di connessione');
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+    });
+}
+</script>
