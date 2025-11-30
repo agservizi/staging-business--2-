@@ -6,6 +6,21 @@ $csrfToken = csrf_token();
 
 require_once '../../../includes/header.php';
 require_once '../../../includes/sidebar.php';
+
+// Carica richieste recenti
+$richieste = $pdo->prepare('SELECT cr.*, u.nome, u.cognome FROM certificati_richieste cr JOIN users u ON cr.user_id = u.id WHERE cr.user_id = ? ORDER BY cr.created_at DESC LIMIT 50');
+$richieste->execute([$_SESSION['user_id']]);
+$richieste = $richieste->fetchAll();
+
+// Gestione richieste POST
+$message = '';
+$messageType = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
+    require_once 'api/' . $_POST['categoria'] . '.php';
+    // La logica è gestita nel file API specifico
+    exit; // Le API restituiscono JSON direttamente
+}
 ?>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once '../../../includes/topbar.php'; ?>
@@ -134,6 +149,93 @@ require_once '../../../includes/sidebar.php';
                 </div>
             </div>
         </div>
+
+        <!-- Script per gestire le richieste AJAX -->
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Gestione form comunali
+            const comunaliForm = document.querySelector('#comunaliModal form');
+            if (comunaliForm) {
+                comunaliForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    submitRequest(this, 'comunali');
+                });
+            }
+
+            // Gestione form catastali
+            const catastaliForm = document.querySelector('#catastaliModal form');
+            if (catastaliForm) {
+                catastaliForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    submitRequest(this, 'catastali');
+                });
+            }
+
+            // Gestione form camerali
+            const cameraliForm = document.querySelector('#cameraliModal form');
+            if (cameraliForm) {
+                cameraliForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    submitRequest(this, 'camerali');
+                });
+            }
+        });
+
+        function submitRequest(form, categoria) {
+            const formData = new FormData(form);
+            formData.append('categoria', categoria);
+
+            // Mostra loading
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Elaborazione...';
+            submitBtn.disabled = true;
+
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('success', `Richiesta inviata con successo! ID: ${data.request_id || 'N/A'}`);
+                    form.reset();
+                    // Chiudi modal
+                    const modal = bootstrap.Modal.getInstance(form.closest('.modal'));
+                    if (modal) modal.hide();
+                    // Ricarica la pagina per aggiornare la tabella
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showAlert('danger', `Errore: ${data.error || 'Errore sconosciuto'}`);
+                }
+            })
+            .catch(error => {
+                showAlert('danger', 'Errore di connessione');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        }
+
+        function showAlert(type, message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+        </script>
 
         <!-- Modal Catastali -->
         <div class="modal fade" id="catastaliModal" tabindex="-1" aria-labelledby="catastaliModalLabel" aria-hidden="true">
@@ -304,13 +406,66 @@ require_once '../../../includes/sidebar.php';
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <!-- Qui verranno mostrati i risultati delle richieste -->
+                                    <?php if (empty($richieste)): ?>
                                     <tr>
                                         <td colspan="6" class="text-center text-muted py-4">
                                             <i class="fa-solid fa-inbox fa-2x mb-2"></i>
                                             <br>Nessuna richiesta effettuata
                                         </td>
                                     </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($richieste as $richiesta): ?>
+                                        <tr>
+                                            <td><?php echo date('d/m/Y H:i', strtotime($richiesta['created_at'])); ?></td>
+                                            <td>
+                                                <span class="badge bg-<?php
+                                                    echo match($richiesta['categoria']) {
+                                                        'comunali' => 'primary',
+                                                        'catastali' => 'success',
+                                                        'camerali' => 'warning',
+                                                        default => 'secondary'
+                                                    };
+                                                ?>">
+                                                    <?php echo ucfirst($richiesta['categoria']); ?>
+                                                </span>
+                                            </td>
+                                            <td><?php echo htmlspecialchars($richiesta['tipo']); ?></td>
+                                            <td>
+                                                <?php
+                                                $dati = json_decode($richiesta['dati_richiesta'], true);
+                                                $dettagli = [];
+                                                if (!empty($dati['codice_fiscale'])) $dettagli[] = 'CF: ' . substr($dati['codice_fiscale'], 0, 6) . '...';
+                                                if (!empty($dati['comune'])) $dettagli[] = 'Comune: ' . $dati['comune'];
+                                                if (!empty($dati['piva'])) $dettagli[] = 'PIVA: ' . substr($dati['piva'], 0, 6) . '...';
+                                                echo htmlspecialchars(implode(', ', $dettagli));
+                                                ?>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-<?php
+                                                    echo match($richiesta['stato']) {
+                                                        'pending' => 'warning',
+                                                        'processing' => 'info',
+                                                        'done' => 'success',
+                                                        'error' => 'danger',
+                                                        default => 'secondary'
+                                                    };
+                                                ?>">
+                                                    <?php echo ucfirst($richiesta['stato']); ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <?php if ($richiesta['stato'] === 'done' && !empty($richiesta['documenti'])): ?>
+                                                    <button class="btn btn-sm btn-outline-success" title="Scarica">
+                                                        <i class="fa-solid fa-download"></i>
+                                                    </button>
+                                                <?php endif; ?>
+                                                <button class="btn btn-sm btn-outline-info" title="Dettagli">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>
