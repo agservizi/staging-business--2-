@@ -1139,8 +1139,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (questionInput && suggestion) {
                     questionInput.value = suggestion;
                     questionInput.focus();
-                    // Auto-submit the form
-                    form?.dispatchEvent(new Event('submit'));
                 }
             });
         });
