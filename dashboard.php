@@ -235,9 +235,9 @@ try {
     $charts['services']['values'] = array_values($serviceTotals);
 
     $serviceBreakdown = [];
-    $serviceBreakdownTotal = array_sum($charts['services']['values']);
+    $serviceBreakdownTotal = (float) array_sum($charts['services']['values']);
     foreach ($charts['services']['labels'] as $index => $label) {
-        $value = $charts['services']['values'][$index] ?? 0;
+        $value = (int) ($charts['services']['values'][$index] ?? 0);
         $percentage = $serviceBreakdownTotal > 0 ? ($value / $serviceBreakdownTotal) * 100 : 0;
         $serviceBreakdown[] = [
             'label' => $label,
@@ -706,7 +706,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                             </div>
                             <div class="service-details-column">
                                 <p class="text-muted text-uppercase small mb-1">Totale pratiche monitorate</p>
-                                <div class="h3 mb-3 fw-semibold"><?php echo number_format($serviceBreakdownTotal); ?></div>
+                                <div class="h3 mb-3 fw-semibold"><?php echo number_format($serviceBreakdownTotal ?? 0); ?></div>
                                 <?php if (!empty($serviceBreakdownTop)): ?>
                                     <div class="service-breakdown-list">
                                         <?php foreach ($serviceBreakdownTop as $serviceItem): ?>
