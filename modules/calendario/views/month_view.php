@@ -17,6 +17,43 @@
                     $daysFromPrevMonth = $firstDayOfWeek - 1;
 
                     // $eventsByDay è già calcolato globalmente
+                    global $eventsByDay, $googleEvents, $appuntamenti;
+
+                    // Ricalcola eventi per giorno se necessario
+                    $eventsByDay = [];
+                    foreach ($googleEvents as $event) {
+                        $startDate = new DateTime($event['start']['dateTime'] ?? $event['start']['date']);
+                        $day = (int)$startDate->format('j');
+                        if (!isset($eventsByDay[$day])) {
+                            $eventsByDay[$day] = [];
+                        }
+                        $eventsByDay[$day][] = [
+                            'type' => 'google',
+                            'title' => $event['summary'] ?? 'Senza titolo',
+                            'time' => $startDate->format('H:i'),
+                            'location' => $event['location'] ?? '',
+                            'description' => $event['description'] ?? '',
+                        ];
+                    }
+
+                    foreach ($appuntamenti as $app) {
+                        $startDate = new DateTime($app['data_inizio']);
+                        $day = (int)$startDate->format('j');
+                        if (!isset($eventsByDay[$day])) {
+                            $eventsByDay[$day] = [];
+                        }
+                        $eventsByDay[$day][] = [
+                            'type' => 'appointment',
+                            'title' => $app['titolo'],
+                            'time' => $startDate->format('H:i'),
+                            'location' => $app['luogo'] ?? '',
+                            'client' => trim(($app['nome'] ?? '') . ' ' . ($app['cognome'] ?? '') . ' ' . ($app['ragione_sociale'] ?? '')),
+                            'id' => $app['id'],
+                        ];
+                    }
+
+                    // Debug
+                    echo "<!-- Debug: eventsByDay total events: " . array_sum(array_map('count', $eventsByDay)) . " -->";
                     ?>
 
                     <!-- Header giorni della settimana -->
