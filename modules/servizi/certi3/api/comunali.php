@@ -31,11 +31,26 @@ class ComuniAPI {
             }
 
             // Prepara i dati per la richiesta
+            $searchData = $this->preparaDatiRichiesta($dati);
             $requestData = [
                 'documentId' => $documentoId,
-                'search' => $this->preparaDatiRichiesta($dati),
-                'callback' => 'https://business.coresuite.it/api/callback/docuengine' // Per notifiche asincrone
+                'search' => $searchData,
+                'callback' => [
+                    'url' => 'https://business.coresuite.it/api/callback/docuengine'
+                ] // Per notifiche asincrone
             ];
+
+            // Gestisci file separatamente se presenti
+            if (!empty($dati['exemption_document'])) {
+                // Se è un path file, converti in base64
+                if (is_string($dati['exemption_document']) && file_exists($dati['exemption_document'])) {
+                    $fileContent = file_get_contents($dati['exemption_document']);
+                    $requestData['search']['field7'] = base64_encode($fileContent);
+                } else {
+                    // Se è già base64 o altro, usalo direttamente
+                    $requestData['search']['field7'] = $dati['exemption_document'];
+                }
+            }
 
             // Effettua la richiesta
             $response = $this->postRequest('/requests', $requestData);
@@ -247,9 +262,8 @@ class ComuniAPI {
             $search['field6'] = $dati['exemption_reason']; // Motivo esenzione
         }
 
-        if (!empty($dati['exemption_document'])) {
-            $search['field7'] = $dati['exemption_document']; // Documento esenzione
-        }
+        // exemption_document viene gestito separatamente come file upload
+        // Non includerlo nel search array
 
         // Campi aggiuntivi se presenti (non mappati per questo documento specifico)
         if (!empty($dati['provincia'])) {

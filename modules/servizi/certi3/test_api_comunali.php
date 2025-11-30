@@ -15,8 +15,8 @@ $testData = [
     'luogo_nascita' => 'Roma', // Comune di nascita
     'codice_fiscale' => 'RSSMRA85T10A562S',
     'comune' => 'Roma', // Comune di residenza
-    'exemption_reason' => 'MINORI' // Motivo esenzione (obbligatorio)
-    // 'exemption_document' => 'test_document.pdf' // Commentato per test
+    'exemption_reason' => 'MINORI', // Motivo esenzione (obbligatorio)
+    'exemption_document' => __DIR__ . '/test_document.pdf' // File PDF per il test
 ];
 
 echo "Test richiesta certificato comunale - Stato di Famiglia\n";
