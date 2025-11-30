@@ -134,6 +134,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                                 <label class="form-label" for="comunale_provincia">Provincia</label>
                                 <input class="form-control" id="comunale_provincia" name="provincia">
                             </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="comunale_data_nascita">Data di Nascita</label>
+                                <input type="date" class="form-control" id="comunale_data_nascita" name="data_nascita">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="comunale_luogo_nascita">Luogo di Nascita</label>
+                                <input class="form-control" id="comunale_luogo_nascita" name="luogo_nascita">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="comunale_sesso">Sesso</label>
+                                <select class="form-select" id="comunale_sesso" name="sesso">
+                                    <option value="">Seleziona...</option>
+                                    <option value="M">Maschio</option>
+                                    <option value="F">Femmina</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="comunale_indirizzo">Indirizzo</label>
+                                <input class="form-control" id="comunale_indirizzo" name="indirizzo" placeholder="Via/Piazza e numero civico">
+                            </div>
+                            <!-- Campi specifici per Certificato Stato di Famiglia -->
+                            <div class="mb-3 exemption-fields" style="display: none;">
+                                <label class="form-label" for="comunale_exemption_reason">Motivo Esenzione da Marca da Bollo *</label>
+                                <select class="form-select" id="comunale_exemption_reason" name="exemption_reason">
+                                    <option value="">Seleziona motivo...</option>
+                                    <option value="MINORI">Adozione, affido, tutela minori</option>
+                                    <option value="CTU">CTU (Consulente Tecnico d'Ufficio); Curatore fallimentare</option>
+                                    <option value="INTERDIZIONE">Interdizione, inabilitazione, amministrazione di sostegno</option>
+                                    <option value="ONLUS">Organizzazioni non lucrative (ONLUS)</option>
+                                    <option value="PENSIONE">Pensione estera - richiesti da Enti previdenziali esteri</option>
+                                    <option value="PROCESSUALE">Processuale - Notifica atti giudiziari richiesti da Avvocati</option>
+                                    <option value="PA">Scambio di atti e documenti fra Pubbliche Amministrazioni</option>
+                                    <option value="DIVORZIO">Separazione, Divorzio</option>
+                                    <option value="SPORTIVO">Società sportive</option>
+                                    <option value="VARIAZIONE">Variazione toponomastica stradale e numerazione civica</option>
+                                </select>
+                            </div>
+                            <div class="mb-3 exemption-fields" style="display: none;">
+                                <label class="form-label" for="comunale_exemption_document">Documento Esenzione *</label>
+                                <input type="file" class="form-control" id="comunale_exemption_document" name="exemption_document" accept=".pdf">
+                                <small class="text-muted">Caricare il documento che attesta il motivo dell'esenzione (PDF)</small>
+                            </div>
                             <div class="text-end">
                                 <button class="btn btn-primary" type="submit">
                                     <i class="fa-solid fa-paper-plane me-2"></i>Invia Richiesta
@@ -550,6 +592,24 @@ function caricaTipiDocumento() {
         select.innerHTML = '<option value="">Errore connessione</option>';
     });
 }
+
+// Gestione cambio tipo certificato comunale per mostrare/nascondere campi esenzione
+document.getElementById('comunale_tipo').addEventListener('change', function() {
+    const exemptionFields = document.querySelectorAll('.exemption-fields');
+    const selectedValue = this.value;
+    
+    if (selectedValue === 'famiglia') {
+        exemptionFields.forEach(field => field.style.display = 'block');
+        // Rendi obbligatori i campi esenzione
+        document.getElementById('comunale_exemption_reason').setAttribute('required', 'required');
+        document.getElementById('comunale_exemption_document').setAttribute('required', 'required');
+    } else {
+        exemptionFields.forEach(field => field.style.display = 'none');
+        // Rimuovi obbligatorietà
+        document.getElementById('comunale_exemption_reason').removeAttribute('required');
+        document.getElementById('comunale_exemption_document').removeAttribute('required');
+    }
+});
 
 // Carica i tipi di documento disponibili per certificati catastali
 function caricaTipiDocumentoCatastali() {

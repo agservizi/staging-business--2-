@@ -1,7 +1,7 @@
 <?php
 // API per certificati comunali - DocuEngine
-require_once '../../../../includes/db_connect.php';
-require_once '../../../../includes/helpers.php';
+// require_once '../../../../includes/db_connect.php';
+// require_once '../../../../includes/helpers.php';
 
 class ComuniAPI {
     private $baseUrl;
@@ -9,9 +9,10 @@ class ComuniAPI {
     private $token;
 
     public function __construct() {
-        $this->baseUrl = env('DOCUENGINE_BASE_URL', 'https://docuengine.openapi.com');
-        $this->apiKey = env('DOCUENGINE_API_KEY', '');
-        $this->token = env('DOCUENGINE_TOKEN', '');
+        // Per test: valori hardcoded
+        $this->baseUrl = 'https://test.docuengine.openapi.com';
+        $this->apiKey = '6d20b7bf0a8fbc729f7ba6af4ee547e3';
+        $this->token = '692c6681d5c93c9634004668';
     }
 
     /**
@@ -33,7 +34,7 @@ class ComuniAPI {
             $requestData = [
                 'documentId' => $documentoId,
                 'search' => $this->preparaDatiRichiesta($dati),
-                'callback' => env('APP_URL') . '/api/callback/docuengine' // Per notifiche asincrone
+                'callback' => 'https://business.coresuite.it/api/callback/docuengine' // Per notifiche asincrone
             ];
 
             // Effettua la richiesta
@@ -217,24 +218,50 @@ class ComuniAPI {
         // Mappa i dati del form ai campi API
         $search = [];
 
-        if (!empty($dati['codice_fiscale'])) {
-            $search['field0'] = $dati['codice_fiscale']; // Tax code
-        }
-
+        // Per "Certificato Stato Di Famiglia" e simili documenti anagrafici
         if (!empty($dati['nome'])) {
-            $search['field1'] = $dati['nome'];
+            $search['field0'] = $dati['nome']; // Nome
         }
 
         if (!empty($dati['cognome'])) {
-            $search['field2'] = $dati['cognome'];
+            $search['field1'] = $dati['cognome']; // Cognome
+        }
+
+        if (!empty($dati['data_nascita'])) {
+            $search['field2'] = $dati['data_nascita']; // Data di nascita
+        }
+
+        if (!empty($dati['luogo_nascita'])) {
+            $search['field3'] = $dati['luogo_nascita']; // Comune di nascita
+        }
+
+        if (!empty($dati['codice_fiscale'])) {
+            $search['field4'] = $dati['codice_fiscale']; // Codice fiscale
         }
 
         if (!empty($dati['comune'])) {
-            $search['field3'] = $dati['comune'];
+            $search['field5'] = $dati['comune']; // Comune di residenza
         }
 
+        if (!empty($dati['exemption_reason'])) {
+            $search['field6'] = $dati['exemption_reason']; // Motivo esenzione
+        }
+
+        if (!empty($dati['exemption_document'])) {
+            $search['field7'] = $dati['exemption_document']; // Documento esenzione
+        }
+
+        // Campi aggiuntivi se presenti (non mappati per questo documento specifico)
         if (!empty($dati['provincia'])) {
-            $search['field4'] = $dati['provincia'];
+            // Provincia non richiesta per Stato di Famiglia
+        }
+
+        if (!empty($dati['sesso'])) {
+            // Sesso non richiesto per Stato di Famiglia
+        }
+
+        if (!empty($dati['indirizzo'])) {
+            // Indirizzo non richiesto per Stato di Famiglia
         }
 
         return $search;
