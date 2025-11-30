@@ -81,6 +81,7 @@ $appuntamentiStmt->execute([$eventsStart->format('Y-m-d H:i:s'), $eventsEnd->for
 $appuntamenti = $appuntamentiStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Organizza eventi per giorno (per vista mese)
+global $eventsByDay;
 $eventsByDay = [];
 if ($view === 'month') {
     foreach ($googleEvents as $event) {
