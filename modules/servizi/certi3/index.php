@@ -116,17 +116,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                                         <?php foreach ($richieste as $richiesta): ?>
                                             <tr>
                                                 <td><?php echo htmlspecialchars($richiesta['id']); ?></td>
-                                                <td><?php echo htmlspecialchars($richiesta['tipo_certificato']); ?></td>
+                                                <td><?php echo htmlspecialchars($richiesta['categoria'] . ' - ' . ($richiesta['tipo'] ?? 'N/A')); ?></td>
                                                 <td>
                                                     <span class="badge bg-<?php 
                                                         echo match($richiesta['stato']) {
-                                                            'completato' => 'success',
-                                                            'in_elaborazione' => 'warning',
-                                                            'errore' => 'danger',
+                                                            'done' => 'success',
+                                                            'processing' => 'warning',
+                                                            'error' => 'danger',
                                                             default => 'secondary'
                                                         };
                                                     ?>">
-                                                        <?php echo htmlspecialchars($richiesta['stato']); ?>
+                                                        <?php 
+                                                        echo match($richiesta['stato']) {
+                                                            'done' => 'Completato',
+                                                            'processing' => 'In elaborazione',
+                                                            'error' => 'Errore',
+                                                            'pending' => 'In attesa',
+                                                            default => htmlspecialchars($richiesta['stato'] ?? 'Sconosciuto')
+                                                        };
+                                                        ?>
                                                     </span>
                                                 </td>
                                                 <td><?php echo htmlspecialchars(date('d/m/Y H:i', strtotime($richiesta['created_at']))); ?></td>
