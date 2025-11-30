@@ -6,11 +6,6 @@ $csrfToken = csrf_token();
 
 require_once '../../../includes/header.php';
 require_once '../../../includes/sidebar.php';
-
-// Carica richieste recenti
-$richieste = $pdo->prepare('SELECT cr.*, u.nome, u.cognome FROM certificati_richieste cr JOIN users u ON cr.user_id = u.id WHERE cr.user_id = ? ORDER BY cr.created_at DESC LIMIT 50');
-$richieste->execute([$_SESSION['user_id']]);
-$richieste = $richieste->fetchAll();
 ?>
 
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
@@ -164,57 +159,6 @@ $richieste = $richieste->fetchAll();
                 </div>
             </div>
         </div>
-
-        <?php if (!empty($richieste)): ?>
-        <div class="card ag-card mt-4">
-            <div class="card-header bg-transparent border-0">
-                <h2 class="h5 mb-0">
-                    <i class="fa-solid fa-history text-secondary me-2"></i>Richieste Recenti
-                </h2>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover align-middle">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Tipo</th>
-                                <th>Data Richiesta</th>
-                                <th>Stato</th>
-                                <th class="text-end">Azioni</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($richieste as $richiesta): ?>
-                            <tr>
-                                <td>#<?php echo $richiesta['id']; ?></td>
-                                <td><?php echo htmlspecialchars($richiesta['tipo_certificato'] ?? 'N/A'); ?></td>
-                                <td><?php echo date('d/m/Y H:i', strtotime($richiesta['created_at'])); ?></td>
-                                <td>
-                                    <span class="badge bg-<?php
-                                        echo match($richiesta['stato']) {
-                                            'completato' => 'success',
-                                            'in_elaborazione' => 'warning',
-                                            'rifiutato' => 'danger',
-                                            default => 'secondary'
-                                        };
-                                    ?>">
-                                        <?php echo htmlspecialchars($richiesta['stato'] ?? 'sconosciuto'); ?>
-                                    </span>
-                                </td>
-                                <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-primary" onclick="viewRequest(<?php echo $richiesta['id']; ?>)">
-                                        <i class="fa-solid fa-eye"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
     </main>
 </div>
 
@@ -302,11 +246,6 @@ document.getElementById('certificatoForm').addEventListener('submit', function(e
         submitBtn.innerHTML = originalText;
     });
 });
-
-function viewRequest(id) {
-    // Implementa visualizzazione richiesta
-    alert('Visualizzazione richiesta #' + id + ' - Funzionalità da implementare');
-}
 </script>
 
 <?php require_once '../../../includes/footer.php'; ?>
