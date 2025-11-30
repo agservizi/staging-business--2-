@@ -164,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria']) && $_POST['categoria'] === 'catastali') {
-    require_once __DIR__ . '/../../../../../includes/auth.php';
+    require_once __DIR__ . '/../../../../../../includes/auth.php';
 
     $api = new CatastoAPI();
     $result = $api->richiediCertificato($_POST['tipo'] ?? 'visura_catastale', $_POST);

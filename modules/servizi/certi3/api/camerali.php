@@ -263,7 +263,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria']) && $_POST['categoria'] === 'camerali') {
-    require_once __DIR__ . '/../../../../../includes/auth.php';
+    require_once __DIR__ . '/../../../../../../includes/auth.php';
 
     $api = new CameraliAPI();
     $result = $api->richiediCertificato($_POST['tipo'] ?? 'visura', $_POST);
@@ -286,7 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'download' && isset($_GET['request_id'])) {
-    require_once __DIR__ . '/../../../../../includes/auth.php';
+    require_once __DIR__ . '/../../../../../../includes/auth.php';
 
     $api = new CameraliAPI();
     $result = $api->scaricaDocumento($_GET['request_id'], $_GET['document_index'] ?? 0);
