@@ -474,28 +474,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
 <script>
 // Carica i tipi di documento disponibili per certificati comunali
 function caricaTipiDocumento() {
+    console.log('Iniziando caricamento tipi documento...');
+    
     fetch('api/comunali.php?action=get_tipi', {
         method: 'GET',
         headers: {
             'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => response.json())
-    .then(data => {
-        const select = document.getElementById('comunale_tipo');
-        select.innerHTML = '<option value="">Seleziona...</option>';
+    .then(response => {
+        console.log('Risposta ricevuta:', response);
+        console.log('Status:', response.status);
+        console.log('Content-Type:', response.headers.get('content-type'));
+        
+        return response.text(); // Prima leggo come testo per debug
+    })
+    .then(text => {
+        console.log('Testo risposta:', text.substring(0, 200) + '...');
+        
+        // Ora provo a fare il parse JSON
+        try {
+            const data = JSON.parse(text);
+            console.log('JSON parsato:', data);
+            
+            const select = document.getElementById('comunale_tipo');
+            select.innerHTML = '<option value="">Seleziona...</option>';
 
-        if (data.success && data.tipi.length > 0) {
-            data.tipi.forEach(tipo => {
-                const option = document.createElement('option');
-                option.value = tipo.categoria;
-                option.textContent = tipo.nome;
-                option.setAttribute('data-id', tipo.id);
-                select.appendChild(option);
-            });
-        } else {
-            select.innerHTML = '<option value="">Errore caricamento tipi</option>';
-            console.error('Errore caricamento tipi:', data.error);
+            if (data.success && data.tipi.length > 0) {
+                data.tipi.forEach(tipo => {
+                    const option = document.createElement('option');
+                    option.value = tipo.categoria;
+                    option.textContent = tipo.nome;
+                    option.setAttribute('data-id', tipo.id);
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">Errore caricamento tipi</option>';
+                console.error('Errore caricamento tipi:', data.error);
+            }
+        } catch (e) {
+            console.error('Errore parsing JSON:', e);
+            console.error('Testo che ha causato l\'errore:', text);
         }
     })
     .catch(error => {

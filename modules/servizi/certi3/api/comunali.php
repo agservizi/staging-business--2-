@@ -274,9 +274,15 @@ class ComuniAPI {
 
 // Utilizzo
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_tipi') {
+    // Debug: log della richiesta
+    error_log('Richiesta get_tipi ricevuta');
+
     // I tipi documento sono pubblici, non richiedono autenticazione
     $api = new ComuniAPI();
     $result = $api->getTipiDocumentoDisponibili();
+
+    // Debug: log del risultato
+    error_log('Risultato get_tipi: ' . json_encode($result));
 
     header('Content-Type: application/json');
     echo json_encode($result);
