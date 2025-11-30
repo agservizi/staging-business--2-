@@ -2,6 +2,7 @@
 require_once '../../includes/header.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/db_connect.php';
+require_once '../../includes/helpers.php';
 
 $current_page = 'ISTAT Webservices';
 $pageTitle = 'ISTAT Webservices';
