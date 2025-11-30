@@ -241,10 +241,10 @@ class ComuniAPI {
             }
         }
 
-        // Mappatura campi - tentativo con data in field2
+        // Mappatura campi - data in field2 come richiesto dall'errore API
         $search['field0'] = $dati['codice_fiscale'] ?? ''; // Codice fiscale
         $search['field1'] = $dati['nome'] ?? ''; // Nome
-        $search['field2'] = $dataNascita; // Data di nascita (formato DD/MM/YYYY)
+        $search['field2'] = $dataNascita; // Data di nascita (DD/MM/YYYY)
         $search['field3'] = $dati['cognome'] ?? ''; // Cognome
         $search['field4'] = $dati['luogo_nascita'] ?? ''; // Comune di nascita
         $search['field5'] = $dati['comune'] ?? ''; // Comune di residenza
