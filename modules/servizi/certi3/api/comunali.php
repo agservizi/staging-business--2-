@@ -22,7 +22,7 @@ class ComuniAPI {
     /**
      * Richiedi certificato comunale
      */
-    public function richiediCertificato($tipo, $dati) {
+    public function richiediCertificato($tipo, $dati, $files = []) {
         try {
             // Prima ottieni l'elenco documenti per trovare l'ID del tipo richiesto
             $documenti = $this->getDocumentiDisponibili();
@@ -45,15 +45,9 @@ class ComuniAPI {
             ];
 
             // Gestisci file separatamente se presenti
-            if (!empty($dati['exemption_document'])) {
-                // Se è un path file, converti in base64
-                if (is_string($dati['exemption_document']) && file_exists($dati['exemption_document'])) {
-                    $fileContent = file_get_contents($dati['exemption_document']);
-                    $requestData['search']['field7'] = base64_encode($fileContent);
-                } else {
-                    // Se è già base64 o altro, usalo direttamente
-                    $requestData['search']['field7'] = $dati['exemption_document'];
-                }
+            if (!empty($files['exemption_document']) && $files['exemption_document']['error'] === UPLOAD_ERR_OK) {
+                $fileContent = file_get_contents($files['exemption_document']['tmp_name']);
+                $requestData['search']['field9'] = base64_encode($fileContent); // Usa field9 per il documento
             }
 
             // Effettua la richiesta
@@ -234,53 +228,25 @@ class ComuniAPI {
     }
 
     private function preparaDatiRichiesta($dati) {
-        // Mappa i dati del form ai campi API
+        // Mappa i dati del form ai campi API richiesti
+        // L'API richiede almeno field0-field7 o field0-field8
         $search = [];
 
-        // Per "Certificato Stato Di Famiglia" e simili documenti anagrafici
-        if (!empty($dati['nome'])) {
-            $search['field0'] = $dati['nome']; // Nome
-        }
+        // Mappatura campi obbligatori
+        $search['field0'] = $dati['codice_fiscale'] ?? ''; // Codice fiscale
+        $search['field1'] = $dati['nome'] ?? ''; // Nome
+        $search['field2'] = $dati['cognome'] ?? ''; // Cognome
+        $search['field3'] = $dati['data_nascita'] ?? ''; // Data di nascita
+        $search['field4'] = $dati['luogo_nascita'] ?? ''; // Comune di nascita
+        $search['field5'] = $dati['comune'] ?? ''; // Comune di residenza
+        $search['field6'] = $dati['sesso'] ?? ''; // Sesso
+        $search['field7'] = $dati['indirizzo'] ?? ''; // Indirizzo
+        $search['field8'] = $dati['provincia'] ?? ''; // Provincia
 
-        if (!empty($dati['cognome'])) {
-            $search['field1'] = $dati['cognome']; // Cognome
-        }
-
-        if (!empty($dati['data_nascita'])) {
-            $search['field2'] = $dati['data_nascita']; // Data di nascita
-        }
-
-        if (!empty($dati['luogo_nascita'])) {
-            $search['field3'] = $dati['luogo_nascita']; // Comune di nascita
-        }
-
-        if (!empty($dati['codice_fiscale'])) {
-            $search['field4'] = $dati['codice_fiscale']; // Codice fiscale
-        }
-
-        if (!empty($dati['comune'])) {
-            $search['field5'] = $dati['comune']; // Comune di residenza
-        }
-
-        if (!empty($dati['exemption_reason'])) {
-            $search['field6'] = $dati['exemption_reason']; // Motivo esenzione
-        }
-
-        // exemption_document viene gestito separatamente come file upload
-        // Non includerlo nel search array
-
-        // Campi aggiuntivi se presenti (non mappati per questo documento specifico)
-        if (!empty($dati['provincia'])) {
-            // Provincia non richiesta per Stato di Famiglia
-        }
-
-        if (!empty($dati['sesso'])) {
-            // Sesso non richiesto per Stato di Famiglia
-        }
-
-        if (!empty($dati['indirizzo'])) {
-            // Indirizzo non richiesto per Stato di Famiglia
-        }
+        // Rimuovi campi vuoti per evitare problemi
+        $search = array_filter($search, function($value) {
+            return $value !== '' && $value !== null;
+        });
 
         return $search;
     }
@@ -330,58 +296,60 @@ class ComuniAPI {
 }
 
 // Utilizzo
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_tipi') {
-    // Debug: log della richiesta
-    error_log('Richiesta get_tipi ricevuta');
+if (isset($_SERVER['REQUEST_METHOD'])) {
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_tipi') {
+        // Debug: log della richiesta
+        error_log('Richiesta get_tipi ricevuta');
 
-    // I tipi documento sono pubblici, non richiedono autenticazione
-    $api = new ComuniAPI();
-    $result = $api->getTipiDocumentoDisponibili();
+        // I tipi documento sono pubblici, non richiedono autenticazione
+        $api = new ComuniAPI();
+        $result = $api->getTipiDocumentoDisponibili();
 
-    // Debug: log del risultato
-    error_log('Risultato get_tipi: ' . json_encode($result));
+        // Debug: log del risultato
+        error_log('Risultato get_tipi: ' . json_encode($result));
 
-    header('Content-Type: application/json');
-    echo json_encode($result);
-    exit;
-
-} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria']) && $_POST['categoria'] === 'comunali') {
-    require_once __DIR__ . '/../../../../includes/auth.php';
-
-    $api = new ComuniAPI();
-    $result = $api->richiediCertificato($_POST['tipo'] ?? 'anagrafico', $_POST);
-
-    // Salva nel database
-    global $pdo;
-    $stmt = $pdo->prepare('INSERT INTO certificati_richieste (user_id, categoria, tipo, dati_richiesta, request_id, stato, errore) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    $stmt->execute([
-        $_SESSION['user_id'],
-        'comunali',
-        $_POST['tipo'] ?? '',
-        json_encode($_POST),
-        $result['request_id'] ?? null,
-        $result['success'] ? 'pending' : 'error',
-        $result['error'] ?? null
-    ]);
-
-    header('Content-Type: application/json');
-    echo json_encode($result);
-    exit;
-
-} elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'download' && isset($_GET['request_id'])) {
-    require_once __DIR__ . '/../../../../includes/auth.php';
-
-    $api = new ComuniAPI();
-    $result = $api->scaricaDocumento($_GET['request_id'], $_GET['document_index'] ?? 0);
-
-    if ($result['success']) {
-        header('Content-Type: ' . $result['mime_type']);
-        header('Content-Disposition: attachment; filename="' . $result['filename'] . '"');
-        echo $result['content'];
-    } else {
-        http_response_code(404);
+        header('Content-Type: application/json');
         echo json_encode($result);
+        exit;
+
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria']) && $_POST['categoria'] === 'comunali') {
+        require_once __DIR__ . '/../../../../includes/auth.php';
+
+        $api = new ComuniAPI();
+        $result = $api->richiediCertificato($_POST['tipo'] ?? 'anagrafico', $_POST, $_FILES);
+
+        // Salva nel database
+        global $pdo;
+        $stmt = $pdo->prepare('INSERT INTO certificati_richieste (user_id, categoria, tipo, dati_richiesta, request_id, stato, errore) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([
+            $_SESSION['user_id'],
+            'comunali',
+            $_POST['tipo'] ?? '',
+            json_encode($_POST),
+            $result['request_id'] ?? null,
+            $result['success'] ? 'pending' : 'error',
+            $result['error'] ?? null
+        ]);
+
+        header('Content-Type: application/json');
+        echo json_encode($result);
+        exit;
+
+    } elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'download' && isset($_GET['request_id'])) {
+        require_once __DIR__ . '/../../../../includes/auth.php';
+
+        $api = new ComuniAPI();
+        $result = $api->scaricaDocumento($_GET['request_id'], $_GET['document_index'] ?? 0);
+
+        if ($result['success']) {
+            header('Content-Type: ' . $result['mime_type']);
+            header('Content-Disposition: attachment; filename="' . $result['filename'] . '"');
+            echo $result['content'];
+        } else {
+            http_response_code(404);
+            echo json_encode($result);
+        }
+        exit;
     }
-    exit;
 }
 ?>

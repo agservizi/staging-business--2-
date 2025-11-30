@@ -12,15 +12,7 @@ $richieste = $pdo->prepare('SELECT cr.*, u.nome, u.cognome FROM certificati_rich
 $richieste->execute([$_SESSION['user_id']]);
 $richieste = $richieste->fetchAll();
 
-// Gestione richieste POST
-$message = '';
-$messageType = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
-    require_once 'api/' . $_POST['categoria'] . '.php';
-    // La logica è gestita nel file API specifico
-    exit; // Le API restituiscono JSON direttamente
-}
+// Gestione richieste POST rimossa - ora usa AJAX
 ?>
 
 <div class="flex-grow-1 d-flex flex-column min-vh-100 bg-light">
@@ -717,20 +709,71 @@ function caricaTipiDocumento() {
     });
 }
 
-// Validazione form
+// Validazione form e invio AJAX
 document.getElementById('certificatoForm').addEventListener('submit', function(e) {
+    e.preventDefault(); // Previene il submit normale
+
     if (!this.checkValidity()) {
-        e.preventDefault();
-        e.stopPropagation();
-    } else {
-        // Mostra spinner
-        const submitBtn = this.querySelector('button[type="submit"]');
-        const spinner = submitBtn.querySelector('.spinner-border');
-        submitBtn.disabled = true;
-        spinner.classList.remove('d-none');
+        this.classList.add('was-validated');
+        return;
     }
+
+    // Mostra spinner
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const spinner = submitBtn.querySelector('.spinner-border');
+    submitBtn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    // Prepara i dati del form
+    const formData = new FormData(this);
+
+    // Invia richiesta AJAX
+    fetch('api/comunali.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Successo
+            showMessage('Richiesta inviata con successo! ID richiesta: ' + data.request_id, 'success');
+            resetForm();
+        } else {
+            // Errore
+            showMessage('Errore: ' + (data.error || 'Errore sconosciuto'), 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Errore:', error);
+        showMessage('Errore di connessione', 'danger');
+    })
+    .finally(() => {
+        // Nasconde spinner
+        submitBtn.disabled = false;
+        spinner.classList.add('d-none');
+    });
+
     this.classList.add('was-validated');
 });
+
+// Funzione per mostrare messaggi
+function showMessage(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+
+    // Rimuovi automaticamente dopo 5 secondi
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
 
 // Carica i tipi al caricamento della pagina
 document.addEventListener('DOMContentLoaded', function() {
