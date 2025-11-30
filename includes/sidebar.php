@@ -136,7 +136,11 @@ if ($role) {
 
 if (!empty($userModules)) {
     $serviziItems = array_values(array_filter($serviziItems, static function (array $item) use ($userModules): bool {
-        return in_array($item['needle'], $userModules, true);
+        // Permetti sempre Certi³ se l'utente ha il permesso specifico
+        if ($item['needle'] === 'modules/servizi/certi3') {
+            return in_array('modules/servizi/certi3', $userModules) || in_array('all', $userModules);
+        }
+        return in_array($item['needle'], $userModules, true) || in_array('all', $userModules);
     }));
 }
 
@@ -251,17 +255,12 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                     </li>
                 <?php endif; ?>
 
-                <?php if (!$isPatronato && $role !== 'Operatore'): ?>
-                    <?php $calendarioActive = nav_active('modules/calendario', $currentPath); ?>
-                    <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo $calendarioActive; ?>" href="<?php echo base_url('modules/calendario/index.php'); ?>" aria-label="Calendario" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Calendario"<?php echo $calendarioActive ? ' aria-current="page"' : ''; ?>>
-                            <span class="nav-icon" data-color="sky" aria-hidden="true">
-                                <i class="fa-solid fa-calendar-days"></i>
-                            </span>
-                            <span class="nav-label">Calendario</span>
-                        </a>
-                    </li>
-
+                <?php if (!$isPatronato): ?>
+                    <?php
+                    // Mostra Ticket agli operatori che hanno almeno un permesso di servizio
+                    $hasAnyServicePermission = !empty($userModules) && (in_array('all', $userModules) || count(array_intersect($userModules, array_column($serviziItems, 'needle'))) > 0);
+                    if ($role !== 'Operatore' || $hasAnyServicePermission) {
+                    ?>
                     <?php $ticketActive = nav_active('modules/ticket', $currentPath); ?>
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center <?php echo $ticketActive; ?>" href="<?php echo base_url('modules/ticket/index.php'); ?>" aria-label="Ticket" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Ticket"<?php echo $ticketActive ? ' aria-current="page"' : ''; ?>>
@@ -271,6 +270,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                             <span class="nav-label">Ticket</span>
                         </a>
                     </li>
+                    <?php } ?>
 
                     <?php $reportActive = nav_active('modules/report', $currentPath); ?>
                     <li class="nav-item">

@@ -540,6 +540,96 @@ require_once __DIR__ . '/includes/sidebar.php';
                 </div>
             </div>
 
+            <!-- Azioni rapide filtrate per permessi -->
+            <div class="card ag-card mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <h5 class="card-title mb-0">Azioni rapide</h5>
+                    <small class="text-muted">Crea nuovi elementi nei moduli a cui hai accesso</small>
+                </div>
+                <div class="card-body">
+                    <div class="dashboard-actions-grid">
+                        <?php if ($hasFinanceAccess): ?>
+                        <a class="dashboard-action" href="modules/servizi/entrate-uscite/create.php">
+                            <span class="dashboard-action-icon" data-variant="success"><i class="fa-solid fa-euro-sign"></i></span>
+                            <div class="dashboard-action-content">
+                                <span class="dashboard-action-title">Nuovo movimento</span>
+                                <span class="dashboard-action-text">Registra entrata o uscita</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right dashboard-action-chevron" aria-hidden="true"></i>
+                        </a>
+                        <?php endif; ?>
+
+                        <?php if ($hasAppointmentsAccess): ?>
+                        <a class="dashboard-action" href="modules/servizi/appuntamenti/create.php">
+                            <span class="dashboard-action-icon" data-variant="primary"><i class="fa-solid fa-calendar-plus"></i></span>
+                            <div class="dashboard-action-content">
+                                <span class="dashboard-action-title">Nuovo appuntamento</span>
+                                <span class="dashboard-action-text">Pianifica un nuovo appuntamento</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right dashboard-action-chevron" aria-hidden="true"></i>
+                        </a>
+                        <?php endif; ?>
+
+                        <?php if ($hasLogisticsAccess): ?>
+                        <a class="dashboard-action" href="modules/servizi/brt/create.php">
+                            <span class="dashboard-action-icon" data-variant="info"><i class="fa-solid fa-truck-fast"></i></span>
+                            <div class="dashboard-action-content">
+                                <span class="dashboard-action-title">Nuova spedizione</span>
+                                <span class="dashboard-action-text">Crea una spedizione BRT</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right dashboard-action-chevron" aria-hidden="true"></i>
+                        </a>
+                        <?php endif; ?>
+
+                        <?php if ($hasClientsAccess): ?>
+                        <a class="dashboard-action" href="modules/clienti/create.php">
+                            <span class="dashboard-action-icon" data-variant="warning"><i class="fa-solid fa-user-plus"></i></span>
+                            <div class="dashboard-action-content">
+                                <span class="dashboard-action-title">Nuovo cliente</span>
+                                <span class="dashboard-action-text">Aggiungi un nuovo cliente</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right dashboard-action-chevron" aria-hidden="true"></i>
+                        </a>
+                        <?php endif; ?>
+
+                        <a class="dashboard-action" href="modules/documenti/create.php">
+                            <span class="dashboard-action-icon" data-variant="secondary"><i class="fa-solid fa-upload"></i></span>
+                            <div class="dashboard-action-content">
+                                <span class="dashboard-action-title">Carica documento</span>
+                                <span class="dashboard-action-text">Aggiungi un nuovo documento</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right dashboard-action-chevron" aria-hidden="true"></i>
+                        </a>
+
+                        <?php
+                        // Mostra Nuovo ticket agli operatori che hanno almeno un permesso di servizio
+                        $hasAnyServicePermission = $currentRole !== 'Operatore' || !empty($userModules) && (in_array('all', $userModules) || count(array_intersect($userModules, [
+                            'modules/servizi/entrate-uscite',
+                            'modules/servizi/appuntamenti', 
+                            'modules/servizi/curriculum',
+                            'modules/servizi/logistici',
+                            'modules/servizi/caf-patronato',
+                            'modules/servizi/cie',
+                            'modules/servizi/fedelta',
+                            'modules/servizi/telegrammi',
+                            'modules/servizi/visure',
+                            'modules/servizi/web'
+                        ])) > 0);
+                        if ($hasAnyServicePermission):
+                        ?>
+                        <a class="dashboard-action" href="modules/ticket/create.php">
+                            <span class="dashboard-action-icon" data-variant="danger"><i class="fa-solid fa-headset"></i></span>
+                            <div class="dashboard-action-content">
+                                <span class="dashboard-action-title">Nuovo ticket</span>
+                                <span class="dashboard-action-text">Apri una nuova richiesta</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-right dashboard-action-chevron" aria-hidden="true"></i>
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
             <div class="dashboard-status alert alert-warning align-items-center gap-2 mb-4" id="dashboardStatus" role="status" hidden>
                 <i class="fa-solid fa-circle-exclamation"></i>
                 <span class="dashboard-status-text"></span>
