@@ -46,12 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                         </div>
                         <h5 class="card-title">Certificati Comunali</h5>
                         <p class="card-text text-muted small">Anagrafici, residenza, stato civile e altri documenti comunali</p>
-                        <small class="text-warning d-block mb-2">
-                            <i class="fa-solid fa-info-circle me-1"></i>
-                            Temporaneamente non disponibili
-                        </small>
                         <div class="mt-auto">
-                            <button class="btn btn-primary btn-lg w-100" type="button" disabled title="Temporaneamente non disponibile">
+                            <button class="btn btn-primary btn-lg w-100" type="button" data-bs-toggle="modal" data-bs-target="#comunaliModal">
                                 <i class="fa-solid fa-plus me-2"></i>Richiedi Certificato
                             </button>
                         </div>

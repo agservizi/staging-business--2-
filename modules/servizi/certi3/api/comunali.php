@@ -144,23 +144,10 @@ class ComuniAPI {
     }
 
     private function isDocumentoComunale($documento) {
-        $nome = strtolower($documento['name'] ?? '');
-        $descrizione = strtolower($documento['description'] ?? '');
+        $categoria = strtolower($documento['category'] ?? '');
 
-        // Parole chiave per documenti comunali
-        $keywords = [
-            'comunale', 'comune', 'anagrafico', 'certificato',
-            'residenza', 'stato civile', 'nascita', 'morte',
-            'famiglia', 'convivenza'
-        ];
-
-        foreach ($keywords as $keyword) {
-            if (strpos($nome, $keyword) !== false || strpos($descrizione, $keyword) !== false) {
-                return true;
-            }
-        }
-
-        return false;
+        // Controlla se la categoria è "Comunali"
+        return $categoria === 'comunali';
     }
 
     private function categorizzaDocumento($documento) {
@@ -188,7 +175,8 @@ class ComuniAPI {
     }
 
     private function getDocumentiDisponibili() {
-        return $this->getRequest('/documents');
+        $response = $this->getRequest('/documents');
+        return $response['data'] ?? [];
     }
 
     private function trovaDocumentoAnagrafico($documenti) {
@@ -309,6 +297,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
     header('Content-Type: application/json');
     echo json_encode($result);
+    exit;
+
+} elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'download' && isset($_GET['request_id'])) {
+    require_once '../../../../includes/auth.php';
+
+    $api = new ComuniAPI();
+    $result = $api->scaricaDocumento($_GET['request_id'], $_GET['document_index'] ?? 0);
+
+    if ($result['success']) {
+        header('Content-Type: ' . $result['mime_type']);
+        header('Content-Disposition: attachment; filename="' . $result['filename'] . '"');
+        echo $result['content'];
+    } else {
+        http_response_code(404);
+        echo json_encode($result);
+    }
     exit;
 }
 ?>
