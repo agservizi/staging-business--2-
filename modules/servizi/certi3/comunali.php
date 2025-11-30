@@ -18,7 +18,7 @@ require_once '../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Richiesta certificati anagrafici, residenza e stato civile</p>
             </div>
             <div class="toolbar-actions">
-                <a href="/staging-business/modules/servizi/certi3" class="btn btn-outline-secondary">
+                <a href="./" class="btn btn-outline-secondary">
                     <i class="fa-solid fa-arrow-left me-2"></i>Torna ai Servizi
                 </a>
             </div>
