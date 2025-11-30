@@ -232,11 +232,20 @@ class ComuniAPI {
         // L'API richiede almeno field0-field7 o field0-field8
         $search = [];
 
-        // Mappatura campi obbligatori
+        // Converti data di nascita in formato DD/MM/YYYY se presente
+        $dataNascita = '';
+        if (!empty($dati['data_nascita'])) {
+            $date = DateTime::createFromFormat('Y-m-d', $dati['data_nascita']);
+            if ($date) {
+                $dataNascita = $date->format('d/m/Y');
+            }
+        }
+
+        // Mappatura campi - tentativo con data in field2
         $search['field0'] = $dati['codice_fiscale'] ?? ''; // Codice fiscale
         $search['field1'] = $dati['nome'] ?? ''; // Nome
-        $search['field2'] = $dati['cognome'] ?? ''; // Cognome
-        $search['field3'] = $dati['data_nascita'] ?? ''; // Data di nascita
+        $search['field2'] = $dataNascita; // Data di nascita (formato DD/MM/YYYY)
+        $search['field3'] = $dati['cognome'] ?? ''; // Cognome
         $search['field4'] = $dati['luogo_nascita'] ?? ''; // Comune di nascita
         $search['field5'] = $dati['comune'] ?? ''; // Comune di residenza
         $search['field6'] = $dati['sesso'] ?? ''; // Sesso
