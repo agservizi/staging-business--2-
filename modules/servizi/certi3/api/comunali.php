@@ -145,23 +145,47 @@ class ComuniAPI {
 
     private function isDocumentoComunale($documento) {
         $categoria = strtolower($documento['category'] ?? '');
+        $nome = strtolower($documento['name'] ?? '');
 
-        // Controlla se la categoria è "Comunali"
-        return $categoria === 'comunali';
+        // Categorie comunali/anagrafiche
+        $categorie_comunali = ['famiglia', 'residenza', 'anagrafico', 'stato_civile', 'nascita', 'morte', 'convivenza'];
+
+        // Controlla se la categoria è comunale
+        if (in_array($categoria, $categorie_comunali)) {
+            return true;
+        }
+
+        // Controlla anche nel nome parole chiave comunali
+        $parole_chiave = ['certificato', 'stato', 'famiglia', 'residenza', 'matrimonio', 'nascita', 'morte', 'anagrafic'];
+        foreach ($parole_chiave as $parola) {
+            if (strpos($nome, $parola) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function categorizzaDocumento($documento) {
         $nome = strtolower($documento['name'] ?? '');
+        $categoria = strtolower($documento['category'] ?? '');
 
-        if (strpos($nome, 'anagrafico') !== false) return 'anagrafico';
+        // Usa la categoria se è già corretta
+        if (in_array($categoria, ['famiglia', 'residenza', 'anagrafico', 'stato_civile', 'nascita', 'morte', 'convivenza'])) {
+            return $categoria;
+        }
+
+        // Categorizzazione basata sul nome
+        if (strpos($nome, 'famiglia') !== false) return 'famiglia';
         if (strpos($nome, 'residenza') !== false) return 'residenza';
-        if (strpos($nome, 'stato civile') !== false || strpos($nome, 'stato_civile') !== false) return 'stato_civile';
+        if (strpos($nome, 'matrimonio') !== false) return 'matrimonio';
         if (strpos($nome, 'nascita') !== false) return 'nascita';
         if (strpos($nome, 'morte') !== false) return 'morte';
-        if (strpos($nome, 'famiglia') !== false) return 'famiglia';
+        if (strpos($nome, 'anagrafic') !== false) return 'anagrafico';
+        if (strpos($nome, 'stato') !== false && strpos($nome, 'civile') !== false) return 'stato_civile';
         if (strpos($nome, 'convivenza') !== false) return 'convivenza';
 
-        return 'altro';
+        return 'anagrafico'; // Default per documenti comunali
     }
 
     private function trovaDocumentoPerTipo($documenti, $tipo) {
