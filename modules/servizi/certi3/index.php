@@ -528,7 +528,8 @@ function caricaTipiDocumento() {
             } else {
                 const errorMsg = data.error ? `Errore API: ${data.error}` : 'Errore caricamento tipi';
                 select.innerHTML = `<option value="">${errorMsg}</option>`;
-                console.error('Errore caricamento tipi:', data.error);
+                console.error('Errore caricamento tipi:', data.error || 'Nessun dettaglio errore disponibile');
+                console.error('Risposta completa:', data);
             }
         } catch (e) {
             console.error('Errore parsing JSON:', e);
@@ -537,8 +538,9 @@ function caricaTipiDocumento() {
     })
     .catch(error => {
         console.error('Errore richiesta tipi documento:', error);
+        console.error('Tipo errore:', error.constructor.name);
         const select = document.getElementById('comunale_tipo');
-        select.innerHTML = '<option value="">Errore caricamento tipi</option>';
+        select.innerHTML = '<option value="">Errore connessione</option>';
     });
 }
 
@@ -575,7 +577,8 @@ function caricaTipiDocumentoCatastali() {
             } else {
                 const errorMsg = data.error ? `Errore API: ${data.error}` : 'Errore caricamento tipi';
                 select.innerHTML = `<option value="">${errorMsg}</option>`;
-                console.error('Errore caricamento tipi catastali:', data.error);
+                console.error('Errore caricamento tipi catastali:', data.error || 'Nessun dettaglio errore disponibile');
+                console.error('Risposta completa catastali:', data);
             }
         } catch (e) {
             console.error('Errore parsing JSON catastali:', e);
@@ -584,8 +587,9 @@ function caricaTipiDocumentoCatastali() {
     })
     .catch(error => {
         console.error('Errore richiesta tipi documento catastali:', error);
+        console.error('Tipo errore:', error.constructor.name);
         const select = document.getElementById('catastale_tipo');
-        select.innerHTML = '<option value="">Errore caricamento tipi</option>';
+        select.innerHTML = '<option value="">Errore connessione</option>';
     });
 }
 
