@@ -4,6 +4,14 @@ $currentPath = basename(parse_url($currentUri, PHP_URL_PATH) ?? '');
 $role = $_SESSION['role'] ?? '';
 $isPatronato = $role === 'Patronato';
 
+$userModules = [];
+if (isset($_SESSION['user_id'])) {
+    require_once __DIR__ . '/db_connect.php';
+    $stmt = $pdo->prepare('SELECT module_name FROM user_module_permissions WHERE user_id = :user_id');
+    $stmt->execute([':user_id' => $_SESSION['user_id']]);
+    $userModules = $stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
 if (!function_exists('nav_active')) {
     function nav_active(string $needle, string $currentPath): string
     {
@@ -116,6 +124,12 @@ if ($role) {
         }
 
         return in_array($role, $item['roles'], true);
+    }));
+}
+
+if (!empty($userModules)) {
+    $serviziItems = array_values(array_filter($serviziItems, static function (array $item) use ($userModules): bool {
+        return in_array($item['needle'], $userModules, true);
     }));
 }
 

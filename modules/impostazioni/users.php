@@ -16,6 +16,20 @@ $roleLabels = [
     'Patronato' => 'Operatore Patronato',
     'Cliente' => 'Cliente',
 ];
+$availableModules = [
+    ['needle' => 'modules/servizi/entrate-uscite', 'label' => 'Entrate/Uscite'],
+    ['needle' => 'modules/servizi/appuntamenti', 'label' => 'Appuntamenti'],
+    ['needle' => 'modules/servizi/caf-patronato', 'label' => 'CAF & Patronato'],
+    ['needle' => 'modules/servizi/fedelta', 'label' => 'Programma Fedeltà'],
+    ['needle' => 'modules/servizi/web', 'label' => 'Servizi Digitali & Web'],
+    ['needle' => 'modules/servizi/curriculum', 'label' => 'Gestione Curriculum'],
+    ['needle' => 'modules/servizi/brt', 'label' => 'Spedizioni BRT'],
+    ['needle' => 'modules/servizi/logistici', 'label' => 'Pickup Pacchi'],
+    ['needle' => 'modules/servizi/telegrammi', 'label' => 'Invio telegrammi'],
+    ['needle' => 'modules/servizi/energia', 'label' => 'Contratti Energia'],
+    ['needle' => 'modules/servizi/anpr', 'label' => 'Servizi ANPR'],
+    ['needle' => 'modules/servizi/cie', 'label' => 'Prenotazione CIE'],
+];
 $createData = ['first_name' => '', 'last_name' => '', 'username' => '', 'email' => '', 'role' => 'Operatore'];
 $createErrors = [];
 
@@ -76,6 +90,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ':nome' => $createData['first_name'],
                         ':cognome' => $createData['last_name'],
                     ]);
+
+                    $userId = $pdo->lastInsertId();
+                    $selectedModules = $_POST['modules'] ?? [];
+                    if (!empty($selectedModules)) {
+                        $insertPerm = $pdo->prepare('INSERT INTO user_module_permissions (user_id, module_name) VALUES (:user_id, :module)');
+                        foreach ($selectedModules as $module) {
+                            $insertPerm->execute([':user_id' => $userId, ':module' => $module]);
+                        }
+                    }
 
                     $logStmt = $pdo->prepare('INSERT INTO log_attivita (user_id, modulo, azione, dettagli, created_at)
                         VALUES (:user_id, :modulo, :azione, :dettagli, NOW())');
@@ -226,6 +249,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 header('Location: users.php');
                 exit;
+            }
+
+            $selectedModules = $_POST['edit_modules'] ?? [];
+            $pdo->prepare('DELETE FROM user_module_permissions WHERE user_id = :user_id')->execute([':user_id' => $userId]);
+            if (!empty($selectedModules)) {
+                $insertPerm = $pdo->prepare('INSERT INTO user_module_permissions (user_id, module_name) VALUES (:user_id, :module)');
+                foreach ($selectedModules as $module) {
+                    $insertPerm->execute([':user_id' => $userId, ':module' => $module]);
+                }
             }
 
             $query = 'UPDATE users SET nome = :nome, cognome = :cognome, username = :username, email = :email, ruolo = :ruolo';
@@ -404,7 +436,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$users = $pdo->query("SELECT id, username, email, ruolo, nome, cognome, last_login_at, created_at FROM users ORDER BY cognome, nome, username")
+$users = $pdo->query("SELECT u.id, u.username, u.email, u.ruolo, u.nome, u.cognome, u.last_login_at, u.created_at, GROUP_CONCAT(ump.module_name) as modules FROM users u LEFT JOIN user_module_permissions ump ON u.id = ump.user_id GROUP BY u.id ORDER BY u.cognome, u.nome, u.username")
     ->fetchAll();
 
 require_once __DIR__ . '/../../includes/header.php';
@@ -467,6 +499,15 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 </select>
                             </div>
                             <div class="mb-3">
+                                <label class="form-label" for="modules">Moduli assegnati</label>
+                                <select class="form-select" id="modules" name="modules[]" multiple>
+                                    <?php foreach ($availableModules as $module): ?>
+                                        <option value="<?php echo $module['needle']; ?>"><?php echo $module['label']; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small class="form-text text-muted">Seleziona i moduli che l'utente può utilizzare. Lascia vuoto per tutti.</small>
+                            </div>
+                            <div class="mb-3">
                                 <label class="form-label" for="password">Password temporanea *</label>
                                 <input class="form-control" id="password" name="password" type="password" required>
                                 <div class="form-text">Minimo 8 caratteri. L'utente potrà cambiarla dopo il primo accesso.</div>
@@ -518,7 +559,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                 data-last-name="<?php echo sanitize_output((string) $user['cognome']); ?>"
                                                 data-username="<?php echo sanitize_output($user['username']); ?>"
                                                 data-email="<?php echo sanitize_output($user['email']); ?>"
-                                                data-role="<?php echo sanitize_output($user['ruolo']); ?>">
+                                                data-role="<?php echo sanitize_output($user['ruolo']); ?>"
+                                                data-modules="<?php echo sanitize_output($user['modules'] ?? ''); ?>">
                                                 <i class="fa-solid fa-pen"></i>
                                             </button>
                                             <form method="post" class="d-inline me-2">
@@ -597,6 +639,15 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="edit_modules">Moduli assegnati</label>
+                        <select class="form-select" id="edit_modules" name="edit_modules[]" multiple>
+                            <?php foreach ($availableModules as $module): ?>
+                                <option value="<?php echo $module['needle']; ?>"><?php echo $module['label']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="form-text text-muted">Seleziona i moduli che l'utente può utilizzare. Lascia vuoto per tutti.</small>
+                    </div>
                     <div class="row g-3">
                         <div class="col-12 col-lg-6">
                             <label class="form-label" for="edit_password">Nuova password</label>
@@ -633,6 +684,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         const username = button.getAttribute('data-username');
         const email = button.getAttribute('data-email');
         const role = button.getAttribute('data-role');
+        const modules = button.getAttribute('data-modules') || '';
         const form = document.getElementById('editUserForm');
         if (!form) {
             return;
@@ -645,6 +697,19 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         form.querySelector('#edit_role').value = role ?? '';
         form.querySelector('#edit_password').value = '';
         form.querySelector('#edit_password_confirm').value = '';
+
+        const moduleSelect = form.querySelector('#edit_modules');
+        if (moduleSelect) {
+            const options = moduleSelect.querySelectorAll('option');
+            options.forEach(option => option.selected = false);
+            if (modules) {
+                const selectedModules = modules.split(',');
+                selectedModules.forEach(module => {
+                    const option = moduleSelect.querySelector(`option[value="${module}"]`);
+                    if (option) option.selected = true;
+                });
+            }
+        }
     });
 
     editUserModal?.addEventListener('hidden.bs.modal', () => {
