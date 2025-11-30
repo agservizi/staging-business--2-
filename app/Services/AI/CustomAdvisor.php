@@ -118,29 +118,73 @@ final class CustomAdvisor
 
     private function classifyQuestion(string $question): string
     {
-        // Usa regex per riconoscimento più intelligente
-        if (preg_match('/\b(clienti?|customer|anagrafica)\b/i', $question)) {
-            return 'clients';
+        $questionLower = strtolower($question);
+
+        // Definisce parole chiave per ciascuna categoria con pesi
+        $categories = [
+            'clients' => [
+                'clienti', 'cliente', 'customer', 'anagrafica', 'contatti', 'aziende', 'persone', 'utenti', 'società', 'imprese', 'contatto', 'profilo'
+            ],
+            'services' => [
+                'servizi', 'servizio', 'service', 'logistica', 'spedizioni', 'trasporti', 'consegne', 'corrieri', 'brt', 'tracking', 'pudo', 'pickup'
+            ],
+            'reports' => [
+                'report', 'statistiche', 'statistica', 'kpi', 'dashboard', 'analisi', 'grafici', 'esportazioni', 'riepilogo', 'riepiloghi', 'performance'
+            ],
+            'tickets' => [
+                'ticket', 'supporto', 'assistenza', 'problemi', 'richieste', 'segnalazioni', 'incidenti', 'reclami', 'aiuto', 'risoluzione'
+            ],
+            'modules' => [
+                'modulo', 'moduli', 'sezione', 'sezioni', 'funzione', 'funzioni', 'menu', 'pannello', 'strumenti', 'strumento'
+            ],
+            'statistics' => [
+                'quanti', 'numero', 'conteggio', 'totale', 'quantità', 'numeri', 'conteggi', 'somma', 'media', 'percentuale'
+            ],
+            'howto' => [
+                'come', 'istruzioni', 'guida', 'procedura', 'passi', 'faccio', 'creare', 'aggiungere', 'modificare', 'eliminare', 'eseguire'
+            ]
+        ];
+
+        $scores = [];
+        foreach ($categories as $category => $keywords) {
+            $scores[$category] = 0;
+            foreach ($keywords as $keyword) {
+                if (strpos($questionLower, $keyword) !== false) {
+                    $scores[$category]++;
+                }
+            }
         }
-        if (preg_match('/\b(servizi?|service|logistica)\b/i', $question)) {
-            return 'services';
+
+        // Trova la categoria con il punteggio più alto
+        arsort($scores);
+        $topCategory = key($scores);
+
+        // Se nessun match o punteggio zero, usa logica regex di fallback
+        if ($scores[$topCategory] === 0) {
+            if (preg_match('/\b(clienti?|customer|anagrafica|contatti)\b/i', $question)) {
+                return 'clients';
+            }
+            if (preg_match('/\b(servizi?|service|logistica|spedizioni)\b/i', $question)) {
+                return 'services';
+            }
+            if (preg_match('/\b(report|statistiche?|kpi|dashboard|analisi)\b/i', $question)) {
+                return 'reports';
+            }
+            if (preg_match('/\b(ticket|supporto?|assistenza|problemi)\b/i', $question)) {
+                return 'tickets';
+            }
+            if (preg_match('/\b(modulo?|sezione|funzione)\b/i', $question)) {
+                return 'modules';
+            }
+            if (preg_match('/\b(quanti?|numero|conteggio|totale)\b/i', $question)) {
+                return 'statistics';
+            }
+            if (preg_match('/\b(come|istruzioni?|guida|procedura)\b/i', $question)) {
+                return 'howto';
+            }
         }
-        if (preg_match('/\b(report|statistiche?|kpi|dashboard)\b/i', $question)) {
-            return 'reports';
-        }
-        if (preg_match('/\b(ticket|supporto?|assistenza)\b/i', $question)) {
-            return 'tickets';
-        }
-        if (preg_match('/\b(modulo?|sezione|funzione)\b/i', $question)) {
-            return 'modules';
-        }
-        if (preg_match('/\b(quanti?|numero|conteggio|totale)\b/i', $question)) {
-            return 'statistics';
-        }
-        if (preg_match('/\b(come|come faccio|istruzioni?|guida)\b/i', $question)) {
-            return 'howto';
-        }
-        return 'unknown';
+
+        return $topCategory ?: 'unknown';
     }
 
     private function generateThinking(string $question, array $period, array $contextLines): string
