@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
 use App\Services\AI\CustomAdvisor;
 use DateTimeImmutable;
 use DateTimeInterface;
