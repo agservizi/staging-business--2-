@@ -258,7 +258,8 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                 <?php if (!$isPatronato): ?>
                     <?php
                     // Mostra Ticket agli operatori che hanno almeno un permesso di servizio
-                    $hasAnyServicePermission = !empty($userModules) && (in_array('all', $userModules) || count(array_intersect($userModules, array_column($serviziItems, 'needle'))) > 0);
+                    $allServiceNeedles = array_column($serviziItems, 'needle');
+                    $hasAnyServicePermission = !empty($userModules) && (in_array('all', $userModules) || count(array_intersect($userModules, $allServiceNeedles)) > 0);
                     if ($role !== 'Operatore' || $hasAnyServicePermission) {
                     ?>
                     <?php $ticketActive = nav_active('modules/ticket', $currentPath); ?>
@@ -272,6 +273,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                     </li>
                     <?php } ?>
 
+                    <?php if ($role !== 'Operatore' || $hasAnyServicePermission): ?>
                     <?php $reportActive = nav_active('modules/report', $currentPath); ?>
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center <?php echo $reportActive; ?>" href="<?php echo base_url('modules/report/index.php'); ?>" aria-label="Report" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Report"<?php echo $reportActive ? ' aria-current="page"' : ''; ?>>
@@ -281,6 +283,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                             <span class="nav-label">Report</span>
                         </a>
                     </li>
+                    <?php endif; ?>
                 <?php endif; ?>
             <?php endif; ?>
 
