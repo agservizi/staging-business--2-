@@ -683,6 +683,53 @@ function current_user_can(string ...$roles): bool
     return in_array($_SESSION['role'], $roles, true);
 }
 
+/**
+ * Ottiene i moduli permessi per l'utente corrente
+ * Se non ha permessi specifici, può accedere a tutti i moduli
+ */
+function get_user_allowed_modules(PDO $pdo): array
+{
+    static $cache = null;
+    if ($cache !== null) {
+        return $cache;
+    }
+
+    $userId = $_SESSION['user_id'] ?? null;
+    if (!$userId) {
+        $cache = [];
+        return $cache;
+    }
+
+    // Se è Admin, può vedere tutto
+    if (current_user_can('Admin')) {
+        $cache = ['all'];
+        return $cache;
+    }
+
+    try {
+        $stmt = $pdo->prepare('SELECT module_name FROM user_module_permissions WHERE user_id = ?');
+        $stmt->execute([$userId]);
+        $permissions = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        // Se non ha permessi specifici, può vedere tutto (compatibilità)
+        $cache = empty($permissions) ? ['all'] : $permissions;
+        return $cache;
+    } catch (Exception $e) {
+        // In caso di errore, permetti tutto
+        $cache = ['all'];
+        return $cache;
+    }
+}
+
+/**
+ * Verifica se l'utente può accedere a un modulo specifico
+ */
+function user_can_access_module(PDO $pdo, string $module): bool
+{
+    $allowed = get_user_allowed_modules($pdo);
+    return in_array('all', $allowed) || in_array($module, $allowed);
+}
+
 function current_user_has_capability(string ...$capabilities): bool
 {
     if (!isset($_SESSION['role'])) {

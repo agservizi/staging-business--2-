@@ -1,5 +1,6 @@
 <?php
 require_once '../../../includes/auth.php';
+require_once '../../../includes/helpers.php';
 require_role('Admin', 'Manager', 'Operatore');
 $pageTitle = 'Certi³ - Gestione Certificati';
 $csrfToken = csrf_token();
@@ -215,61 +216,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
 
         <?php else: ?>
             <!-- Pannello Operatore -->
-            <div class="row g-4">
-                <!-- Certificati Comunali -->
-                <div class="col-12 col-md-6 col-lg-4">
-                    <div class="card ag-card h-100 border-primary">
-                        <div class="card-body text-center d-flex flex-column">
-                            <div class="mb-3">
-                                <i class="fa-solid fa-building fa-3x text-primary"></i>
-                            </div>
-                            <h5 class="card-title">Certificati Comunali</h5>
-                            <p class="card-text text-muted small">Anagrafici, residenza, stato civile e altri documenti comunali</p>
-                            <div class="mt-auto">
-                                <a href="comunali.php" class="btn btn-primary btn-lg w-100">
-                                    <i class="fa-solid fa-plus me-2"></i>Richiedi Certificato
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <?php
+            // Configurazione moduli disponibili
+            $moduliConfig = [
+                'comunali' => [
+                    'nome' => 'Certificati Comunali',
+                    'descrizione' => 'Anagrafici, residenza, stato civile e altri documenti comunali',
+                    'icona' => 'fa-building',
+                    'colore' => 'primary',
+                    'link' => 'comunali.php'
+                ],
+                'catastali' => [
+                    'nome' => 'Certificati Catastali',
+                    'descrizione' => 'Visure catastali, planimetrie e certificati di proprietà',
+                    'icona' => 'fa-map',
+                    'colore' => 'success',
+                    'link' => 'catastali.php'
+                ],
+                'camerali' => [
+                    'nome' => 'Certificati Camerali',
+                    'descrizione' => 'Bilanci, certificati camerali e informazioni societarie',
+                    'icona' => 'fa-industry',
+                    'colore' => 'warning',
+                    'link' => 'camerali.php'
+                ]
+            ];
 
-                <!-- Certificati Catastali -->
-                <div class="col-12 col-md-6 col-lg-4">
-                    <div class="card ag-card h-100 border-success">
-                        <div class="card-body text-center d-flex flex-column">
-                            <div class="mb-3">
-                                <i class="fa-solid fa-map fa-3x text-success"></i>
-                            </div>
-                            <h5 class="card-title">Certificati Catastali</h5>
-                            <p class="card-text text-muted small">Visure catastali, planimetrie e certificati di proprietà</p>
-                            <div class="mt-auto">
-                                <a href="catastali.php" class="btn btn-success btn-lg w-100">
-                                    <i class="fa-solid fa-plus me-2"></i>Richiedi Certificato
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            // Ottieni i moduli permessi per l'utente
+            $moduliPermessi = get_user_allowed_modules($pdo);
+            $hasCerti3Access = in_array('modules/servizi/certi3', $moduliPermessi) || in_array('servizi', $moduliPermessi) || in_array('all', $moduliPermessi);
 
-                <!-- Certificati Camerali -->
-                <div class="col-12 col-md-6 col-lg-4">
-                    <div class="card ag-card h-100 border-warning">
-                        <div class="card-body text-center d-flex flex-column">
-                            <div class="mb-3">
-                                <i class="fa-solid fa-industry fa-3x text-warning"></i>
-                            </div>
-                            <h5 class="card-title">Certificati Camerali</h5>
-                            <p class="card-text text-muted small">Bilanci, certificati camerali e informazioni societarie</p>
-                            <div class="mt-auto">
-                                <a href="camerali.php" class="btn btn-warning btn-lg w-100">
-                                    <i class="fa-solid fa-plus me-2"></i>Richiedi Certificato
-                                </a>
+            if ($hasCerti3Access) {
+                $moduliDaMostrare = $moduliConfig;
+            } else {
+                $moduliDaMostrare = [];
+            }
+            ?>
+
+            <?php if (count($moduliDaMostrare) > 0): ?>
+                <div class="row g-4">
+                    <?php foreach ($moduliDaMostrare as $moduloKey => $modulo): ?>
+                        <div class="col-12 col-md-6 col-lg-4">
+                            <div class="card ag-card h-100 border-<?php echo $modulo['colore']; ?>">
+                                <div class="card-body text-center d-flex flex-column">
+                                    <div class="mb-3">
+                                        <i class="fa-solid <?php echo $modulo['icona']; ?> fa-3x text-<?php echo $modulo['colore']; ?>"></i>
+                                    </div>
+                                    <h5 class="card-title"><?php echo htmlspecialchars($modulo['nome']); ?></h5>
+                                    <p class="card-text text-muted small"><?php echo htmlspecialchars($modulo['descrizione']); ?></p>
+                                    <div class="mt-auto">
+                                        <a href="<?php echo htmlspecialchars($modulo['link']); ?>" class="btn btn-<?php echo $modulo['colore']; ?> btn-lg w-100">
+                                            <i class="fa-solid fa-plus me-2"></i>Richiedi Certificato
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
-            </div>
+            <?php else: ?>
+                <div class="alert alert-info text-center">
+                    <i class="fa-solid fa-info-circle fa-2x mb-3"></i>
+                    <h5>Nessun modulo disponibile</h5>
+                    <p class="mb-0">Non hai permessi per accedere ad alcun modulo di certificazione.</p>
+                </div>
+            <?php endif; ?>
 
             <!-- Richieste personali -->
             <div class="row mt-4">
