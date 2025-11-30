@@ -12,6 +12,16 @@ if (isset($_SESSION['user_id'])) {
     $userModules = $stmt->fetchAll(PDO::FETCH_COLUMN);
 }
 
+// DEBUG TEMPORANEO - Rimuovi dopo il test
+if ($role === 'Operatore') {
+    echo "<!-- DEBUG SIDEBAR OPERATORE:\n";
+    echo "User ID: " . ($_SESSION['user_id'] ?? 'null') . "\n";
+    echo "Role: $role\n";
+    echo "User Modules: " . implode(', ', $userModules) . "\n";
+    echo "isPatronato: " . ($isPatronato ? 'true' : 'false') . "\n";
+    echo "-->\n";
+}
+
 if (!function_exists('nav_active')) {
     function nav_active(string $needle, string $currentPath): string
     {
@@ -148,6 +158,16 @@ if ($isPatronato) {
     $serviziItems = array_values(array_filter($serviziItems, static function (array $item): bool {
         return $item['needle'] === 'modules/servizi/caf-patronato';
     }));
+}
+
+// DEBUG TEMPORANEO - Rimuovi dopo il test
+if ($role === 'Operatore') {
+    echo "<!-- DEBUG DOPO FILTRAGGIO:\n";
+    echo "Servizi rimasti: " . count($serviziItems) . "\n";
+    foreach ($serviziItems as $item) {
+        echo "- " . $item['label'] . "\n";
+    }
+    echo "-->\n";
 }
 
 $sidebarLogoRelative = 'assets/uploads/branding/sidebar-logo.png';
