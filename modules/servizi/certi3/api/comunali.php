@@ -1,7 +1,11 @@
 <?php
 // API per certificati comunali - DocuEngine
-// require_once '../../../../includes/db_connect.php';
-// require_once '../../../../includes/helpers.php';
+require_once __DIR__ . '/../../../../includes/env.php';
+require_once __DIR__ . '/../../../../includes/db_connect.php';
+require_once __DIR__ . '/../../../../includes/helpers.php';
+
+// Carica variabili d'ambiente
+load_env(__DIR__ . '/../../../../.env');
 
 class ComuniAPI {
     private $baseUrl;
