@@ -238,16 +238,6 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                 <?php endif; ?>
 
                 <?php if (!$isPatronato): ?>
-                    <?php $istatActive = nav_active('modules/istat', $currentPath); ?>
-                    <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo $istatActive; ?>" href="<?php echo base_url('modules/istat/index.php'); ?>" aria-label="ISTAT Webservices" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="ISTAT Webservices"<?php echo $istatActive ? ' aria-current="page"' : ''; ?>>
-                            <span class="nav-icon" data-color="blue" aria-hidden="true">
-                                <i class="fa-solid fa-chart-line"></i>
-                            </span>
-                            <span class="nav-label">ISTAT Webservices</span>
-                        </a>
-                    </li>
-
                     <?php $ticketActive = nav_active('modules/ticket', $currentPath); ?>
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center <?php echo $ticketActive; ?>" href="<?php echo base_url('modules/ticket/index.php'); ?>" aria-label="Ticket" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Ticket"<?php echo $ticketActive ? ' aria-current="page"' : ''; ?>>
