@@ -814,6 +814,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const thinkingToggle = root.querySelector('[data-ai-thinking-toggle]');
         const autoRefreshToggle = root.querySelector('[data-ai-auto-refresh-toggle]');
         const clearHistoryBtn = root.querySelector('[data-ai-clear-history]');
+        const endpoint = root.dataset.endpoint || 'api/ai/advisor.php';
+        const defaultPeriod = root.dataset.defaultPeriod || 'last30';
+        const showToast = window?.CS?.showToast ?? (() => {});
+        const pageContext = {
+            title: root.dataset.pageTitle || document.title || '',
+            section: root.dataset.pageSection || '',
+            description: root.dataset.pageDescription || '',
+            path: root.dataset.pagePath || window.location.pathname
+        };
 
         const hintLibrary = {
             default: [
