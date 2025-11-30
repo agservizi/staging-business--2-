@@ -29,6 +29,7 @@ $availableModules = [
     ['needle' => 'modules/servizi/energia', 'label' => 'Contratti Energia'],
     ['needle' => 'modules/servizi/anpr', 'label' => 'Servizi ANPR'],
     ['needle' => 'modules/servizi/cie', 'label' => 'Prenotazione CIE'],
+    ['needle' => 'modules/servizi/certi3', 'label' => 'Certi³'],
 ];
 $createData = ['first_name' => '', 'last_name' => '', 'username' => '', 'email' => '', 'role' => 'Operatore'];
 $createErrors = [];

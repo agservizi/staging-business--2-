@@ -115,6 +115,13 @@ $serviziItems = [
     'href' => base_url('modules/servizi/cie/index.php'),
     'color' => 'violet',
     ],
+    [
+        'needle' => 'modules/servizi/certi3',
+        'label' => 'Certi³',
+        'icon' => 'fa-solid fa-certificate',
+        'href' => base_url('modules/servizi/certi3/index.php'),
+        'color' => 'indigo',
+    ],
 ];
 
 if ($role) {
