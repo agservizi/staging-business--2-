@@ -27,10 +27,12 @@
                         if (!isset($eventsByDay[$day])) {
                             $eventsByDay[$day] = [];
                         }
+                        $isAllDay = !isset($event['start']['dateTime']);
                         $eventsByDay[$day][] = [
                             'type' => 'google',
                             'title' => $event['summary'] ?? 'Senza titolo',
-                            'time' => $startDate->format('H:i'),
+                            'time' => $isAllDay ? '' : $startDate->format('H:i'),
+                            'isAllDay' => $isAllDay,
                             'location' => $event['location'] ?? '',
                             'description' => $event['description'] ?? '',
                         ];
@@ -88,9 +90,12 @@
                                 foreach ($shownEvents as $event) {
                                     $eventClass = $event['type'] === 'google' ? 'google-event' : 'appointment-event';
                                     $eventIcon = $event['type'] === 'google' ? 'fa-calendar' : 'fa-user-clock';
+                                    $isAllDay = $event['isAllDay'] ?? false;
                                     echo '<div class="event-item ' . $eventClass . '" title="' . htmlspecialchars($event['title']) . '">';
                                     echo '<i class="fa-solid ' . $eventIcon . ' me-1"></i>';
-                                    echo '<span class="event-time">' . $event['time'] . '</span>';
+                                    if (!$isAllDay) {
+                                        echo '<span class="event-time">' . $event['time'] . '</span>';
+                                    }
                                     echo '<span class="event-title">' . htmlspecialchars(substr($event['title'], 0, 20)) . '</span>';
                                     echo '</div>';
                                 }
