@@ -34,6 +34,25 @@ class ComuniAPI {
                 throw new Exception("Documento per tipo '{$tipo}' non trovato");
             }
 
+            // DEBUG: Mostra documento selezionato e suoi fields
+            $documentoSelezionato = null;
+            foreach ($documenti as $doc) {
+                if ($doc['id'] == $documentoId) {
+                    $documentoSelezionato = $doc;
+                    break;
+                }
+            }
+            if ($documentoSelezionato) {
+                // Comment out debug
+                // echo "Documento selezionato: " . $documentoSelezionato['name'] . " (ID: $documentoId)\n";
+                // if (isset($documentoSelezionato['requestStructure']['fields'])) {
+                //     echo "Fields richiesti:\n";
+                //     foreach ($documentoSelezionato['requestStructure']['fields'] as $field) {
+                //         echo "  " . ($field['key'] ?? 'N/A') . ": " . ($field['type'] ?? 'N/A') . " - " . ($field['description'] ?? 'N/A') . "\n";
+                //     }
+                // }
+            }
+
             // Prepara i dati per la richiesta
             $requestData = [
                 'documentId' => $documentoId,
@@ -210,9 +229,11 @@ class ComuniAPI {
     private function trovaDocumentoPerTipo($documenti, $tipo) {
         $candidati = [];
         foreach ($documenti as $doc) {
-            $categoria = $this->categorizzaDocumento($doc);
-            if ($categoria === $tipo) {
-                $candidati[] = $doc;
+            if ($this->isDocumentoComunale($doc)) {
+                $categoria = $this->categorizzaDocumento($doc);
+                if ($categoria === $tipo) {
+                    $candidati[] = $doc;
+                }
             }
         }
         
@@ -262,11 +283,17 @@ class ComuniAPI {
         // Mappatura campi determinata sperimentalmente per "Certificato Di Residenza Anagrafica Con Marca Da Bollo"
         // field0: taxCode (codice fiscale), field1: name (nome), field2: birthDate (data nascita),
         // field3: surname (cognome), field4: birthTown (comune nascita), field5: residenceTown (comune residenza), field6: notes
+        // Per documenti che richiedono field4 come taxCode, usa codice_fiscale
         $search['field0'] = $dati['codice_fiscale'] ?? ''; // Codice fiscale
         $search['field1'] = $dati['nome'] ?? ''; // Nome
         $search['field2'] = $dataNascita; // Data di nascita
         $search['field3'] = $dati['cognome'] ?? ''; // Cognome
-        $search['field4'] = $dati['luogo_nascita'] ?? ''; // Comune di nascita
+        // Controlla se field4 deve essere taxCode - per residenza, field4 è taxCode
+        if (($dati['tipo'] ?? '') === 'residenza') {
+            $search['field4'] = $dati['codice_fiscale'] ?? ''; // Codice fiscale per residenza
+        } else {
+            $search['field4'] = $dati['luogo_nascita'] ?? ''; // Comune di nascita
+        }
         $search['field5'] = $dati['comune'] ?? ''; // Comune di residenza
         if (!empty($dati['note'] ?? $dati['indirizzo'] ?? '')) {
             $search['field6'] = $dati['note'] ?? $dati['indirizzo'] ?? ''; // Note
@@ -381,4 +408,66 @@ if (isset($_SERVER['REQUEST_METHOD'])) {
         exit;
     }
 }
+
+// Gestione richieste esterne
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action'])) {
+    $api = new ComuniAPI();
+    
+    switch ($_GET['action']) {
+        case 'get_tipi':
+            $result = $api->getTipiDocumentoDisponibili();
+            header('Content-Type: application/json');
+            echo json_encode($result);
+            break;
+            
+        default:
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Azione non valida']);
+            break;
+    }
+    exit;
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Gestione richiesta POST per creazione certificato
+    $api = new ComuniAPI();
+    
+    $tipo = $_POST['tipo'] ?? '';
+    $dati = [
+        'codice_fiscale' => $_POST['codice_fiscale'] ?? '',
+        'nome' => $_POST['nome'] ?? '',
+        'cognome' => $_POST['cognome'] ?? '',
+        'data_nascita' => $_POST['data_nascita'] ?? '',
+        'luogo_nascita' => $_POST['luogo_nascita'] ?? '',
+        'comune' => $_POST['comune'] ?? '',
+        'indirizzo' => $_POST['indirizzo'] ?? '',
+        'note' => $_POST['note'] ?? ''
+    ];
+    
+    $files = [];
+    if (isset($_FILES['exemption_document'])) {
+        $files['exemption_document'] = $_FILES['exemption_document'];
+    }
+    
+    $result = $api->richiediCertificato($tipo, $dati, $files);
+    
+    // Salva richiesta nel database
+    if ($result['success']) {
+        try {
+            $stmt = $pdo->prepare('INSERT INTO certificati_richieste (user_id, tipo_certificato, dati_richiesta, stato, created_at) VALUES (?, ?, ?, ?, NOW())');
+            $stmt->execute([
+                $_SESSION['user_id'],
+                $tipo,
+                json_encode($dati),
+                'inviata'
+            ]);
+        } catch (Exception $e) {
+            // Log dell'errore ma non bloccare la risposta
+            error_log('Errore salvataggio richiesta: ' . $e->getMessage());
+        }
+    }
+    
+    header('Content-Type: application/json');
+    echo json_encode($result);
+    exit;
+}
+
 ?>
