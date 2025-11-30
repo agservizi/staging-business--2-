@@ -205,9 +205,50 @@ try {
             // TODO: Invia notifica all'operatore
             // send_notification($richiesta['user_id'], 'Richiesta rifiutata', "La tua richiesta di certificato #$richiesta_id è stata rifiutata. Motivo: $motivo");
 
+        case 'delete_requests':
+            // Elimina richieste selezionate
+            if (!isset($_POST['ids'])) {
+                throw new Exception('Nessuna richiesta selezionata');
+            }
+
+            $ids = json_decode($_POST['ids'], true);
+            if (!is_array($ids) || empty($ids)) {
+                throw new Exception('ID richieste non validi');
+            }
+
+            // Verifica CSRF
+            if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
+                throw new Exception('Token CSRF non valido');
+            }
+
+            // Elimina le richieste
+            $placeholders = str_repeat('?,', count($ids) - 1) . '?';
+            $stmt = $pdo->prepare("DELETE FROM certificati_richieste WHERE id IN ($placeholders)");
+            $stmt->execute($ids);
+
+            $deletedCount = $stmt->rowCount();
+
             echo json_encode([
                 'success' => true,
-                'message' => 'Richiesta rifiutata'
+                'message' => "$deletedCount richiesta(e) eliminata(e) con successo"
+            ]);
+            break;
+
+        case 'clear_all':
+            // Elimina tutte le richieste (per pulizia test)
+            if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
+                throw new Exception('Token CSRF non valido');
+            }
+
+            // Elimina tutte le richieste
+            $stmt = $pdo->prepare("DELETE FROM certificati_richieste");
+            $stmt->execute();
+
+            $deletedCount = $stmt->rowCount();
+
+            echo json_encode([
+                'success' => true,
+                'message' => "Eliminate $deletedCount richieste totali"
             ]);
             break;
 
@@ -222,4 +263,3 @@ try {
         'error' => $e->getMessage()
     ]);
 }
-?>

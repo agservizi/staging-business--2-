@@ -110,17 +110,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
 
             <!-- Gestione Richieste -->
             <div class="card ag-card">
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="fa-solid fa-list-check me-2"></i>Gestione Richieste Operatori
                     </h5>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-danger" onclick="eliminaSelezionate()">
+                            <i class="fa-solid fa-trash me-1"></i>Elimina Selezionate
+                        </button>
+                        <button type="button" class="btn btn-outline-warning" onclick="pulisciTest()">
+                            <i class="fa-solid fa-broom me-1"></i>Pulisci Test
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <?php if (count($richieste) > 0): ?>
                         <div class="table-responsive">
-                            <table class="table table-dark table-hover">
+                            <table class="table table-dark table-hover" id="richiesteTable">
                                 <thead>
                                     <tr>
+                                        <th>
+                                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                        </th>
                                         <th>ID</th>
                                         <th>Operatore</th>
                                         <th>Categoria</th>
@@ -133,6 +144,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                                 <tbody>
                                     <?php foreach ($richieste as $richiesta): ?>
                                         <tr>
+                                            <td>
+                                                <input type="checkbox" class="richiesta-checkbox" value="<?php echo $richiesta['id']; ?>">
+                                            </td>
                                             <td>#<?php echo htmlspecialchars($richiesta['id']); ?></td>
                                             <td><?php echo htmlspecialchars($richiesta['nome'] . ' ' . $richiesta['cognome']); ?></td>
                                             <td>
@@ -545,6 +559,84 @@ function formattaDocumenti(documentiJson) {
     } catch (e) {
         return '<p class="text-muted">Errore nel caricamento dei documenti</p>';
     }
+}
+
+// Funzioni per gestione selezione ed eliminazione
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.richiesta-checkbox');
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+}
+
+function getSelectedIds() {
+    const checkboxes = document.querySelectorAll('.richiesta-checkbox:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function eliminaSelezionate() {
+    const selectedIds = getSelectedIds();
+    if (selectedIds.length === 0) {
+        alert('Seleziona almeno una richiesta da eliminare.');
+        return;
+    }
+
+    if (!confirm(`Sei sicuro di voler eliminare ${selectedIds.length} richiesta(e)? Questa azione non può essere annullata.`)) {
+        return;
+    }
+
+    eliminaRichieste(selectedIds);
+}
+
+function pulisciTest() {
+    if (!confirm('Sei sicuro di voler eliminare TUTTE le richieste? Questa azione eliminerà tutti i dati e non può essere annullata.')) {
+        return;
+    }
+
+    fetch('api/admin_actions.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'action=clear_all&csrf_token=<?php echo $csrfToken; ?>'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Tutte le richieste sono state eliminate.');
+            location.reload();
+        } else {
+            alert('Errore nell\'eliminazione: ' + (data.error || 'Errore sconosciuto'));
+        }
+    })
+    .catch(error => {
+        console.error('Errore:', error);
+        alert('Errore di connessione');
+    });
+}
+
+function eliminaRichieste(ids) {
+    const formData = new FormData();
+    formData.append('action', 'delete_requests');
+    formData.append('ids', JSON.stringify(ids));
+    formData.append('csrf_token', '<?php echo $csrfToken; ?>');
+
+    fetch('api/admin_actions.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`${ids.length} richiesta(e) eliminata(e) con successo.`);
+            location.reload();
+        } else {
+            alert('Errore nell\'eliminazione: ' + (data.error || 'Errore sconosciuto'));
+        }
+    })
+    .catch(error => {
+        console.error('Errore:', error);
+        alert('Errore di connessione');
+    });
 }
 
 // Prevenzione errori Bootstrap per modali non esistenti
