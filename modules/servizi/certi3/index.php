@@ -31,9 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria'])) {
                 <p class="text-muted mb-0">Gestione certificati comunali, catastali e camerali</p>
             </div>
             <div class="toolbar-actions">
-                <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#nuovaRichiestaModal">
-                    <i class="fa-solid fa-plus me-2"></i>Nuova Richiesta
-                </button>
+                <!-- Pulsante rimosso - ora si usano i pulsanti specifici per categoria -->
             </div>
         </div>
         <div class="row g-4">
@@ -166,4 +164,18 @@ function mostraDettagli(richiestaId) {
     // Per ora mostriamo un alert semplice, in futuro possiamo implementare un modal
     alert('Funzionalità dettagli richiesta in sviluppo. ID richiesta: ' + richiestaId);
 }
+
+// Prevenzione errori Bootstrap per modali non esistenti
+document.addEventListener('DOMContentLoaded', function() {
+    // Rimuovi eventuali event listeners che potrebbero causare errori
+    const modalTriggers = document.querySelectorAll('[data-bs-toggle="modal"]');
+    modalTriggers.forEach(trigger => {
+        const target = trigger.getAttribute('data-bs-target');
+        if (target && !document.querySelector(target)) {
+            // Rimuovi l'attributo problematico se il modal non esiste
+            trigger.removeAttribute('data-bs-toggle');
+            trigger.removeAttribute('data-bs-target');
+        }
+    });
+});
 </script>
