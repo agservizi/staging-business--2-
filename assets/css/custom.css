@@ -2782,6 +2782,10 @@ a.link-warning:hover {
     display: none;
 }
 
+.ai-assistant-sidebar:not([hidden]) {
+    transform: translateX(0);
+}
+
 .ai-assistant-sidebar-header {
     padding: 1.5rem;
     border-bottom: 1px solid #e9ecef;
