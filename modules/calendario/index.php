@@ -73,32 +73,28 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <h1 class="h3 mb-0">Calendario</h1>
                 <p class="text-muted mb-0">Visualizza appuntamenti e eventi dal calendario Google.</p>
             </div>
-            <div class="toolbar-actions">
-                <div class="btn-group" role="group" aria-label="Vista calendario">
-                    <input type="radio" class="btn-check" name="view" id="view-month" autocomplete="off" checked>
-                    <label class="btn btn-outline-secondary btn-sm" for="view-month">Mese</label>
-                    <input type="radio" class="btn-check" name="view" id="view-week" autocomplete="off">
-                    <label class="btn btn-outline-secondary btn-sm" for="view-week">Settimana</label>
-                    <input type="radio" class="btn-check" name="view" id="view-day" autocomplete="off">
-                    <label class="btn btn-outline-secondary btn-sm" for="view-day">Giorno</label>
-                </div>
-            </div>
         </div>
 
         <div class="card ag-card">
             <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center">
-                    <button class="btn btn-link p-0 me-3" onclick="changeMonth(-1)">
-                        <i class="fa-solid fa-chevron-left fa-lg"></i>
-                    </button>
-                    <h2 class="h4 mb-0"><?php echo $monthNames[$month] . ' ' . $year; ?></h2>
-                    <button class="btn btn-link p-0 ms-3" onclick="changeMonth(1)">
-                        <i class="fa-solid fa-chevron-right fa-lg"></i>
-                    </button>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="changeMonth(-1)" title="Mese precedente">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm px-3" onclick="goToToday()" title="Vai a oggi">
+                            Oggi
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="changeMonth(1)" title="Mese successivo">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    <h2 class="h4 mb-0 fw-bold"><?php echo $monthNames[$month] . ' ' . $year; ?></h2>
                 </div>
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-primary me-2">Google Calendar</span>
-                    <span class="badge bg-success">Appuntamenti</span>
+                <div class="d-flex align-items-center gap-2">
+                    <small class="text-muted">Legenda:</small>
+                    <span class="badge bg-primary"><i class="fa-solid fa-calendar me-1"></i>Google Calendar</span>
+                    <span class="badge bg-success"><i class="fa-solid fa-user-clock me-1"></i>Appuntamenti</span>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -379,6 +375,14 @@ function changeMonth(delta) {
     window.location.href = url.toString();
 }
 
+function goToToday() {
+    const today = new Date();
+    const url = new URL(window.location);
+    url.searchParams.set('year', today.getFullYear());
+    url.searchParams.set('month', today.getMonth() + 1);
+    window.location.href = url.toString();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Gestione click sui giorni per mostrare eventi
     document.querySelectorAll('.calendar-day').forEach(day => {
@@ -388,16 +392,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Qui potresti aprire un modale con tutti gli eventi del giorno
                 // Per ora, solo un placeholder
                 console.log('Eventi del giorno:', dayNumber);
-            }
-        });
-    });
-
-    // Gestione cambio vista (placeholder)
-    document.querySelectorAll('input[name="view"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            if (this.checked) {
-                // Implementare cambio vista
-                console.log('Cambio vista:', this.id);
             }
         });
     });
