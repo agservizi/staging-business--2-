@@ -9,10 +9,10 @@ class ComuniAPI {
     private $token;
 
     public function __construct() {
-        // Per test: valori hardcoded
-        $this->baseUrl = 'https://test.docuengine.openapi.com';
-        $this->apiKey = '6d20b7bf0a8fbc729f7ba6af4ee547e3';
-        $this->token = '692c6681d5c93c9634004668';
+        // Carica configurazione da variabili d'ambiente
+        $this->baseUrl = env('DOCUENGINE_BASE_URL', 'https://test.docuengine.openapi.com');
+        $this->apiKey = env('DOCUENGINE_API_KEY', '6d20b7bf0a8fbc729f7ba6af4ee547e3');
+        $this->token = env('DOCUENGINE_TOKEN', '692c6681d5c93c9634004668');
     }
 
     /**
@@ -342,7 +342,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['categoria']) && $_POST['categoria'] === 'comunali') {
-    require_once __DIR__ . '/../../../../../includes/auth.php';
+    require_once __DIR__ . '/../../../../includes/auth.php';
 
     $api = new ComuniAPI();
     $result = $api->richiediCertificato($_POST['tipo'] ?? 'anagrafico', $_POST);
@@ -365,7 +365,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 
 } elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'download' && isset($_GET['request_id'])) {
-    require_once __DIR__ . '/../../../../../includes/auth.php';
+    require_once __DIR__ . '/../../../../includes/auth.php';
 
     $api = new ComuniAPI();
     $result = $api->scaricaDocumento($_GET['request_id'], $_GET['document_index'] ?? 0);
