@@ -1393,7 +1393,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
         dropzone.addEventListener('click', function (event) {
             if (browseButton && browseButton.contains(event.target)) {
-                event.preventDefault();
+                return;
             }
             fileInput.click();
         });
