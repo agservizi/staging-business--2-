@@ -467,6 +467,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         border-color: var(--bs-warning, #ffc107);
         background-color: rgba(255, 193, 7, 0.08);
     }
+    .attachment-dropzone.is-uploading {
+        border-color: var(--bs-warning, #ffc107);
+        background-color: rgba(255, 193, 7, 0.12);
+        box-shadow: inset 0 0 0 1px rgba(255, 193, 7, 0.3);
+    }
+    .attachment-dropzone-status {
+        min-height: 1.25rem;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
     .attachment-file-list {
         list-style: none;
         padding: 0;
@@ -627,6 +637,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <p class="mb-1">Trascina qui uno o più file oppure</p>
                             <button class="btn btn-sm btn-outline-warning" type="button" data-action="browse">Seleziona file</button>
                             <p class="text-muted small mb-0" data-role="placeholder">Nessun file selezionato.</p>
+                            <div class="attachment-dropzone-status text-muted" data-role="status" aria-live="polite"></div>
                             <ul class="attachment-file-list" data-role="file-list"></ul>
                         </div>
                         <input class="form-control mt-2" id="allegati" name="allegati[]" type="file" multiple accept=".pdf,.jpg,.jpeg,.png">
@@ -1239,6 +1250,39 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         const browseButton = dropzone.querySelector('[data-action="browse"]');
         const fileList = dropzone.querySelector('[data-role="file-list"]');
         const placeholder = dropzone.querySelector('[data-role="placeholder"]');
+        const statusIndicator = dropzone.querySelector('[data-role="status"]');
+        let statusTimer = null;
+
+        const setStatus = function (state) {
+            if (!statusIndicator) {
+                return;
+            }
+            if (statusTimer) {
+                clearTimeout(statusTimer);
+                statusTimer = null;
+            }
+            if (state === 'loading') {
+                dropzone.classList.add('is-uploading');
+                statusIndicator.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin me-1"></i>Caricamento…';
+                statusIndicator.classList.remove('text-success');
+                statusIndicator.classList.add('text-muted');
+            } else if (state === 'success') {
+                dropzone.classList.remove('is-uploading');
+                statusIndicator.innerHTML = '<i class="fa-solid fa-check me-1 text-success"></i>File pronti all\'invio';
+                statusIndicator.classList.remove('text-muted');
+                statusIndicator.classList.add('text-success');
+                statusTimer = window.setTimeout(function () {
+                    statusIndicator.textContent = '';
+                    statusIndicator.classList.remove('text-success');
+                    statusIndicator.classList.add('text-muted');
+                }, 2500);
+            } else {
+                dropzone.classList.remove('is-uploading');
+                statusIndicator.textContent = '';
+                statusIndicator.classList.remove('text-success');
+                statusIndicator.classList.add('text-muted');
+            }
+        };
 
         const formatBytes = function (bytes) {
             if (!Number.isFinite(bytes)) {
@@ -1273,8 +1317,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 placeholder.classList.toggle('d-none', currentFiles.length > 0);
             }
             if (!currentFiles.length) {
+                setStatus(null);
                 return;
             }
+            setStatus('success');
             currentFiles.forEach(function (file, index) {
                 const item = document.createElement('li');
                 item.className = 'attachment-file-pill';
@@ -1340,6 +1386,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         dropzone.addEventListener('drop', function (event) {
             preventDefaults(event);
             dropzone.classList.remove('is-dragover');
+             setStatus('loading');
             const files = event.dataTransfer ? event.dataTransfer.files : null;
             handleAddedFiles(files);
         });
@@ -1359,11 +1406,15 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         }
 
         fileInput.addEventListener('change', function () {
+            if (fileInput.files && fileInput.files.length) {
+                setStatus('loading');
+            }
             currentFiles = Array.from(fileInput.files || []);
             renderFileList();
         });
 
         renderFileList();
+        setStatus(null);
         fileInput.classList.add('visually-hidden');
         fileInput.classList.remove('form-control');
         fileInput.classList.remove('mt-2');
