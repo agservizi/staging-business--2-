@@ -14,6 +14,7 @@ $tipiMovimento = ['Entrata', 'Uscita'];
 $projectRoot = realpath(__DIR__ . '/../../../') ?: __DIR__ . '/../../../';
 $settingsService = new SettingsService($pdo, $projectRoot);
 $storedDescriptions = $settingsService->getMovementDescriptions();
+$servicePricing = $settingsService->getServicePricing();
 $clientsStmt = $pdo->query('SELECT id, nome, cognome, ragione_sociale FROM clienti ORDER BY ragione_sociale, cognome, nome');
 $clients = $clientsStmt ? $clientsStmt->fetchAll() : [];
 $fallbackDescriptions = [
@@ -46,6 +47,7 @@ $data = [
 	'data_scadenza' => '',
 	'data_pagamento' => date('d/m/Y'),
 	'note' => '',
+	'service_pricing_id' => '',
 ];
 
 $clienteId = null;
@@ -353,6 +355,18 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 										<label class="form-label" for="riferimento">Riferimento</label>
 										<input class="form-control" id="riferimento" name="riferimento" value="<?php echo sanitize_output($data['riferimento']); ?>" maxlength="80" placeholder="Es. FATT-2025-001">
 									</div>
+									<div class="col-12">
+										<label class="form-label" for="service_pricing_id">Servizio/Prodotto dal listino (opzionale)</label>
+										<select class="form-select" id="service_pricing_id" name="service_pricing_id">
+											<option value="">Seleziona dal listino</option>
+											<?php foreach ($servicePricing as $index => $item): ?>
+												<option value="<?php echo $index; ?>" data-name="<?php echo sanitize_output($item['name']); ?>" data-cost-reseller="<?php echo $item['cost_reseller']; ?>" data-cost-customer="<?php echo $item['cost_customer']; ?>" <?php echo (string) $index === $data['service_pricing_id'] ? 'selected' : ''; ?>>
+													<?php echo sanitize_output($item['name']); ?> (Rivenditore: €<?php echo number_format($item['cost_reseller'], 2); ?>, Cliente: €<?php echo number_format($item['cost_customer'], 2); ?>)
+												</option>
+											<?php endforeach; ?>
+										</select>
+										<small class="text-muted">Selezionando, popola automaticamente descrizione e prezzo. Configura i listini in Impostazioni &gt; Listini.</small>
+									</div>
 									<div class="col-sm-6">
 										<label class="form-label" for="metodo">Metodo</label>
 										<select class="form-select" id="metodo" name="metodo">
@@ -545,6 +559,40 @@ document.addEventListener('DOMContentLoaded', function () {
 	descrCustom.addEventListener('input', () => {
 		lastCustomValue = descrCustom.value;
 	});
+
+	// Service Pricing Integration
+	const servicePricingSelect = document.getElementById('service_pricing_id');
+	if (servicePricingSelect) {
+		servicePricingSelect.addEventListener('change', () => {
+			const selectedOption = servicePricingSelect.selectedOptions[0];
+			if (!selectedOption || !selectedOption.value) {
+				return;
+			}
+
+			const name = selectedOption.getAttribute('data-name');
+			const costReseller = parseFloat(selectedOption.getAttribute('data-cost-reseller')) || 0;
+			const costCustomer = parseFloat(selectedOption.getAttribute('data-cost-customer')) || 0;
+
+			// Set description
+			if (name && descrSelect) {
+				// Set to custom and populate
+				descrSelect.value = '__custom__';
+				descrCustom.value = name;
+				lastCustomValue = name;
+				applyCustomVisibility();
+			}
+
+			// Set unit price based on movement type
+			if (unitPriceInput) {
+				const isEntrata = tipoSelect && tipoSelect.value === 'Entrata';
+				const price = isEntrata ? costCustomer : costReseller;
+				if (price > 0) {
+					unitPriceInput.value = price.toFixed(2);
+					recalcTotal();
+				}
+			}
+		});
+	}
 
 	recalcTotal();
 	populateOptions(tipoSelect.value);
