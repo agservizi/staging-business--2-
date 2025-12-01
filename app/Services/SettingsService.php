@@ -18,6 +18,7 @@ class SettingsService
     private const CAF_PATRONATO_SERVICES_KEY = 'caf_patronato_servizi';
     private const UI_THEME_KEY = 'ui_theme';
     private const EMAIL_MARKETING_SETTINGS_KEY = 'email_marketing_settings';
+    private const SERVICE_PRICING_KEY = 'service_pricing';
     public const PORTAL_BRT_PRICING_KEY = 'portal_brt_pricing';
     public const CAF_PATRONATO_STATUS_CATEGORIES = [
         'pending' => 'Da lavorare / In attesa',
@@ -2746,5 +2747,110 @@ class SettingsService
         }
 
         return str_repeat('*', $length - 4) . substr($secret, -4);
+    }
+
+    /**
+     * @return array<int, array{name: string, cost_reseller: float, cost_customer: float}>
+     */
+    public function getServicePricing(): array
+    {
+        try {
+            $stmt = $this->pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :chiave LIMIT 1');
+            $stmt->execute([':chiave' => self::SERVICE_PRICING_KEY]);
+            $value = $stmt->fetchColumn();
+
+            if ($value === false || $value === null || $value === '') {
+                return [];
+            }
+
+            $decoded = json_decode((string) $value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $pricing = [];
+                foreach ($decoded as $item) {
+                    if (is_array($item) && isset($item['name']) && isset($item['cost_reseller']) && isset($item['cost_customer'])) {
+                        $pricing[] = [
+                            'name' => trim((string) $item['name']),
+                            'cost_reseller' => (float) $item['cost_reseller'],
+                            'cost_customer' => (float) $item['cost_customer'],
+                        ];
+                    }
+                }
+                return $pricing;
+            }
+        } catch (Throwable $exception) {
+            error_log('SettingsService::getServicePricing - ' . $exception->getMessage());
+        }
+
+        return [];
+    }
+
+    /**
+     * @param array<int, array{name: string, cost_reseller: float, cost_customer: float}> $pricing
+     * @param int $userId
+     * @return array{success: bool, errors: array<int, string>, pricing?: array<int, array{name: string, cost_reseller: float, cost_customer: float}>}
+     */
+    public function saveServicePricing(array $pricing, int $userId): array
+    {
+        $errors = [];
+
+        // Validate input
+        $validatedPricing = [];
+        foreach ($pricing as $index => $item) {
+            if (!is_array($item)) {
+                $errors[] = "Elemento " . ($index + 1) . " non valido.";
+                continue;
+            }
+
+            $name = trim((string) ($item['name'] ?? ''));
+            $costReseller = (float) ($item['cost_reseller'] ?? 0);
+            $costCustomer = (float) ($item['cost_customer'] ?? 0);
+
+            if ($name === '') {
+                $errors[] = "Nome servizio/prodotto " . ($index + 1) . " non può essere vuoto.";
+                continue;
+            }
+
+            if ($costReseller < 0) {
+                $errors[] = "Costo al rivenditore per '" . $name . "' non può essere negativo.";
+                continue;
+            }
+
+            if ($costCustomer < 0) {
+                $errors[] = "Costo al cliente per '" . $name . "' non può essere negativo.";
+                continue;
+            }
+
+            $validatedPricing[] = [
+                'name' => $name,
+                'cost_reseller' => $costReseller,
+                'cost_customer' => $costCustomer,
+            ];
+        }
+
+        if ($errors) {
+            return ['success' => false, 'errors' => $errors];
+        }
+
+        try {
+            $this->pdo->beginTransaction();
+
+            // Save to database
+            $stmt = $this->pdo->prepare('INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore) ON DUPLICATE KEY UPDATE valore = :valore');
+            $stmt->execute([
+                ':chiave' => self::SERVICE_PRICING_KEY,
+                ':valore' => json_encode($validatedPricing),
+            ]);
+
+            // Log activity
+            $this->logActivity($userId, 'Aggiornamento listini servizi e prodotti', ['count' => count($validatedPricing)]);
+
+            $this->pdo->commit();
+
+            return ['success' => true, 'pricing' => $validatedPricing];
+        } catch (Throwable $exception) {
+            $this->pdo->rollBack();
+            error_log('SettingsService::saveServicePricing - ' . $exception->getMessage());
+            return ['success' => false, 'errors' => ['Errore interno del server.']];
+        }
     }
 }

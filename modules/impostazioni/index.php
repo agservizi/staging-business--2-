@@ -190,6 +190,8 @@ $cafPatronatoServicesForm = settings_build_service_form($cafPatronatoTypes, $caf
 $cafPatronatoServiceSuggestions = $settingsService->suggestCafPatronatoServices();
 $cafPatronatoServiceSuggestions = settings_filter_service_suggestions($cafPatronatoServices, $cafPatronatoServiceSuggestions);
 
+$servicePricing = $settingsService->getServicePricing();
+
 $backupPerPage = 10;
 $backupPage = max(1, (int) ($_GET['page_backup'] ?? 1));
 $logPerPage = 20;
@@ -774,6 +776,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $alerts[] = ['type' => 'danger', 'text' => $error];
         }
     }
+
+    if ($action === 'service_pricing') {
+        $pricingPayload = $_POST['pricing'] ?? [];
+        $pricingList = [];
+        if (is_array($pricingPayload)) {
+            foreach ($pricingPayload as $item) {
+                if (is_array($item) && !empty(trim($item['name'] ?? ''))) {
+                    $pricingList[] = [
+                        'name' => trim($item['name']),
+                        'cost_reseller' => (float) ($item['cost_reseller'] ?? 0),
+                        'cost_customer' => (float) ($item['cost_customer'] ?? 0),
+                    ];
+                }
+            }
+        }
+
+        $result = $settingsService->saveServicePricing($pricingList, $currentUserId);
+        if ($result['success']) {
+            $servicePricing = $result['pricing'];
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Listini servizi e prodotti aggiornati con successo.',
+                    'data' => ['pricing' => $servicePricing],
+                ]);
+                exit;
+            }
+            add_flash('success', 'Listini servizi e prodotti aggiornati con successo.');
+            header('Location: index.php#service-pricing');
+            exit;
+        }
+
+        foreach ($result['errors'] as $error) {
+            $alerts[] = ['type' => 'danger', 'text' => $error];
+        }
+
+        if (isset($result['pricing']) && is_array($result['pricing'])) {
+            $servicePricing = $result['pricing'];
+        }
+        if ($isAjax) {
+            http_response_code(422);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'errors' => $result['errors'],
+                'data' => ['pricing' => $servicePricing],
+            ]);
+            exit;
+        }
+    }
 }
 
 $lastTypeRow = $cafPatronatoTypesForm ? end($cafPatronatoTypesForm) : null;
@@ -879,6 +932,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="email-marketing" type="button">Email marketing</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-section-target="pricing" type="button">Listini</button>
             </li>
             <li class="nav-item ms-auto" role="presentation">
                 <button class="nav-link" data-section-target="logs" type="button">Log attività</button>
@@ -1742,6 +1798,90 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </div>
                 </div>
             </div>
+            <div class="col-12" data-section="pricing">
+                <div class="card ag-card h-100" id="service-pricing">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Listini servizi e prodotti</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">Configura i costi al rivenditore e al cliente per servizi e prodotti. Il guadagno viene calcolato automaticamente.</p>
+                        <form method="post">
+                            <input type="hidden" name="action" value="service_pricing">
+                            <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-sm align-middle mb-3" id="servicePricingTable">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 60px;">#</th>
+                                            <th>Nome servizio/prodotto</th>
+                                            <th style="width: 180px;">Costo al rivenditore (€)</th>
+                                            <th style="width: 180px;">Costo al cliente (€)</th>
+                                            <th style="width: 150px;">Guadagno (€)</th>
+                                            <th style="width: 70px;" class="text-end">Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="servicePricingRows">
+                                        <?php
+                                        $servicePricing = $servicePricing ?? [];
+                                        foreach ($servicePricing as $index => $item): ?>
+                                            <tr data-index="<?php echo (int) $index; ?>">
+                                                <td class="text-muted small">#<?php echo (int) ($index + 1); ?></td>
+                                                <td>
+                                                    <input class="form-control form-control-sm" name="pricing[<?php echo (int) $index; ?>][name]" maxlength="100" value="<?php echo sanitize_output($item['name'] ?? ''); ?>" placeholder="Es. Consulenza fiscale">
+                                                </td>
+                                                <td>
+                                                    <input class="form-control form-control-sm text-end" name="pricing[<?php echo (int) $index; ?>][cost_reseller]" type="number" min="0" step="0.01" value="<?php echo sanitize_output($item['cost_reseller'] ?? ''); ?>" placeholder="0.00">
+                                                </td>
+                                                <td>
+                                                    <input class="form-control form-control-sm text-end" name="pricing[<?php echo (int) $index; ?>][cost_customer]" type="number" min="0" step="0.01" value="<?php echo sanitize_output($item['cost_customer'] ?? ''); ?>" placeholder="0.00">
+                                                </td>
+                                                <td>
+                                                    <input class="form-control form-control-sm text-end" name="pricing[<?php echo (int) $index; ?>][profit]" readonly value="<?php echo sanitize_output(number_format(($item['cost_customer'] ?? 0) - ($item['cost_reseller'] ?? 0), 2)); ?>">
+                                                </td>
+                                                <td class="text-end">
+                                                    <button class="btn btn-icon btn-soft-danger btn-sm remove-pricing-row" type="button" title="Rimuovi riga">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+                                <button class="btn btn-soft-accent btn-sm" type="button" id="addPricingRow">
+                                    <i class="fa-solid fa-plus me-2"></i>Aggiungi riga
+                                </button>
+                                <button class="btn btn-warning" type="submit">
+                                    <i class="fa-solid fa-save me-2"></i>Salva listini
+                                </button>
+                            </div>
+                        </form>
+                        <template id="pricingRowTemplate">
+                            <tr data-index="__INDEX__">
+                                <td class="text-muted small">#__NUM__</td>
+                                <td>
+                                    <input class="form-control form-control-sm" name="pricing[__INDEX__][name]" maxlength="100" placeholder="Es. Consulenza fiscale">
+                                </td>
+                                <td>
+                                    <input class="form-control form-control-sm text-end" name="pricing[__INDEX__][cost_reseller]" type="number" min="0" step="0.01" placeholder="0.00">
+                                </td>
+                                <td>
+                                    <input class="form-control form-control-sm text-end" name="pricing[__INDEX__][cost_customer]" type="number" min="0" step="0.01" placeholder="0.00">
+                                </td>
+                                <td>
+                                    <input class="form-control form-control-sm text-end" name="pricing[__INDEX__][profit]" readonly value="0.00">
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-icon btn-soft-danger btn-sm remove-pricing-row" type="button" title="Rimuovi riga">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="card ag-card mt-4" data-section="logs">
             <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -1982,6 +2122,116 @@ document.addEventListener('DOMContentLoaded', function () {
 
     reindexRows();
     updateCurrencyLabels();
+});
+
+// Service Pricing Table Management
+document.addEventListener('DOMContentLoaded', function () {
+    const pricingTableBody = document.getElementById('servicePricingRows');
+    const addPricingButton = document.getElementById('addPricingRow');
+    const pricingTemplate = document.getElementById('pricingRowTemplate');
+
+    if (!pricingTableBody || !addPricingButton || !pricingTemplate) {
+        return;
+    }
+
+    const reindexPricingRows = () => {
+        const rows = pricingTableBody.querySelectorAll('tr');
+        rows.forEach((row, index) => {
+            row.setAttribute('data-index', String(index));
+            const indexCell = row.querySelector('td:first-child');
+            if (indexCell) {
+                indexCell.textContent = '#' + (index + 1);
+            }
+            row.querySelectorAll('input').forEach((input) => {
+                const name = input.getAttribute('name');
+                if (name) {
+                    input.setAttribute('name', name.replace(/\[__INDEX__\]/g, '[' + index + ']'));
+                }
+            });
+        });
+
+        const removeButtons = pricingTableBody.querySelectorAll('.remove-pricing-row');
+        const disableRemoval = rows.length <= 1;
+        removeButtons.forEach((button) => {
+            button.disabled = disableRemoval;
+        });
+    };
+
+    const clonePricingTemplateRow = () => {
+        let clone = null;
+        if ('content' in pricingTemplate && pricingTemplate.content) {
+            const firstChild = pricingTemplate.content.firstElementChild;
+            clone = firstChild ? firstChild.cloneNode(true) : null;
+        } else {
+            const container = document.createElement('tbody');
+            container.innerHTML = pricingTemplate.innerHTML.trim();
+            clone = container.firstElementChild;
+        }
+
+        if (!clone) {
+            return null;
+        }
+
+        clone.querySelectorAll('input').forEach((input) => {
+            input.value = '';
+        });
+
+        return clone;
+    };
+
+    const calculateProfit = (row) => {
+        const costReseller = parseFloat(row.querySelector('input[name*="[cost_reseller]"]').value) || 0;
+        const costCustomer = parseFloat(row.querySelector('input[name*="[cost_customer]"]').value) || 0;
+        const profitField = row.querySelector('input[name*="[profit]"]');
+        if (profitField) {
+            profitField.value = (costCustomer - costReseller).toFixed(2);
+        }
+    };
+
+    addPricingButton.addEventListener('click', () => {
+        const newRow = clonePricingTemplateRow();
+        if (!newRow) {
+            return;
+        }
+        pricingTableBody.appendChild(newRow);
+        reindexPricingRows();
+    });
+
+    pricingTableBody.addEventListener('click', (event) => {
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        const button = target ? target.closest('.remove-pricing-row') : null;
+        if (!button) {
+            return;
+        }
+        const row = button.closest('tr');
+        if (!row) {
+            return;
+        }
+        if (pricingTableBody.querySelectorAll('tr').length <= 1) {
+            return;
+        }
+        row.remove();
+        reindexPricingRows();
+    });
+
+    pricingTableBody.addEventListener('input', (event) => {
+        const target = event.target instanceof HTMLInputElement ? event.target : null;
+        if (!target) {
+            return;
+        }
+        const row = target.closest('tr');
+        if (!row) {
+            return;
+        }
+        calculateProfit(row);
+    });
+
+    // Initial calculation for existing rows
+    pricingTableBody.querySelectorAll('tr').forEach((row) => {
+        calculateProfit(row);
+    });
+
+    reindexPricingRows();
 });
 </script>
 <script>
