@@ -2636,6 +2636,10 @@ class SettingsService
 
     private function logActivity(int $userId, string $action, array $payload): void
     {
+        if ($userId <= 0) {
+            return;
+        }
+
         try {
             $filtered = array_filter(
                 $payload,
