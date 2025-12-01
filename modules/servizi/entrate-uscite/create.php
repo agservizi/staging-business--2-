@@ -48,6 +48,10 @@ $data = [
 	'data_pagamento' => date('d/m/Y'),
 	'note' => '',
 	'service_pricing_id' => '',
+	'listino_voce' => '',
+	'listino_costo_rivenditore' => '',
+	'listino_costo_cliente' => '',
+	'listino_margine' => '',
 ];
 
 $clienteId = null;
@@ -95,6 +99,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 	$data['quantita'] = trim($_POST['quantita'] ?? '1');
 	$data['prezzo_unitario'] = trim($_POST['prezzo_unitario'] ?? '');
+	$data['service_pricing_id'] = trim($_POST['service_pricing_id'] ?? '');
+	$selectedPricing = null;
+	if ($data['service_pricing_id'] !== '') {
+		$pricingIndex = (int) $data['service_pricing_id'];
+		if (!array_key_exists($pricingIndex, $servicePricing)) {
+			$errors[] = 'Il listino selezionato non è valido.';
+		} else {
+			$selectedPricing = $servicePricing[$pricingIndex];
+			$data['listino_voce'] = (string) ($selectedPricing['name'] ?? '');
+			$data['listino_costo_rivenditore'] = number_format((float) ($selectedPricing['cost_reseller'] ?? 0), 2, '.', '');
+			$data['listino_costo_cliente'] = number_format((float) ($selectedPricing['cost_customer'] ?? 0), 2, '.', '');
+		}
+	} else {
+		$data['listino_voce'] = '';
+		$data['listino_costo_rivenditore'] = '';
+		$data['listino_costo_cliente'] = '';
+	}
 
 	$selectedDescription = trim($_POST['descrizione_select'] ?? '');
 	$customDescription = trim($_POST['descrizione_custom'] ?? '');
@@ -157,6 +178,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			$errors[] = 'Il prezzo unitario deve essere maggiore di zero.';
 		}
 	}
+
+	$listinoMargineValue = null;
+	if ($selectedPricing && $quantityValue !== null && $unitPriceValue !== null) {
+		$listinoCostReseller = (float) ($selectedPricing['cost_reseller'] ?? 0);
+		if ($data['tipo_movimento'] === 'Entrata') {
+			$listinoMargineValue = ($unitPriceValue - $listinoCostReseller) * $quantityValue;
+		}
+	}
+	$data['listino_margine'] = $listinoMargineValue !== null ? number_format($listinoMargineValue, 2, '.', '') : '';
 
 	if (!$errors) {
 		$data['quantita'] = (string) $quantityValue;
@@ -221,6 +251,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$stmt = $pdo->prepare('INSERT INTO entrate_uscite (
 			cliente_id,
 			descrizione,
+			listino_voce,
+			listino_costo_rivenditore,
+			listino_costo_cliente,
+			listino_margine,
 			riferimento,
 			metodo,
 			stato,
@@ -238,6 +272,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		) VALUES (
 			:cliente_id,
 			:descrizione,
+			:listino_voce,
+			:listino_costo_rivenditore,
+			:listino_costo_cliente,
+			:listino_margine,
 			:riferimento,
 			:metodo,
 			:stato,
@@ -256,6 +294,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$stmt->execute([
 			':cliente_id' => $clienteId,
 			':descrizione' => $data['descrizione'],
+			':listino_voce' => $data['listino_voce'] ?: null,
+			':listino_costo_rivenditore' => $data['listino_costo_rivenditore'] !== '' ? $data['listino_costo_rivenditore'] : null,
+			':listino_costo_cliente' => $data['listino_costo_cliente'] !== '' ? $data['listino_costo_cliente'] : null,
+			':listino_margine' => $data['listino_margine'] !== '' ? $data['listino_margine'] : null,
 			':riferimento' => $data['riferimento'] ?: null,
 			':metodo' => $data['metodo'],
 			':stato' => $data['stato'],
@@ -360,12 +402,43 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 										<select class="form-select" id="service_pricing_id" name="service_pricing_id">
 											<option value="">Seleziona dal listino</option>
 											<?php foreach ($servicePricing as $index => $item): ?>
-												<option value="<?php echo $index; ?>" data-name="<?php echo sanitize_output($item['name']); ?>" data-cost-reseller="<?php echo $item['cost_reseller']; ?>" data-cost-customer="<?php echo $item['cost_customer']; ?>" <?php echo (string) $index === $data['service_pricing_id'] ? 'selected' : ''; ?>>
-													<?php echo sanitize_output($item['name']); ?> (Rivenditore: €<?php echo number_format($item['cost_reseller'], 2); ?>, Cliente: €<?php echo number_format($item['cost_customer'], 2); ?>)
+												<?php
+													$resellerValue = number_format((float) ($item['cost_reseller'] ?? 0), 2, '.', '');
+													$customerValue = number_format((float) ($item['cost_customer'] ?? 0), 2, '.', '');
+												?>
+												<option value="<?php echo (int) $index; ?>"
+													data-name="<?php echo sanitize_output($item['name'] ?? ''); ?>"
+													data-cost-reseller="<?php echo sanitize_output($resellerValue); ?>"
+													data-cost-customer="<?php echo sanitize_output($customerValue); ?>"
+													<?php echo (string) $index === $data['service_pricing_id'] ? 'selected' : ''; ?>>
+													<?php echo sanitize_output($item['name'] ?? ''); ?> (Rivenditore: €<?php echo number_format((float) ($item['cost_reseller'] ?? 0), 2); ?>, Cliente: €<?php echo number_format((float) ($item['cost_customer'] ?? 0), 2); ?>)
 												</option>
 											<?php endforeach; ?>
 										</select>
 										<small class="text-muted">Selezionando, popola automaticamente descrizione e prezzo. Configura i listini in Impostazioni &gt; Listini.</small>
+										<div class="row g-3 mt-1" id="listinoSummary">
+											<div class="col-md-4">
+												<label class="form-label" for="listino_cost_reseller_display">Costo al rivenditore</label>
+												<div class="input-group">
+													<span class="input-group-text">€</span>
+													<input class="form-control" id="listino_cost_reseller_display" type="text" value="<?php echo $data['listino_costo_rivenditore'] !== '' ? sanitize_output($data['listino_costo_rivenditore']) : '0.00'; ?>" readonly>
+												</div>
+											</div>
+											<div class="col-md-4">
+												<label class="form-label" for="listino_cost_customer_display">Costo al cliente</label>
+												<div class="input-group">
+													<span class="input-group-text">€</span>
+													<input class="form-control" id="listino_cost_customer_display" type="text" value="<?php echo $data['listino_costo_cliente'] !== '' ? sanitize_output($data['listino_costo_cliente']) : '0.00'; ?>" readonly>
+												</div>
+											</div>
+											<div class="col-md-4">
+												<label class="form-label" for="listino_margin_display">Margine stimato</label>
+												<div class="input-group">
+													<span class="input-group-text">€</span>
+													<input class="form-control" id="listino_margin_display" type="text" value="<?php echo $data['listino_margine'] !== '' ? sanitize_output($data['listino_margine']) : '0.00'; ?>" readonly>
+												</div>
+											</div>
+										</div>
 									</div>
 									<div class="col-sm-6">
 										<label class="form-label" for="metodo">Metodo</label>
@@ -525,6 +598,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	tipoSelect.addEventListener('change', () => {
 		populateOptions(tipoSelect.value);
+		applyServicePricingSelection();
 	});
 
 	descrSelect.addEventListener('change', () => {
@@ -534,8 +608,27 @@ document.addEventListener('DOMContentLoaded', function () {
 	const quantityInput = document.getElementById('quantita');
 	const unitPriceInput = document.getElementById('prezzo_unitario');
 	const totalInput = document.getElementById('totale_calcolato');
+	const listinoResellerField = document.getElementById('listino_cost_reseller_display');
+	const listinoCustomerField = document.getElementById('listino_cost_customer_display');
+	const listinoMarginField = document.getElementById('listino_margin_display');
 
 	const formatTotal = (value) => value.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+	const updateMarginDisplay = () => {
+		if (!listinoMarginField || !quantityInput || !unitPriceInput || !tipoSelect) {
+			return;
+		}
+		const resellerValue = listinoResellerField ? parseFloat(listinoResellerField.value.replace(',', '.')) || 0 : 0;
+		const quantity = parseInt(quantityInput.value, 10);
+		const unitPrice = parseFloat(unitPriceInput.value);
+		const safeQuantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
+		const safeUnitPrice = Number.isFinite(unitPrice) && unitPrice >= 0 ? unitPrice : 0;
+		let margin = 0;
+		if (tipoSelect.value === 'Entrata' && resellerValue > 0 && safeQuantity > 0) {
+			margin = (safeUnitPrice - resellerValue) * safeQuantity;
+		}
+		listinoMarginField.value = margin.toFixed(2);
+	};
 
 	const recalcTotal = () => {
 		if (!quantityInput || !unitPriceInput || !totalInput) {
@@ -547,6 +640,7 @@ document.addEventListener('DOMContentLoaded', function () {
 		const safeUnitPrice = Number.isFinite(unitPrice) && unitPrice >= 0 ? unitPrice : 0;
 		const total = safeQuantity * safeUnitPrice;
 		totalInput.value = formatTotal(total);
+		updateMarginDisplay();
 	};
 
 	if (quantityInput) {
@@ -562,40 +656,64 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	// Service Pricing Integration
 	const servicePricingSelect = document.getElementById('service_pricing_id');
+	function applyServicePricingSelection() {
+		if (!servicePricingSelect) {
+			return;
+		}
+		const selectedIndex = servicePricingSelect.selectedIndex;
+		if (selectedIndex < 0) {
+			return;
+		}
+		const option = servicePricingSelect.options[selectedIndex];
+		if (!option || option.value === '') {
+			if (listinoResellerField) {
+				listinoResellerField.value = '0.00';
+			}
+			if (listinoCustomerField) {
+				listinoCustomerField.value = '0.00';
+			}
+			if (listinoMarginField) {
+				listinoMarginField.value = '0.00';
+			}
+			return;
+		}
+
+		const name = option.getAttribute('data-name') || '';
+		const costReseller = parseFloat(option.getAttribute('data-cost-reseller') || '0') || 0;
+		const costCustomer = parseFloat(option.getAttribute('data-cost-customer') || '0') || 0;
+
+		if (name && descrSelect) {
+			descrSelect.value = '__custom__';
+			descrCustom.value = name;
+			lastCustomValue = name;
+			applyCustomVisibility();
+		}
+
+		if (listinoResellerField) {
+			listinoResellerField.value = costReseller.toFixed(2);
+		}
+		if (listinoCustomerField) {
+			listinoCustomerField.value = costCustomer.toFixed(2);
+		}
+
+		if (unitPriceInput) {
+			const isEntrata = tipoSelect ? tipoSelect.value === 'Entrata' : true;
+			const price = isEntrata ? costCustomer : costReseller;
+			const normalizedPrice = Number.isFinite(price) ? price : 0;
+			unitPriceInput.value = normalizedPrice.toFixed(2);
+			recalcTotal();
+		}
+
+		updateMarginDisplay();
+	}
+
 	if (servicePricingSelect) {
-		servicePricingSelect.addEventListener('change', () => {
-			const selectedOption = servicePricingSelect.selectedOptions[0];
-			if (!selectedOption || !selectedOption.value) {
-				return;
-			}
-
-			const name = selectedOption.getAttribute('data-name');
-			const costReseller = parseFloat(selectedOption.getAttribute('data-cost-reseller')) || 0;
-			const costCustomer = parseFloat(selectedOption.getAttribute('data-cost-customer')) || 0;
-
-			// Set description
-			if (name && descrSelect) {
-				// Set to custom and populate
-				descrSelect.value = '__custom__';
-				descrCustom.value = name;
-				lastCustomValue = name;
-				applyCustomVisibility();
-			}
-
-			// Set unit price based on movement type
-			if (unitPriceInput) {
-				const isEntrata = tipoSelect && tipoSelect.value === 'Entrata';
-				const price = isEntrata ? costCustomer : costReseller;
-				if (price > 0) {
-					unitPriceInput.value = price.toFixed(2);
-					recalcTotal();
-				}
-			}
-		});
+		servicePricingSelect.addEventListener('change', applyServicePricingSelection);
 	}
 
 	recalcTotal();
 	populateOptions(tipoSelect.value);
+	applyServicePricingSelection();
 });
 </script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

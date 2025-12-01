@@ -161,6 +161,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 										<td>
 											<strong><?php echo sanitize_output($pagamento['descrizione']); ?></strong><br>
 											<small class="text-muted"><?php echo $pagamento['riferimento'] ? sanitize_output($pagamento['riferimento']) : '—'; ?></small>
+											<?php if (!empty($pagamento['listino_voce'])): ?>
+												<small class="d-block text-info">Listino: <?php echo sanitize_output($pagamento['listino_voce']); ?><?php if ($pagamento['listino_margine'] !== null && $pagamento['tipo_movimento'] === 'Entrata'): ?> • Margine: <?php echo sanitize_output(format_currency((float) $pagamento['listino_margine'])); ?><?php endif; ?></small>
+											<?php endif; ?>
 										</td>
 										<td>
 											<?php
