@@ -43,6 +43,10 @@ if (!function_exists('report_format_value')) {
             return format_currency(((float) $rawValue) * $factor);
         }
 
+        if ($table === 'entrate_uscite' && in_array($column, ['listino_costo_rivenditore', 'listino_costo_cliente', 'listino_margine'], true)) {
+            return $rawValue !== null ? format_currency((float) $rawValue) : '—';
+        }
+
         if ($table === 'fedelta_movimenti') {
             if ($column === 'punti') {
                 $points = (int) $rawValue;
@@ -160,7 +164,7 @@ if (!function_exists('report_fetch_overview')) {
 $serviceMap = [
     'entrate-uscite' => [
         'table' => 'entrate_uscite',
-        'columns' => ['tipo_movimento', 'descrizione', 'riferimento', 'metodo', 'stato', 'importo', 'data_scadenza', 'data_pagamento'],
+        'columns' => ['tipo_movimento', 'descrizione', 'riferimento', 'metodo', 'stato', 'importo', 'listino_voce', 'listino_costo_rivenditore', 'listino_costo_cliente', 'listino_margine', 'data_scadenza', 'data_pagamento'],
         'date_column' => 'created_at',
         'label' => 'Entrate/Uscite',
         'limit' => 500,
@@ -311,9 +315,13 @@ if ($format === 'csv' && $current) {
         $dataRow = [$row['id']];
         foreach ($current['columns'] as $col) {
             $value = $row[$col] ?? '';
-            if ($current['table'] === 'entrate_uscite' && $col === 'importo') {
-                $sign = (($row['tipo_movimento'] ?? 'Entrata') === 'Uscita') ? -1 : 1;
-                $value = number_format(((float) $value) * $sign, 2, '.', '');
+            if ($current['table'] === 'entrate_uscite') {
+                if ($col === 'importo') {
+                    $sign = (($row['tipo_movimento'] ?? 'Entrata') === 'Uscita') ? -1 : 1;
+                    $value = number_format(((float) $value) * $sign, 2, '.', '');
+                } elseif (in_array($col, ['listino_costo_rivenditore', 'listino_costo_cliente', 'listino_margine'], true)) {
+                    $value = $value === '' ? '' : number_format((float) $value, 2, '.', '');
+                }
             } elseif ($current['table'] === 'fedelta_movimenti' && in_array($col, ['punti', 'saldo_post_movimento'], true)) {
                 $value = (string) (int) $value;
             }

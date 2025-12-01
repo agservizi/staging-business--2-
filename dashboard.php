@@ -36,6 +36,7 @@ $charts = [
     'revenue' => [
         'labels' => [],
         'values' => [],
+        'margins' => [],
     ],
     'services' => [
         'labels' => [
@@ -111,7 +112,8 @@ try {
     $stats['openTickets'] = $ticketStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     $revenueChartStmt = $pdo->prepare("SELECT DATE_FORMAT(DATE(COALESCE(data_pagamento, updated_at, created_at)), '%Y-%m') AS month_key,
-           SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END) AS totale
+           SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END) AS totale,
+           SUM(CASE WHEN tipo_movimento = 'Entrata' THEN COALESCE(listino_margine, 0) ELSE 0 END) AS margine_totale
         FROM entrate_uscite
         WHERE stato = 'Completato'
           AND DATE(COALESCE(data_pagamento, updated_at, created_at)) >= DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH), '%Y-%m-01')
@@ -120,18 +122,23 @@ try {
     $revenueChartStmt->execute();
 
     $monthlyRevenue = [];
+    $monthlyMargins = [];
     while ($row = $revenueChartStmt->fetch(PDO::FETCH_ASSOC)) {
-        $monthlyRevenue[$row['month_key']] = (float) $row['totale'];
+        $monthKey = $row['month_key'];
+        $monthlyRevenue[$monthKey] = (float) $row['totale'];
+        $monthlyMargins[$monthKey] = isset($row['margine_totale']) ? (float) $row['margine_totale'] : 0.0;
     }
 
     $charts['revenue']['labels'] = [];
     $charts['revenue']['values'] = [];
+    $charts['revenue']['margins'] = [];
     $startMonth = (new DateTimeImmutable('first day of this month'))->modify('-5 months');
     $monthCursor = $startMonth;
     for ($i = 0; $i < 6; $i++) {
         $monthKey = $monthCursor->format('Y-m');
         $charts['revenue']['labels'][] = format_month_label($monthCursor);
         $charts['revenue']['values'][] = $monthlyRevenue[$monthKey] ?? 0.0;
+        $charts['revenue']['margins'][] = $monthlyMargins[$monthKey] ?? 0.0;
         $monthCursor = $monthCursor->modify('+1 month');
     }
 
@@ -907,6 +914,11 @@ require_once __DIR__ . '/includes/sidebar.php';
     const accentRgb = (rootStyle.getPropertyValue('--ag-accent-rgb') || '11, 47, 107').trim() || '11, 47, 107';
     const accentAlpha = (alpha) => `rgba(${accentRgb}, ${alpha})`;
 
+    const euroFormatter = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 });
+    const formatEuro = (value) => euroFormatter.format(Number.isFinite(value) ? value : 0);
+
+    const revenueChartMargins = <?php echo json_encode($charts['revenue']['margins'], JSON_THROW_ON_ERROR); ?>;
+
     const revenueChartData = {
         labels: <?php echo json_encode($charts['revenue']['labels'], JSON_THROW_ON_ERROR); ?>,
         datasets: [{
@@ -950,11 +962,26 @@ require_once __DIR__ . '/includes/sidebar.php';
                 type: 'line',
                 data: revenueChartData,
                 options: {
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `Saldo: ${formatEuro(context.parsed.y ?? context.parsed)}`,
+                                afterBody: (items) => {
+                                    if (!items || !items.length) {
+                                        return '';
+                                    }
+                                    const index = items[0].dataIndex;
+                                    const marginValue = revenueChartMargins[index] ?? 0;
+                                    return `Margine: ${formatEuro(marginValue)}`;
+                                }
+                            }
+                        },
+                    },
                     scales: {
                         y: {
                             ticks: {
-                                callback: (value) => `€ ${value.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`
+                                callback: (value) => formatEuro(value)
                             }
                         }
                     }
