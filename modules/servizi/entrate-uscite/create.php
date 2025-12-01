@@ -341,6 +341,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 		border-color: var(--bs-warning, #ffc107);
 		background-color: rgba(255, 193, 7, 0.1);
 	}
+	.attachment-dropzone.is-uploading {
+		border-color: var(--bs-warning, #ffc107);
+		background-color: rgba(255, 193, 7, 0.08);
+	}
+	.attachment-dropzone-status {
+		min-height: 1.25rem;
+		margin-top: 0.5rem;
+		font-size: 0.85rem;
+	}
+</style>
 </style>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
 	<?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
@@ -526,6 +536,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 											<p class="mb-1">Trascina qui il file oppure</p>
 											<button class="btn btn-sm btn-outline-warning" type="button" data-action="browse">Scegli file</button>
 											<p class="text-muted small mb-0" data-role="filename">Nessun file selezionato</p>
+											<div class="attachment-dropzone-status text-muted" data-role="status" aria-live="polite"></div>
 										</div>
 										<input class="form-control mt-2" id="allegato" name="allegato" type="file" accept="application/pdf,image/*">
 										<small class="text-muted">Allega un PDF o un'immagine (es. distinta d'incasso o giustificativo).</small>
@@ -565,11 +576,45 @@ document.addEventListener('DOMContentLoaded', function () {
 
 		const browseButton = dropzone.querySelector('[data-action="browse"]');
 		const filenameLabel = dropzone.querySelector('[data-role="filename"]');
+		const statusIndicator = dropzone.querySelector('[data-role="status"]');
+		let statusTimer = null;
+		const setStatus = (state) => {
+			if (!statusIndicator) {
+				return;
+			}
+			if (statusTimer) {
+				clearTimeout(statusTimer);
+				statusTimer = null;
+			}
+			if (state === 'loading') {
+				dropzone.classList.add('is-uploading');
+				statusIndicator.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin me-1"></i>Caricamento…';
+				statusIndicator.classList.remove('text-success');
+			} else if (state === 'success') {
+				dropzone.classList.remove('is-uploading');
+				statusIndicator.innerHTML = '<i class="fa-solid fa-check me-1 text-success"></i>File pronto';
+				statusIndicator.classList.add('text-success');
+				statusTimer = setTimeout(() => {
+					statusIndicator.textContent = '';
+					statusIndicator.classList.remove('text-success');
+				}, 2000);
+			} else {
+				dropzone.classList.remove('is-uploading');
+				statusIndicator.textContent = '';
+				statusIndicator.classList.remove('text-success');
+			}
+		};
+		setStatus(null);
 		const updateFileName = (file) => {
 			if (!filenameLabel) {
 				return;
 			}
 			filenameLabel.textContent = file ? file.name : 'Nessun file selezionato';
+			if (file) {
+				setStatus('success');
+			} else {
+				setStatus(null);
+			}
 		};
 		const openPicker = () => {
 			fileInput.click();
@@ -597,6 +642,7 @@ document.addEventListener('DOMContentLoaded', function () {
 		dropzone.addEventListener('drop', (event) => {
 			preventDefaults(event);
 			dropzone.classList.remove('is-dragover');
+			setStatus('loading');
 			const files = event.dataTransfer ? event.dataTransfer.files : null;
 			if (files && files.length) {
 				const file = files[0];
@@ -609,6 +655,9 @@ document.addEventListener('DOMContentLoaded', function () {
 				}
 				fileInput.dispatchEvent(new Event('change', { bubbles: true }));
 				updateFileName(file);
+					if (fileInput.files && fileInput.files.length) {
+						setStatus('loading');
+					}
 			}
 		});
 
