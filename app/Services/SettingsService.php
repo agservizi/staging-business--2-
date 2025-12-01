@@ -2839,7 +2839,7 @@ class SettingsService
             $this->pdo->beginTransaction();
 
             // Save to database
-            $stmt = $this->pdo->prepare('INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore) ON DUPLICATE KEY UPDATE valore = :valore');
+            $stmt = $this->pdo->prepare('INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore) ON DUPLICATE KEY UPDATE valore = VALUES(valore)');
             $stmt->execute([
                 ':chiave' => self::SERVICE_PRICING_KEY,
                 ':valore' => json_encode($validatedPricing),
