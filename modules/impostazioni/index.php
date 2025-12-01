@@ -792,7 +792,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $result = $settingsService->saveServicePricing($pricingList, $currentUserId);
+        try {
+            $result = $settingsService->saveServicePricing($pricingList, $currentUserId);
+        } catch (Throwable $exception) {
+            error_log('Errore salvataggio listini: ' . $exception->getMessage());
+            $result = ['success' => false, 'errors' => ['Errore interno del server. Controlla i log per dettagli.']];
+        }
+
         if ($result['success']) {
             $servicePricing = $result['pricing'];
             if ($isAjax) {
