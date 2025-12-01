@@ -330,6 +330,24 @@ $csrfToken = csrf_token();
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
+<style>
+	.attachment-dropzone {
+		border: 2px dashed var(--bs-border-color, #ced4da);
+		border-radius: 0.75rem;
+		padding: 1.25rem;
+		text-align: center;
+		cursor: pointer;
+		transition: border-color 0.2s ease, background-color 0.2s ease;
+	}
+	.attachment-dropzone .attachment-dropzone-icon {
+		font-size: 1.75rem;
+		color: var(--bs-warning, #ffc107);
+	}
+	.attachment-dropzone.is-dragover {
+		border-color: var(--bs-warning, #ffc107);
+		background-color: rgba(255, 193, 7, 0.1);
+	}
+</style>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
 	<?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
 	<main class="content-wrapper">
@@ -496,12 +514,19 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 					</div>
 					<div class="col-md-6">
 						<label class="form-label" for="allegato">Allegato (opzionale)</label>
-						<input class="form-control" id="allegato" name="allegato" type="file" accept="application/pdf,image/*">
+						<div class="attachment-dropzone" id="attachmentDropzoneEdit">
+							<div class="attachment-dropzone-icon mb-2"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+							<p class="mb-1">Trascina qui il file oppure</p>
+							<button class="btn btn-sm btn-outline-warning" type="button" data-action="browse">Scegli file</button>
+							<p class="text-muted small mb-0" data-role="filename">Nessun file selezionato</p>
+						</div>
+						<input class="form-control mt-2" id="allegato" name="allegato" type="file" accept="application/pdf,image/*">
 						<?php if (!empty($pagamento['allegato_path'])): ?>
 							<small class="d-block mt-2">Allegato attuale: <a class="link-warning" href="../../../<?php echo sanitize_output($pagamento['allegato_path']); ?>" target="_blank">Scarica</a></small>
 						<?php else: ?>
-							<small class="text-muted">Nessun file caricato.</small>
+							<small class="text-muted d-block mt-2">Nessun file caricato.</small>
 						<?php endif; ?>
+						<small class="text-muted">Allega un PDF o un'immagine in supporto al movimento.</small>
 					</div>
 					<div class="col-12 d-flex justify-content-end gap-2">
 						<a class="btn btn-secondary" href="view.php?id=<?php echo $id; ?>">Annulla</a>
@@ -519,6 +544,84 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 		const tipoSelect = document.getElementById('tipo_movimento');
 		const descrSelect = document.getElementById('descrizione_select');
 		const descrCustom = document.getElementById('descrizione_custom');
+		const initAttachmentDropzone = (dropzoneId, inputId) => {
+			const dropzone = document.getElementById(dropzoneId);
+			const fileInput = document.getElementById(inputId);
+			if (!dropzone || !fileInput) {
+				return;
+			}
+
+			const browseButton = dropzone.querySelector('[data-action="browse"]');
+			const filenameLabel = dropzone.querySelector('[data-role="filename"]');
+			const updateFileName = (file) => {
+				if (filenameLabel) {
+					filenameLabel.textContent = file ? file.name : 'Nessun file selezionato';
+				}
+			};
+			const openPicker = () => {
+				fileInput.click();
+			};
+			const preventDefaults = (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+			};
+
+			['dragenter', 'dragover'].forEach((eventName) => {
+				dropzone.addEventListener(eventName, (event) => {
+					preventDefaults(event);
+					dropzone.classList.add('is-dragover');
+				});
+			});
+
+			['dragleave', 'dragend'].forEach((eventName) => {
+				dropzone.addEventListener(eventName, (event) => {
+					preventDefaults(event);
+					dropzone.classList.remove('is-dragover');
+				});
+			});
+
+			dropzone.addEventListener('drop', (event) => {
+				preventDefaults(event);
+				dropzone.classList.remove('is-dragover');
+				const files = event.dataTransfer ? event.dataTransfer.files : null;
+				if (files && files.length) {
+					const file = files[0];
+					if (typeof DataTransfer !== 'undefined') {
+						const dataTransfer = new DataTransfer();
+						dataTransfer.items.add(file);
+						fileInput.files = dataTransfer.files;
+					} else {
+						fileInput.files = files;
+					}
+					fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+					updateFileName(file);
+				}
+			});
+
+			dropzone.addEventListener('click', (event) => {
+				if (browseButton && browseButton.contains(event.target)) {
+					event.preventDefault();
+				}
+				openPicker();
+			});
+
+			if (browseButton) {
+				browseButton.addEventListener('click', (event) => {
+					event.preventDefault();
+					openPicker();
+				});
+			}
+
+			fileInput.addEventListener('change', () => {
+				const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+				updateFileName(file);
+			});
+
+			updateFileName(fileInput.files && fileInput.files[0] ? fileInput.files[0] : null);
+			fileInput.classList.add('visually-hidden');
+			fileInput.classList.remove('form-control');
+			fileInput.classList.remove('mt-2');
+		};
 
 		if (!tipoSelect || !descrSelect || !descrCustom) {
 			return;
@@ -730,6 +833,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 		if (servicePricingSelect && servicePricingSelect.value !== '') {
 			applyServicePricingSelection();
 		}
+		initAttachmentDropzone('attachmentDropzoneEdit', 'allegato');
 	});
 	</script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
