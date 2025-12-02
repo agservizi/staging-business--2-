@@ -80,6 +80,13 @@ $serviziItems = [
         'color' => 'orange',
     ],
     [
+        'needle' => 'modules/servizi/certi',
+        'label' => 'Certi³',
+        'icon' => 'fa-solid fa-cube',
+        'href' => base_url('modules/servizi/certi/index.php'),
+        'color' => 'azure',
+    ],
+    [
         'needle' => 'modules/servizi/telegrammi',
         'label' => 'Invio telegrammi',
         'icon' => 'fa-solid fa-paper-plane',
