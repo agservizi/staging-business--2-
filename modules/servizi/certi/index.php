@@ -94,7 +94,7 @@ $summaryCards = [
 ];
 
 $operators = [];
-$operatorsStmt = $pdo->query('SELECT id, cognome, nome FROM users WHERE role IN ("Admin","Manager","Operatore") ORDER BY cognome ASC, nome ASC');
+$operatorsStmt = $pdo->query('SELECT id, cognome, nome FROM users WHERE ruolo IN ("Admin","Manager","Operatore") ORDER BY cognome ASC, nome ASC');
 if ($operatorsStmt) {
     while ($row = $operatorsStmt->fetch(PDO::FETCH_ASSOC)) {
         $operators[(int) $row['id']] = trim((string) ($row['cognome'] . ' ' . $row['nome'])) ?: ('Operatore #' . $row['id']);

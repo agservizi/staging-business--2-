@@ -303,7 +303,7 @@ final class CertiWorkflowService
 
     private function resolveNextOperator(): ?int
     {
-        $stmt = $this->pdo->query('SELECT id FROM users WHERE role IN ("Admin","Manager","Operatore") ORDER BY last_login_at DESC LIMIT 1');
+        $stmt = $this->pdo->query('SELECT id FROM users WHERE ruolo IN ("Admin","Manager","Operatore") ORDER BY last_login_at DESC LIMIT 1');
         $operatorId = $stmt ? $stmt->fetchColumn() : false;
 
         return $operatorId !== false ? (int) $operatorId : null;
