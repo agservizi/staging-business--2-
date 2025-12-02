@@ -179,7 +179,6 @@ $appointmentStatuses = $settingsService->getAppointmentStatuses();
 $appearanceConfig = $settingsService->getAppearanceSettings();
 $themeOptions = SettingsService::availableThemes();
 $emailMarketingConfig = $settingsService->getEmailMarketingSettings();
-$certiApiSettings = $settingsService->getCertiApiSettings();
 $portalBrtPricingForm = $settingsService->getPortalBrtPricingFormConfig();
 $cafPatronatoTypes = $settingsService->getCafPatronatoTypes();
 $cafPatronatoStatuses = $settingsService->getCafPatronatoStatuses();
@@ -406,57 +405,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if ($action === 'certi_api_settings') {
-        $currentCertiConfig = $settingsService->getCertiApiSettings(false);
-        $result = $settingsService->saveCertiApiSettings([
-            'docuengine_base_url' => $_POST['docuengine_base_url'] ?? '',
-            'docuengine_api_key' => $_POST['docuengine_api_key'] ?? '',
-            'docuengine_token' => $_POST['docuengine_token'] ?? '',
-            'docuengine_remove_api_key' => isset($_POST['docuengine_remove_api_key']),
-            'docuengine_remove_token' => isset($_POST['docuengine_remove_token']),
-            'visengine_base_url' => $_POST['visengine_base_url'] ?? '',
-            'visengine_api_key' => $_POST['visengine_api_key'] ?? '',
-            'visengine_remove_api_key' => isset($_POST['visengine_remove_api_key']),
-            'catasto_base_url' => $_POST['catasto_base_url'] ?? '',
-            'catasto_api_key' => $_POST['catasto_api_key'] ?? '',
-            'catasto_token' => $_POST['catasto_token'] ?? '',
-            'catasto_remove_api_key' => isset($_POST['catasto_remove_api_key']),
-            'catasto_remove_token' => isset($_POST['catasto_remove_token']),
-        ], $currentCertiConfig, $currentUserId);
-
-        $certiApiSettings = $result['config'];
-
-        if ($result['success']) {
-            if ($isAjax) {
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Credenziali Certi³ aggiornate con successo.',
-                    'data' => $certiApiSettings,
-                ]);
-                exit;
-            }
-
-            add_flash('success', 'Credenziali Certi³ aggiornate con successo.');
-            header('Location: index.php#certi-api-settings');
-            exit;
-        }
-
-        foreach ($result['errors'] as $error) {
-            $alerts[] = ['type' => 'danger', 'text' => $error];
-        }
-
-        if ($isAjax) {
-            http_response_code(422);
-            header('Content-Type: application/json');
-            echo json_encode([
-                'success' => false,
-                'errors' => $result['errors'],
-                'data' => $certiApiSettings,
-            ]);
-            exit;
-        }
-    }
 
     if ($action === 'email_marketing_test') {
         require_once __DIR__ . '/../../includes/mailer.php';
@@ -949,24 +897,6 @@ $emailMarketingUnsubscribeBase = rtrim((string) ($emailMarketingConfig['unsubscr
 $emailMarketingUnsubscribeExample = $emailMarketingUnsubscribeBase . '/email-unsubscribe.php?token=ESEMPIO';
 $emailMarketingWebhookEndpoint = base_url('api/email-marketing/resend-webhook.php');
 
-$certiRemovalSelections = [
-    'docuengine_api_key' => false,
-    'docuengine_token' => false,
-    'visengine_api_key' => false,
-    'catasto_api_key' => false,
-    'catasto_token' => false,
-];
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'certi_api_settings') {
-    $certiRemovalSelections = [
-        'docuengine_api_key' => isset($_POST['docuengine_remove_api_key']),
-        'docuengine_token' => isset($_POST['docuengine_remove_token']),
-        'visengine_api_key' => isset($_POST['visengine_remove_api_key']),
-        'catasto_api_key' => isset($_POST['catasto_remove_api_key']),
-        'catasto_token' => isset($_POST['catasto_remove_token']),
-    ];
-}
-
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
 ?>
@@ -1009,9 +939,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="email-marketing" type="button">Email marketing</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" data-section-target="certi" type="button">Certi³</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="pricing" type="button">Listini</button>
@@ -1766,167 +1693,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     </td>
                                 </tr>
                             </template>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-xxl-6" data-section="certi">
-                <div class="card ag-card h-100" id="certi-api-settings">
-                    <div class="card-header bg-transparent border-0">
-                        <h5 class="card-title mb-0">Credenziali Certi³</h5>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted">Centralizza URL, chiavi API e token utilizzati dai provider DocuEngine, VisEngine e Catasto. Le credenziali vengono cifrate e rese disponibili ai servizi del modulo Certi³.</p>
-                        <?php
-                            $certiDoc = $certiApiSettings['docuengine'] ?? [];
-                            $certiVis = $certiApiSettings['visengine'] ?? [];
-                            $certiCat = $certiApiSettings['catasto'] ?? [];
-                        ?>
-                        <form method="post">
-                            <input type="hidden" name="action" value="certi_api_settings">
-                            <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-                            <div class="d-flex flex-column gap-4">
-                                <div class="border border-dark-subtle rounded-3 p-3">
-                                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-                                        <div>
-                                            <span class="fw-semibold">DocuEngine</span>
-                                            <small class="d-block text-muted">Richieste comunali e camerali tramite DocuEngine.</small>
-                                        </div>
-                                        <div class="text-end">
-                                            <?php if (!empty($certiDoc['has_api_key'])): ?>
-                                                <span class="badge bg-secondary">API configurata</span>
-                                            <?php endif; ?>
-                                            <?php if (!empty($certiDoc['has_token'])): ?>
-                                                <span class="badge bg-secondary ms-1">Token attivo</span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                    <div class="row g-3">
-                                        <div class="col-12 col-lg-6">
-                                            <label class="form-label" for="docuengine_base_url">Base URL (opzionale)</label>
-                                            <input class="form-control" id="docuengine_base_url" name="docuengine_base_url" type="url" value="<?php echo sanitize_output($certiDoc['base_url'] ?? ''); ?>" placeholder="https://api.docuengine.it" inputmode="url" spellcheck="false">
-                                            <div class="form-text">Lascia vuoto per usare l'endpoint predefinito impostato a livello ambiente.</div>
-                                        </div>
-                                        <div class="col-12 col-lg-6">
-                                            <label class="form-label" for="docuengine_api_key">API key</label>
-                                            <?php $docKeyPlaceholder = !empty($certiDoc['has_api_key']) ? '****************' : 'docu_live_...'; ?>
-                                            <input class="form-control" id="docuengine_api_key" name="docuengine_api_key" type="password" value="<?php echo sanitize_output($certiDoc['api_key'] ?? ''); ?>" placeholder="<?php echo sanitize_output($docKeyPlaceholder); ?>" autocomplete="off" spellcheck="false">
-                                            <?php if (!empty($certiDoc['has_api_key'])): ?>
-                                                <div class="form-text">Chiave salvata: <code><?php echo sanitize_output($certiDoc['api_key_hint'] ?? ''); ?></code>. Lascia vuoto per mantenerla.</div>
-                                                <div class="form-check mt-2">
-                                                    <input class="form-check-input" type="checkbox" id="docuengine_remove_api_key" name="docuengine_remove_api_key" value="1" <?php echo $certiRemovalSelections['docuengine_api_key'] ? 'checked' : ''; ?>>
-                                                    <label class="form-check-label" for="docuengine_remove_api_key">Rimuovi chiave salvata</label>
-                                                </div>
-                                            <?php else: ?>
-                                                <div class="form-text">Inserisci la chiave fornita da DocuEngine.</div>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="col-12 col-lg-6">
-                                            <label class="form-label" for="docuengine_token">Token sessione</label>
-                                            <?php $docTokenPlaceholder = !empty($certiDoc['has_token']) ? '****************' : 'docu_token_...'; ?>
-                                            <input class="form-control" id="docuengine_token" name="docuengine_token" type="password" value="<?php echo sanitize_output($certiDoc['token'] ?? ''); ?>" placeholder="<?php echo sanitize_output($docTokenPlaceholder); ?>" autocomplete="off" spellcheck="false">
-                                            <?php if (!empty($certiDoc['has_token'])): ?>
-                                                <div class="form-text">Token salvato: <code><?php echo sanitize_output($certiDoc['token_hint'] ?? ''); ?></code>. Lascia vuoto per mantenerlo.</div>
-                                                <div class="form-check mt-2">
-                                                    <input class="form-check-input" type="checkbox" id="docuengine_remove_token" name="docuengine_remove_token" value="1" <?php echo $certiRemovalSelections['docuengine_token'] ? 'checked' : ''; ?>>
-                                                    <label class="form-check-label" for="docuengine_remove_token">Rimuovi token salvato</label>
-                                                </div>
-                                            <?php else: ?>
-                                                <div class="form-text">Richiesto per operazioni asincrone DocuEngine.</div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="border border-dark-subtle rounded-3 p-3">
-                                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-                                            <div>
-                                                <span class="fw-semibold">VisEngine</span>
-                                                <small class="d-block text-muted">Recupero automatico visure camerali.</small>
-                                            </div>
-                                            <div>
-                                                <?php if (!empty($certiVis['has_api_key'])): ?>
-                                                    <span class="badge bg-secondary">API configurata</span>
-                                                <?php endif; ?>
-                                            </div>
-                                    </div>
-                                    <div class="row g-3">
-                                        <div class="col-12 col-lg-6">
-                                            <label class="form-label" for="visengine_base_url">Base URL (opzionale)</label>
-                                            <input class="form-control" id="visengine_base_url" name="visengine_base_url" type="url" value="<?php echo sanitize_output($certiVis['base_url'] ?? ''); ?>" placeholder="https://api.visengine.it" inputmode="url" spellcheck="false">
-                                            <div class="form-text">Usa HTTPS. Lascia vuoto per endpoint standard.</div>
-                                        </div>
-                                        <div class="col-12 col-lg-6">
-                                            <label class="form-label" for="visengine_api_key">API key</label>
-                                            <?php $visKeyPlaceholder = !empty($certiVis['has_api_key']) ? '****************' : 'vis_live_...'; ?>
-                                            <input class="form-control" id="visengine_api_key" name="visengine_api_key" type="password" value="<?php echo sanitize_output($certiVis['api_key'] ?? ''); ?>" placeholder="<?php echo sanitize_output($visKeyPlaceholder); ?>" autocomplete="off" spellcheck="false">
-                                            <?php if (!empty($certiVis['has_api_key'])): ?>
-                                                <div class="form-text">Chiave salvata: <code><?php echo sanitize_output($certiVis['api_key_hint'] ?? ''); ?></code>.</div>
-                                                <div class="form-check mt-2">
-                                                    <input class="form-check-input" type="checkbox" id="visengine_remove_api_key" name="visengine_remove_api_key" value="1" <?php echo $certiRemovalSelections['visengine_api_key'] ? 'checked' : ''; ?>>
-                                                    <label class="form-check-label" for="visengine_remove_api_key">Rimuovi chiave salvata</label>
-                                                </div>
-                                            <?php else: ?>
-                                                <div class="form-text">Obbligatoria per sincronizzare gli stati VisEngine.</div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="border border-dark-subtle rounded-3 p-3">
-                                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-                                        <div>
-                                            <span class="fw-semibold">Catasto</span>
-                                            <small class="d-block text-muted">Richiesta planimetrie e visure catastali digitali.</small>
-                                        </div>
-                                        <div class="text-end">
-                                            <?php if (!empty($certiCat['has_api_key'])): ?>
-                                                <span class="badge bg-secondary">API configurata</span>
-                                            <?php endif; ?>
-                                            <?php if (!empty($certiCat['has_token'])): ?>
-                                                <span class="badge bg-secondary ms-1">Token attivo</span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                    <div class="row g-3">
-                                        <div class="col-12 col-lg-6">
-                                            <label class="form-label" for="catasto_base_url">Base URL (opzionale)</label>
-                                            <input class="form-control" id="catasto_base_url" name="catasto_base_url" type="url" value="<?php echo sanitize_output($certiCat['base_url'] ?? ''); ?>" placeholder="https://api.catasto.it" inputmode="url" spellcheck="false">
-                                            <div class="form-text">Se vuoto viene utilizzato l'endpoint configurato lato server.</div>
-                                        </div>
-                                        <div class="col-12 col-lg-6">
-                                            <label class="form-label" for="catasto_api_key">API key</label>
-                                            <?php $catKeyPlaceholder = !empty($certiCat['has_api_key']) ? '****************' : 'catasto_live_...'; ?>
-                                            <input class="form-control" id="catasto_api_key" name="catasto_api_key" type="password" value="<?php echo sanitize_output($certiCat['api_key'] ?? ''); ?>" placeholder="<?php echo sanitize_output($catKeyPlaceholder); ?>" autocomplete="off" spellcheck="false">
-                                            <?php if (!empty($certiCat['has_api_key'])): ?>
-                                                <div class="form-text">Chiave salvata: <code><?php echo sanitize_output($certiCat['api_key_hint'] ?? ''); ?></code>.</div>
-                                                <div class="form-check mt-2">
-                                                    <input class="form-check-input" type="checkbox" id="catasto_remove_api_key" name="catasto_remove_api_key" value="1" <?php echo $certiRemovalSelections['catasto_api_key'] ? 'checked' : ''; ?>>
-                                                    <label class="form-check-label" for="catasto_remove_api_key">Rimuovi chiave salvata</label>
-                                                </div>
-                                            <?php else: ?>
-                                                <div class="form-text">Chiave fornita dall'aggregatore Catasto.</div>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="col-12 col-lg-6">
-                                            <label class="form-label" for="catasto_token">Token sessione</label>
-                                            <?php $catTokenPlaceholder = !empty($certiCat['has_token']) ? '****************' : 'cat_token_...'; ?>
-                                            <input class="form-control" id="catasto_token" name="catasto_token" type="password" value="<?php echo sanitize_output($certiCat['token'] ?? ''); ?>" placeholder="<?php echo sanitize_output($catTokenPlaceholder); ?>" autocomplete="off" spellcheck="false">
-                                            <?php if (!empty($certiCat['has_token'])): ?>
-                                                <div class="form-text">Token salvato: <code><?php echo sanitize_output($certiCat['token_hint'] ?? ''); ?></code>.</div>
-                                                <div class="form-check mt-2">
-                                                    <input class="form-check-input" type="checkbox" id="catasto_remove_token" name="catasto_remove_token" value="1" <?php echo $certiRemovalSelections['catasto_token'] ? 'checked' : ''; ?>>
-                                                    <label class="form-check-label" for="catasto_remove_token">Rimuovi token salvato</label>
-                                                </div>
-                                            <?php else: ?>
-                                                <div class="form-text">Necessario per download planimetrie.</div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center mt-4">
-                                <small class="text-muted">Le modifiche vengono applicate immediatamente alle chiamate API del modulo Certi³.</small>
-                                <button class="btn btn-warning" type="submit"><i class="fa-solid fa-save me-2"></i>Salva credenziali</button>
-                            </div>
                         </form>
                     </div>
                 </div>

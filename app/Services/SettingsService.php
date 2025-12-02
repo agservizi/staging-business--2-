@@ -18,7 +18,6 @@ class SettingsService
     private const CAF_PATRONATO_SERVICES_KEY = 'caf_patronato_servizi';
     private const UI_THEME_KEY = 'ui_theme';
     private const EMAIL_MARKETING_SETTINGS_KEY = 'email_marketing_settings';
-    private const CERTI_API_SETTINGS_KEY = 'certi_api_settings';
     private const SERVICE_PRICING_KEY = 'service_pricing';
     public const PORTAL_BRT_PRICING_KEY = 'portal_brt_pricing';
     public const CAF_PATRONATO_STATUS_CATEGORIES = [
@@ -777,35 +776,6 @@ class SettingsService
     }
 
     /**
-     * @return array{
-     *     docuengine:array{base_url:string,api_key:string,token:string,has_api_key:bool,api_key_hint:string,has_token:bool,token_hint:string},
-     *     visengine:array{base_url:string,api_key:string,has_api_key:bool,api_key_hint:string},
-     *     catasto:array{base_url:string,api_key:string,token:string,has_api_key:bool,api_key_hint:string,has_token:bool,token_hint:string}
-     * }
-     */
-    public function getCertiApiSettings(bool $maskSecrets = true): array
-    {
-        $defaults = $this->defaultCertiApiSettings();
-        $config = $defaults;
-
-        try {
-            $stmt = $this->pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :chiave LIMIT 1');
-            $stmt->execute([':chiave' => self::CERTI_API_SETTINGS_KEY]);
-            $value = $stmt->fetchColumn();
-            if ($value !== false && $value !== null && $value !== '') {
-                $decoded = json_decode((string) $value, true);
-                if (is_array($decoded)) {
-                    $config = array_replace_recursive($defaults, $decoded);
-                }
-            }
-        } catch (Throwable $exception) {
-            error_log('Certi API settings fetch failed: ' . $exception->getMessage());
-        }
-
-        return $this->formatCertiApiSettings($config, $maskSecrets);
-    }
-
-    /**
      * @return array{success:bool,errors:array<int,string>,appearance:array{theme:string}}
      */
     public function saveAppearanceSettings(string $theme, int $userId): array
@@ -1498,111 +1468,6 @@ class SettingsService
                 'success' => false,
                 'errors' => ['Impossibile salvare le impostazioni email marketing.'],
                 'config' => $this->formatEmailMarketingSettings($newConfig, $maskExistingKey),
-            ];
-        }
-    }
-
-    /**
-     * @param array<string,mixed> $payload
-     * @return array{success:bool,errors:array<int,string>,config:array<string,mixed>}
-     */
-    public function saveCertiApiSettings(array $payload, array $currentConfig, int $userId): array
-    {
-        $current = $this->formatCertiApiSettings($currentConfig, false);
-
-        $docBase = $this->normalizeProviderUrl($payload['docuengine_base_url'] ?? '');
-        $docApiKey = $this->resolveSecretValue($current['docuengine']['api_key'] ?? '', (string) ($payload['docuengine_api_key'] ?? ''), !empty($payload['docuengine_remove_api_key']));
-        $docToken = $this->resolveSecretValue($current['docuengine']['token'] ?? '', (string) ($payload['docuengine_token'] ?? ''), !empty($payload['docuengine_remove_token']));
-
-        $visBase = $this->normalizeProviderUrl($payload['visengine_base_url'] ?? '');
-        $visApiKey = $this->resolveSecretValue($current['visengine']['api_key'] ?? '', (string) ($payload['visengine_api_key'] ?? ''), !empty($payload['visengine_remove_api_key']));
-
-        $catBase = $this->normalizeProviderUrl($payload['catasto_base_url'] ?? '');
-        $catApiKey = $this->resolveSecretValue($current['catasto']['api_key'] ?? '', (string) ($payload['catasto_api_key'] ?? ''), !empty($payload['catasto_remove_api_key']));
-        $catToken = $this->resolveSecretValue($current['catasto']['token'] ?? '', (string) ($payload['catasto_token'] ?? ''), !empty($payload['catasto_remove_token']));
-
-        $errors = [];
-
-        foreach ([
-            'DocuEngine' => $docBase,
-            'VisEngine' => $visBase,
-            'Catasto' => $catBase,
-        ] as $label => $url) {
-            if ($url !== '' && !filter_var($url, FILTER_VALIDATE_URL)) {
-                $errors[] = sprintf('L\'URL base per %s non è valido.', $label);
-            }
-        }
-
-        $newConfig = [
-            'docuengine' => [
-                'base_url' => $docBase,
-                'api_key' => $docApiKey,
-                'token' => $docToken,
-            ],
-            'visengine' => [
-                'base_url' => $visBase,
-                'api_key' => $visApiKey,
-            ],
-            'catasto' => [
-                'base_url' => $catBase,
-                'api_key' => $catApiKey,
-                'token' => $catToken,
-            ],
-        ];
-
-        if ($errors) {
-            return [
-                'success' => false,
-                'errors' => array_values(array_unique($errors)),
-                'config' => $this->formatCertiApiSettings($newConfig),
-            ];
-        }
-
-        $payloadJson = json_encode($newConfig, JSON_UNESCAPED_UNICODE);
-        if ($payloadJson === false) {
-            return [
-                'success' => false,
-                'errors' => ['Impossibile serializzare la configurazione Certi³.'],
-                'config' => $this->formatCertiApiSettings($newConfig),
-            ];
-        }
-
-        try {
-            $stmt = $this->pdo->prepare(
-                'INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore)
-                 ON DUPLICATE KEY UPDATE valore = VALUES(valore)'
-            );
-            $stmt->execute([
-                ':chiave' => self::CERTI_API_SETTINGS_KEY,
-                ':valore' => $payloadJson,
-            ]);
-
-            $this->logActivity($userId, 'Aggiornamento credenziali Certi³', [
-                'docuengine_base' => $docBase !== '' ? $docBase : 'default',
-                'docuengine_api_key' => $docApiKey !== '' ? '***' : '',
-                'docuengine_token' => $docToken !== '' ? '***' : '',
-                'visengine_base' => $visBase !== '' ? $visBase : 'default',
-                'visengine_api_key' => $visApiKey !== '' ? '***' : '',
-                'catasto_base' => $catBase !== '' ? $catBase : 'default',
-                'catasto_api_key' => $catApiKey !== '' ? '***' : '',
-                'catasto_token' => $catToken !== '' ? '***' : '',
-            ]);
-
-            if (function_exists('reset_certi_api_config_cache')) {
-                call_user_func('reset_certi_api_config_cache', $this->formatCertiApiSettings($newConfig, false));
-            }
-
-            return [
-                'success' => true,
-                'errors' => [],
-                'config' => $this->formatCertiApiSettings($newConfig),
-            ];
-        } catch (Throwable $exception) {
-            error_log('Certi API settings save failed: ' . $exception->getMessage());
-            return [
-                'success' => false,
-                'errors' => ['Impossibile salvare le impostazioni delle API Certi³.'],
-                'config' => $this->formatCertiApiSettings($newConfig),
             ];
         }
     }
@@ -2809,104 +2674,6 @@ class SettingsService
         }
 
         return number_format($value, $index === 0 ? 0 : 2) . ' ' . $units[$index];
-    }
-
-    /**
-     * @param array<string, mixed> $config
-     * @return array{
-     *     sender_name:string,
-     *     sender_email:string,
-     *     reply_to_email:string,
-     *     resend_api_key:string,
-     *     unsubscribe_base_url:string,
-     *     webhook_secret:string,
-     *     test_address:string,
-     *     has_resend_api_key:bool,
-     *     resend_api_key_hint:string
-     * }
-     */
-    private function defaultCertiApiSettings(): array
-    {
-        return [
-            'docuengine' => [
-                'base_url' => '',
-                'api_key' => '',
-                'token' => '',
-            ],
-            'visengine' => [
-                'base_url' => '',
-                'api_key' => '',
-                'token' => '',
-            ],
-            'catasto' => [
-                'base_url' => '',
-                'api_key' => '',
-                'token' => '',
-            ],
-        ];
-    }
-
-    /**
-     * @param array<string,mixed> $config
-     * @return array<string,mixed>
-     */
-    private function formatCertiApiSettings(array $config, bool $maskSecrets = true): array
-    {
-        $defaults = $this->defaultCertiApiSettings();
-        $merged = array_replace_recursive($defaults, $config);
-
-        $providers = [
-            'docuengine' => true,
-            'visengine' => false,
-            'catasto' => true,
-        ];
-
-        $formatted = [];
-        foreach ($providers as $provider => $hasTokenField) {
-            $providerConfig = $merged[$provider] ?? [];
-            $baseUrl = $this->normalizeProviderUrl($providerConfig['base_url'] ?? '');
-            $apiKey = trim((string) ($providerConfig['api_key'] ?? ''));
-            $token = trim((string) ($providerConfig['token'] ?? ''));
-
-            $hasApiKey = $apiKey !== '';
-            $hasToken = $hasTokenField ? $token !== '' : false;
-
-            $formatted[$provider] = [
-                'base_url' => $baseUrl,
-                'api_key' => $maskSecrets && $hasApiKey ? '' : $apiKey,
-                'has_api_key' => $hasApiKey,
-                'api_key_hint' => $hasApiKey ? $this->maskSecret($apiKey) : '',
-                'token' => $hasTokenField ? ($maskSecrets && $hasToken ? '' : $token) : '',
-                'has_token' => $hasTokenField ? $hasToken : false,
-                'token_hint' => $hasTokenField && $hasToken ? $this->maskSecret($token) : '',
-            ];
-        }
-
-        return $formatted;
-    }
-
-    private function normalizeProviderUrl(string $value): string
-    {
-        $trimmed = trim($value);
-        if ($trimmed === '') {
-            return '';
-        }
-
-        return rtrim($trimmed, '/');
-    }
-
-    private function resolveSecretValue(string $current, string $newValue, bool $remove): string
-    {
-        if ($remove) {
-            return '';
-        }
-
-        $newValue = trim($newValue);
-        if ($newValue !== '') {
-            return $newValue;
-        }
-
-        return trim($current);
     }
 
     private function formatEmailMarketingSettings(array $config, bool $maskSecrets = true): array
