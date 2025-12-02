@@ -36,38 +36,22 @@
             if (!select || !categoryRadios.length) {
                 return;
             }
-            let optionsData = {};
+
+            let schema = {};
             try {
-                const payload = select.dataset.certiOptions;
+                const payload = select.dataset.certiSchema;
                 if (payload) {
-                    optionsData = JSON.parse(payload);
+                    schema = JSON.parse(payload);
                 }
             } catch (error) {
-                console.warn('Certi³: impossibile leggere il catalogo certificati', error);
+                console.warn('Certi³: impossibile leggere lo schema certificati', error);
             }
 
-            const refreshSelect = (category) => {
-                if (!optionsData[category]) {
-                    return;
-                }
-                const previousValue = select.value;
-                select.innerHTML = '<option value="">Seleziona</option>';
-                Object.entries(optionsData[category]).forEach(([value, label]) => {
-                    const option = document.createElement('option');
-                    option.value = value;
-                    option.textContent = label;
-                    select.appendChild(option);
-                });
-                if (optionsData[category][previousValue]) {
-                    select.value = previousValue;
-                }
-                select.dispatchEvent(new Event('change', { bubbles: true }));
-            };
+            const getCertificates = (category) => (schema[category]?.certificates) || {};
 
-            const toggleCatFields = (category) => {
-                document.querySelectorAll('[data-cat-only]').forEach((node) => {
-                    const target = node.getAttribute('data-cat-only');
-                    if (target === category) {
+            const toggleSection = (section, visible) => {
+                document.querySelectorAll(`[data-section="${section}"]`).forEach((node) => {
+                    if (visible) {
                         node.removeAttribute('hidden');
                     } else {
                         node.setAttribute('hidden', 'hidden');
@@ -75,9 +59,76 @@
                 });
             };
 
+            const updateSections = (definition) => {
+                const requirements = definition?.requirements || {};
+                toggleSection('birth', Boolean(requirements.birth_data));
+                toggleSection('marriage', Boolean(requirements.marriage_data));
+                toggleSection('company', Boolean(requirements.company_data));
+                toggleSection('property', Boolean(requirements.property_data));
+            };
+
+            const updateIntestatario = (definition) => {
+                const allowed = definition?.allowed_intestatario ?? ['persona', 'azienda'];
+                const radios = document.querySelectorAll('input[name="intestatario_tipo"]');
+                let hasChecked = false;
+                radios.forEach((radio) => {
+                    radio.disabled = !allowed.includes(radio.value);
+                    if (radio.checked) {
+                        hasChecked = true;
+                        if (radio.disabled) {
+                            radio.checked = false;
+                            hasChecked = false;
+                        }
+                    }
+                });
+                if (!hasChecked) {
+                    const fallback = Array.from(radios).find((radio) => !radio.disabled && allowed.includes(radio.value));
+                    if (fallback) {
+                        fallback.checked = true;
+                        fallback.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            };
+
+            const applyDefinition = (category, certificate) => {
+                const definition = getCertificates(category)[certificate] || null;
+                updateSections(definition);
+                updateIntestatario(definition);
+            };
+
+            const refreshSelect = (category) => {
+                const certificates = getCertificates(category);
+                const previousValue = select.value;
+                select.innerHTML = '<option value="">Seleziona</option>';
+                Object.entries(certificates).forEach(([value, info]) => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = info.label;
+                    select.appendChild(option);
+                });
+                if (certificates[previousValue]) {
+                    select.value = previousValue;
+                } else {
+                    const first = Object.keys(certificates)[0];
+                    if (first) {
+                        select.value = first;
+                    } else {
+                        select.value = '';
+                    }
+                }
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+
+            select.addEventListener('change', () => {
+                const category = document.querySelector('input[name="categoria"]:checked')?.value;
+                if (!category) {
+                    return;
+                }
+                applyDefinition(category, select.value);
+            });
+
             const updateForCategory = (category) => {
                 refreshSelect(category);
-                toggleCatFields(category);
             };
 
             categoryRadios.forEach((radio) => {
