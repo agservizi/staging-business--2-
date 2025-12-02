@@ -14,24 +14,67 @@ $pageTitle = 'Nuova richiesta Certi³';
 $moduleColor = '#0061ff';
 $csrfToken = csrf_token();
 
-$catalogDefinitions = CertificateCatalog::definitions();
-$catalogSchema = CertificateCatalog::schema();
+$anprSchema = CertificateCatalog::anprSchema();
+$catalogDefinitions = $anprSchema['categories'];
+$fieldsetsDefinition = $anprSchema['fieldsets'];
+$fieldLabelMap = [];
+$fieldTypeMap = [];
+$fieldOptionsMap = [];
+$checkboxFields = [];
+foreach ($fieldsetsDefinition as $fieldset) {
+    foreach ($fieldset['fields'] as $field) {
+        $name = $field['name'];
+        $fieldLabelMap[$name] = $field['label'];
+        $fieldTypeMap[$name] = $field['type'] ?? 'text';
+        $fieldOptionsMap[$name] = $field['options'] ?? [];
+        if (($field['type'] ?? '') === 'checkbox') {
+            $checkboxFields[] = $name;
+        }
+    }
+}
+
 $categoryKeys = array_keys($catalogDefinitions);
 $defaultCategory = $categoryKeys[0] ?? 'comunale';
-$catalogJson = sanitize_output(json_encode($catalogSchema, JSON_UNESCAPED_UNICODE));
+$rawMacroCategoria = strtolower((string) ($_POST['macro_categoria'] ?? $defaultCategory));
+$macroCategoria = array_key_exists($rawMacroCategoria, $catalogDefinitions) ? $rawMacroCategoria : $defaultCategory;
 
-$rawCategoria = strtolower((string) ($_POST['categoria'] ?? $defaultCategory));
-$selectedCategory = array_key_exists($rawCategoria, $catalogDefinitions) ? $rawCategoria : $defaultCategory;
-$allowedIntestatarioTypes = ['persona','azienda'];
-$rawIntestatario = isset($_POST['intestatario_tipo']) ? (string) $_POST['intestatario_tipo'] : '';
-$intestatarioTipo = in_array($rawIntestatario, $allowedIntestatarioTypes, true) ? $rawIntestatario : 'persona';
+$subcategories = $catalogDefinitions[$macroCategoria]['subcategories'] ?? [];
+$subKeys = array_keys($subcategories);
+$defaultSottocategoria = $subKeys[0] ?? '';
+$rawSottocategoria = strtolower((string) ($_POST['sottocategoria'] ?? $defaultSottocategoria));
+$sottocategoria = array_key_exists($rawSottocategoria, $subcategories) ? $rawSottocategoria : $defaultSottocategoria;
+
+$availableCertificates = $subcategories[$sottocategoria]['certificates'] ?? [];
+$certificateKeys = array_keys($availableCertificates);
+$defaultCertificate = $certificateKeys[0] ?? '';
+$rawCertificate = (string) ($_POST['tipo_certificato'] ?? $defaultCertificate);
+$tipoCertificato = array_key_exists($rawCertificate, $availableCertificates) ? $rawCertificate : $defaultCertificate;
+
 $allowedUrgencyLevels = ['low','standard','alta'];
 $rawUrgenza = isset($_POST['urgenza']) ? (string) $_POST['urgenza'] : '';
 $urgenza = in_array($rawUrgenza, $allowedUrgencyLevels, true) ? $rawUrgenza : 'standard';
 
+$intestatarioTipo = 'persona';
+$schemaJson = sanitize_output(json_encode($anprSchema, JSON_UNESCAPED_UNICODE));
+
+$dynamicValues = [];
+foreach ($fieldsetsDefinition as $fieldset) {
+    foreach ($fieldset['fields'] as $field) {
+        $name = $field['name'];
+        if (in_array($name, $checkboxFields, true)) {
+            $dynamicValues[$name] = isset($_POST[$name]) ? '1' : '0';
+        } else {
+            $dynamicValues[$name] = trim((string) ($_POST[$name] ?? ''));
+        }
+    }
+}
+$dynamicValuesJson = sanitize_output(json_encode($dynamicValues, JSON_UNESCAPED_UNICODE));
+
 $data = [
-    'categoria' => $selectedCategory,
-    'tipo_certificato' => trim((string) ($_POST['tipo_certificato'] ?? '')),
+    'categoria' => 'comunale',
+    'macro_categoria' => $macroCategoria,
+    'sottocategoria' => $sottocategoria,
+    'tipo_certificato' => $tipoCertificato,
     'intestatario_tipo' => $intestatarioTipo,
     'denominazione' => trim((string) ($_POST['denominazione'] ?? '')),
     'nome' => trim((string) ($_POST['nome'] ?? '')),
@@ -46,41 +89,33 @@ $data = [
     'istat' => trim((string) ($_POST['istat'] ?? '')),
     'note_interne' => trim((string) ($_POST['note_interne'] ?? '')),
     'urgenza' => $urgenza,
-    'catasto_foglio' => trim((string) ($_POST['catasto_foglio'] ?? '')),
-    'catasto_particella' => trim((string) ($_POST['catasto_particella'] ?? '')),
-    'catasto_sub' => trim((string) ($_POST['catasto_sub'] ?? '')),
     'data_nascita' => trim((string) ($_POST['data_nascita'] ?? '')),
     'comune_nascita' => trim((string) ($_POST['comune_nascita'] ?? '')),
     'provincia_nascita' => strtoupper(trim((string) ($_POST['provincia_nascita'] ?? ''))),
-    'data_matrimonio' => trim((string) ($_POST['data_matrimonio'] ?? '')),
-    'comune_matrimonio' => trim((string) ($_POST['comune_matrimonio'] ?? '')),
-    'azienda_rea' => strtoupper(trim((string) ($_POST['azienda_rea'] ?? ''))),
-    'azienda_camera' => strtoupper(trim((string) ($_POST['azienda_camera'] ?? ''))),
-    'azienda_pec' => trim((string) ($_POST['azienda_pec'] ?? '')),
-    'immobile_comune' => trim((string) ($_POST['immobile_comune'] ?? '')),
-    'immobile_indirizzo' => trim((string) ($_POST['immobile_indirizzo'] ?? '')),
 ];
+
+foreach ($dynamicValues as $fieldName => $fieldValue) {
+    $data[$fieldName] = $fieldValue;
+}
 
 $errors = [];
 $successMessage = null;
-$certificateLabels = CertificateCatalog::labels($data['categoria']);
-if ($data['tipo_certificato'] !== '' && !array_key_exists($data['tipo_certificato'], $certificateLabels)) {
-    $data['tipo_certificato'] = '';
+$currentCertificate = $data['tipo_certificato'] !== '' ? CertificateCatalog::certificateProfile($data['macro_categoria'], $data['sottocategoria'], $data['tipo_certificato']) : null;
+$certificateFieldsets = $currentCertificate ? CertificateCatalog::certificateFieldsets($data['macro_categoria'], $data['sottocategoria'], $data['tipo_certificato']) : [];
+$dynamicRequiredFields = $currentCertificate ? CertificateCatalog::requiredFields($data['macro_categoria'], $data['sottocategoria'], $data['tipo_certificato']) : [];
+$activeFieldNames = [];
+foreach ($certificateFieldsets as $fieldsetEntry) {
+    $fieldsetKey = $fieldsetEntry['key'] ?? '';
+    if ($fieldsetKey === '' || !isset($fieldsetsDefinition[$fieldsetKey]['fields'])) {
+        continue;
+    }
+    foreach ($fieldsetsDefinition[$fieldsetKey]['fields'] as $fieldDefinition) {
+        $activeFieldNames[] = $fieldDefinition['name'];
+    }
 }
+$activeFieldNames = array_values(array_unique($activeFieldNames));
+$allowedIntestatari = $currentCertificate['allowed_intestatario'] ?? ['persona'];
 
-$currentDefinition = $data['tipo_certificato'] !== '' ? CertificateCatalog::certificate($data['categoria'], $data['tipo_certificato']) : null;
-$requirementsDefaults = [
-    'birth_data' => false,
-    'marriage_data' => false,
-    'company_data' => false,
-    'property_data' => false,
-];
-$requirements = array_merge($requirementsDefaults, $currentDefinition['requirements'] ?? []);
-$requiresBirthData = (bool) $requirements['birth_data'];
-$requiresMarriageData = (bool) $requirements['marriage_data'];
-$requiresCompanyData = (bool) $requirements['company_data'];
-$requiresPropertyData = (bool) $requirements['property_data'];
-$allowedIntestatari = $currentDefinition['allowed_intestatario'] ?? ['persona','azienda'];
 if (!in_array($data['intestatario_tipo'], $allowedIntestatari, true)) {
     $data['intestatario_tipo'] = $allowedIntestatari[0] ?? 'persona';
 }
@@ -92,24 +127,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Sessione scaduta. Aggiorna la pagina e riprova.';
     }
 
-    if ($data['tipo_certificato'] === '' || $currentDefinition === null) {
+    if ($data['tipo_certificato'] === '' || $currentCertificate === null) {
         $errors[] = 'Seleziona un tipo di certificato valido per la categoria scelta.';
     }
 
-    if ($currentDefinition !== null && !in_array($data['intestatario_tipo'], $allowedIntestatari, true)) {
-        $errors[] = 'La tipologia di intestatario selezionata non è consentita per questo certificato.';
-    }
-
-    if ($data['intestatario_tipo'] === 'azienda' && $data['denominazione'] === '') {
-        $errors[] = 'La ragione sociale è obbligatoria per le aziende.';
-    }
-
-    if ($data['intestatario_tipo'] === 'persona' && ($data['nome'] === '' || $data['cognome'] === '')) {
-        $errors[] = 'Nome e cognome sono obbligatori per le persone fisiche.';
+    if ($data['nome'] === '' || $data['cognome'] === '') {
+        $errors[] = 'Nome e cognome sono obbligatori per l\'intestatario.';
     }
 
     if ($data['cf_piva'] === '' || !preg_match('/^[A-Z0-9]{11,16}$/', $data['cf_piva'])) {
-        $errors[] = 'Inserisci un codice fiscale o partita IVA valido (11-16 caratteri alfanumerici).';
+        $errors[] = 'Inserisci un codice fiscale valido (11-16 caratteri alfanumerici).';
+    }
+
+    if ($data['data_nascita'] === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['data_nascita'])) {
+        $errors[] = 'La data di nascita è obbligatoria e deve avere formato YYYY-MM-DD.';
+    }
+
+    if ($data['comune'] === '') {
+        $errors[] = 'Il comune di riferimento è obbligatorio.';
+    }
+
+    if ($data['provincia'] !== '' && !preg_match('/^[A-Z]{2}$/', $data['provincia'])) {
+        $errors[] = 'La provincia deve contenere due lettere.';
     }
 
     if ($data['email'] !== '' && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
@@ -120,101 +159,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Numero di telefono non valido.';
     }
 
-    if ($data['comune'] === '' || $data['provincia'] === '') {
-        $errors[] = 'Comune e provincia sono obbligatori.';
-    }
-
     if ($data['cap'] !== '' && !preg_match('/^[0-9]{5}$/', $data['cap'])) {
         $errors[] = 'CAP non valido. Usa un formato a 5 cifre.';
     }
 
-    if ($requiresCompanyData) {
-        if ($data['denominazione'] === '') {
-            $errors[] = 'Per i documenti camerali è obbligatoria la ragione sociale.';
+    if ($data['istat'] !== '' && !preg_match('/^[0-9]{6}$/', $data['istat'])) {
+        $errors[] = 'Il codice ISTAT deve contenere 6 cifre.';
+    }
+
+    foreach ($dynamicRequiredFields as $requiredField) {
+        if (!in_array($requiredField, $activeFieldNames, true)) {
+            continue;
         }
-        if ($data['azienda_rea'] === '' && $data['azienda_camera'] === '') {
-            $errors[] = 'Indica almeno il numero REA o il numero di iscrizione alla Camera di Commercio.';
-        }
-        if ($data['azienda_pec'] !== '' && !filter_var($data['azienda_pec'], FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'PEC aziendale non valida.';
+        $value = $data[$requiredField] ?? '';
+        $type = $fieldTypeMap[$requiredField] ?? 'text';
+        $label = $fieldLabelMap[$requiredField] ?? ucfirst(str_replace('_', ' ', $requiredField));
+        $isEmpty = $type === 'checkbox' ? ($value !== '1') : ($value === '');
+        if ($isEmpty) {
+            $errors[] = 'Il campo "' . $label . '" è obbligatorio per questo certificato.';
         }
     }
 
-    if ($requiresBirthData) {
-        if ($data['data_nascita'] === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['data_nascita'])) {
-            $errors[] = 'Inserisci una data di nascita nel formato YYYY-MM-DD.';
+    foreach ($activeFieldNames as $fieldName) {
+        $value = $data[$fieldName] ?? '';
+        $type = $fieldTypeMap[$fieldName] ?? 'text';
+        $label = $fieldLabelMap[$fieldName] ?? ucfirst(str_replace('_', ' ', $fieldName));
+
+        if ($type === 'date' && $value !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            $errors[] = 'Il campo "' . $label . '" deve avere formato YYYY-MM-DD.';
         }
-        if ($data['comune_nascita'] === '' || $data['provincia_nascita'] === '') {
-            $errors[] = 'Comune e provincia di nascita sono obbligatori.';
+
+        if ($type === 'select' && $value !== '') {
+            $options = array_column($fieldOptionsMap[$fieldName] ?? [], 'value');
+            if ($options && !in_array($value, $options, true)) {
+                $errors[] = 'Valore non valido per "' . $label . '".';
+            }
+        }
+
+        if ($type === 'checkbox') {
+            $data[$fieldName] = $value === '1' ? '1' : '0';
         }
     }
 
-    if ($requiresMarriageData) {
-        if ($data['data_matrimonio'] === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['data_matrimonio'])) {
-            $errors[] = 'Inserisci la data dell\'atto matrimoniale nel formato YYYY-MM-DD.';
-        }
-        if ($data['comune_matrimonio'] === '') {
-            $errors[] = 'Il comune dell\'atto matrimoniale è obbligatorio.';
-        }
+    if (($data['periodo_dal'] ?? '') !== '' && ($data['periodo_al'] ?? '') !== '' && strcmp($data['periodo_dal'], $data['periodo_al']) > 0) {
+        $errors[] = 'L\'intervallo temporale selezionato non è valido: la data "Al" deve essere successiva a "Dal".';
     }
 
-    if ($requiresPropertyData) {
-        if ($data['catasto_foglio'] === '' || $data['catasto_particella'] === '') {
-            $errors[] = 'Per le richieste catastali è necessario indicare Foglio e Particella.';
-        }
-        if ($data['immobile_comune'] === '') {
-            $errors[] = 'Specificare il comune dell\'immobile è obbligatorio.';
-        }
+    if (($data['recapito_email'] ?? '') !== '' && !filter_var($data['recapito_email'], FILTER_VALIDATE_EMAIL)) {
+        $errors[] = 'Il recapito email inserito non è valido.';
+    }
+
+    if (($data['recapito_telefono'] ?? '') !== '' && !preg_match('/^[0-9+()\s-]{6,}$/', (string) $data['recapito_telefono'])) {
+        $errors[] = 'Il recapito telefonico inserito non è valido.';
+    }
+
+    if (($data['cf_convivente'] ?? '') !== '' && !preg_match('/^[A-Z0-9]{11,16}$/', (string) $data['cf_convivente'])) {
+        $errors[] = 'Il codice fiscale del convivente non è valido.';
     }
 
     if (!$errors) {
         $workflow = new CertiWorkflowService($pdo);
-        $specifiche = [];
-
-        if ($requiresBirthData) {
-            $specifiche['nascita'] = [
-                'data' => $data['data_nascita'],
-                'comune' => $data['comune_nascita'],
-                'provincia' => $data['provincia_nascita'],
-            ];
-        }
-
-        if ($requiresMarriageData) {
-            $specifiche['matrimonio'] = [
-                'data' => $data['data_matrimonio'],
-                'comune' => $data['comune_matrimonio'],
-            ];
-        }
-
-        if ($requiresCompanyData) {
-            $specifiche['azienda'] = [
-                'rea' => $data['azienda_rea'],
-                'camera' => $data['azienda_camera'],
-                'pec' => $data['azienda_pec'],
-            ];
-        }
-
-        if ($requiresPropertyData) {
-            $specifiche['immobile'] = [
-                'comune' => $data['immobile_comune'],
-                'indirizzo' => $data['immobile_indirizzo'],
-                'foglio' => $data['catasto_foglio'],
-                'particella' => $data['catasto_particella'],
-                'subalterno' => $data['catasto_sub'],
-            ];
+        $dynamicPayload = [];
+        foreach ($activeFieldNames as $fieldName) {
+            $type = $fieldTypeMap[$fieldName] ?? 'text';
+            $value = $data[$fieldName] ?? '';
+            if ($type === 'checkbox') {
+                $dynamicPayload[$fieldName] = $value === '1';
+            } else {
+                $dynamicPayload[$fieldName] = $value === '' ? null : $value;
+            }
         }
 
         $payload = [
             'categoria' => $data['categoria'],
+            'macro_categoria' => $data['macro_categoria'],
+            'sottocategoria' => $data['sottocategoria'],
             'tipo_certificato' => $data['tipo_certificato'],
             'urgenza' => $data['urgenza'],
             'note_interne' => $data['note_interne'] ?: null,
+            'stato' => 'nuova',
             'dati_intestatario' => [
                 'tipo' => $data['intestatario_tipo'],
                 'denominazione' => $data['denominazione'],
                 'nome' => $data['nome'],
                 'cognome' => $data['cognome'],
                 'cf_piva' => $data['cf_piva'],
+                'data_nascita' => $data['data_nascita'],
+                'comune_nascita' => $data['comune_nascita'],
+                'provincia_nascita' => $data['provincia_nascita'],
                 'email' => $data['email'],
                 'telefono' => $data['telefono'],
                 'indirizzo' => $data['indirizzo'],
@@ -222,19 +254,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'provincia' => $data['provincia'],
                 'cap' => $data['cap'],
                 'istat' => $data['istat'],
-                'catasto' => [
-                    'foglio' => $data['catasto_foglio'],
-                    'particella' => $data['catasto_particella'],
-                    'subalterno' => $data['catasto_sub'],
-                    'comune' => $data['immobile_comune'],
-                    'indirizzo' => $data['immobile_indirizzo'],
-                ],
             ],
         ];
 
-        if ($specifiche) {
-            $payload['dati_intestatario']['specifiche'] = $specifiche;
-        }
+        $payload['dati_intestatario']['anpr'] = [
+            'macro_categoria' => $data['macro_categoria'],
+            'sottocategoria' => $data['sottocategoria'],
+            'certificate' => [
+                'id' => $data['tipo_certificato'],
+                'label' => $currentCertificate['label'] ?? null,
+                'tooltip' => $currentCertificate['tooltip'] ?? null,
+                'subcategory_label' => $currentCertificate['subcategory_label'] ?? null,
+                'category_label' => $currentCertificate['category_label'] ?? null,
+                'provider' => $currentCertificate['provider'] ?? null,
+            ],
+            'fieldsets' => $certificateFieldsets,
+            'values' => $dynamicPayload,
+            'required_fields' => $dynamicRequiredFields,
+            'schema_version' => 'anpr_v1',
+        ];
 
         try {
             $request = $workflow->createRequest($payload, (int) ($_SESSION['user_id'] ?? 0));
@@ -276,31 +314,57 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         <?php endif; ?>
 
-        <form id="certi-create-form" class="card ag-card" method="post" autocomplete="off">
+        <form
+            id="certi-create-form"
+            class="card ag-card"
+            method="post"
+            autocomplete="off"
+            data-anpr-schema="<?php echo $schemaJson; ?>"
+            data-anpr-values="<?php echo $dynamicValuesJson; ?>"
+            data-selected-category="<?php echo sanitize_output($data['macro_categoria']); ?>"
+            data-selected-subcategory="<?php echo sanitize_output($data['sottocategoria']); ?>"
+            data-selected-certificate="<?php echo sanitize_output($data['tipo_certificato']); ?>"
+        >
             <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
+            <input type="hidden" name="categoria" value="<?php echo sanitize_output($data['categoria']); ?>">
+            <input type="hidden" name="intestatario_tipo" value="<?php echo sanitize_output($data['intestatario_tipo']); ?>">
             <div class="card-body">
-                <div class="row g-4">
-                    <div class="col-12">
-                        <label class="form-label d-block">Categoria certificato</label>
-                        <div class="btn-group" role="group">
-                            <?php foreach (array_keys($catalogDefinitions) as $cat): ?>
-                            <input type="radio" class="btn-check" name="categoria" id="cat-<?php echo sanitize_output($cat); ?>" value="<?php echo sanitize_output($cat); ?>" <?php echo $data['categoria'] === $cat ? 'checked' : ''; ?>>
-                            <label class="btn btn-outline-primary" for="cat-<?php echo sanitize_output($cat); ?>"><?php echo sanitize_output($catalogSchema[$cat]['label'] ?? ucfirst($cat)); ?></label>
+                <div class="row g-4 align-items-end">
+                    <div class="col-lg-4">
+                        <label class="form-label" for="macro_categoria">Categoria</label>
+                        <select class="form-select" id="macro_categoria" name="macro_categoria" data-role="anpr-category">
+                            <?php foreach ($catalogDefinitions as $key => $definition): ?>
+                                <option value="<?php echo sanitize_output($key); ?>" <?php echo $data['macro_categoria'] === $key ? 'selected' : ''; ?>><?php echo sanitize_output($definition['label']); ?></option>
                             <?php endforeach; ?>
-                        </div>
-                        <small class="text-muted">Colore principale modulo: <span style="color: <?php echo sanitize_output($moduleColor); ?>;"><?php echo sanitize_output($moduleColor); ?></span></small>
+                        </select>
+                        <small class="text-muted">Le categorie riproducono la tassonomia ANPR.</small>
                     </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label" for="tipo_certificato">Tipo certificato</label>
-                        <select class="form-select" id="tipo_certificato" name="tipo_certificato" required data-certi-schema='<?php echo $catalogJson; ?>'>
-                            <option value="">Seleziona</option>
-                            <?php foreach ($certificateLabels as $value => $label): ?>
-                                <option value="<?php echo sanitize_output($value); ?>" <?php echo $data['tipo_certificato'] === $value ? 'selected' : ''; ?>><?php echo sanitize_output($label); ?></option>
+                    <div class="col-lg-4">
+                        <label class="form-label" for="sottocategoria">Sottocategoria</label>
+                        <select class="form-select" id="sottocategoria" name="sottocategoria" data-role="anpr-subcategory">
+                            <?php foreach ($subcategories as $key => $definition): ?>
+                                <option value="<?php echo sanitize_output($key); ?>" <?php echo $data['sottocategoria'] === $key ? 'selected' : ''; ?>><?php echo sanitize_output($definition['label']); ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-lg-4">
+                        <label class="form-label" for="tipo_certificato">Certificato</label>
+                        <select class="form-select" id="tipo_certificato" name="tipo_certificato" required data-role="anpr-certificate">
+                            <?php foreach ($availableCertificates as $key => $definition): ?>
+                                <option value="<?php echo sanitize_output($key); ?>" <?php echo $data['tipo_certificato'] === $key ? 'selected' : ''; ?>><?php echo sanitize_output($definition['label']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-2 align-items-center">
+                    <div class="col-lg-8">
+                        <div class="alert alert-info mb-0" id="certificato-tooltip" role="alert">
+                            <i class="fa-solid fa-circle-info me-2"></i>
+                            <span data-role="anpr-tooltip-text"><?php echo sanitize_output($currentCertificate['tooltip'] ?? 'Seleziona un certificato per visualizzare la descrizione ufficiale.'); ?></span>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
                         <label class="form-label" for="urgenza">Livello urgenza</label>
                         <select class="form-select" id="urgenza" name="urgenza">
                             <option value="low" <?php echo $data['urgenza'] === 'low' ? 'selected' : ''; ?>>Bassa</option>
@@ -308,140 +372,135 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <option value="alta" <?php echo $data['urgenza'] === 'alta' ? 'selected' : ''; ?>>Alta</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label d-block">Intestatario</label>
-                        <div class="btn-group" role="group">
-                            <input type="radio" class="btn-check" name="intestatario_tipo" id="intestatario-persona" value="persona" <?php echo $data['intestatario_tipo'] === 'persona' ? 'checked' : ''; ?>>
-                            <label class="btn btn-outline-light" for="intestatario-persona">Persona</label>
-                            <input type="radio" class="btn-check" name="intestatario_tipo" id="intestatario-azienda" value="azienda" <?php echo $data['intestatario_tipo'] === 'azienda' ? 'checked' : ''; ?>>
-                            <label class="btn btn-outline-light" for="intestatario-azienda">Azienda</label>
-                        </div>
-                    </div>
                 </div>
 
                 <hr class="my-4">
 
-                <div class="row g-4">
-                    <div class="col-md-6" data-intestatario="azienda" <?php echo $data['intestatario_tipo'] === 'azienda' ? '' : 'hidden'; ?>>
-                        <label class="form-label" for="denominazione">Ragione sociale</label>
-                        <input class="form-control" type="text" id="denominazione" name="denominazione" value="<?php echo sanitize_output($data['denominazione']); ?>" placeholder="Denominazione azienda">
+                <section>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h2 class="h5 mb-0">Dati intestatario</h2>
+                            <p class="text-muted small mb-0">Campi obbligatori per tutte le richieste ANPR.</p>
+                        </div>
+                        <span class="badge bg-secondary-subtle text-secondary">Obbligatori</span>
                     </div>
-                    <div class="col-md-3" data-intestatario="persona" <?php echo $data['intestatario_tipo'] === 'persona' ? '' : 'hidden'; ?>>
-                        <label class="form-label" for="nome">Nome</label>
-                        <input class="form-control" type="text" id="nome" name="nome" value="<?php echo sanitize_output($data['nome']); ?>">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label" for="nome">Nome</label>
+                            <input class="form-control" type="text" id="nome" name="nome" value="<?php echo sanitize_output($data['nome']); ?>" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="cognome">Cognome</label>
+                            <input class="form-control" type="text" id="cognome" name="cognome" value="<?php echo sanitize_output($data['cognome']); ?>" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="cf_piva">Codice fiscale</label>
+                            <input class="form-control" type="text" id="cf_piva" name="cf_piva" value="<?php echo sanitize_output($data['cf_piva']); ?>" maxlength="16" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="data_nascita">Data di nascita</label>
+                            <input class="form-control" type="date" id="data_nascita" name="data_nascita" value="<?php echo sanitize_output($data['data_nascita']); ?>" required>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label" for="comune">Comune di riferimento</label>
+                            <input
+                                class="form-control"
+                                type="text"
+                                id="comune"
+                                name="comune"
+                                value="<?php echo sanitize_output($data['comune']); ?>"
+                                data-istat-comune="true"
+                                data-istat-province-target="#provincia"
+                                data-istat-cap-target="#cap"
+                                data-istat-code-target="#istat"
+                                placeholder="Digita per cercare nel dataset ISTAT"
+                                required
+                            >
+                            <small class="text-muted">Utilizza il motore di ricerca ISTAT per evitare errori ortografici.</small>
+                        </div>
                     </div>
-                    <div class="col-md-3" data-intestatario="persona" <?php echo $data['intestatario_tipo'] === 'persona' ? '' : 'hidden'; ?>>
-                        <label class="form-label" for="cognome">Cognome</label>
-                        <input class="form-control" type="text" id="cognome" name="cognome" value="<?php echo sanitize_output($data['cognome']); ?>">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="cf_piva">Codice fiscale o P.IVA</label>
-                        <input class="form-control" type="text" id="cf_piva" name="cf_piva" value="<?php echo sanitize_output($data['cf_piva']); ?>" maxlength="16">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="email">Email intestatario</label>
-                        <input class="form-control" type="email" id="email" name="email" value="<?php echo sanitize_output($data['email']); ?>">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="telefono">Telefono</label>
-                        <input class="form-control" type="text" id="telefono" name="telefono" value="<?php echo sanitize_output($data['telefono']); ?>">
-                    </div>
-                </div>
 
-                <div class="row g-4 mt-1">
-                    <div class="col-md-6">
-                        <label class="form-label" for="indirizzo">Indirizzo</label>
-                        <input class="form-control" type="text" id="indirizzo" name="indirizzo" value="<?php echo sanitize_output($data['indirizzo']); ?>">
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-4">
+                            <label class="form-label" for="provincia">Provincia</label>
+                            <input class="form-control" type="text" id="provincia" name="provincia" value="<?php echo sanitize_output($data['provincia']); ?>" maxlength="2">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="cap">CAP</label>
+                            <input class="form-control" type="text" id="cap" name="cap" value="<?php echo sanitize_output($data['cap']); ?>" maxlength="5">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="istat">Codice ISTAT</label>
+                            <input class="form-control" type="text" id="istat" name="istat" value="<?php echo sanitize_output($data['istat']); ?>" maxlength="6" readonly>
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="comune">Comune</label>
-                        <input class="form-control" type="text" id="comune" name="comune" value="<?php echo sanitize_output($data['comune']); ?>" data-istat-comune="true" data-istat-province-target="#provincia" data-istat-cap-target="#cap" data-istat-code-target="#istat" placeholder="Comune di riferimento">
-                        <small class="text-muted">Ricerca con dataset ISTAT.</small>
-                    </div>
-                    <div class="col-md-1">
-                        <label class="form-label" for="provincia">Prov.</label>
-                        <input class="form-control" type="text" id="provincia" name="provincia" value="<?php echo sanitize_output($data['provincia']); ?>" maxlength="2">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label" for="cap">CAP</label>
-                        <input class="form-control" type="text" id="cap" name="cap" value="<?php echo sanitize_output($data['cap']); ?>" maxlength="5">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label" for="istat">Codice ISTAT</label>
-                        <input class="form-control" type="text" id="istat" name="istat" value="<?php echo sanitize_output($data['istat']); ?>" maxlength="10" readonly>
-                    </div>
-                </div>
 
-                <div class="row g-4 mt-1">
-                    <div class="col-12">
-                        <label class="form-label" for="note_interne">Note interne / requisiti specifici</label>
-                        <textarea class="form-control" id="note_interne" name="note_interne" rows="4" placeholder="Indica dettagli utili per l'operatore (es. consegna digitale, portale cliente)"><?php echo sanitize_output($data['note_interne']); ?></textarea>
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-3">
+                            <label class="form-label" for="email">Email</label>
+                            <input class="form-control" type="email" id="email" name="email" value="<?php echo sanitize_output($data['email']); ?>" placeholder="nome@dominio.it">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="telefono">Telefono</label>
+                            <input class="form-control" type="text" id="telefono" name="telefono" value="<?php echo sanitize_output($data['telefono']); ?>" placeholder="+39 ...">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="comune_nascita">Comune di nascita (facoltativo)</label>
+                            <input class="form-control" type="text" id="comune_nascita" name="comune_nascita" value="<?php echo sanitize_output($data['comune_nascita']); ?>">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="provincia_nascita">Provincia nascita</label>
+                            <input class="form-control" type="text" id="provincia_nascita" name="provincia_nascita" value="<?php echo sanitize_output($data['provincia_nascita']); ?>" maxlength="2">
+                        </div>
                     </div>
-                </div>
+                </section>
 
-                <div class="row g-4 mt-1" data-section="birth" <?php echo $requiresBirthData ? '' : 'hidden'; ?>>
-                    <div class="col-md-4">
-                        <label class="form-label" for="data_nascita">Data di nascita</label>
-                        <input class="form-control" type="date" id="data_nascita" name="data_nascita" value="<?php echo sanitize_output($data['data_nascita']); ?>">
-                    </div>
-                    <div class="col-md-5">
-                        <label class="form-label" for="comune_nascita">Comune di nascita</label>
-                        <input class="form-control" type="text" id="comune_nascita" name="comune_nascita" value="<?php echo sanitize_output($data['comune_nascita']); ?>">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="provincia_nascita">Provincia</label>
-                        <input class="form-control" type="text" id="provincia_nascita" name="provincia_nascita" value="<?php echo sanitize_output($data['provincia_nascita']); ?>" maxlength="2">
-                    </div>
-                </div>
+                <hr class="my-4">
 
-                <div class="row g-4 mt-1" data-section="marriage" <?php echo $requiresMarriageData ? '' : 'hidden'; ?>>
-                    <div class="col-md-4">
-                        <label class="form-label" for="data_matrimonio">Data atto</label>
-                        <input class="form-control" type="date" id="data_matrimonio" name="data_matrimonio" value="<?php echo sanitize_output($data['data_matrimonio']); ?>">
+                <section>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h2 class="h5 mb-0">Campi dinamici certificato</h2>
+                            <p class="text-muted small mb-0">Il contenitore si popola in base al workflow selezionato.</p>
+                        </div>
+                        <span class="badge bg-info-subtle text-info">ANPR schema</span>
                     </div>
-                    <div class="col-md-8">
-                        <label class="form-label" for="comune_matrimonio">Comune dell'atto</label>
-                        <input class="form-control" type="text" id="comune_matrimonio" name="comune_matrimonio" value="<?php echo sanitize_output($data['comune_matrimonio']); ?>">
+                    <div id="anpr-dynamic-fields" class="border border-dashed rounded-3 p-4 bg-light-subtle" data-role="anpr-fieldsets">
+                        <p class="text-muted mb-0">Seleziona un certificato per generare automaticamente i campi richiesti.</p>
                     </div>
-                </div>
+                </section>
 
-                <div class="row g-4 mt-1" data-section="company" <?php echo $requiresCompanyData ? '' : 'hidden'; ?>>
-                    <div class="col-md-4">
-                        <label class="form-label" for="azienda_rea">Numero REA</label>
-                        <input class="form-control" type="text" id="azienda_rea" name="azienda_rea" value="<?php echo sanitize_output($data['azienda_rea']); ?>">
+                <section class="mt-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h2 class="h5 mb-0">Utility operatore</h2>
+                            <p class="text-muted small mb-0">Genera rapidamente i payload per controlli o invio manuale.</p>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-outline-primary" type="button" id="generate-payload">
+                                <i class="fa-solid fa-code me-2"></i>Genera e copia payload JSON
+                            </button>
+                            <button class="btn btn-outline-secondary" type="button" id="download-summary">
+                                <i class="fa-solid fa-file-arrow-down me-2"></i>Scarica riepilogo
+                            </button>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="azienda_camera">Numero iscrizione CCIAA</label>
-                        <input class="form-control" type="text" id="azienda_camera" name="azienda_camera" value="<?php echo sanitize_output($data['azienda_camera']); ?>">
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <label class="form-label">Anteprima payload</label>
+                            <pre id="payload-preview" class="bg-dark text-light rounded px-3 py-3 small overflow-auto" style="min-height: 160px;">{}</pre>
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="form-label">Riepilogo certificato</label>
+                            <pre id="summary-preview" class="bg-dark text-light rounded px-3 py-3 small overflow-auto" style="min-height: 160px;"></pre>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="azienda_pec">PEC aziendale</label>
-                        <input class="form-control" type="email" id="azienda_pec" name="azienda_pec" value="<?php echo sanitize_output($data['azienda_pec']); ?>">
-                    </div>
-                </div>
+                </section>
 
-                <div class="row g-4 mt-1" data-section="property" <?php echo $requiresPropertyData ? '' : 'hidden'; ?>>
-                    <div class="col-md-4">
-                        <label class="form-label" for="catasto_foglio">Foglio</label>
-                        <input class="form-control" type="text" id="catasto_foglio" name="catasto_foglio" value="<?php echo sanitize_output($data['catasto_foglio']); ?>">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="catasto_particella">Particella</label>
-                        <input class="form-control" type="text" id="catasto_particella" name="catasto_particella" value="<?php echo sanitize_output($data['catasto_particella']); ?>">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label" for="catasto_sub">Subalterno</label>
-                        <input class="form-control" type="text" id="catasto_sub" name="catasto_sub" value="<?php echo sanitize_output($data['catasto_sub']); ?>">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="immobile_comune">Comune immobile</label>
-                        <input class="form-control" type="text" id="immobile_comune" name="immobile_comune" value="<?php echo sanitize_output($data['immobile_comune']); ?>">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="immobile_indirizzo">Indirizzo immobile</label>
-                        <input class="form-control" type="text" id="immobile_indirizzo" name="immobile_indirizzo" value="<?php echo sanitize_output($data['immobile_indirizzo']); ?>">
-                    </div>
-                </div>
+                <section class="mt-4">
+                    <label class="form-label" for="note_interne">Note interne / istruzioni</label>
+                    <textarea class="form-control" id="note_interne" name="note_interne" rows="4" placeholder="Inserisci ulteriori specifiche utili per l'operatore."><?php echo sanitize_output($data['note_interne']); ?></textarea>
+                </section>
             </div>
             <div class="card-footer d-flex justify-content-end gap-2">
                 <a class="btn btn-outline-light" href="index.php">Annulla</a>
