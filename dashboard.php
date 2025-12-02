@@ -44,7 +44,6 @@ $charts = [
             'Appuntamenti',
             'Contratti energia',
             'Pratiche ANPR',
-            'Visure catastali',
             'Progetti web',
             'Programma Fedeltà',
             'Curriculum',
@@ -53,7 +52,7 @@ $charts = [
             'Email marketing',
             'Email inviate',
         ],
-        'values' => [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        'values' => [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     ],
 ];
 
@@ -147,7 +146,6 @@ try {
         'servizi_appuntamenti' => 0,
         'energia_contratti' => 0,
         'anpr_pratiche' => 0,
-        'servizi_visure' => 0,
         'servizi_web_progetti' => 0,
         'fedelta_movimenti' => 0,
         'curriculum' => 0,

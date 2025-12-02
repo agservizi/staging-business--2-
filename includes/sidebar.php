@@ -80,13 +80,6 @@ $serviziItems = [
         'color' => 'orange',
     ],
     [
-        'needle' => 'modules/servizi/visure',
-        'label' => 'Visure & Catasto',
-        'icon' => 'fa-solid fa-map-location-dot',
-        'href' => base_url('modules/servizi/visure/index.php'),
-        'color' => 'teal',
-    ],
-    [
         'needle' => 'modules/servizi/telegrammi',
         'label' => 'Invio telegrammi',
         'icon' => 'fa-solid fa-paper-plane',
