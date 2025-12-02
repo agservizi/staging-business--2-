@@ -22,11 +22,17 @@ $catalogJson = sanitize_output(json_encode($catalogSchema, JSON_UNESCAPED_UNICOD
 
 $rawCategoria = strtolower((string) ($_POST['categoria'] ?? $defaultCategory));
 $selectedCategory = array_key_exists($rawCategoria, $catalogDefinitions) ? $rawCategoria : $defaultCategory;
+$allowedIntestatarioTypes = ['persona','azienda'];
+$rawIntestatario = isset($_POST['intestatario_tipo']) ? (string) $_POST['intestatario_tipo'] : '';
+$intestatarioTipo = in_array($rawIntestatario, $allowedIntestatarioTypes, true) ? $rawIntestatario : 'persona';
+$allowedUrgencyLevels = ['low','standard','alta'];
+$rawUrgenza = isset($_POST['urgenza']) ? (string) $_POST['urgenza'] : '';
+$urgenza = in_array($rawUrgenza, $allowedUrgencyLevels, true) ? $rawUrgenza : 'standard';
 
 $data = [
     'categoria' => $selectedCategory,
     'tipo_certificato' => trim((string) ($_POST['tipo_certificato'] ?? '')),
-    'intestatario_tipo' => in_array($_POST['intestatario_tipo'] ?? 'persona', ['persona','azienda'], true) ? (string) $_POST['intestatario_tipo'] : 'persona',
+    'intestatario_tipo' => $intestatarioTipo,
     'denominazione' => trim((string) ($_POST['denominazione'] ?? '')),
     'nome' => trim((string) ($_POST['nome'] ?? '')),
     'cognome' => trim((string) ($_POST['cognome'] ?? '')),
@@ -39,7 +45,7 @@ $data = [
     'cap' => trim((string) ($_POST['cap'] ?? '')),
     'istat' => trim((string) ($_POST['istat'] ?? '')),
     'note_interne' => trim((string) ($_POST['note_interne'] ?? '')),
-    'urgenza' => in_array($_POST['urgenza'] ?? 'standard', ['low','standard','alta'], true) ? (string) $_POST['urgenza'] : 'standard',
+    'urgenza' => $urgenza,
     'catasto_foglio' => trim((string) ($_POST['catasto_foglio'] ?? '')),
     'catasto_particella' => trim((string) ($_POST['catasto_particella'] ?? '')),
     'catasto_sub' => trim((string) ($_POST['catasto_sub'] ?? '')),
