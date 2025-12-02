@@ -10,6 +10,12 @@ require_once __DIR__ . '/../../../includes/helpers.php';
 
 require_role('Admin', 'Manager', 'Operatore');
 
+$requestedCategory = strtolower((string) ($_GET['categoria'] ?? 'camerale'));
+if ($requestedCategory === 'comunale') {
+	header('Location: create.php');
+	exit;
+}
+
 $pageTitle = 'Certificati Camerali Ufficiali';
 $moduleColor = '#0a5ed7';
 $csrfToken = csrf_token();
@@ -239,14 +245,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 	padding: 4px 12px;
 	font-size: 12px;
 }
-.cciaa-preview {
-	background: #0f172a;
-	color: #e2e8f0;
-	border-radius: 16px;
-	padding: 16px;
-	min-height: 200px;
-	font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', monospace;
-}
 @media (max-width: 991px) {
 	.cciaa-hero {
 		padding: 24px;
@@ -261,13 +259,18 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 				<div>
 					<span class="badge bg-light text-dark mb-2">Workflow camerale</span>
 					<h1 class="h2 mb-2">Richiedi certificati camerali ufficiali</h1>
-					<p class="mb-0">Tre livelli guidati (categoria → certificato → parametri) con controlli CCIAA e payload pronto per VisEngine / DocuEngine.</p>
+					<p class="mb-0">Tre livelli guidati (categoria → certificato → parametri) con controlli CCIAA pronti per VisEngine / DocuEngine.</p>
 				</div>
 				<div class="text-lg-end">
 					<p class="mb-1">Colore modulo</p>
 					<span class="badge" style="background: rgba(255,255,255,0.2); color:#fff;"><?php echo sanitize_output($moduleColor); ?></span>
 				</div>
 			</div>
+		</div>
+
+		<div class="d-flex flex-wrap gap-2 mb-4">
+			<a class="btn btn-outline-light" href="create.php"><i class="fa-solid fa-city me-1"></i>Certificati comunali (ANPR)</a>
+			<a class="btn btn-light text-primary" href="create_camerale.php"><i class="fa-solid fa-briefcase me-1"></i>Certificati camerali (CCIAA)</a>
 		</div>
 
 		<?php if ($errors): ?>
@@ -420,33 +423,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 					</div>
 					<div class="cciaa-dynamic-box" data-role="cciaa-dynamic-fields">
 						<p class="text-muted mb-0">Seleziona un certificato per generare automaticamente i campi richiesti.</p>
-					</div>
-				</section>
-
-				<section class="mb-4">
-					<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-						<div>
-							<h2 class="h4 mb-0">Utility operatore</h2>
-							<p class="text-muted small mb-0">Genera payload JSON conforme agli standard VisEngine / DocuEngine / CCIAA.</p>
-						</div>
-						<div class="btn-group" role="group">
-							<button class="btn btn-outline-primary" type="button" id="btn-genera-payload">
-								<i class="fa-solid fa-code me-2"></i>Genera richiesta
-							</button>
-							<button class="btn btn-outline-secondary" type="button" id="btn-copia-payload">
-								<i class="fa-solid fa-copy me-2"></i>Copia JSON
-							</button>
-						</div>
-					</div>
-					<div class="row g-3">
-						<div class="col-lg-6">
-							<label class="form-label">Preview payload</label>
-							<pre class="cciaa-preview" id="cciaa-payload-preview">{}</pre>
-						</div>
-						<div class="col-lg-6">
-							<label class="form-label">Riepilogo certificato</label>
-							<pre class="cciaa-preview" id="cciaa-summary-preview">Seleziona un certificato per vedere il riepilogo.</pre>
-						</div>
 					</div>
 				</section>
 

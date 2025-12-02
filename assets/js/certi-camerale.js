@@ -16,8 +16,6 @@
             this.certificateSelect = form.querySelector('[data-role="cciaa-certificate-select"]');
             this.tooltip = form.querySelector('[data-role="cciaa-certificate-tooltip"]');
             this.dynamicContainer = form.querySelector('[data-role="cciaa-dynamic-fields"]');
-            this.payloadPreview = document.querySelector('#cciaa-payload-preview');
-            this.summaryPreview = document.querySelector('#cciaa-summary-preview');
             this.elencoWarning = form.querySelector('[data-role="elenco-warning"]');
             this.formaGiuridica = form.querySelector('[data-role="forma-giuridica"]');
             this.categoryCards = Array.from(form.querySelectorAll('[data-category-option]'));
@@ -27,10 +25,7 @@
             this.syncCategoryButtons();
             this.populateCertificates(this.categoryInput.value);
             this.bindCertificateSelect();
-            this.bindDynamicTracking();
-            this.bindUtilityButtons();
             this.updateCertificateView();
-            window.getPayload = () => this.buildPayload();
         },
         safeParse(payload, fallback) {
             if (!payload) {
@@ -92,37 +87,6 @@
             if (this.formaGiuridica) {
                 this.formaGiuridica.addEventListener('change', () => {
                     this.toggleElencoSociAvailability();
-                    this.updateSummary();
-                    this.refreshPayloadPreview();
-                });
-            }
-        },
-        bindDynamicTracking() {
-            const generalInputs = this.form.querySelectorAll('input[name], select[name], textarea[name]');
-            generalInputs.forEach((input) => {
-                input.addEventListener('input', () => this.refreshPayloadPreview());
-                input.addEventListener('change', () => this.refreshPayloadPreview());
-            });
-        },
-        bindUtilityButtons() {
-            const generate = document.getElementById('btn-genera-payload');
-            const copy = document.getElementById('btn-copia-payload');
-            if (generate) {
-                generate.addEventListener('click', () => {
-                    this.refreshPayloadPreview(true);
-                    this.flash(generate, 'Payload aggiornato');
-                });
-            }
-            if (copy) {
-                copy.addEventListener('click', async () => {
-                    const payload = JSON.stringify(this.buildPayload(), null, 2);
-                    try {
-                        await navigator.clipboard.writeText(payload);
-                        this.flash(copy, 'Copiato');
-                    } catch (error) {
-                        console.warn('Clipboard non disponibile', error);
-                        this.flash(copy, 'Impossibile copiare');
-                    }
                 });
             }
         },
@@ -156,8 +120,6 @@
                 this.tooltip.textContent = certificate?.tooltip || 'Seleziona un certificato per leggere la descrizione.';
             }
             this.renderDynamicFieldsets(certificate);
-            this.updateSummary();
-            this.refreshPayloadPreview();
         },
         renderDynamicFieldsets(certificate) {
             if (!this.dynamicContainer) {
@@ -302,96 +264,6 @@
             } else {
                 this.values[fieldName] = input.value;
             }
-            this.refreshPayloadPreview();
-        },
-        buildPayload() {
-            const categoryKey = this.categoryInput.value;
-            const certificateId = this.certificateSelect.value;
-            const certificate = this.schema.categories?.[categoryKey]?.certificates?.[certificateId] || null;
-            const formData = new FormData(this.form);
-            const general = {
-                denominazione: formData.get('denominazione') || '',
-                forma_giuridica: formData.get('forma_giuridica') || '',
-                codice_fiscale: formData.get('codice_fiscale') || '',
-                partita_iva: formData.get('partita_iva') || '',
-                rea: formData.get('rea') || '',
-                provincia_cciaa: formData.get('provincia_cciaa') || '',
-                pec: formData.get('pec') || '',
-                email_referente: formData.get('email_referente') || '',
-                telefono_referente: formData.get('telefono_referente') || '',
-                sede_legale: formData.get('sede_legale') || '',
-            };
-            const parametri = {};
-            (this.activeFieldNames || []).forEach((name) => {
-                const value = this.values[name];
-                if (typeof value === 'undefined') {
-                    return;
-                }
-                if (value === '1' || value === '0') {
-                    parametri[name] = value === '1';
-                } else {
-                    parametri[name] = value;
-                }
-            });
-            return {
-                categoria: 'camerale',
-                categoria_macro: categoryKey,
-                certificato: certificateId,
-                certificato_label: certificate?.label || '',
-                categoria_label: this.schema.categories?.[categoryKey]?.label || '',
-                urgenza: this.form.querySelector('#urgenza')?.value || 'standard',
-                tracking_code: formData.get('tracking_code') || '',
-                dati_impresa: general,
-                parametri_specifici: parametri,
-                provider_targets: this.resolveProviders(certificateId),
-            };
-        },
-        resolveProviders(certificateId) {
-            if (!certificateId) {
-                return ['CCIAA'];
-            }
-            if (certificateId.startsWith('visura')) {
-                return ['VisEngine', 'DocuEngine', 'CCIAA'];
-            }
-            if (certificateId.startsWith('certificato')) {
-                return ['DocuEngine', 'CCIAA'];
-            }
-            return ['VisEngine', 'DocuEngine', 'CCIAA'];
-        },
-        refreshPayloadPreview(force = false) {
-            if (!this.payloadPreview) {
-                return;
-            }
-            if (!force && !this.payloadPreview.textContent.trim()) {
-                return;
-            }
-            const payload = this.buildPayload();
-            this.payloadPreview.textContent = JSON.stringify(payload, null, 2);
-            this.updateSummary();
-        },
-        updateSummary() {
-            if (!this.summaryPreview) {
-                return;
-            }
-            const payload = this.buildPayload();
-            const lines = [
-                payload.certificato_label ? `Certificato: ${payload.certificato_label}` : '',
-                payload.categoria_label ? `Categoria: ${payload.categoria_label}` : '',
-                payload.dati_impresa.denominazione ? `Impresa: ${payload.dati_impresa.denominazione}` : '',
-                payload.dati_impresa.forma_giuridica ? `Forma giuridica: ${payload.dati_impresa.forma_giuridica.toUpperCase()}` : '',
-                payload.dati_impresa.provincia_cciaa ? `CCIAA di: ${payload.dati_impresa.provincia_cciaa}` : '',
-                `Parametri dinamici: ${Object.keys(payload.parametri_specifici).length}`,
-            ].filter(Boolean);
-            this.summaryPreview.textContent = lines.join('\n') || 'Completa i dati per mostrare il riepilogo.';
-        },
-        flash(button, text) {
-            const original = button.innerHTML;
-            button.innerHTML = text;
-            button.disabled = true;
-            window.setTimeout(() => {
-                button.innerHTML = original;
-                button.disabled = false;
-            }, 1500);
         },
     };
 

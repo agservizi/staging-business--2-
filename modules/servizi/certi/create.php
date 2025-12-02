@@ -10,6 +10,12 @@ require_once __DIR__ . '/../../../includes/helpers.php';
 
 require_role('Admin', 'Manager', 'Operatore');
 
+$requestedCategory = strtolower((string) ($_GET['categoria'] ?? 'comunale'));
+if ($requestedCategory === 'camerale') {
+    header('Location: create_camerale.php');
+    exit;
+}
+
 $pageTitle = 'Nuova richiesta Certi³';
 $moduleColor = '#0061ff';
 $csrfToken = csrf_token();
@@ -301,6 +307,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <i class="fa-solid fa-floppy-disk me-2"></i>Salva richiesta
                 </button>
             </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <a class="btn btn-primary" href="create.php"><i class="fa-solid fa-city me-1"></i>Certificati comunali (ANPR)</a>
+            <a class="btn btn-outline-primary" href="create_camerale.php"><i class="fa-solid fa-briefcase me-1"></i>Certificati camerali (CCIAA)</a>
         </div>
 
         <?php if ($errors): ?>
