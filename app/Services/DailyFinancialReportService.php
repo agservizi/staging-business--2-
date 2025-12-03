@@ -131,7 +131,13 @@ SQL;
         $pdf->Cell(0, 7, $this->pdfText('Generato il: ' . (new DateTimeImmutable('now'))->format('d/m/Y H:i')), 0, 1, 'L');
         $pdf->Ln(4);
 
-        $usableWidth = $pdf->GetPageWidth() - $pdf->lMargin - $pdf->rMargin;
+        $pageWidth = null;
+        if (method_exists($pdf, 'GetPageWidth')) {
+            $pageWidth = (float) $pdf->GetPageWidth();
+        } elseif (property_exists($pdf, 'w')) {
+            $pageWidth = (float) $pdf->w;
+        }
+        $usableWidth = ($pageWidth ?? 297.0) - $pdf->lMargin - $pdf->rMargin;
         $columns = [
             ['ratio' => 0.13, 'title' => 'Data', 'align' => 'L'],
             ['ratio' => 0.2, 'title' => 'Cliente', 'align' => 'L'],
