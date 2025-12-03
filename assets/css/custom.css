@@ -2325,6 +2325,11 @@ main.content-wrapper[data-dashboard-state="stale"] .ag-card {
     }
 }
 
+.badge.bg-info,
+.badge.bg-warning {
+    color: #ffffff !important;
+}
+
 .badge.ag-badge {
     background-color: var(--ag-accent-soft);
     color: var(--ag-accent);
