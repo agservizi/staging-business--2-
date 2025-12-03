@@ -1749,6 +1749,7 @@ function renderPracticesTable(container, practices, options = {}) {
                         <th>Documento</th>
                         <th>Assegnata a</th>
                         <th>Cliente</th>
+                        <th>Email cliente</th>
                         <th>Aggiornata</th>
                         <th>Azioni</th>
                     </tr>
@@ -1815,8 +1816,13 @@ function renderPracticesTable(container, practices, options = {}) {
             `);
         }
         if (cafContext.canCreatePractices) {
+            const hasCustomerEmail = derivedEmail !== '';
+            const resendBtnClass = hasCustomerEmail ? 'btn btn-icon btn-outline-primary btn-sm' : 'btn btn-icon btn-outline-warning btn-sm';
+            const resendBtnTitle = hasCustomerEmail
+                ? 'Reinvia email al cliente'
+                : 'Nessun contatto salvato: potrai inserirlo manualmente.';
             actions.push(`
-                <button class="btn btn-icon btn-outline-primary btn-sm" type="button" data-customer-email="${escapeHtml(derivedEmail)}" onclick="resendCustomerMail(${practice.id}, this.dataset.customerEmail)" title="Reinvia email al cliente">
+                <button class="${resendBtnClass}" type="button" data-customer-email="${escapeHtml(derivedEmail)}" data-recipient-state="${hasCustomerEmail ? 'known' : 'missing'}" onclick="resendCustomerMail(${practice.id}, this.dataset.customerEmail)" title="${escapeHtml(resendBtnTitle)}">
                     <i class="fa-solid fa-envelope"></i>
                 </button>
             `);
@@ -1829,6 +1835,17 @@ function renderPracticesTable(container, practices, options = {}) {
                 </button>
             `);
         }
+        const emailCell = derivedEmail
+            ? `
+                <div class="d-flex flex-column">
+                    <span class="badge bg-light text-dark border font-monospace">${escapeHtml(derivedEmail)}</span>
+                    <small class="text-muted">Destinatario predefinito</small>
+                </div>
+            `
+            : `
+                <div class="text-danger fw-semibold small">Email mancante</div>
+                <small class="text-muted">Richiedi un contatto prima dell'invio.</small>
+            `;
 
         html += `
             <tr>
@@ -1861,6 +1878,7 @@ function renderPracticesTable(container, practices, options = {}) {
                 </td>
                 <td>${escapeHtml(assigneeName)}</td>
                 <td>${escapeHtml(clientName)}</td>
+                <td>${emailCell}</td>
                 <td>
                     <small>${formatDateTime(practice.data_aggiornamento)}</small>
                 </td>
@@ -2484,12 +2502,36 @@ function resendCustomerMail(practiceId, defaultRecipient = '') {
     }
 
     const sanitizedRecipient = typeof defaultRecipient === 'string' ? defaultRecipient.trim() : '';
-    const helperText = sanitizedRecipient
-        ? `Lascia invariato per usare <strong>${escapeHtml(sanitizedRecipient)}</strong>.`
-        : 'Specificare un indirizzo: la pratica non ha un contatto email registrato.';
+    const hasDefaultRecipient = sanitizedRecipient !== '';
+    const requiresManualRecipient = !hasDefaultRecipient;
+    const helperText = hasDefaultRecipient
+        ? 'Puoi personalizzare l\'indirizzo oppure lasciare il suggerimento predefinito.'
+        : 'Specificare un indirizzo: la pratica non ha ancora un contatto email salvato.';
+
+    const defaultRecipientCard = hasDefaultRecipient
+        ? `
+            <div class="alert alert-light border d-flex align-items-start gap-3" role="status">
+                <div class="text-primary fs-4"><i class="fa-solid fa-envelope-circle-check"></i></div>
+                <div>
+                    <div class="fw-semibold mb-1">Destinatario suggerito</div>
+                    <div class="font-monospace">${escapeHtml(sanitizedRecipient)}</div>
+                    <small class="text-muted">Ultimo indirizzo confermato per questa pratica.</small>
+                </div>
+            </div>
+        `
+        : `
+            <div class="alert alert-warning d-flex align-items-start gap-3" role="status">
+                <div class="fs-4"><i class="fa-solid fa-circle-exclamation"></i></div>
+                <div>
+                    <div class="fw-semibold mb-1">Nessun indirizzo salvato</div>
+                    <small>Inserisci l'email del cliente per procedere con l'invio.</small>
+                </div>
+            </div>
+        `;
 
     const message = `
         <p>Vuoi reinviare la mail di conferma al cliente per questa pratica?</p>
+        ${defaultRecipientCard}
         <div class="mt-3">
             <label class="form-label" for="caf-resend-email-input">Email destinatario</label>
             <input type="email" class="form-control" id="caf-resend-email-input" name="recipient" value="${escapeHtml(sanitizedRecipient)}" placeholder="cliente@example.com" data-role="resend-email-input">
@@ -2516,11 +2558,21 @@ function resendCustomerMail(practiceId, defaultRecipient = '') {
 
                 if (!sanitizedRecipient && recipient === null) {
                     window.CS?.showToast?.('Inserisci un indirizzo email per il cliente.', 'warning');
+                    const feedback = modalRefs.confirmRoot?.querySelector('[data-role="resend-email-feedback"]');
+                    if (feedback) {
+                        feedback.textContent = 'Indicare un indirizzo email valido del cliente.';
+                        feedback.classList.remove('d-none');
+                    }
                     return false;
                 }
 
                 if (recipient !== null && !isValidEmail(recipient)) {
                     window.CS?.showToast?.('Indirizzo email non valido.', 'warning');
+                    const feedback = modalRefs.confirmRoot?.querySelector('[data-role="resend-email-feedback"]');
+                    if (feedback) {
+                        feedback.textContent = 'Formato email non valido.';
+                        feedback.classList.remove('d-none');
+                    }
                     return false;
                 }
 
@@ -2530,7 +2582,11 @@ function resendCustomerMail(practiceId, defaultRecipient = '') {
                 }
 
                 await apiRequest('POST', payload);
-                window.CS?.showToast?.('Email di conferma reinviata al cliente.', 'success');
+                const usedRecipient = recipient ?? sanitizedRecipient;
+                const successMessage = usedRecipient
+                    ? `Email inviata a ${usedRecipient}.`
+                    : 'Email di conferma reinviata al cliente.';
+                window.CS?.showToast?.(successMessage, 'success');
                 loadPracticesList(currentPracticePage, { silent: true });
                 return true;
             } catch (error) {
@@ -2546,20 +2602,49 @@ function resendCustomerMail(practiceId, defaultRecipient = '') {
         },
         onShown: (modalBody) => {
             const input = modalBody?.querySelector('[data-role="resend-email-input"]');
+            const feedback = modalBody?.querySelector('[data-role="resend-email-feedback"]');
+            const confirmButton = modalRefs.confirmAction;
+
+            const syncValidationState = () => {
+                if (!(input instanceof HTMLInputElement)) {
+                    if (confirmButton) {
+                        confirmButton.disabled = false;
+                    }
+                    return;
+                }
+
+                const currentValue = input.value.trim();
+                let validationMessage = '';
+                if (currentValue === '') {
+                    if (requiresManualRecipient) {
+                        validationMessage = 'Inserire l\'indirizzo email del cliente.';
+                    }
+                } else if (!isValidEmail(currentValue)) {
+                    validationMessage = 'Formato email non valido.';
+                }
+
+                if (feedback) {
+                    if (validationMessage) {
+                        feedback.textContent = validationMessage;
+                        feedback.classList.remove('d-none');
+                    } else {
+                        feedback.textContent = '';
+                        feedback.classList.add('d-none');
+                    }
+                }
+
+                if (confirmButton) {
+                    confirmButton.disabled = Boolean(validationMessage);
+                }
+            };
+
+            syncValidationState();
+
             if (input instanceof HTMLInputElement) {
                 input.focus();
-                const feedback = modalBody.querySelector('[data-role="resend-email-feedback"]');
-                if (feedback) {
-                    feedback.classList.add('d-none');
-                }
                 if (!input.dataset.cafResendBound) {
                     input.dataset.cafResendBound = '1';
-                    input.addEventListener('input', () => {
-                        const inlineFeedback = modalBody.querySelector('[data-role="resend-email-feedback"]');
-                        if (inlineFeedback) {
-                            inlineFeedback.classList.add('d-none');
-                        }
-                    });
+                    input.addEventListener('input', syncValidationState);
                 }
             }
         }

@@ -11,6 +11,17 @@ use App\Services\CAFPatronato\PracticesService;
 
 require_role('Admin', 'Operatore', 'Manager', 'Patronato');
 
+$primaryOperator = caf_patronato_primary_operator($pdo, false);
+$primaryOperatorName = '';
+$primaryOperatorEmail = '';
+if ($primaryOperator !== null) {
+    $nameParts = array_filter([
+        trim((string) ($primaryOperator['nome'] ?? '')),
+        trim((string) ($primaryOperator['cognome'] ?? '')),
+    ]);
+    $primaryOperatorName = trim(implode(' ', $nameParts)) ?: 'Operatore Patronato';
+    $primaryOperatorEmail = trim((string) ($primaryOperator['email'] ?? ''));
+}
 $currentRole = isset($_SESSION['role']) ? (string) $_SESSION['role'] : '';
 $isPatronatoOperator = strcasecmp($currentRole, 'Patronato') === 0;
 
@@ -93,6 +104,10 @@ $data = [
     'send_notification' => '1',
 ];
 
+if ($primaryOperator === null) {
+    $data['send_notification'] = '0';
+}
+
 $errors = [];
 $processedUploads = [];
 $generatedTempFiles = [];
@@ -113,6 +128,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (is_string($value)) {
             $data[$field] = trim($value);
         }
+    }
+
+    if ($primaryOperator === null) {
+        $errors[] = 'Nessun operatore Patronato attivo è configurato. Contatta un amministratore prima di registrare una nuova pratica.';
     }
 
     $selectedType = strtoupper($data['tipo_pratica']);
@@ -395,7 +414,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $praticaId,
                 $assignedCode,
                 $legacyAttachments,
-                $creatorUserId
+                $creatorUserId,
+                $primaryOperator ?: null
             );
 
             $pdo->commit();
@@ -646,9 +666,31 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
                     <div class="col-12">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="send_notification" name="send_notification" value="1" <?php echo $data['send_notification'] === '1' ? 'checked' : ''; ?>>
-                            <label class="form-check-label" for="send_notification">Invia notifica email al team CAF/Patronato</label>
+                            <input class="form-check-input" type="checkbox" role="switch" id="send_notification" name="send_notification" value="1" <?php echo $data['send_notification'] === '1' ? 'checked' : ''; ?> <?php echo $primaryOperator === null ? 'disabled' : ''; ?>>
+                            <label class="form-check-label" for="send_notification">Invia notifica email al referente Patronato</label>
                         </div>
+                    </div>
+
+                    <div class="col-12">
+                        <?php if ($primaryOperator !== null): ?>
+                            <div class="alert alert-info bg-opacity-10 border-info d-flex align-items-center gap-3 mb-0">
+                                <div class="text-info fs-4">
+                                    <i class="fa-solid fa-user-shield"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-semibold">Notifiche inviate a <?php echo sanitize_output($primaryOperatorName); ?></div>
+                                    <div class="small text-muted">L'email di presa in carico sarà spedita a <span class="font-monospace"><?php echo sanitize_output($primaryOperatorEmail); ?></span> appena la pratica viene salvata.</div>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-danger d-flex align-items-start gap-3 mb-0">
+                                <div class="fs-4"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                                <div>
+                                    <div class="fw-semibold">Nessun operatore Patronato configurato</div>
+                                    <p class="mb-0 small">Registra almeno un operatore attivo dal pannello Operatori per abilitare le notifiche automatiche. Nel frattempo l'invio resta disabilitato.</p>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
 
                     <div class="col-12 d-flex justify-content-end gap-2">

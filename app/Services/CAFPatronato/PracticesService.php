@@ -586,10 +586,30 @@ SQL;
 
     private function sendCustomerCreationMail(array &$practice, int $creatorUserId, ?string $recipientOverride = null): bool
     {
+        $practiceId = (int) ($practice['id'] ?? 0);
+        $trackingCode = (string) ($practice['tracking_code'] ?? '');
+        $trigger = $recipientOverride !== null ? 'manual_resend' : 'auto_creation';
+        $logContextBase = array_filter([
+            'practice_id' => $practiceId > 0 ? $practiceId : null,
+            'tracking_code' => $trackingCode !== '' ? $trackingCode : null,
+            'trigger' => $trigger,
+            'requested_by' => $creatorUserId ?: null,
+        ], static fn($value) => $value !== null && $value !== '');
+
+        $logFailure = function (string $reason, ?string $recipientValue = null) use (&$logContextBase): void {
+            $context = $logContextBase;
+            $context['reason'] = $reason;
+            $this->logCustomerMailEvent($recipientValue ?? '', false, $context);
+        };
+        $logSuccess = function (string $recipientValue) use (&$logContextBase): void {
+            $this->logCustomerMailEvent($recipientValue, true, $logContextBase);
+        };
+
         $recipient = null;
         if ($recipientOverride !== null) {
             $recipient = $this->normalizeEmailCandidate($recipientOverride);
             if ($recipient === null) {
+                $logFailure('invalid_override', $recipientOverride);
                 throw new RuntimeException('Indirizzo email cliente non valido.', 422);
             }
         }
@@ -599,6 +619,7 @@ SQL;
         }
 
         if ($recipient === null) {
+            $logFailure('missing_recipient');
             throw new RuntimeException('Nessun indirizzo email del cliente disponibile per questa pratica.', 422);
         }
 
@@ -606,16 +627,17 @@ SQL;
 
         $mailCallable = $this->resolveMailCallable();
         if ($mailCallable === null) {
+            $logFailure('mailer_unavailable', $recipient);
             throw new RuntimeException('Servizio email non disponibile sul server.', 503);
         }
 
-        $trackingCode = (string) ($practice['tracking_code'] ?? '');
         $trackingLink = $this->buildTrackingLink($trackingCode);
 
         $fieldDefinitions = $this->getCustomFieldDefinitionsForPractice($practice);
         $mailContent = $this->buildCustomerEmailContent($practice, $trackingLink, $fieldDefinitions);
         $subjectReference = $trackingCode !== '' ? $trackingCode : ($practice['titolo'] ?? 'Pratica CAF/Patronato');
         $subject = 'Conferma registrazione pratica ' . $subjectReference;
+        $logContextBase['subject'] = $subject;
 
         $htmlBody = function_exists('render_mail_template')
             ? render_mail_template('Conferma pratica CAF/Patronato', $mailContent)
@@ -624,13 +646,17 @@ SQL;
         try {
             $sent = $mailCallable($recipient, $subject, $htmlBody);
         } catch (Throwable $exception) {
+            $logFailure('dispatch_exception', $recipient);
             error_log('CAF/Patronato customer mail dispatch error: ' . $exception->getMessage());
             throw new RuntimeException('Invio email al cliente non riuscito. Verifica i log del servizio email.', 502, $exception);
         }
 
         if (!$sent) {
+            $logFailure('dispatch_failure', $recipient);
             throw new RuntimeException('Invio email al cliente non riuscito. Verifica la configurazione del servizio email.', 502);
         }
+
+        $logSuccess($recipient);
 
         $payload = array_filter([
             'email' => $recipient,
@@ -683,6 +709,20 @@ SQL;
         }
 
         return null;
+    }
+
+    private function logCustomerMailEvent(string $recipient, bool $success, array $context = []): void
+    {
+        if (!function_exists('caf_patronato_log_mail_event')) {
+            return;
+        }
+
+        try {
+            $payload = array_filter($context, static fn($value) => $value !== null && $value !== '');
+            \caf_patronato_log_mail_event('customer_confirmation', $recipient, $success, $payload);
+        } catch (Throwable) {
+            // Il logging non deve interrompere il flusso principale.
+        }
     }
 
     /**
