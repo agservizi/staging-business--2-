@@ -117,9 +117,9 @@ SQL;
     private function buildPdfContent(DateTimeImmutable $date, array $movements, float $entrate, float $uscite, float $saldo): string
     {
         $pdf = $this->createPdfInstance();
-    $pdf->SetMargins(15.0, 15.0, 15.0);
-    $pdf->SetAutoPageBreak(true, 20.0);
-    $pdf->AddPage('L');
+        $pdf->SetMargins(12.0, 12.0, 12.0);
+        $pdf->SetAutoPageBreak(true, 18.0);
+        $pdf->AddPage('L');
 
         $pdf->SetTextColor(11, 47, 107);
     $pdf->SetFont('DejaVu Sans', 'B', 18);
@@ -131,16 +131,22 @@ SQL;
         $pdf->Cell(0, 7, $this->pdfText('Generato il: ' . (new DateTimeImmutable('now'))->format('d/m/Y H:i')), 0, 1, 'L');
         $pdf->Ln(4);
 
+        $usableWidth = $pdf->GetPageWidth() - $pdf->lMargin - $pdf->rMargin;
         $columns = [
-            ['width' => 22.0, 'title' => 'Data', 'align' => 'L'],
-            ['width' => 32.0, 'title' => 'Cliente', 'align' => 'L'],
-            ['width' => 18.0, 'title' => 'Tipo', 'align' => 'L'],
-            ['width' => 52.0, 'title' => 'Descrizione', 'align' => 'L'],
-            ['width' => 24.0, 'title' => 'Riferimento', 'align' => 'L'],
-            ['width' => 20.0, 'title' => 'Metodo', 'align' => 'L'],
-            ['width' => 12.0, 'title' => 'Stato', 'align' => 'L'],
-            ['width' => 24.0, 'title' => 'Importo', 'align' => 'R'],
+            ['ratio' => 0.13, 'title' => 'Data', 'align' => 'L'],
+            ['ratio' => 0.2, 'title' => 'Cliente', 'align' => 'L'],
+            ['ratio' => 0.1, 'title' => 'Tipo', 'align' => 'L'],
+            ['ratio' => 0.25, 'title' => 'Descrizione', 'align' => 'L'],
+            ['ratio' => 0.12, 'title' => 'Riferimento', 'align' => 'L'],
+            ['ratio' => 0.08, 'title' => 'Metodo', 'align' => 'L'],
+            ['ratio' => 0.06, 'title' => 'Stato', 'align' => 'L'],
+            ['ratio' => 0.06, 'title' => 'Importo', 'align' => 'R'],
         ];
+
+        foreach ($columns as &$column) {
+            $column['width'] = round($usableWidth * $column['ratio'], 2);
+        }
+        unset($column);
 
     $pdf->SetFont('DejaVu Sans', 'B', 10);
         $pdf->SetFillColor(11, 47, 107);
@@ -158,12 +164,12 @@ SQL;
         } else {
             foreach ($movements as $item) {
                 $pdf->Cell($columns[0]['width'], 7, $this->pdfText($this->formatDateTime($item['data_riferimento'] ?? '')), 1, 0, $columns[0]['align']);
-                $pdf->Cell($columns[1]['width'], 7, $this->pdfText($this->trimText($this->buildClientName($item), 24)), 1, 0, $columns[1]['align']);
+                $pdf->Cell($columns[1]['width'], 7, $this->pdfText($this->trimText($this->buildClientName($item), 38)), 1, 0, $columns[1]['align']);
                 $pdf->Cell($columns[2]['width'], 7, $this->pdfText((string) ($item['tipo_movimento'] ?? '')), 1, 0, $columns[2]['align']);
-                $pdf->Cell($columns[3]['width'], 7, $this->pdfText($this->trimText((string) ($item['descrizione'] ?? ''), 36)), 1, 0, $columns[3]['align']);
-                $pdf->Cell($columns[4]['width'], 7, $this->pdfText($this->trimText((string) ($item['riferimento'] ?? ''), 18)), 1, 0, $columns[4]['align']);
-                $pdf->Cell($columns[5]['width'], 7, $this->pdfText($this->trimText((string) ($item['metodo'] ?? ''), 16)), 1, 0, $columns[5]['align']);
-                $pdf->Cell($columns[6]['width'], 7, $this->pdfText($this->trimText((string) ($item['stato'] ?? ''), 12)), 1, 0, $columns[6]['align']);
+                $pdf->Cell($columns[3]['width'], 7, $this->pdfText($this->trimText((string) ($item['descrizione'] ?? ''), 60)), 1, 0, $columns[3]['align']);
+                $pdf->Cell($columns[4]['width'], 7, $this->pdfText($this->trimText((string) ($item['riferimento'] ?? ''), 34)), 1, 0, $columns[4]['align']);
+                $pdf->Cell($columns[5]['width'], 7, $this->pdfText($this->trimText((string) ($item['metodo'] ?? ''), 22)), 1, 0, $columns[5]['align']);
+                $pdf->Cell($columns[6]['width'], 7, $this->pdfText($this->trimText((string) ($item['stato'] ?? ''), 18)), 1, 0, $columns[6]['align']);
                 $pdf->Cell($columns[7]['width'], 7, $this->pdfText($this->formatCurrency((float) ($item['importo'] ?? 0))), 1, 0, $columns[7]['align']);
                 $pdf->Ln();
             }
@@ -205,10 +211,10 @@ SQL;
         $instance = new $className([
             'format' => 'A4',
             'orientation' => 'L',
-            'margin_left' => 15,
-            'margin_right' => 15,
-            'margin_top' => 15,
-            'margin_bottom' => 20,
+            'margin_left' => 12,
+            'margin_right' => 12,
+            'margin_top' => 12,
+            'margin_bottom' => 18,
         ]);
 
         return $instance;
