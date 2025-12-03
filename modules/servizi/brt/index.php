@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         try {
             $shipmentService = new BrtShipmentService($config);
-        } catch (Throwable $exception) {
+        } catch (\Throwable $exception) {
             add_flash('warning', 'Configurazione BRT non valida: ' . $exception->getMessage());
             header('Location: index.php');
             exit;
@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $errors[] = sprintf('Conferma spedizione #%d non riuscita: %s', $selectedId, $cleanMessage);
                         continue;
                     }
-                } catch (Throwable $exception) {
+                } catch (\Throwable $exception) {
                     $errors[] = sprintf('Conferma spedizione #%d non riuscita: %s', $selectedId, $exception->getMessage());
                     continue;
                 }
@@ -151,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'selected_ids' => $eligibleIds,
                 'user' => current_user_display_name(),
             ]);
-        } catch (Throwable $exception) {
+        } catch (\Throwable $exception) {
             $errors[] = 'Bordero non generato: ' . $exception->getMessage();
             brt_log_event('error', 'Bordero non generato: errore inatteso', [
                 'error' => $exception->getMessage(),
@@ -171,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $shipmentService = new BrtShipmentService($config);
         $trackingService = new BrtTrackingService($config);
-    } catch (Throwable $exception) {
+    } catch (\Throwable $exception) {
         add_flash('warning', 'Configurazione BRT non valida: ' . $exception->getMessage());
         header('Location: index.php');
         exit;
@@ -302,7 +302,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ]);
                         } catch (BrtException $exception) {
                             $remoteDeleteError = $exception->getMessage();
-                        } catch (Throwable $exception) {
+                        } catch (\Throwable $exception) {
                             $remoteDeleteError = $exception->getMessage();
                         }
                     }
@@ -335,7 +335,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'error' => $exception->getMessage(),
                 'user' => current_user_display_name(),
             ]);
-        } catch (Throwable $exception) {
+        } catch (\Throwable $exception) {
             add_flash('warning', 'Operazione BRT non riuscita: ' . $exception->getMessage());
             brt_log_event('error', 'Operazione BRT non riuscita: errore inatteso', [
                 'shipment_id' => $shipmentId,
