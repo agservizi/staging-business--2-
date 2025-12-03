@@ -59,7 +59,7 @@ if ($practiceTitle === '') {
 }
 
 $category = strtoupper((string) ($practice['categoria'] ?? 'CAF'));
-$categoryBadgeClass = $category === 'PATRONATO' ? 'bg-warning text-white' : 'bg-info';
+$categoryBadgeClass = $category === 'PATRONATO' ? 'bg-warning text-white' : 'bg-info text-white';
 
 $assignedLabel = 'Non assegnata';
 if (isset($practice['assegnatario']) && is_array($practice['assegnatario'])) {
