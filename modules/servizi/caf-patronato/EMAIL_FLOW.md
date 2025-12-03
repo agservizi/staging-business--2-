@@ -8,7 +8,7 @@ This document explains the updated notification pipeline for the CAF/Patronato m
 - The create form blocks notifications if no primary Patronato operator is configured; the practices table and resend modal surface missing customer emails so operators can fix data before sending.
 
 ## 2. Operator Notification Flow
-1. `modules/servizi/caf-patronato/create.php` resolves the **primary Patronato operator** through `caf_patronato_primary_operator()`.
+1. `modules/servizi/caf-patronato/create.php` resolves the **primary Patronato operator** through `caf_patronato_primary_operator()` (il metodo cerca prima nel registro dedicato `utenti_caf_patronato` e, in mancanza, esegue un fallback sugli utenti di sistema con ruolo `Patronato`).
 2. If the operator (or their email) is missing the form forces a warning, disables the notification checkbox, and legacy sync is skipped.
 3. When present, the operator metadata is forwarded to `PracticesService`, which dispatches the internal notification email and logs the event (`type = operator_mail`).
 

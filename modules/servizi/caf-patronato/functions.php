@@ -41,21 +41,21 @@ function caf_patronato_primary_operator(?PDO $connection = null, bool $logOnMiss
         return null;
     }
 
+    $row = null;
     try {
         $stmt = $pdoInstance->prepare('SELECT id, user_id, nome, cognome, email, ruolo FROM utenti_caf_patronato WHERE ruolo = :ruolo AND attivo = 1 ORDER BY updated_at DESC, id DESC LIMIT 1');
         $stmt->execute([':ruolo' => 'Patronato']);
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     } catch (Throwable $exception) {
         error_log('CAF/Patronato: lettura operatore fallita - ' . $exception->getMessage());
-        return null;
     }
 
     if (!$row) {
-        if ($logOnMissing) {
-            error_log('CAF/Patronato: nessun operatore Patronato attivo configurato.');
+        $row = caf_patronato_fallback_operator_from_users($pdoInstance, $logOnMissing);
+        if (!$row) {
+            $cache = null;
+            return null;
         }
-        $cache = null;
-        return null;
     }
 
     $email = trim((string) ($row['email'] ?? ''));
@@ -74,10 +74,50 @@ function caf_patronato_primary_operator(?PDO $connection = null, bool $logOnMiss
         'cognome' => (string) ($row['cognome'] ?? ''),
         'email' => $email,
         'ruolo' => (string) ($row['ruolo'] ?? ''),
+        'source' => (string) ($row['source'] ?? 'operators'),
     ];
     $cachedAt = time();
 
     return $cache;
+}
+
+function caf_patronato_fallback_operator_from_users(PDO $pdo, bool $logOnMissing = true): ?array
+{
+    try {
+        $stmt = $pdo->prepare('SELECT id, nome, cognome, email, ruolo FROM users WHERE ruolo = :ruolo ORDER BY updated_at DESC, id DESC LIMIT 1');
+        $stmt->execute([':ruolo' => 'Patronato']);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (Throwable $exception) {
+        if ($logOnMissing) {
+            error_log('CAF/Patronato fallback utenti: ' . $exception->getMessage());
+        }
+        return null;
+    }
+
+    if (!$row) {
+        if ($logOnMissing) {
+            error_log('CAF/Patronato: nessun utente con ruolo Patronato disponibile per fallback.');
+        }
+        return null;
+    }
+
+    $email = trim((string) ($row['email'] ?? ''));
+    if ($email === '') {
+        if ($logOnMissing) {
+            error_log('CAF/Patronato fallback utenti: indirizzo email mancante.');
+        }
+        return null;
+    }
+
+    return [
+        'id' => (int) $row['id'],
+        'user_id' => (int) $row['id'],
+        'nome' => (string) ($row['nome'] ?? ''),
+        'cognome' => (string) ($row['cognome'] ?? ''),
+        'email' => $email,
+        'ruolo' => 'Patronato',
+        'source' => 'users',
+    ];
 }
 
 function getPatronatoOperatorEmail(?PDO $connection = null): ?string
