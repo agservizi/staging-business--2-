@@ -23,7 +23,7 @@ class DailyFinancialReportService
     }
 
     /**
-     * @return array{reportDate:string,totalEntrate:float,totalUscite:float,saldo:float}
+     * @return array{reportDate:string,totalEntrate:float,totalUscite:float,saldo:float,totalMargine:float}
      */
     public function generateForDate(DateTimeImmutable $date): array
     {
@@ -39,6 +39,7 @@ class DailyFinancialReportService
             'totalEntrate' => $totals['entrate'],
             'totalUscite' => $totals['uscite'],
             'saldo' => $totals['saldo'],
+            'totalMargine' => $totals['margine'],
         ];
     }
 
@@ -48,7 +49,7 @@ class DailyFinancialReportService
         $movements = $this->fetchMovementsForDate($reportDate);
         $totals = $this->calculateTotals($movements);
 
-        return $this->buildPdfContent($date, $movements, $totals['entrate'], $totals['uscite'], $totals['saldo']);
+        return $this->buildPdfContent($date, $movements, $totals['entrate'], $totals['uscite'], $totals['saldo'], $totals['margine']);
     }
 
     /**
@@ -61,9 +62,12 @@ SELECT eu.id,
        eu.tipo_movimento,
        eu.descrizione,
        eu.riferimento,
-       eu.metodo,
-       eu.stato,
-       eu.importo,
+    eu.metodo,
+    eu.stato,
+    eu.importo,
+    eu.listino_costo_rivenditore,
+    eu.listino_costo_cliente,
+    eu.listino_margine,
        eu.data_pagamento,
        eu.data_scadenza,
        eu.created_at,
@@ -86,12 +90,13 @@ SQL;
 
     /**
      * @param array<int, array<string, mixed>> $rows
-     * @return array{entrate:float,uscite:float,saldo:float}
+     * @return array{entrate:float,uscite:float,saldo:float,margine:float}
      */
     private function calculateTotals(array $rows): array
     {
         $entrate = 0.0;
         $uscite = 0.0;
+        $margine = 0.0;
 
         foreach ($rows as $row) {
             $amount = (float) ($row['importo'] ?? 0);
@@ -99,6 +104,11 @@ SQL;
                 $uscite += $amount;
             } else {
                 $entrate += $amount;
+            }
+
+            $marginValue = $row['listino_margine'] ?? null;
+            if ($marginValue !== null && $marginValue !== '') {
+                $margine += (float) $marginValue;
             }
         }
 
@@ -108,13 +118,14 @@ SQL;
             'entrate' => round($entrate, 2),
             'uscite' => round($uscite, 2),
             'saldo' => round($saldo, 2),
+            'margine' => round($margine, 2),
         ];
     }
 
     /**
      * @param array<int, array<string, mixed>> $movements
      */
-    private function buildPdfContent(DateTimeImmutable $date, array $movements, float $entrate, float $uscite, float $saldo): string
+    private function buildPdfContent(DateTimeImmutable $date, array $movements, float $entrate, float $uscite, float $saldo, float $margine): string
     {
         $pdf = $this->createPdfInstance();
         $pdf->SetMargins(12.0, 12.0, 12.0);
@@ -139,18 +150,76 @@ SQL;
         }
         $usableWidth = ($pageWidth ?? 297.0) - $pdf->lMargin - $pdf->rMargin;
         $columns = [
-            ['ratio' => 0.13, 'title' => 'Data', 'align' => 'L'],
-            ['ratio' => 0.2, 'title' => 'Cliente', 'align' => 'L'],
-            ['ratio' => 0.1, 'title' => 'Tipo', 'align' => 'L'],
-            ['ratio' => 0.25, 'title' => 'Descrizione', 'align' => 'L'],
-            ['ratio' => 0.12, 'title' => 'Riferimento', 'align' => 'L'],
-            ['ratio' => 0.08, 'title' => 'Metodo', 'align' => 'L'],
-            ['ratio' => 0.06, 'title' => 'Stato', 'align' => 'L'],
-            ['ratio' => 0.06, 'title' => 'Importo', 'align' => 'R'],
+            [
+                'ratio' => 0.09,
+                'title' => 'Data',
+                'align' => 'L',
+                'value' => fn(array $item): string => $this->formatDateTime($item['data_riferimento'] ?? ''),
+            ],
+            [
+                'ratio' => 0.17,
+                'title' => 'Cliente',
+                'align' => 'L',
+                'value' => fn(array $item): string => $this->trimText($this->buildClientName($item), 38),
+            ],
+            [
+                'ratio' => 0.06,
+                'title' => 'Tipo',
+                'align' => 'L',
+                'value' => fn(array $item): string => (string) ($item['tipo_movimento'] ?? ''),
+            ],
+            [
+                'ratio' => 0.19,
+                'title' => 'Descrizione',
+                'align' => 'L',
+                'value' => fn(array $item): string => $this->trimText((string) ($item['descrizione'] ?? ''), 60),
+            ],
+            [
+                'ratio' => 0.09,
+                'title' => 'Riferimento',
+                'align' => 'L',
+                'value' => fn(array $item): string => $this->trimText((string) ($item['riferimento'] ?? ''), 34),
+            ],
+            [
+                'ratio' => 0.07,
+                'title' => 'Metodo',
+                'align' => 'L',
+                'value' => fn(array $item): string => $this->trimText((string) ($item['metodo'] ?? ''), 22),
+            ],
+            [
+                'ratio' => 0.05,
+                'title' => 'Stato',
+                'align' => 'L',
+                'value' => fn(array $item): string => $this->trimText((string) ($item['stato'] ?? ''), 18),
+            ],
+            [
+                'ratio' => 0.09,
+                'title' => 'Costo riv.',
+                'align' => 'R',
+                'value' => fn(array $item): string => $this->formatNullableCurrency($item['listino_costo_rivenditore'] ?? null),
+            ],
+            [
+                'ratio' => 0.09,
+                'title' => 'Costo cliente',
+                'align' => 'R',
+                'value' => fn(array $item): string => $this->formatNullableCurrency($item['listino_costo_cliente'] ?? null),
+            ],
+            [
+                'ratio' => 0.05,
+                'title' => 'Margine',
+                'align' => 'R',
+                'value' => fn(array $item): string => $this->formatNullableCurrency($item['listino_margine'] ?? null),
+            ],
+            [
+                'ratio' => 0.05,
+                'title' => 'Importo',
+                'align' => 'R',
+                'value' => fn(array $item): string => $this->formatCurrency((float) ($item['importo'] ?? 0)),
+            ],
         ];
 
         foreach ($columns as &$column) {
-            $column['width'] = round($usableWidth * $column['ratio'], 2);
+            $column['width'] = round($usableWidth * (float) $column['ratio'], 2);
         }
         unset($column);
 
@@ -169,14 +238,12 @@ SQL;
             $pdf->Cell(array_sum(array_column($columns, 'width')), 10, $this->pdfText('Nessun movimento registrato per la giornata.'), 1, 1, 'C');
         } else {
             foreach ($movements as $item) {
-                $pdf->Cell($columns[0]['width'], 7, $this->pdfText($this->formatDateTime($item['data_riferimento'] ?? '')), 1, 0, $columns[0]['align']);
-                $pdf->Cell($columns[1]['width'], 7, $this->pdfText($this->trimText($this->buildClientName($item), 38)), 1, 0, $columns[1]['align']);
-                $pdf->Cell($columns[2]['width'], 7, $this->pdfText((string) ($item['tipo_movimento'] ?? '')), 1, 0, $columns[2]['align']);
-                $pdf->Cell($columns[3]['width'], 7, $this->pdfText($this->trimText((string) ($item['descrizione'] ?? ''), 60)), 1, 0, $columns[3]['align']);
-                $pdf->Cell($columns[4]['width'], 7, $this->pdfText($this->trimText((string) ($item['riferimento'] ?? ''), 34)), 1, 0, $columns[4]['align']);
-                $pdf->Cell($columns[5]['width'], 7, $this->pdfText($this->trimText((string) ($item['metodo'] ?? ''), 22)), 1, 0, $columns[5]['align']);
-                $pdf->Cell($columns[6]['width'], 7, $this->pdfText($this->trimText((string) ($item['stato'] ?? ''), 18)), 1, 0, $columns[6]['align']);
-                $pdf->Cell($columns[7]['width'], 7, $this->pdfText($this->formatCurrency((float) ($item['importo'] ?? 0))), 1, 0, $columns[7]['align']);
+                foreach ($columns as $column) {
+                    /** @var callable|null $valueCallback */
+                    $valueCallback = $column['value'] ?? null;
+                    $cellValue = $valueCallback ? $valueCallback($item) : '';
+                    $pdf->Cell($column['width'], 7, $this->pdfText($cellValue), 1, 0, $column['align']);
+                }
                 $pdf->Ln();
             }
         }
@@ -191,6 +258,17 @@ SQL;
         $pdf->Cell(60, 7, $this->pdfText('Totale Uscite'), 0, 0, 'L');
     $pdf->SetFont('DejaVu Sans', '', 11);
         $pdf->Cell(40, 7, $this->pdfText($this->formatCurrency($uscite)), 0, 1, 'L');
+
+    $pdf->SetFont('DejaVu Sans', 'B', 11);
+        $pdf->Cell(60, 7, $this->pdfText('Totale Margine'), 0, 0, 'L');
+        if ($margine >= 0) {
+            $pdf->SetTextColor(21, 87, 36);
+        } else {
+            $pdf->SetTextColor(114, 28, 36);
+        }
+    $pdf->SetFont('DejaVu Sans', '', 11);
+        $pdf->Cell(40, 7, $this->pdfText($this->formatCurrency($margine)), 0, 1, 'L');
+        $pdf->SetTextColor(28, 37, 52);
 
     $pdf->SetFont('DejaVu Sans', 'B', 11);
         $pdf->Cell(60, 7, $this->pdfText('Saldo'), 0, 0, 'L');
@@ -281,6 +359,15 @@ SQL;
     {
         $formatted = number_format($value, 2, ',', '.');
         return '€ ' . $formatted;
+    }
+
+    private function formatNullableCurrency($value): string
+    {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+
+        return $this->formatCurrency((float) $value);
     }
 
     private function formatDateTime(?string $value): string
