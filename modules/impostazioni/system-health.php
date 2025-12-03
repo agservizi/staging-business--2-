@@ -1,7 +1,5 @@
 <?php
 use App\Services\SystemHealth\SystemDiagnosticsService;
-use InvalidArgumentException;
-use Throwable;
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/db_connect.php';
