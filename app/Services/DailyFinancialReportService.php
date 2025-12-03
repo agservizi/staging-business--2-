@@ -160,7 +160,7 @@ SQL;
                 'ratio' => 0.17,
                 'title' => 'Cliente',
                 'align' => 'L',
-                'value' => fn(array $item): string => $this->trimText($this->buildClientName($item), 38),
+                'value' => fn(array $item): string => $this->buildClientName($item),
             ],
             [
                 'ratio' => 0.06,
@@ -172,25 +172,25 @@ SQL;
                 'ratio' => 0.19,
                 'title' => 'Descrizione',
                 'align' => 'L',
-                'value' => fn(array $item): string => $this->trimText((string) ($item['descrizione'] ?? ''), 60),
+                'value' => fn(array $item): string => (string) ($item['descrizione'] ?? ''),
             ],
             [
                 'ratio' => 0.09,
                 'title' => 'Riferimento',
                 'align' => 'L',
-                'value' => fn(array $item): string => $this->trimText((string) ($item['riferimento'] ?? ''), 34),
+                'value' => fn(array $item): string => (string) ($item['riferimento'] ?? ''),
             ],
             [
                 'ratio' => 0.07,
                 'title' => 'Metodo',
                 'align' => 'L',
-                'value' => fn(array $item): string => $this->trimText((string) ($item['metodo'] ?? ''), 22),
+                'value' => fn(array $item): string => (string) ($item['metodo'] ?? ''),
             ],
             [
                 'ratio' => 0.05,
                 'title' => 'Stato',
                 'align' => 'L',
-                'value' => fn(array $item): string => $this->trimText((string) ($item['stato'] ?? ''), 18),
+                'value' => fn(array $item): string => (string) ($item['stato'] ?? ''),
             ],
             [
                 'ratio' => 0.09,
@@ -238,13 +238,13 @@ SQL;
             $pdf->Cell(array_sum(array_column($columns, 'width')), 10, $this->pdfText('Nessun movimento registrato per la giornata.'), 1, 1, 'C');
         } else {
             foreach ($movements as $item) {
+                $rowValues = [];
                 foreach ($columns as $column) {
                     /** @var callable|null $valueCallback */
                     $valueCallback = $column['value'] ?? null;
-                    $cellValue = $valueCallback ? $valueCallback($item) : '';
-                    $pdf->Cell($column['width'], 7, $this->pdfText($cellValue), 1, 0, $column['align']);
+                    $rowValues[] = $valueCallback ? $valueCallback($item) : '';
                 }
-                $pdf->Ln();
+                $this->renderTableRow($pdf, $columns, $rowValues, 6.5);
             }
         }
 
@@ -368,6 +368,95 @@ SQL;
         }
 
         return $this->formatCurrency((float) $value);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $columns
+     * @param array<int, string> $values
+     */
+    private function renderTableRow(object $pdf, array $columns, array $values, float $lineHeight): void
+    {
+        $rowHeight = $this->calculateRowHeight($pdf, $columns, $values, $lineHeight);
+        $startX = $pdf->GetX();
+        $startY = $pdf->GetY();
+        $currentX = $startX;
+
+        foreach ($columns as $index => $column) {
+            $pdf->Rect($currentX, $startY, $column['width'], $rowHeight);
+            $pdf->SetXY($currentX, $startY);
+            $pdf->MultiCell(
+                $column['width'],
+                $lineHeight,
+                $this->pdfText($values[$index] ?? ''),
+                0,
+                $column['align']
+            );
+            $currentX += $column['width'];
+        }
+
+        $pdf->SetXY($startX, $startY + $rowHeight);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $columns
+     * @param array<int, string> $values
+     */
+    private function calculateRowHeight(object $pdf, array $columns, array $values, float $lineHeight): float
+    {
+        $maxLines = 1;
+        foreach ($columns as $index => $column) {
+            $text = (string) ($values[$index] ?? '');
+            $lines = $this->estimateLineCount($pdf, (float) $column['width'], $text);
+            $maxLines = max($maxLines, $lines);
+        }
+
+        return $maxLines * $lineHeight;
+    }
+
+    private function estimateLineCount(object $pdf, float $width, string $text): int
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return 1;
+        }
+
+        $availableWidth = max(1.0, $width - 1.0);
+        $segments = preg_split("/\r\n|\n|\r/u", $text) ?: [$text];
+        $supportsMeasure = method_exists($pdf, 'GetStringWidth');
+        $lines = 0;
+
+        foreach ($segments as $segment) {
+            $segment = trim($segment);
+            if ($segment === '') {
+                $lines++;
+                continue;
+            }
+
+            if (!$supportsMeasure) {
+                $approx = (int) ceil(max(1, mb_strlen($segment, 'UTF-8')) * 2.2 / $availableWidth);
+                $lines += max(1, $approx);
+                continue;
+            }
+
+            $tokens = preg_split('/(\s+)/u', $segment, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$segment];
+            $currentWidth = 0.0;
+            foreach ($tokens as $token) {
+                $tokenWidth = (float) $pdf->GetStringWidth($token);
+                if ($currentWidth + $tokenWidth <= $availableWidth || $currentWidth === 0.0) {
+                    $currentWidth += $tokenWidth;
+                    continue;
+                }
+
+                $lines++;
+                $currentWidth = $tokenWidth;
+            }
+
+            if ($currentWidth > 0) {
+                $lines++;
+            }
+        }
+
+        return max(1, $lines);
     }
 
     private function formatDateTime(?string $value): string
