@@ -147,16 +147,20 @@ document.addEventListener('DOMContentLoaded', () => {
         tooltipElements.forEach((element) => {
             // eslint-disable-next-line no-undef
             const existing = bootstrap.Tooltip.getInstance(element);
-            if (existing) {
-                existing.dispose();
-            }
             const inSidebar = sidebar?.contains(element);
             const sidebarCollapsed = sidebar?.classList.contains('collapsed');
             const sidebarOpen = sidebar?.classList.contains('open');
             const sidebarHovering = sidebar?.classList.contains(SIDEBAR_HOVER_CLASS);
-            if (inSidebar && (!sidebarCollapsed || sidebarOpen || sidebarHovering)) {
+            const shouldDisable = Boolean(inSidebar && (!sidebarCollapsed || sidebarOpen || sidebarHovering));
+
+            if (shouldDisable) {
+                if (existing) {
+                    existing.hide();
+                    existing.disable();
+                }
                 return;
             }
+
             const options = { container: 'body' };
             const trigger = element.getAttribute('data-bs-trigger');
             if (trigger) {
@@ -169,8 +173,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!options.trigger) {
                 options.trigger = 'hover focus';
             }
+
+            const optionsSignature = JSON.stringify(options);
+            const previousSignature = element.dataset.csTooltipOptions || '';
+            const optionsChanged = optionsSignature !== previousSignature;
+
+            if (existing && !optionsChanged) {
+                existing.enable();
+                return;
+            }
+
+            if (existing && optionsChanged) {
+                existing.hide();
+                existing.dispose();
+            }
+
             // eslint-disable-next-line no-undef
-            new bootstrap.Tooltip(element, options);
+            bootstrap.Tooltip.getOrCreateInstance(element, options);
+            element.dataset.csTooltipOptions = optionsSignature;
         });
     };
 
@@ -444,17 +464,19 @@ document.addEventListener('DOMContentLoaded', () => {
             tickets.forEach((ticket) => {
                 const row = document.createElement('tr');
 
-                const idCell = document.createElement('td');
-                if (ticket.id !== undefined && ticket.id !== null && ticket.id !== '') {
-                    idCell.textContent = `#${ticket.id}`;
-                } else {
-                    idCell.textContent = '—';
-                }
-                row.appendChild(idCell);
+                const ticketCell = document.createElement('td');
+                const codeLabel = document.createElement('div');
+                const codeValue = ticket.code || ticket.id || '—';
+                codeLabel.className = 'fw-semibold';
+                codeLabel.textContent = `#${codeValue}`;
+                ticketCell.appendChild(codeLabel);
 
-                const titleCell = document.createElement('td');
-                titleCell.textContent = ticket.title || '—';
-                row.appendChild(titleCell);
+                const subjectLine = document.createElement('small');
+                subjectLine.className = 'text-muted d-block';
+                subjectLine.textContent = ticket.subject || `Ticket #${codeValue}`;
+                ticketCell.appendChild(subjectLine);
+
+                row.appendChild(ticketCell);
 
                 const statusCell = document.createElement('td');
                 const statusBadge = document.createElement('span');
@@ -466,6 +488,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dateCell = document.createElement('td');
                 dateCell.textContent = formatDate(ticket.createdAt);
                 row.appendChild(dateCell);
+
+                const actionCell = document.createElement('td');
+                actionCell.className = 'text-end';
+                if (ticket.id !== undefined && ticket.id !== null) {
+                    const link = document.createElement('a');
+                    link.className = 'btn btn-sm btn-outline-warning';
+                    link.href = `modules/ticket/view.php?id=${ticket.id}`;
+                    link.textContent = 'Apri';
+                    actionCell.appendChild(link);
+                }
+                row.appendChild(actionCell);
 
                 fragment.appendChild(row);
             });

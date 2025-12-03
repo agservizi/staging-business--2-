@@ -184,7 +184,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="luogo_nascita">Luogo di nascita</label>
-                                <input class="form-control" id="luogo_nascita" name="luogo_nascita" value="<?php echo sanitize_output($data['luogo_nascita']); ?>" placeholder="Comune di nascita">
+                                <input class="form-control" id="luogo_nascita" name="luogo_nascita" value="<?php echo sanitize_output($data['luogo_nascita']); ?>" placeholder="Comune di nascita" data-istat-comune="true" data-istat-min-chars="3">
+                                <small class="text-muted">Suggerimenti ISTAT disponibili digitando almeno 3 caratteri.</small>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="cittadino_email">Email</label>
@@ -210,7 +211,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label" for="residenza_citta">Comune</label>
-                                <input class="form-control" id="residenza_citta" name="residenza_citta" value="<?php echo sanitize_output($data['residenza_citta']); ?>">
+                                <input class="form-control" id="residenza_citta" name="residenza_citta" value="<?php echo sanitize_output($data['residenza_citta']); ?>" data-istat-comune="true" data-istat-province-target="#residenza_provincia" data-istat-cap-target="#residenza_cap">
+                                <small class="text-muted">Scegli il comune dal dropdown ISTAT per compilare automaticamente la provincia.</small>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label" for="residenza_provincia">Provincia</label>
@@ -224,7 +226,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label" for="comune_richiesta">Comune di richiesta</label>
-                                <input class="form-control" id="comune_richiesta" name="comune_richiesta" value="<?php echo sanitize_output($data['comune_richiesta']); ?>" required>
+                                <input class="form-control" id="comune_richiesta" name="comune_richiesta" value="<?php echo sanitize_output($data['comune_richiesta']); ?>" required data-istat-comune="true">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="disponibilita_data">Data preferita</label>
@@ -232,7 +234,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="disponibilita_fascia">Fascia oraria</label>
-                                <input class="form-control" id="disponibilita_fascia" name="disponibilita_fascia" value="<?php echo sanitize_output($data['disponibilita_fascia']); ?>" placeholder="Es. Mattina/Pomeriggio">
+                                <select class="form-select" id="disponibilita_fascia" name="disponibilita_fascia">
+                                    <option value="">Seleziona fascia</option>
+                                    <option value="Mattina" <?php echo $data['disponibilita_fascia'] === 'Mattina' ? 'selected' : ''; ?>>Mattina</option>
+                                    <option value="Pomeriggio" <?php echo $data['disponibilita_fascia'] === 'Pomeriggio' ? 'selected' : ''; ?>>Pomeriggio</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -272,6 +278,18 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         </div>
     </main>
 </div>
+        <?php
+        $istatDatasetUrl = asset('customer-portal/assets/data/comuni.json');
+        ?>
+        <script>
+        window.CIEIstatLookupConfig = {
+            datasetUrl: '<?php echo sanitize_output($istatDatasetUrl); ?>',
+            fallbackUrl: 'https://raw.githubusercontent.com/matteocontrini/comuni-json/master/comuni.json',
+            maxResults: 12,
+            minChars: 2
+        };
+        </script>
+        <script src="<?php echo asset('assets/js/cie-istat-lookup.js'); ?>"></script>
 <script>
 (function () {
     const select = document.getElementById('cliente_id');

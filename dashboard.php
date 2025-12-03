@@ -36,6 +36,7 @@ $charts = [
     'revenue' => [
         'labels' => [],
         'values' => [],
+        'margins' => [],
     ],
     'services' => [
         'labels' => [
@@ -43,7 +44,6 @@ $charts = [
             'Appuntamenti',
             'Contratti energia',
             'Pratiche ANPR',
-            'Visure catastali',
             'Progetti web',
             'Programma Fedeltà',
             'Curriculum',
@@ -52,7 +52,7 @@ $charts = [
             'Email marketing',
             'Email inviate',
         ],
-        'values' => [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        'values' => [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     ],
 ];
 
@@ -106,12 +106,13 @@ try {
 
     $stats['anprInProgress'] = (int) $pdo->query("SELECT COUNT(*) FROM anpr_pratiche WHERE stato = 'In lavorazione'")->fetchColumn();
 
-    $ticketStmt = $pdo->prepare("SELECT id, titolo, stato, created_at FROM ticket ORDER BY created_at DESC LIMIT 5");
+    $ticketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, updated_at FROM tickets ORDER BY updated_at DESC LIMIT 5");
     $ticketStmt->execute();
-    $stats['openTickets'] = $ticketStmt->fetchAll();
+    $stats['openTickets'] = $ticketStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     $revenueChartStmt = $pdo->prepare("SELECT DATE_FORMAT(DATE(COALESCE(data_pagamento, updated_at, created_at)), '%Y-%m') AS month_key,
-           SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END) AS totale
+           SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END) AS totale,
+           SUM(CASE WHEN tipo_movimento = 'Entrata' THEN COALESCE(listino_margine, 0) ELSE 0 END) AS margine_totale
         FROM entrate_uscite
         WHERE stato = 'Completato'
           AND DATE(COALESCE(data_pagamento, updated_at, created_at)) >= DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH), '%Y-%m-01')
@@ -120,18 +121,23 @@ try {
     $revenueChartStmt->execute();
 
     $monthlyRevenue = [];
+    $monthlyMargins = [];
     while ($row = $revenueChartStmt->fetch(PDO::FETCH_ASSOC)) {
-        $monthlyRevenue[$row['month_key']] = (float) $row['totale'];
+        $monthKey = $row['month_key'];
+        $monthlyRevenue[$monthKey] = (float) $row['totale'];
+        $monthlyMargins[$monthKey] = isset($row['margine_totale']) ? (float) $row['margine_totale'] : 0.0;
     }
 
     $charts['revenue']['labels'] = [];
     $charts['revenue']['values'] = [];
+    $charts['revenue']['margins'] = [];
     $startMonth = (new DateTimeImmutable('first day of this month'))->modify('-5 months');
     $monthCursor = $startMonth;
     for ($i = 0; $i < 6; $i++) {
         $monthKey = $monthCursor->format('Y-m');
         $charts['revenue']['labels'][] = format_month_label($monthCursor);
         $charts['revenue']['values'][] = $monthlyRevenue[$monthKey] ?? 0.0;
+        $charts['revenue']['margins'][] = $monthlyMargins[$monthKey] ?? 0.0;
         $monthCursor = $monthCursor->modify('+1 month');
     }
 
@@ -140,7 +146,6 @@ try {
         'servizi_appuntamenti' => 0,
         'energia_contratti' => 0,
         'anpr_pratiche' => 0,
-        'servizi_visure' => 0,
         'servizi_web_progetti' => 0,
         'fedelta_movimenti' => 0,
         'curriculum' => 0,
@@ -295,14 +300,20 @@ try {
         error_log('Dashboard email marketing reminder failed: ' . $emailReminderException->getMessage());
     }
 
-    $oldestTicketStmt = $pdo->prepare("SELECT id, titolo, created_at FROM ticket WHERE stato IN ('Aperto', 'In corso') ORDER BY created_at ASC LIMIT 1");
+    $oldestTicketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, COALESCE(last_message_at, created_at) AS reference_date
+        FROM tickets
+        WHERE status IN ('OPEN','IN_PROGRESS','WAITING_CLIENT','WAITING_PARTNER')
+        ORDER BY reference_date ASC
+        LIMIT 1");
     $oldestTicketStmt->execute();
     if ($oldestTicket = $oldestTicketStmt->fetch()) {
+        $ticketCode = $oldestTicket['codice'] ?? $oldestTicket['id'];
+        $ticketSubject = trim((string) ($oldestTicket['subject'] ?? 'Ticket ' . $ticketCode));
         $reminders[] = [
             'icon' => 'fa-life-ring',
             'title' => 'Ticket da prendere in carico',
-            'detail' => sprintf('Ticket #%d aperto il %s.', $oldestTicket['id'], format_datetime($oldestTicket['created_at'] ?? '')),
-            'url' => base_url('modules/ticket/view.php?id=' . $oldestTicket['id']),
+            'detail' => sprintf('Ticket #%s · %s aperto il %s.', $ticketCode, $ticketSubject, format_datetime($oldestTicket['created_at'] ?? '')),
+            'url' => base_url('modules/ticket/view.php?id=' . (int) $oldestTicket['id']),
         ];
     }
 
@@ -775,8 +786,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 <table class="table table-hover align-middle mb-0" data-dashboard-table="tickets">
                                     <thead>
                                         <tr>
-                                            <th>ID</th>
-                                            <th>Titolo</th>
+                                            <th>Ticket</th>
                                             <th>Stato</th>
                                             <th>Aperto il</th>
                                             <th></th>
@@ -785,11 +795,20 @@ require_once __DIR__ . '/includes/sidebar.php';
                                     <tbody id="dashboardTicketsBody">
                                         <?php if ($stats['openTickets']): ?>
                                             <?php foreach ($stats['openTickets'] as $ticket): ?>
-                                                <?php $ticketDate = $ticket['created_at'] ?? null; ?>
+                                                <?php
+                                                    $ticketDate = $ticket['created_at'] ?? null;
+                                                    $ticketCode = $ticket['codice'] ?? $ticket['id'];
+                                                    $ticketSubject = trim((string) ($ticket['subject'] ?? ''));
+                                                    if ($ticketSubject === '') {
+                                                        $ticketSubject = 'Ticket #' . $ticketCode;
+                                                    }
+                                                ?>
                                                 <tr>
-                                                    <td>#<?php echo sanitize_output($ticket['id']); ?></td>
-                                                    <td><?php echo sanitize_output($ticket['titolo']); ?></td>
-                                                    <td><span class="badge ag-badge text-uppercase"><?php echo sanitize_output($ticket['stato']); ?></span></td>
+                                                    <td>
+                                                        <div class="fw-semibold">#<?php echo sanitize_output($ticketCode); ?></div>
+                                                        <small class="text-muted"><?php echo sanitize_output($ticketSubject); ?></small>
+                                                    </td>
+                                                    <td><span class="badge ag-badge text-uppercase"><?php echo sanitize_output($ticket['status']); ?></span></td>
                                                     <td><?php echo sanitize_output($ticketDate ? format_datetime($ticketDate, 'd/m/Y') : 'N/D'); ?></td>
                                                     <td class="text-end"><a class="btn btn-sm btn-outline-warning" href="modules/ticket/view.php?id=<?php echo (int) $ticket['id']; ?>">Apri</a></td>
                                                 </tr>
@@ -893,6 +912,11 @@ require_once __DIR__ . '/includes/sidebar.php';
     const accentRgb = (rootStyle.getPropertyValue('--ag-accent-rgb') || '11, 47, 107').trim() || '11, 47, 107';
     const accentAlpha = (alpha) => `rgba(${accentRgb}, ${alpha})`;
 
+    const euroFormatter = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 });
+    const formatEuro = (value) => euroFormatter.format(Number.isFinite(value) ? value : 0);
+
+    const revenueChartMargins = <?php echo json_encode($charts['revenue']['margins'], JSON_THROW_ON_ERROR); ?>;
+
     const revenueChartData = {
         labels: <?php echo json_encode($charts['revenue']['labels'], JSON_THROW_ON_ERROR); ?>,
         datasets: [{
@@ -936,11 +960,26 @@ require_once __DIR__ . '/includes/sidebar.php';
                 type: 'line',
                 data: revenueChartData,
                 options: {
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `Saldo: ${formatEuro(context.parsed.y ?? context.parsed)}`,
+                                afterBody: (items) => {
+                                    if (!items || !items.length) {
+                                        return '';
+                                    }
+                                    const index = items[0].dataIndex;
+                                    const marginValue = revenueChartMargins[index] ?? 0;
+                                    return `Margine: ${formatEuro(marginValue)}`;
+                                }
+                            }
+                        },
+                    },
                     scales: {
                         y: {
                             ticks: {
-                                callback: (value) => `€ ${value.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`
+                                callback: (value) => formatEuro(value)
                             }
                         }
                     }

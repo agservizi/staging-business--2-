@@ -66,6 +66,17 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 							<dd class="col-sm-8"><?php echo sanitize_output($etichettaCliente); ?></dd>
 							<dt class="col-sm-4 text-muted">Descrizione</dt>
 							<dd class="col-sm-8"><?php echo sanitize_output($pagamento['descrizione']); ?></dd>
+							<?php if (!empty($pagamento['listino_voce']) || $pagamento['listino_costo_rivenditore'] !== null || $pagamento['listino_costo_cliente'] !== null): ?>
+								<dt class="col-sm-4 text-muted">Listino collegato</dt>
+								<dd class="col-sm-8">
+									<strong><?php echo sanitize_output($pagamento['listino_voce'] ?: 'Voce non più disponibile'); ?></strong>
+									<ul class="list-unstyled small mb-0">
+										<li>Costo rivenditore: <?php echo $pagamento['listino_costo_rivenditore'] !== null ? sanitize_output(format_currency((float) $pagamento['listino_costo_rivenditore'])) : '—'; ?></li>
+										<li>Costo cliente suggerito: <?php echo $pagamento['listino_costo_cliente'] !== null ? sanitize_output(format_currency((float) $pagamento['listino_costo_cliente'])) : '—'; ?></li>
+										<li>Margine registrato: <?php echo $pagamento['listino_margine'] !== null ? sanitize_output(format_currency((float) $pagamento['listino_margine'])) : '—'; ?></li>
+									</ul>
+								</dd>
+							<?php endif; ?>
 							<dt class="col-sm-4 text-muted">Tipo movimento</dt>
 							<dd class="col-sm-8">
 								<?php

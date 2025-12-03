@@ -43,6 +43,10 @@ if (!function_exists('report_format_value')) {
             return format_currency(((float) $rawValue) * $factor);
         }
 
+        if ($table === 'entrate_uscite' && in_array($column, ['listino_costo_rivenditore', 'listino_costo_cliente', 'listino_margine'], true)) {
+            return $rawValue !== null ? format_currency((float) $rawValue) : '—';
+        }
+
         if ($table === 'fedelta_movimenti') {
             if ($column === 'punti') {
                 $points = (int) $rawValue;
@@ -160,7 +164,7 @@ if (!function_exists('report_fetch_overview')) {
 $serviceMap = [
     'entrate-uscite' => [
         'table' => 'entrate_uscite',
-        'columns' => ['tipo_movimento', 'descrizione', 'riferimento', 'metodo', 'stato', 'importo', 'data_scadenza', 'data_pagamento'],
+        'columns' => ['tipo_movimento', 'descrizione', 'riferimento', 'metodo', 'stato', 'importo', 'listino_voce', 'listino_costo_rivenditore', 'listino_costo_cliente', 'listino_margine', 'data_scadenza', 'data_pagamento'],
         'date_column' => 'created_at',
         'label' => 'Entrate/Uscite',
         'limit' => 500,
@@ -253,7 +257,7 @@ if ($current) {
 
 $summary = [
     'clients' => (int) $pdo->query('SELECT COUNT(*) FROM clienti')->fetchColumn(),
-    'tickets' => (int) $pdo->query('SELECT COUNT(*) FROM ticket WHERE stato != "Chiuso"')->fetchColumn(),
+    'tickets' => (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE status NOT IN ('RESOLVED','CLOSED','ARCHIVED')")->fetchColumn(),
     'revenue' => 0.0,
 ];
 
@@ -270,7 +274,7 @@ try {
         $dailyTotal = (int) $countStmt->fetchColumn();
     }
 
-    $dailyStmt = $pdo->prepare('SELECT id, report_date, total_entrate, total_uscite, saldo, file_path, generated_at FROM daily_financial_reports ORDER BY report_date DESC LIMIT :limit OFFSET :offset');
+    $dailyStmt = $pdo->prepare('SELECT id, report_date, total_entrate, total_uscite, saldo, generated_at FROM daily_financial_reports ORDER BY report_date DESC LIMIT :limit OFFSET :offset');
     $dailyStmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
     $dailyStmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $dailyStmt->execute();
@@ -311,9 +315,13 @@ if ($format === 'csv' && $current) {
         $dataRow = [$row['id']];
         foreach ($current['columns'] as $col) {
             $value = $row[$col] ?? '';
-            if ($current['table'] === 'entrate_uscite' && $col === 'importo') {
-                $sign = (($row['tipo_movimento'] ?? 'Entrata') === 'Uscita') ? -1 : 1;
-                $value = number_format(((float) $value) * $sign, 2, '.', '');
+            if ($current['table'] === 'entrate_uscite') {
+                if ($col === 'importo') {
+                    $sign = (($row['tipo_movimento'] ?? 'Entrata') === 'Uscita') ? -1 : 1;
+                    $value = number_format(((float) $value) * $sign, 2, '.', '');
+                } elseif (in_array($col, ['listino_costo_rivenditore', 'listino_costo_cliente', 'listino_margine'], true)) {
+                    $value = $value === '' ? '' : number_format((float) $value, 2, '.', '');
+                }
             } elseif ($current['table'] === 'fedelta_movimenti' && in_array($col, ['punti', 'saldo_post_movimento'], true)) {
                 $value = (string) (int) $value;
             }
@@ -483,8 +491,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         $generatedAt = $report['generated_at'] ?? '';
                                         $saldoValue = isset($report['saldo']) ? (float) $report['saldo'] : 0.0;
                                         $saldoClass = $saldoValue >= 0 ? 'text-success fw-semibold' : 'text-danger fw-semibold';
-                                        $filePath = (string) ($report['file_path'] ?? '');
-                                        $fileExists = $filePath !== '' && is_file(public_path($filePath));
                                         $reportId = (int) ($report['id'] ?? 0);
                                         $downloadUrl = base_url('modules/report/download_daily_report.php?id=' . $reportId);
                                         $previewUrl = base_url('modules/report/download_daily_report.php?id=' . $reportId . '&mode=inline');
@@ -496,16 +502,12 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <td class="<?php echo $saldoClass; ?>"><?php echo sanitize_output(format_currency($saldoValue)); ?></td>
                                         <td><?php echo sanitize_output($generatedAt ? format_datetime_locale((string) $generatedAt) : '—'); ?></td>
                                         <td class="text-end">
-                                            <?php if ($fileExists): ?>
-                                                <a class="btn btn-sm btn-outline-secondary me-2" href="<?php echo sanitize_output($previewUrl); ?>" target="_blank" rel="noopener">
-                                                    <i class="fa-solid fa-eye me-1"></i>Anteprima
-                                                </a>
-                                                <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output($downloadUrl); ?>">
-                                                    <i class="fa-solid fa-download me-1"></i>Scarica
-                                                </a>
-                                            <?php else: ?>
-                                                <span class="badge bg-warning text-dark">File non disponibile</span>
-                                            <?php endif; ?>
+                                            <a class="btn btn-sm btn-outline-secondary me-2" href="<?php echo sanitize_output($previewUrl); ?>" target="_blank" rel="noopener">
+                                                <i class="fa-solid fa-eye me-1"></i>Anteprima
+                                            </a>
+                                            <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output($downloadUrl); ?>">
+                                                <i class="fa-solid fa-download me-1"></i>Scarica
+                                            </a>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -557,7 +559,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="d-flex align-items-center gap-2">
                         <span class="text-muted small"><?php echo count($dataset); ?> record</span>
                         <?php if ($datasetLimitReached && !empty($current['limit'])): ?>
-                            <span class="badge bg-warning text-dark">Limite <?php echo (int) $current['limit']; ?> record</span>
+                            <span class="badge bg-warning text-white">Limite <?php echo (int) $current['limit']; ?> record</span>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -595,8 +597,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <?php endif; ?>
                 </div>
             </div>
-        <?php else: ?>
-            <div class="alert alert-warning">Seleziona un servizio per visualizzare i dati dettagliati.</div>
         <?php endif; ?>
     </main>
 </div>

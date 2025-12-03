@@ -90,17 +90,27 @@ try {
             $clientsStmt->execute([':term' => $likeTerm]);
             $clients = [];
             while ($row = $clientsStmt->fetch()) {
-                $fullName = trim(($row['nome'] ?? '') . ' ' . ($row['cognome'] ?? ''));
-                if ($fullName === '') {
-                    $fullName = 'Cliente #' . $row['id'];
+                $titleParts = array_filter([
+                    $row['nome'] ?? null,
+                    $row['cognome'] ?? null,
+                ]);
+                $title = trim(implode(' ', $titleParts));
+                if ($title === '' && !empty($row['email'])) {
+                    $title = $row['email'];
                 }
-                $subtitle = $row['email'] ?: ($row['telefono'] ?: 'Cliente registrato');
+                if ($title === '') {
+                    $title = 'Cliente #' . $row['id'];
+                }
+                $subtitle = $row['email'] ?? '';
+                if (!empty($row['telefono'])) {
+                    $subtitle = trim($subtitle . ' • ' . $row['telefono']);
+                }
                 $clients[] = [
                     'id' => (int) $row['id'],
-                    'title' => $fullName,
+                    'title' => $title,
                     'subtitle' => $subtitle,
                     'badge' => 'Cliente',
-                    'url' => base_url('modules/clienti/view.php?id=' . $row['id']),
+                    'url' => base_url('modules/clienti/view.php?id=' . (int) $row['id']),
                 ];
             }
             $results['clients'] = $clients;
@@ -146,26 +156,35 @@ try {
 
     if ($canSeeTickets) {
         try {
-            $ticketsStmt = $pdo->prepare('SELECT id, titolo, stato, created_at
-                FROM ticket
-                WHERE titolo LIKE :term
-                    OR descrizione LIKE :term
-                ORDER BY created_at DESC
+            $ticketsStmt = $pdo->prepare('SELECT id, codice, subject, status, customer_name, created_at, updated_at
+                FROM tickets
+                WHERE subject LIKE :term
+                    OR customer_name LIKE :term
+                    OR codice LIKE :term
+                ORDER BY updated_at DESC
                 LIMIT 5');
             $ticketsStmt->execute([':term' => $likeTerm]);
             $tickets = [];
             while ($row = $ticketsStmt->fetch()) {
-                $ticketTitle = $row['titolo'] ?? '';
+                $code = $row['codice'] ?? ('TCK' . $row['id']);
+                $ticketTitle = trim((string) ($row['subject'] ?? ''));
                 if ($ticketTitle === '') {
-                    $ticketTitle = 'Ticket #' . $row['id'];
+                    $ticketTitle = 'Ticket #' . $code;
                 }
-                $ticketDate = $row['created_at'] ?? '';
+                $subtitleParts = [];
+                $subtitleParts[] = 'Stato: ' . strtoupper((string) ($row['status'] ?? '—'));
+                if (!empty($row['customer_name'])) {
+                    $subtitleParts[] = 'Cliente: ' . $row['customer_name'];
+                }
+                if (!empty($row['created_at'])) {
+                    $subtitleParts[] = format_datetime($row['created_at']);
+                }
                 $tickets[] = [
                     'id' => (int) $row['id'],
-                    'title' => $ticketTitle,
-                    'subtitle' => sprintf('Stato: %s - %s', $row['stato'] ?? '—', $ticketDate !== '' ? format_datetime($ticketDate) : 'Data sconosciuta'),
+                    'title' => sprintf('#%s · %s', $code, $ticketTitle),
+                    'subtitle' => implode(' • ', array_filter($subtitleParts)),
                     'badge' => 'Ticket',
-                    'url' => base_url('modules/ticket/view.php?id=' . $row['id']),
+                    'url' => base_url('modules/ticket/view.php?id=' . (int) $row['id']),
                 ];
             }
             $results['tickets'] = $tickets;

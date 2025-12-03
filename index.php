@@ -109,9 +109,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
     <link href="<?php echo asset('assets/css/custom.css'); ?>" rel="stylesheet">
 </head>
 <body class="login-body" data-bs-theme="light">
-    <main class="login-shell">
-        <div class="row g-0">
-            <div class="col-md-5 login-side-brand d-flex flex-column justify-content-between">
+    <main class="auth-layout login-shell">
+        <div class="auth-grid">
+            <section class="auth-panel auth-panel-brand login-side-brand">
                 <div>
                     <span class="badge rounded-pill px-3 py-2 mb-4">Coresuite Business</span>
                     <h1 class="display-6 fw-semibold mb-3">Connessioni più smart, decisioni più rapide.</h1>
@@ -122,52 +122,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                         <li><i class="fa-solid fa-shield-halved"></i><span>Sicurezza enterprise con audit completo</span></li>
                     </ul>
                 </div>
-                <div class="login-meta">
+                <div class="login-meta auth-meta">
                     &copy; <?php echo date('Y'); ?> Coresuite Business
                 </div>
-            </div>
-            <div class="col-md-7 login-form-area">
-                <div class="mb-4 text-center text-md-start">
-                    <h2 class="h4 fw-semibold mb-2">Accedi al tuo workspace</h2>
-                    <p class="login-meta mb-0">Hai bisogno di assistenza? <a class="link-warning text-decoration-none" href="forgot_password.php">Recupera l'accesso</a>.</p>
+            </section>
+            <section class="auth-panel auth-panel-form login-form-area">
+                <div class="auth-panel-inner">
+                    <div class="mb-4 text-center text-md-start">
+                        <h2 class="h4 fw-semibold mb-2">Accedi al tuo workspace</h2>
+                        <p class="login-meta mb-0">Hai bisogno di assistenza? <a class="link-warning text-decoration-none" href="forgot_password.php">Recupera l'accesso</a>.</p>
+                    </div>
+                    <?php if ($errors): ?>
+                        <div class="alert alert-danger border-0 shadow-sm mb-4" role="alert">
+                            <?php echo implode('<br>', array_map('htmlspecialchars', $errors)); ?>
+                        </div>
+                    <?php endif; ?>
+                    <form method="post" novalidate>
+                        <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                        <div class="mb-4">
+                            <label for="username" class="form-label">Username</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                                <input type="text" class="form-control" id="username" name="username" required autocomplete="username" placeholder="es. nome.cognome">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password" placeholder="••••••••">
+                                <button class="btn btn-outline-warning" type="button" id="togglePassword" aria-label="Mostra password"><i class="fa-solid fa-eye"></i></button>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-center mb-5">
+                            <div class="form-check m-0">
+                                <input class="form-check-input" type="checkbox" value="1" id="rememberMe" name="remember"<?php echo $rememberRequested ? ' checked' : ''; ?>>
+                                <label class="form-check-label" for="rememberMe">Mantieni l'accesso su questo dispositivo</label>
+                            </div>
+                            <a class="link-warning text-decoration-none" href="forgot_password.php">Hai dimenticato la password?</a>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-warning fw-semibold">Entra in Coresuite Business</button>
+                        </div>
+                    </form>
+                    <div class="login-meta mt-5">
+                        Accesso riservato al personale autorizzato. Ogni attività viene registrata per motivi di sicurezza e compliance.
+                    </div>
                 </div>
-                <?php if ($errors): ?>
-                    <div class="alert alert-danger border-0 shadow-sm mb-4" role="alert">
-                        <?php echo implode('<br>', array_map('htmlspecialchars', $errors)); ?>
-                    </div>
-                <?php endif; ?>
-                <form method="post" novalidate>
-                    <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-                    <div class="mb-4">
-                        <label for="username" class="form-label">Username</label>
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-                            <input type="text" class="form-control" id="username" name="username" required autocomplete="username" placeholder="es. nome.cognome">
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        <label for="password" class="form-label">Password</label>
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-                            <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password" placeholder="••••••••">
-                            <button class="btn btn-outline-warning" type="button" id="togglePassword" aria-label="Mostra password"><i class="fa-solid fa-eye"></i></button>
-                        </div>
-                    </div>
-                    <div class="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-center mb-5">
-                        <div class="form-check m-0">
-                            <input class="form-check-input" type="checkbox" value="1" id="rememberMe" name="remember"<?php echo $rememberRequested ? ' checked' : ''; ?>>
-                            <label class="form-check-label" for="rememberMe">Mantieni l'accesso su questo dispositivo</label>
-                        </div>
-                        <a class="link-warning text-decoration-none" href="forgot_password.php">Hai dimenticato la password?</a>
-                    </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-warning fw-semibold">Entra in Coresuite Business</button>
-                    </div>
-                </form>
-                <div class="login-meta mt-5">
-                    Accesso riservato al personale autorizzato. Ogni attività viene registrata per motivi di sicurezza e compliance.
-                </div>
-            </div>
+            </section>
         </div>
     </main>
     <script src="<?php echo asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js'); ?>"></script>

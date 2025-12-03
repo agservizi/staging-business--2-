@@ -94,13 +94,7 @@ function pickup_public_url(?string $path): string
         return $path;
     }
 
-    $normalized = '/' . ltrim($path, '/');
-    $baseUrl = rtrim(env('APP_URL', ''), '/');
-    if ($baseUrl === '') {
-        return $normalized;
-    }
-
-    return $baseUrl . $normalized;
+    return base_url(ltrim($path, '/'));
 }
 
 function pickup_fetch_qr_image(string $targetUrl): ?string

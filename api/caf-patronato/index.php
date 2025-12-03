@@ -2,9 +2,6 @@
 declare(strict_types=1);
 
 use App\Services\CAFPatronato\PracticesService;
-use JsonException;
-use RuntimeException;
-use Throwable;
 
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/helpers.php';

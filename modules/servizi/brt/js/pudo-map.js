@@ -218,10 +218,10 @@
         const provinceValue = provinceInput?.value?.trim() || '';
         const countryValue = countryInput?.value?.trim() || '';
 
-        if (zipValue === '' && cityValue === '') {
+        if (zipValue === '' || cityValue === '') {
             root._pudoLastAutoCriteria = null;
             renderResults(root, []);
-            setStatus(root, 'Inserisci almeno CAP o città per cercare un PUDO.', 'warning');
+            setStatus(root, 'Inserisci CAP e città per cercare un PUDO.', 'warning');
             return;
         }
 
@@ -382,8 +382,8 @@
         const provinceValue = provinceInput?.value?.trim() || '';
         const countryValue = countryInput?.value?.trim() || root.dataset.defaultCountry || 'IT';
 
-        if (zipValue === '' && cityValue === '') {
-            setStatus(root, 'Inserisci almeno CAP o città per cercare un PUDO.', 'warning');
+        if (zipValue === '' || cityValue === '') {
+            setStatus(root, 'Inserisci CAP e città per cercare un PUDO.', 'warning');
             return;
         }
 
