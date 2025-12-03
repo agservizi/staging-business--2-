@@ -911,6 +911,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <div class="toolbar-actions">
                 <a class="btn btn-soft-accent" href="logs.php"><i class="fa-solid fa-scroll me-2"></i>Registro attività</a>
                 <a class="btn btn-warning" href="users.php"><i class="fa-solid fa-users-gear me-2"></i>Gestione utenti</a>
+                <a class="btn btn-outline-danger" href="system-health.php"><i class="fa-solid fa-heart-pulse me-2"></i>Diagnostica sistema</a>
             </div>
         </div>
         <?php foreach ($alerts as $alert): ?>
