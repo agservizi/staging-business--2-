@@ -96,7 +96,6 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
                     <div class="dropdown">
                         <button class="btn topbar-btn topbar-btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Documenti recenti">
                             <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
-                            <span class="topbar-btn-label d-none d-xl-inline">Documenti</span>
                         </button>
                         <div class="dropdown-menu dropdown-menu-end topbar-dropdown topbar-documents-dropdown" style="min-width: 320px;">
                             <div class="dropdown-header">
