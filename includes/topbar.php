@@ -67,9 +67,9 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
                             <i class="fa-solid fa-coins topbar-btn-icon-lead" aria-hidden="true"></i>
                             <span class="topbar-btn-label d-none d-xxl-inline">Nuova entrata/uscita</span>
                         </a>
-                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/servizi/energia/create.php'); ?>" aria-label="Crea un nuovo contratto energia" title="Crea un nuovo contratto energia" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Crea un nuovo contratto energia">
-                            <i class="fa-solid fa-bolt topbar-btn-icon-lead" aria-hidden="true"></i>
-                            <span class="topbar-btn-label d-none d-xxl-inline">Nuovo contratto energia</span>
+                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/servizi/brt/create.php'); ?>" aria-label="Crea una nuova spedizione BRT" title="Crea una nuova spedizione BRT" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Crea una nuova spedizione BRT">
+                            <i class="fa-solid fa-truck-fast topbar-btn-icon-lead" aria-hidden="true"></i>
+                            <span class="topbar-btn-label d-none d-xxl-inline">Nuova spedizione BRT</span>
                         </a>
                         <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/servizi/appuntamenti/create.php'); ?>" aria-label="Pianifica un nuovo appuntamento" title="Pianifica un nuovo appuntamento" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Pianifica un nuovo appuntamento">
                             <i class="fa-solid fa-calendar-plus topbar-btn-icon-lead" aria-hidden="true"></i>
@@ -86,7 +86,7 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="<?php echo base_url('modules/servizi/entrate-uscite/create.php'); ?>"><i class="fa-solid fa-coins me-2"></i>Nuova entrata/uscita</a></li>
-                            <li><a class="dropdown-item" href="<?php echo base_url('modules/servizi/energia/create.php'); ?>"><i class="fa-solid fa-bolt me-2"></i>Nuovo contratto energia</a></li>
+                            <li><a class="dropdown-item" href="<?php echo base_url('modules/servizi/brt/create.php'); ?>"><i class="fa-solid fa-truck-fast me-2"></i>Nuova spedizione BRT</a></li>
                             <li><a class="dropdown-item" href="<?php echo base_url('modules/servizi/appuntamenti/create.php'); ?>"><i class="fa-solid fa-calendar-plus me-2"></i>Nuovo appuntamento</a></li>
                             <li><a class="dropdown-item" href="<?php echo base_url('modules/office-suite/documents/editor.php'); ?>"><i class="fa-solid fa-file-pen me-2"></i>Nuovo documento</a></li>
                         </ul>
