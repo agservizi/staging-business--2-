@@ -11,8 +11,8 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
-const DOCUMENT_SERVER_URL = 'https://onlyoffice.example.com';
-const DOCUMENT_SERVER_SECRET = 'change-me';
+const DOCUMENT_SERVER_URL = 'https://docspace-50jyxi.onlyoffice.com';
+const DOCUMENT_SERVER_SECRET = 'k6ZkDq3vF2x9tJrLp0YcA7wHqS1mV8eR';
 const DOCUMENT_SERVER_USE_JWT = true;
 
 const ENCRYPTED_STORAGE_PATH = __DIR__ . '/../../storage/onlyoffice';
