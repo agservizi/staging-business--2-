@@ -55,7 +55,7 @@ final class SpreadsheetService
         }
 
         $sheet['tags'] = $sheet['tags'] ? json_decode((string) $sheet['tags'], true) : [];
-        $sheet['revisions'] = $this->listRevisions($id, 5);
+        $sheet['revisions'] = $this->listRevisions($id, 8);
 
         return $sheet;
     }
@@ -119,7 +119,7 @@ final class SpreadsheetService
     {
         $limit = max(1, min(50, $limit));
         $stmt = $this->pdo->prepare(
-            'SELECT id, versione, titolo_snapshot, commento, created_at '
+            'SELECT id, versione, titolo_snapshot, commento, created_by, created_at '
             . 'FROM office_spreadsheet_revisions WHERE spreadsheet_id = :id '
             . 'ORDER BY versione DESC LIMIT ' . $limit
         );
@@ -207,11 +207,12 @@ final class SpreadsheetService
         string $title,
         string $grid,
         ?string $metadata,
-        int $userId
+        int $userId,
+        ?string $comment = null
     ): void {
         $stmt = $this->pdo->prepare(
-            'INSERT INTO office_spreadsheet_revisions (spreadsheet_id, versione, titolo_snapshot, grid_state, metadata, created_by) '
-            . 'VALUES (:sheet_id, :versione, :titolo, :grid, :metadata, :created_by)'
+            'INSERT INTO office_spreadsheet_revisions (spreadsheet_id, versione, titolo_snapshot, grid_state, metadata, commento, created_by) '
+            . 'VALUES (:sheet_id, :versione, :titolo, :grid, :metadata, :commento, :created_by)'
         );
 
         $stmt->execute([
@@ -220,8 +221,63 @@ final class SpreadsheetService
             ':titolo' => $title,
             ':grid' => $grid,
             ':metadata' => $metadata,
+            ':commento' => $comment,
             ':created_by' => $userId,
         ]);
+    }
+
+    public function revertToRevision(int $sheetId, int $revisionId, int $userId): array
+    {
+        $revision = $this->getRevision($sheetId, $revisionId);
+        if (!$revision) {
+            throw new RuntimeException('Versione del foglio non trovata.');
+        }
+
+        $this->pdo->beginTransaction();
+
+        try {
+            $stmt = $this->pdo->prepare('SELECT current_version FROM office_spreadsheets WHERE id = :id LIMIT 1');
+            $stmt->execute([':id' => $sheetId]);
+            $currentVersion = (int) ($stmt->fetchColumn() ?: 0);
+            $newVersion = $currentVersion + 1;
+
+            $this->insertRevision(
+                $sheetId,
+                $newVersion,
+                (string) $revision['titolo_snapshot'],
+                (string) $revision['grid_state'],
+                $revision['metadata'] ?? null,
+                $userId,
+                sprintf('Ripristino versione %d', (int) $revision['versione'])
+            );
+
+            $this->touchSheet($sheetId, $newVersion);
+            $this->pdo->commit();
+        } catch (Throwable $exception) {
+            $this->pdo->rollBack();
+            throw $exception;
+        }
+
+        $sheet = $this->getSheet($sheetId);
+        if ($sheet === null) {
+            throw new RuntimeException('Foglio non trovato dopo il ripristino.');
+        }
+
+        return $sheet;
+    }
+
+    public function getRevision(int $sheetId, int $revisionId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT * FROM office_spreadsheet_revisions WHERE spreadsheet_id = :sheet AND id = :revision LIMIT 1'
+        );
+        $stmt->execute([
+            ':sheet' => $sheetId,
+            ':revision' => $revisionId,
+        ]);
+
+        $revision = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $revision ?: null;
     }
 
     private function touchSheet(int $sheetId, int $version): void

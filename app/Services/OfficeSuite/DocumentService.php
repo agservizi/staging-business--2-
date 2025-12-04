@@ -55,7 +55,7 @@ final class DocumentService
         }
 
         $document['tags'] = $document['tags'] ? json_decode((string) $document['tags'], true) : [];
-        $document['revisions'] = $this->listRevisions($id, 5);
+        $document['revisions'] = $this->listRevisions($id, 8);
 
         return $document;
     }
@@ -124,7 +124,7 @@ final class DocumentService
     {
         $limit = max(1, min(50, $limit));
         $stmt = $this->pdo->prepare(
-            'SELECT id, versione, titolo_snapshot, commento, created_at '
+            'SELECT id, versione, titolo_snapshot, commento, created_by, created_at '
             . 'FROM office_document_revisions WHERE document_id = :id '
             . 'ORDER BY versione DESC LIMIT ' . $limit
         );
@@ -221,11 +221,12 @@ final class DocumentService
         string $title,
         string $content,
         ?string $metadata,
-        int $userId
+        int $userId,
+        ?string $comment = null
     ): void {
         $stmt = $this->pdo->prepare(
-            'INSERT INTO office_document_revisions (document_id, versione, titolo_snapshot, contenuto, metadata, created_by) '
-            . 'VALUES (:document_id, :versione, :titolo, :contenuto, :metadata, :created_by)'
+            'INSERT INTO office_document_revisions (document_id, versione, titolo_snapshot, contenuto, metadata, commento, created_by) '
+            . 'VALUES (:document_id, :versione, :titolo, :contenuto, :metadata, :commento, :created_by)'
         );
 
         $stmt->execute([
@@ -234,8 +235,63 @@ final class DocumentService
             ':titolo' => $title,
             ':contenuto' => $content,
             ':metadata' => $metadata,
+            ':commento' => $comment,
             ':created_by' => $userId,
         ]);
+    }
+
+    public function revertToRevision(int $documentId, int $revisionId, int $userId): array
+    {
+        $revision = $this->getRevision($documentId, $revisionId);
+        if (!$revision) {
+            throw new RuntimeException('Versione indicata non trovata.');
+        }
+
+        $this->pdo->beginTransaction();
+
+        try {
+            $stmt = $this->pdo->prepare('SELECT current_version FROM office_documents WHERE id = :id LIMIT 1');
+            $stmt->execute([':id' => $documentId]);
+            $currentVersion = (int) ($stmt->fetchColumn() ?: 0);
+            $newVersion = $currentVersion + 1;
+
+            $this->insertRevision(
+                $documentId,
+                $newVersion,
+                (string) $revision['titolo_snapshot'],
+                (string) $revision['contenuto'],
+                $revision['metadata'] ?? null,
+                $userId,
+                sprintf('Ripristino versione %d', (int) $revision['versione'])
+            );
+
+            $this->touchDocument($documentId, $newVersion);
+            $this->pdo->commit();
+        } catch (Throwable $exception) {
+            $this->pdo->rollBack();
+            throw $exception;
+        }
+
+        $document = $this->getDocument($documentId);
+        if ($document === null) {
+            throw new RuntimeException('Documento non trovato dopo il ripristino.');
+        }
+
+        return $document;
+    }
+
+    public function getRevision(int $documentId, int $revisionId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT * FROM office_document_revisions WHERE document_id = :document AND id = :revision LIMIT 1'
+        );
+        $stmt->execute([
+            ':document' => $documentId,
+            ':revision' => $revisionId,
+        ]);
+
+        $revision = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $revision ?: null;
     }
 
     private function touchDocument(int $documentId, int $version): void

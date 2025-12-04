@@ -58,35 +58,51 @@ if ($gridState === '' || $gridState === '[]') {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_valid_csrf();
-    $payload = [
-        'id' => isset($_POST['sheet_id']) && $_POST['sheet_id'] !== '' ? (int) $_POST['sheet_id'] : null,
-        'title' => $_POST['title'] ?? '',
-        'category' => $_POST['category'] ?? 'Standard',
-        'status' => $_POST['status'] ?? 'draft',
-        'tags' => $_POST['tags'] ?? '',
-        'grid' => $_POST['grid'] ?? '',
-        'owner_id' => $userId,
-    ];
 
-    $formData = [
-        'id' => $payload['id'] ?? 0,
-        'title' => $payload['title'],
-        'category' => $payload['category'],
-        'status' => $payload['status'],
-        'tags' => is_array($payload['tags']) ? implode(', ', $payload['tags']) : (string) $payload['tags'],
-    ];
-    $gridState = $payload['grid'];
+    if (isset($_POST['revert_revision_id']) && $sheetId > 0) {
+        $revisionId = (int) $_POST['revert_revision_id'];
+        try {
+            $sheetService->revertToRevision($sheetId, $revisionId, $userId);
+            add_flash('success', 'Versione del foglio ripristinata.');
+            header('Location: editor.php?id=' . $sheetId);
+            exit;
+        } catch (RuntimeException $exception) {
+            $formError = $exception->getMessage();
+        } catch (Throwable $exception) {
+            error_log('Office spreadsheet revert error: ' . $exception->getMessage());
+            $formError = 'Impossibile ripristinare la versione selezionata.';
+        }
+    } else {
+        $payload = [
+            'id' => isset($_POST['sheet_id']) && $_POST['sheet_id'] !== '' ? (int) $_POST['sheet_id'] : null,
+            'title' => $_POST['title'] ?? '',
+            'category' => $_POST['category'] ?? 'Standard',
+            'status' => $_POST['status'] ?? 'draft',
+            'tags' => $_POST['tags'] ?? '',
+            'grid' => $_POST['grid'] ?? '',
+            'owner_id' => $userId,
+        ];
 
-    try {
-        $saved = $sheetService->saveSheet($payload, $userId);
-        add_flash('success', 'Foglio salvato correttamente.');
-        header('Location: editor.php?id=' . (int) $saved['id']);
-        exit;
-    } catch (RuntimeException $exception) {
-        $formError = $exception->getMessage();
-    } catch (Throwable $exception) {
-        error_log('Office spreadsheet save error: ' . $exception->getMessage());
-        $formError = 'Errore inatteso durante il salvataggio del foglio. Riprovare.';
+        $formData = [
+            'id' => $payload['id'] ?? 0,
+            'title' => $payload['title'],
+            'category' => $payload['category'],
+            'status' => $payload['status'],
+            'tags' => is_array($payload['tags']) ? implode(', ', $payload['tags']) : (string) $payload['tags'],
+        ];
+        $gridState = $payload['grid'];
+
+        try {
+            $saved = $sheetService->saveSheet($payload, $userId);
+            add_flash('success', 'Foglio salvato correttamente.');
+            header('Location: editor.php?id=' . (int) $saved['id']);
+            exit;
+        } catch (RuntimeException $exception) {
+            $formError = $exception->getMessage();
+        } catch (Throwable $exception) {
+            error_log('Office spreadsheet save error: ' . $exception->getMessage());
+            $formError = 'Errore inatteso durante il salvataggio del foglio. Riprovare.';
+        }
     }
 }
 
@@ -256,6 +272,23 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <div class="grid-hint text-muted small p-3">
                             Questa tabella placeholder sara' sostituita da Handsontable/Luckysheet con formule e data-link. Nel frattempo viene serializzata in JSON.
                         </div>
+                        <?php if (!empty($sheet) && !empty($sheet['revisions']) && $sheetId > 0): ?>
+                            <div class="version-history border-top p-3 bg-light">
+                                <p class="text-uppercase small fw-semibold text-muted mb-2">Versioni salvate</p>
+                                <?php foreach ($sheet['revisions'] as $revision): ?>
+                                    <div class="revision-entry d-flex justify-content-between align-items-start mb-2 p-2 border rounded small bg-white">
+                                        <div>
+                                            <strong>v<?php echo (int) ($revision['versione'] ?? 0); ?></strong>
+                                            <span class="text-muted">· <?php echo sanitize_output(format_datetime_locale($revision['created_at'] ?? null)); ?></span>
+                                            <?php if (!empty($revision['commento'])): ?>
+                                                <div class="text-muted"><?php echo sanitize_output($revision['commento']); ?></div>
+                                            <?php endif; ?>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-secondary" type="submit" name="revert_revision_id" value="<?php echo (int) ($revision['id'] ?? 0); ?>" onclick="return confirm('Ripristinare questa versione del foglio?');">Ripristina</button>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

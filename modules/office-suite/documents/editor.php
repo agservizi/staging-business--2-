@@ -54,40 +54,56 @@ if ($documentId > 0) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_valid_csrf();
-    $clientInput = $_POST['cliente_id'] ?? null;
-    $payload = [
-        'id' => isset($_POST['document_id']) && $_POST['document_id'] !== '' ? (int) $_POST['document_id'] : null,
-        'title' => $_POST['title'] ?? '',
-        'category' => $_POST['category'] ?? 'Template',
-        'status' => $_POST['status'] ?? 'draft',
-        'tags' => $_POST['tags'] ?? '',
-        'notes' => $_POST['notes'] ?? '',
-        'content' => $_POST['content'] ?? '',
-        'cliente_id' => $clientInput === '' ? null : $clientInput,
-        'owner_id' => $userId,
-    ];
 
-    $formData = [
-        'id' => $payload['id'] ?? 0,
-        'title' => $payload['title'],
-        'category' => $payload['category'],
-        'status' => $payload['status'],
-        'tags' => is_array($payload['tags']) ? implode(', ', $payload['tags']) : (string) $payload['tags'],
-        'notes' => $payload['notes'],
-        'cliente_id' => $payload['cliente_id'] !== null ? (string) $payload['cliente_id'] : '',
-        'content' => $payload['content'],
-    ];
+    if (isset($_POST['revert_revision_id']) && $documentId > 0) {
+        $revisionId = (int) $_POST['revert_revision_id'];
+        try {
+            $documentService->revertToRevision($documentId, $revisionId, $userId);
+            add_flash('success', 'Versione ripristinata correttamente.');
+            header('Location: editor.php?id=' . $documentId);
+            exit;
+        } catch (RuntimeException $exception) {
+            $formError = $exception->getMessage();
+        } catch (Throwable $exception) {
+            error_log('Office document revert error: ' . $exception->getMessage());
+            $formError = 'Impossibile ripristinare la versione selezionata.';
+        }
+    } else {
+        $clientInput = $_POST['cliente_id'] ?? null;
+        $payload = [
+            'id' => isset($_POST['document_id']) && $_POST['document_id'] !== '' ? (int) $_POST['document_id'] : null,
+            'title' => $_POST['title'] ?? '',
+            'category' => $_POST['category'] ?? 'Template',
+            'status' => $_POST['status'] ?? 'draft',
+            'tags' => $_POST['tags'] ?? '',
+            'notes' => $_POST['notes'] ?? '',
+            'content' => $_POST['content'] ?? '',
+            'cliente_id' => $clientInput === '' ? null : $clientInput,
+            'owner_id' => $userId,
+        ];
 
-    try {
-        $saved = $documentService->saveDocument($payload, $userId);
-        add_flash('success', 'Documento salvato correttamente.');
-        header('Location: editor.php?id=' . (int) $saved['id']);
-        exit;
-    } catch (RuntimeException $exception) {
-        $formError = $exception->getMessage();
-    } catch (Throwable $exception) {
-        error_log('Office document save error: ' . $exception->getMessage());
-        $formError = 'Errore inatteso durante il salvataggio. Riprovare.';
+        $formData = [
+            'id' => $payload['id'] ?? 0,
+            'title' => $payload['title'],
+            'category' => $payload['category'],
+            'status' => $payload['status'],
+            'tags' => is_array($payload['tags']) ? implode(', ', $payload['tags']) : (string) $payload['tags'],
+            'notes' => $payload['notes'],
+            'cliente_id' => $payload['cliente_id'] !== null ? (string) $payload['cliente_id'] : '',
+            'content' => $payload['content'],
+        ];
+
+        try {
+            $saved = $documentService->saveDocument($payload, $userId);
+            add_flash('success', 'Documento salvato correttamente.');
+            header('Location: editor.php?id=' . (int) $saved['id']);
+            exit;
+        } catch (RuntimeException $exception) {
+            $formError = $exception->getMessage();
+        } catch (Throwable $exception) {
+            error_log('Office document save error: ' . $exception->getMessage());
+            $formError = 'Errore inatteso durante il salvataggio. Riprovare.';
+        }
     }
 }
 
@@ -165,6 +181,26 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <p class="mb-2">Bozza locale in attesa del primo salvataggio.</p>
                                 <?php endif; ?>
                                 <button class="btn btn-sm btn-outline-primary w-100" type="button" disabled>Workflow revisione</button>
+                                <?php if (!empty($document) && !empty($document['revisions']) && $documentId > 0): ?>
+                                    <hr>
+                                    <p class="text-uppercase fw-semibold mb-1">Versioni salvate</p>
+                                    <div class="revision-history">
+                                        <?php foreach ($document['revisions'] as $revision): ?>
+                                            <div class="revision-entry mb-2 p-2 border rounded small">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <strong>v<?php echo (int) ($revision['versione'] ?? 0); ?></strong>
+                                                        <span class="text-muted">· <?php echo sanitize_output(format_datetime_locale($revision['created_at'] ?? null)); ?></span>
+                                                        <?php if (!empty($revision['commento'])): ?>
+                                                            <div class="text-muted"><?php echo sanitize_output($revision['commento']); ?></div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <button class="btn btn-sm btn-outline-secondary" type="submit" name="revert_revision_id" value="<?php echo (int) ($revision['id'] ?? 0); ?>" onclick="return confirm('Ripristinare la versione selezionata?');">Ripristina</button>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </aside>
                         <section class="editor-canvas flex-grow-1">
