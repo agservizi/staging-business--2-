@@ -218,6 +218,18 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                     </li>
                 <?php endif; ?>
 
+                <?php if (!$isPatronato): ?>
+                    <?php $officeSuiteActive = nav_active('modules/office-suite', $currentPath); ?>
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center <?php echo $officeSuiteActive; ?>" href="<?php echo base_url('modules/office-suite/index.php'); ?>" aria-label="Office Suite" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Office Suite"<?php echo $officeSuiteActive ? ' aria-current="page"' : ''; ?>>
+                            <span class="nav-icon" data-color="blue" aria-hidden="true">
+                                <i class="fa-solid fa-file-signature"></i>
+                            </span>
+                            <span class="nav-label">Office Suite</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
                 <?php if (!$isPatronato && current_user_has_capability('email.marketing.manage', 'email.marketing.view')): ?>
                     <?php $emailMarketingActive = nav_active('modules/email-marketing', $currentPath); ?>
                     <li class="nav-item">
