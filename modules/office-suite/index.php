@@ -40,7 +40,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <div>
-                                <p class="text-uppercase small fw-semibold text-muted mb-1">Word-style</p>
+                                <p class="text-uppercase small fw-semibold text-muted mb-1">Docs</p>
                                 <h2 class="h5 mb-0">Documenti smart</h2>
                             </div>
                             <span class="badge bg-primary-subtle text-primary">Beta</span>
@@ -65,7 +65,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <div>
-                                <p class="text-uppercase small fw-semibold text-muted mb-1">Excel-style</p>
+                                <p class="text-uppercase small fw-semibold text-muted mb-1">Sheet</p>
                                 <h2 class="h5 mb-0">Fogli dinamici</h2>
                             </div>
                             <span class="badge bg-success-subtle text-success">Preview</span>
