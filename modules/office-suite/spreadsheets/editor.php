@@ -203,7 +203,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <p class="small text-uppercase fw-semibold text-muted mb-1">Struttura foglio</p>
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Struttura foglio">
                                     <button class="btn btn-outline-secondary" type="button" data-grid-action="add-row" title="Aggiungi riga"><i class="fa-solid fa-plus"></i> Riga</button>
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="remove-row" title="Elimina riga"><i class="fa-solid fa-minus"></i> Riga</button>
                                     <button class="btn btn-outline-secondary" type="button" data-grid-action="add-column" title="Aggiungi colonna"><i class="fa-solid fa-plus"></i> Colonna</button>
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="remove-column" title="Elimina colonna"><i class="fa-solid fa-minus"></i> Colonna</button>
                                 </div>
                             </div>
                             <div class="ribbon-group">
@@ -544,6 +546,35 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             gridBody.appendChild(newRow);
         };
 
+        const removeRow = () => {
+            if (!ensureActiveCell()) {
+                return;
+            }
+            const rowEl = activeCell.parentElement;
+            if (!rowEl) {
+                return;
+            }
+            const allRows = Array.from(gridBody.querySelectorAll('tr'));
+            if (allRows.length <= 1) {
+                return;
+            }
+            const rowIndex = allRows.indexOf(rowEl);
+            rowEl.remove();
+            gridBody.querySelectorAll('tr').forEach((trEl, index) => {
+                const header = trEl.querySelector('th');
+                if (header) {
+                    header.textContent = String(index + 1);
+                }
+            });
+            const fallbackRow = gridBody.querySelector('tr');
+            const fallbackCell = fallbackRow ? fallbackRow.querySelector('td') : null;
+            if (fallbackCell) {
+                fallbackCell.focus();
+            } else {
+                activeCell = null;
+            }
+        };
+
         const addColumn = () => {
             const columnCount = getColumnCount();
             const newHeader = document.createElement('th');
@@ -557,6 +588,50 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 attachCellEvents(cell);
                 rowEl.appendChild(cell);
             });
+        };
+
+        const removeColumn = () => {
+            if (!ensureActiveCell()) {
+                return;
+            }
+            const headerCells = headerRow.querySelectorAll('th');
+            const columnCount = headerCells.length - 1;
+            if (columnCount <= 1) {
+                return;
+            }
+            let columnIndex = -1;
+            const rowCells = activeCell.parentElement ? activeCell.parentElement.querySelectorAll('td') : [];
+            rowCells.forEach((cell, index) => {
+                if (cell === activeCell) {
+                    columnIndex = index;
+                }
+            });
+            if (columnIndex < 0) {
+                return;
+            }
+
+            headerRow.removeChild(headerCells[columnIndex + 1]);
+            gridBody.querySelectorAll('tr').forEach((rowEl) => {
+                const cells = rowEl.querySelectorAll('td');
+                if (cells[columnIndex]) {
+                    cells[columnIndex].remove();
+                }
+            });
+
+            const newColumnCount = getColumnCount();
+            headerRow.querySelectorAll('th').forEach((thEl, index) => {
+                if (index === 0) {
+                    return;
+                }
+                thEl.textContent = columnLabelFromIndex(index - 1);
+            });
+
+            const fallbackCell = gridBody.querySelector('td');
+            if (fallbackCell) {
+                fallbackCell.focus();
+            } else {
+                activeCell = null;
+            }
         };
 
         toolbarButtons.forEach((button) => {
@@ -598,6 +673,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         break;
                     case 'add-column':
                         addColumn();
+                        break;
+                    case 'remove-row':
+                        removeRow();
+                        break;
+                    case 'remove-column':
+                        removeColumn();
                         break;
                     default:
                         break;
