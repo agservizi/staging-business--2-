@@ -337,6 +337,15 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         const gridBody = gridTable.querySelector('tbody');
         const headerRow = gridTable.querySelector('thead tr');
         let activeCell = null;
+        const styleStateMap = {
+            bold: { property: 'fontWeight', value: '700' },
+            italic: { property: 'fontStyle', value: 'italic' },
+            underline: { property: 'textDecorationLine', value: 'underline' },
+            highlight: { property: 'backgroundColor', value: 'rgb(255, 243, 205)' },
+            'align-left': { property: 'textAlign', value: 'left' },
+            'align-center': { property: 'textAlign', value: 'center' },
+            'align-right': { property: 'textAlign', value: 'right' },
+        };
 
         const attachCellEvents = (cellEl) => {
             if (!cellEl) {
@@ -352,6 +361,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
         const setActiveCell = (cell) => {
             if (activeCell === cell) {
+                syncRibbonState();
                 return;
             }
             if (activeCell) {
@@ -361,6 +371,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             if (activeCell) {
                 activeCell.classList.add('active-cell');
             }
+            syncRibbonState();
         };
 
         gridTable.querySelectorAll('tbody td').forEach((cell) => attachCellEvents(cell));
@@ -404,9 +415,29 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             if (activeCell) {
                 return true;
             }
+            const fallbackCell = gridTable.querySelector('tbody td');
+            if (fallbackCell) {
+                fallbackCell.focus();
+            }
+            if (activeCell) {
+                return true;
+            }
             gridTable.classList.add('grid-needs-selection');
             setTimeout(() => gridTable.classList.remove('grid-needs-selection'), 400);
             return false;
+        };
+
+        const syncRibbonState = () => {
+            toolbarButtons.forEach((button) => {
+                const action = button.dataset.gridAction;
+                const config = styleStateMap[action];
+                let isActive = false;
+                if (config && activeCell) {
+                    isActive = activeCell.style[config.property] === config.value;
+                }
+                button.classList.toggle('active', isActive);
+                button.setAttribute('aria-pressed', String(isActive));
+            });
         };
 
         const toggleStyle = (property, activeValue, fallbackValue = '') => {
@@ -415,6 +446,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             }
             const current = activeCell.style[property];
             activeCell.style[property] = current === activeValue ? fallbackValue : activeValue;
+            syncRibbonState();
         };
 
         const setStyle = (property, value) => {
@@ -422,6 +454,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 return;
             }
             activeCell.style[property] = value;
+            syncRibbonState();
         };
 
         const removeFormatting = () => {
@@ -429,6 +462,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 return;
             }
             activeCell.removeAttribute('style');
+            syncRibbonState();
         };
 
         const parseNumber = (raw) => {
@@ -579,6 +613,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 setActiveRibbonTab(tab.dataset.ribbonTab);
             });
         });
+
+        const firstCell = gridTable.querySelector('tbody td');
+        if (firstCell) {
+            firstCell.focus();
+        }
 
         populateGrid();
 

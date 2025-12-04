@@ -94,8 +94,10 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
                 <?php endif; ?>
                 <?php if ($canSeeDocumentActions): ?>
                     <div class="dropdown">
-                        <button class="btn topbar-btn topbar-btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Documenti recenti">
-                            <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+                        <button class="btn topbar-btn topbar-btn-action topbar-btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Documenti recenti">
+                            <span class="d-inline-flex align-items-center justify-content-center w-100 h-100" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Documenti recenti">
+                                <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+                            </span>
                         </button>
                         <div class="dropdown-menu dropdown-menu-end topbar-dropdown topbar-documents-dropdown" style="min-width: 320px;">
                             <div class="dropdown-header">
