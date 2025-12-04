@@ -80,49 +80,40 @@ body.oo-layout {
     padding: 1rem;
 }
 
-body.oo-layout {
-    margin: 0;
-    font-family: 'Segoe UI', sans-serif;
-    background: var(--oo-bg);
-    color: var(--oo-text);
-}
-
-.oo-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 32px;
-    background: #fff;
-    border-bottom: 1px solid var(--oo-border);
-}
-
-.oo-header h1 {
-    margin: 0;
-    font-size: 1.5rem;
-}
-
-.oo-header p {
-    margin: 4px 0 0;
-    color: #555;
-}
-
-.oo-editor-actions {
+.onlyoffice-dashboard .oo-editor-actions {
     display: flex;
     gap: 12px;
+    flex-wrap: wrap;
 }
 
-.oo-editor-actions button {
+.onlyoffice-dashboard #oo-btn-save {
     background: var(--oo-primary);
     color: #fff;
     border: none;
-    border-radius: 4px;
-    padding: 10px 16px;
-    cursor: pointer;
     font-weight: 600;
 }
 
-.onlyoffice-editor {
-    height: calc(100vh - 120px);
-    margin: 16px 32px 32px;
+.onlyoffice-dashboard #oo-btn-close {
+    border-color: var(--oo-border);
+    color: var(--oo-text);
+}
+
+.onlyoffice-dashboard .onlyoffice-editor-shell {
     border: 1px solid var(--oo-border);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+}
+
+.onlyoffice-editor {
+    height: calc(100vh - 260px);
+    min-height: 520px;
+    margin: 0;
+    border: 1px solid var(--oo-border);
+    border-radius: 12px;
+    background: #fff;
+}
+
+@media (max-width: 992px) {
+    .onlyoffice-editor {
+        height: calc(100vh - 320px);
+    }
 }
