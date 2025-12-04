@@ -124,32 +124,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
             <div class="office-editor card border-0 shadow-sm">
                 <div class="card-header bg-white border-0">
-                    <div class="ribbon d-flex flex-wrap gap-2">
-                        <div class="ribbon-group">
-                            <p class="small text-uppercase fw-semibold text-muted mb-1">Stile</p>
-                            <div class="btn-group btn-group-sm" role="group" aria-label="Stili base">
-                                <button class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-bold"></i></button>
-                                <button class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-italic"></i></button>
-                                <button class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-underline"></i></button>
-                            </div>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <div>
+                            <p class="small text-uppercase fw-semibold text-muted mb-1">Barra stile Word</p>
+                            <p class="mb-0 text-muted">La barra completa è integrata direttamente nell'editor con menu File, Inserisci, Layout e Revisione.</p>
                         </div>
-                        <div class="ribbon-group">
-                            <p class="small text-uppercase fw-semibold text-muted mb-1">Paragrafo</p>
-                            <div class="btn-group btn-group-sm" role="group" aria-label="Paragrafo">
-                                <button class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-align-left"></i></button>
-                                <button class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-align-center"></i></button>
-                                <button class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-align-right"></i></button>
-                                <button class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-list-ul"></i></button>
-                            </div>
-                        </div>
-                        <div class="ribbon-group">
-                            <p class="small text-uppercase fw-semibold text-muted mb-1">Inserisci</p>
-                            <div class="btn-group btn-group-sm" role="group" aria-label="Inserisci">
-                                <button class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-table"></i></button>
-                                <button class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-image"></i></button>
-                                <button class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-link"></i></button>
-                            </div>
-                        </div>
+                        <span class="badge bg-primary text-uppercase">Editor avanzato</span>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -198,7 +178,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 </div>
                             </div>
                             <div class="canvas-body">
-                                <textarea class="form-control border-0 shadow-none office-textarea" name="content" rows="18" placeholder="Scrivi o incolla il testo del documento" required><?php echo sanitize_output($formData['content']); ?></textarea>
+                                <textarea id="document-content" class="form-control border-0 shadow-none office-textarea" name="content" rows="18" placeholder="Scrivi o incolla il testo del documento" data-placeholder="Scrivi o incolla il testo del documento" required><?php echo $formData['content'] ?? ''; ?></textarea>
                             </div>
                         </section>
                         <aside class="editor-notes text-muted small">
@@ -218,12 +198,64 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         </form>
     </main>
 </div>
+<script src="https://cdn.tiny.cloud/1/4t5ejej45xh1r2c9zhuz1z2p1tqzjmg8htmjfp5xwox91534/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const selector = '#document-content';
+        const form = document.querySelector('form');
+        const textarea = document.querySelector(selector);
+
+        if (typeof tinymce === 'undefined') {
+            console.error('TinyMCE non disponibile.');
+            return;
+        }
+
+        if (!textarea) {
+            return;
+        }
+
+        const placeholderText = textarea.dataset.placeholder || textarea.getAttribute('placeholder') || '';
+
+        tinymce.init({
+            selector: selector,
+            height: 640,
+            language: 'it',
+            language_url: 'https://cdn.tiny.cloud/1/4t5ejej45xh1r2c9zhuz1z2p1tqzjmg8htmjfp5xwox91534/tinymce/6/langs/it.js',
+            menubar: 'file edit view insert format tools table help',
+            toolbar_mode: 'wrap',
+            toolbar_sticky: true,
+            branding: false,
+            promotion: false,
+            placeholder: placeholderText,
+            plugins: 'advlist anchor autolink charmap code codesample directionality emoticons fullscreen help hr image insertdatetime link lists media nonbreaking pagebreak placeholder preview quickbars searchreplace table visualblocks visualchars wordcount',
+            toolbar: 'undo redo | formatselect fontselect fontsizeselect | bold italic underline strikethrough forecolor backcolor removeformat | alignleft aligncenter alignright alignjustify | outdent indent | numlist bullist | subscript superscript | table image media link anchor | insertdatetime charmap emoticons hr pagebreak codesample | blockquote | fullscreen preview print | searchreplace | visualblocks visualchars code | help',
+            quickbars_selection_toolbar: 'bold italic underline | forecolor backcolor | link blockquote',
+            image_title: true,
+            automatic_uploads: false,
+            file_picker_types: 'image',
+            contextmenu: 'link table lists',
+            convert_urls: false,
+            content_style: 'body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; font-size: 16px; line-height: 1.6; padding: 1.5rem; }',
+            block_formats: 'Paragrafo=p; Titolo 1=h2; Titolo 2=h3; Titolo 3=h4; Citazione=blockquote; Codice=pre',
+            setup: function (editor) {
+                editor.on('change', function () {
+                    editor.save();
+                });
+            }
+        });
+
+        if (form) {
+            form.addEventListener('submit', function () {
+                if (typeof tinymce !== 'undefined') {
+                    tinymce.triggerSave();
+                }
+            });
+        }
+    });
+</script>
 <style>
-    .office-editor .ribbon-group {
-        min-width: 160px;
-    }
     .editor-layout {
-        min-height: 540px;
+        min-height: 640px;
     }
     .editor-sidebar,
     .editor-notes {
