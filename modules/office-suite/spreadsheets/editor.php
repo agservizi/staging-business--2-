@@ -25,6 +25,10 @@ $statusOptions = [
 $categoryOptions = ['Standard', 'Finance', 'Operations', 'Logistica'];
 $hotLicenseKey = (string) env('HOT_LICENSE_KEY', 'non-commercial-and-evaluation');
 $hfLicenseKey = (string) env('HF_LICENSE_KEY', 'gpl-v3');
+$userRole = isset($_SESSION['role']) ? (string) $_SESSION['role'] : 'Operatore';
+$roleOptions = ['Admin', 'Manager', 'Operatore', 'Patronato', 'Cliente'];
+$canSharePresets = in_array($userRole, ['Admin', 'Manager'], true);
+$presetApiUrl = asset('modules/office-suite/api/spreadsheet-presets.php');
 
 $formError = null;
 $sheet = null;
@@ -309,6 +313,99 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <?php endforeach; ?>
                             </div>
                         <?php endif; ?>
+                        <div class="preset-manager border-top p-4 bg-white" id="preset-manager" data-sheet-id="<?php echo (int) $formData['id']; ?>" data-api-url="<?php echo sanitize_output($presetApiUrl); ?>" data-can-share="<?php echo $canSharePresets ? '1' : '0'; ?>">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
+                                <div>
+                                    <p class="text-uppercase small fw-semibold text-muted mb-1">Filtri e viste CRM</p>
+                                    <h3 class="h6 mb-0">Preset Office Suite</h3>
+                                </div>
+                                <span class="badge bg-light text-dark" id="preset-active-label">Nessun preset attivo</span>
+                            </div>
+                            <?php if ($formData['id']): ?>
+                                <div class="row g-4 align-items-start">
+                                    <div class="col-lg-6">
+                                        <div class="preset-form card border-0 shadow-sm">
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label class="form-label text-uppercase small text-muted" for="preset-name">Nome preset</label>
+                                                    <input id="preset-name" class="form-control form-control-sm" type="text" placeholder="Es. KPI Finance">
+                                                </div>
+                                                <div class="row g-2">
+                                                    <div class="col-6">
+                                                        <label class="form-label text-uppercase small text-muted" for="preset-visibility">Visibilità</label>
+                                                        <select id="preset-visibility" class="form-select form-select-sm">
+                                                            <option value="private" selected>Privato</option>
+                                                            <option value="role" <?php echo $canSharePresets ? '' : 'disabled'; ?>>Ruoli CRM</option>
+                                                            <option value="global" <?php echo $canSharePresets ? '' : 'disabled'; ?>>Globale</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-6" id="preset-role-wrapper" hidden>
+                                                        <label class="form-label text-uppercase small text-muted" for="preset-role-select">Ruoli abilitati</label>
+                                                        <select id="preset-role-select" class="form-select form-select-sm" multiple size="4">
+                                                            <?php foreach ($roleOptions as $roleOption): ?>
+                                                                <option value="<?php echo sanitize_output($roleOption); ?>"><?php echo sanitize_output($roleOption); ?></option>
+                                                            <?php endforeach; ?>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-3">
+                                                    <label class="form-label text-uppercase small text-muted" for="preset-columns">Colonne visibili</label>
+                                                    <select id="preset-columns" class="form-select form-select-sm" multiple size="6"></select>
+                                                    <small class="text-muted">Lascia vuoto per mostrare tutte le colonne.</small>
+                                                </div>
+                                                <div class="mt-3">
+                                                    <label class="form-label text-uppercase small text-muted" for="preset-tags">Tag CRM</label>
+                                                    <input id="preset-tags" class="form-control form-control-sm" type="text" placeholder="logistica, vip, onboarding">
+                                                </div>
+                                                <div class="preset-filters mt-4">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <label class="text-uppercase small text-muted mb-0">Filtri dinamici</label>
+                                                        <button class="btn btn-link btn-sm p-0" type="button" id="preset-add-filter">+ Aggiungi filtro</button>
+                                                    </div>
+                                                    <div id="preset-filter-list"></div>
+                                                    <p class="text-muted small mb-0">Imposta condizioni come "Colonna + operatore + valore" per replicare i filtri CRM.</p>
+                                                </div>
+                                                <div class="d-flex flex-wrap gap-2 mt-4">
+                                                    <button class="btn btn-primary btn-sm" type="button" id="preset-save-btn"><i class="fa-solid fa-floppy-disk me-2"></i>Salva preset</button>
+                                                    <button class="btn btn-outline-secondary btn-sm" type="button" id="preset-reset-btn">Reset form</button>
+                                                </div>
+                                                <div class="alert alert-info small mt-3 d-none" id="preset-feedback" role="alert"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-6">
+                                        <div class="preset-list card border-0 shadow-sm h-100">
+                                            <div class="card-body">
+                                                <p class="text-uppercase small text-muted fw-semibold mb-2">Preset disponibili</p>
+                                                <div id="preset-tags-preview" class="mb-3"></div>
+                                                <ul class="list-group list-group-flush preset-list-items" id="preset-list"></ul>
+                                                <p class="text-muted small mb-0 d-none" id="preset-empty-state">Nessun preset disponibile per questo foglio.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <template id="preset-filter-row-template">
+                                    <div class="preset-filter-row d-flex flex-wrap gap-2 align-items-center mb-2">
+                                        <select class="form-select form-select-sm preset-filter-column"></select>
+                                        <select class="form-select form-select-sm preset-filter-operator">
+                                            <option value="contains">Contiene</option>
+                                            <option value="starts_with">Inizia con</option>
+                                            <option value="ends_with">Finisce con</option>
+                                            <option value="eq">Uguale a</option>
+                                            <option value="neq">Diverso da</option>
+                                            <option value="gt">Maggiore di</option>
+                                            <option value="lt">Minore di</option>
+                                        </select>
+                                        <input class="form-control form-control-sm preset-filter-value" type="text" placeholder="Valore">
+                                        <button class="btn btn-link text-danger p-0 preset-filter-remove" type="button" title="Rimuovi filtro"><i class="fa-solid fa-times"></i></button>
+                                    </div>
+                                </template>
+                            <?php else: ?>
+                                <div class="alert alert-warning mb-0" role="alert">
+                                    Salva il foglio per creare preset condivisi con l'app CRM.
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -377,6 +474,38 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     .ht-highlight {
         background-color: #fff3cd !important;
     }
+    .preset-manager {
+        border-top: 1px solid rgba(15,23,42,0.08);
+    }
+    .preset-form .form-label {
+        font-size: 0.75rem;
+        letter-spacing: 0.04em;
+    }
+    .preset-filter-row {
+        background: #f8fafc;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+    }
+    .preset-filter-row .preset-filter-value {
+        min-width: 140px;
+    }
+    .preset-list-items .list-group-item {
+        border: none;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(15,23,42,0.08);
+    }
+    .preset-list-items .list-group-item:last-child {
+        border-bottom: none;
+    }
+    .preset-tags-preview .badge {
+        margin-right: 0.25rem;
+        margin-bottom: 0.25rem;
+    }
+    .preset-role-pill {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
     @keyframes grid-pulse {
         0% { box-shadow: 0 0 0 0 rgba(13,110,253,0); }
         50% { box-shadow: 0 0 0 4px rgba(13,110,253,0.35); }
@@ -387,6 +516,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 <script src="<?php echo asset('assets/vendor/handsontable/handsontable.full.min.js'); ?>"></script>
 <script>
     (function () {
+        const sheetContext = {
+            id: <?php echo (int) $formData['id']; ?>,
+            csrfToken: <?php echo json_encode($csrfToken, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>,
+            presetApiUrl: <?php echo json_encode($presetApiUrl, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>,
+            canShare: <?php echo $canSharePresets ? 'true' : 'false'; ?>,
+            role: <?php echo json_encode($userRole, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>
+        };
+
         const form = document.getElementById('sheet-editor-form');
         const gridField = document.getElementById('grid-state-field');
         const metaField = document.getElementById('grid-meta-field');
@@ -400,6 +537,32 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             console.warn('Handsontable/HyperFormula non caricati, impossibile inizializzare il foglio.');
             return;
         }
+
+        const columnLabelFromIndex = (index) => {
+            let label = '';
+            let current = index;
+            while (current >= 0) {
+                label = String.fromCharCode((current % 26) + 65) + label;
+                current = Math.floor(current / 26) - 1;
+            }
+            return label;
+        };
+
+        const columnIndexFromLabel = (label) => {
+            if (!label) {
+                return -1;
+            }
+            const normalized = label.trim().toUpperCase();
+            if (!/^[A-Z]+$/.test(normalized)) {
+                return -1;
+            }
+            let index = 0;
+            for (let i = 0; i < normalized.length; i += 1) {
+                index *= 26;
+                index += normalized.charCodeAt(i) - 64;
+            }
+            return index - 1;
+        };
 
         const initialMatrix = <?php echo json_encode($gridMatrix, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
         const initialMeta = <?php echo json_encode($gridMetaPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
@@ -515,6 +678,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             contextMenu: true,
             dropdownMenu: true,
             filters: true,
+            hiddenColumns: {
+                indicators: true,
+            },
             multiColumnSorting: true,
             licenseKey: window.HOT_LICENSE_KEY || 'non-commercial-and-evaluation',
             formulas: {
@@ -522,8 +688,46 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             },
         });
 
+        const hiddenColumnsPlugin = hot.getPlugin('hiddenColumns');
+        const filtersPlugin = hot.getPlugin('filters');
+        const columnOptionObservers = [];
+
+        const buildColumnOptionList = () => {
+            const totalColumns = hot.countCols();
+            const options = [];
+            for (let column = 0; column < totalColumns; column += 1) {
+                const label = columnLabelFromIndex(column);
+                const header = hot.getColHeader(column);
+                const readableHeader = typeof header === 'string' && header && header !== label
+                    ? `${label} · ${header}`
+                    : label;
+                options.push({ value: label, label: readableHeader });
+            }
+            return options;
+        };
+
+        const notifyColumnObservers = () => {
+            const snapshot = buildColumnOptionList();
+            columnOptionObservers.forEach((callback) => {
+                try {
+                    callback(snapshot);
+                } catch (error) {
+                    console.warn('Observer preset colonne non gestito', error);
+                }
+            });
+        };
+
+        const registerColumnObserver = (callback) => {
+            if (typeof callback !== 'function') {
+                return;
+            }
+            columnOptionObservers.push(callback);
+            callback(buildColumnOptionList());
+        };
+
         applyInitialMeta(parseMetaPayload(initialMeta));
         persistState();
+        notifyColumnObservers();
 
         const getSelectedCells = () => {
             const selections = hot.getSelected();
@@ -759,9 +963,590 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             persistState();
         });
 
+        hot.addHook('afterCreateCol', () => notifyColumnObservers());
+        hot.addHook('afterRemoveCol', () => notifyColumnObservers());
+        hot.addHook('afterColumnMove', () => notifyColumnObservers());
+
         form.addEventListener('submit', () => {
             persistState();
         });
+
+        const presetManager = document.getElementById('preset-manager');
+        if (!presetManager || Number.parseInt(presetManager.dataset.sheetId || '0', 10) <= 0) {
+            return;
+        }
+
+        const presetFormCard = presetManager.querySelector('.preset-form');
+        if (!presetFormCard) {
+            return;
+        }
+
+        const presetNameInput = document.getElementById('preset-name');
+        const presetVisibilitySelect = document.getElementById('preset-visibility');
+        const presetRoleWrapper = document.getElementById('preset-role-wrapper');
+        const presetRoleSelect = document.getElementById('preset-role-select');
+        const presetColumnsSelect = document.getElementById('preset-columns');
+        const presetTagsInput = document.getElementById('preset-tags');
+        const presetAddFilterBtn = document.getElementById('preset-add-filter');
+        const presetFilterList = document.getElementById('preset-filter-list');
+        const presetFilterTemplate = document.getElementById('preset-filter-row-template');
+        const presetSaveBtn = document.getElementById('preset-save-btn');
+        const presetResetBtn = document.getElementById('preset-reset-btn');
+        const presetFeedback = document.getElementById('preset-feedback');
+        const presetListEl = document.getElementById('preset-list');
+        const presetEmptyState = document.getElementById('preset-empty-state');
+        const presetTagsPreview = document.getElementById('preset-tags-preview');
+        const presetActiveLabel = document.getElementById('preset-active-label');
+
+        const presetState = {
+            list: [],
+            activeId: null,
+            loading: false,
+        };
+
+        const operatorMap = {
+            contains: 'contains',
+            starts_with: 'begins_with',
+            ends_with: 'ends_with',
+            eq: 'equal',
+            neq: 'not_equal',
+            gt: 'greater_than',
+            lt: 'less_than',
+        };
+
+        const buildApiUrl = () => {
+            try {
+                const url = new URL(sheetContext.presetApiUrl, window.location.origin);
+                if (sheetContext.id > 0) {
+                    url.searchParams.set('sheet_id', String(sheetContext.id));
+                }
+                return url.toString();
+            } catch (error) {
+                return sheetContext.presetApiUrl;
+            }
+        };
+
+        const togglePresetFeedback = (message, variant) => {
+            if (!presetFeedback) {
+                return;
+            }
+            if (!message) {
+                presetFeedback.classList.add('d-none');
+                presetFeedback.textContent = '';
+                presetFeedback.classList.remove('alert-success', 'alert-danger', 'alert-info');
+                return;
+            }
+            presetFeedback.textContent = message;
+            presetFeedback.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-info');
+            presetFeedback.classList.add(`alert-${variant || 'info'}`);
+        };
+
+        const csvToArray = (value, uppercase) => {
+            if (!value) {
+                return [];
+            }
+            return value
+                .split(',')
+                .map((item) => (uppercase ? item.trim().toUpperCase() : item.trim()))
+                .filter((item) => item !== '');
+        };
+
+        const clearFilterRows = () => {
+            if (!presetFilterList) {
+                return;
+            }
+            presetFilterList.innerHTML = '';
+        };
+
+        const populateColumnSelect = (selectElement, options, selectedValues) => {
+            if (!selectElement) {
+                return;
+            }
+            const multiple = Boolean(selectElement.multiple);
+            const safeSelected = multiple
+                ? new Set(Array.isArray(selectedValues) ? selectedValues : [])
+                : (selectedValues || '');
+            const previousScrollTop = selectElement.scrollTop;
+            selectElement.innerHTML = '';
+            options.forEach((option) => {
+                const opt = document.createElement('option');
+                opt.value = option.value;
+                opt.textContent = option.label;
+                if (multiple) {
+                    opt.selected = safeSelected.has(option.value);
+                } else if (option.value === safeSelected) {
+                    opt.selected = true;
+                }
+                selectElement.appendChild(opt);
+            });
+            selectElement.scrollTop = previousScrollTop;
+        };
+
+        const addFilterRow = (filter) => {
+            if (!presetFilterTemplate || !presetFilterList) {
+                return;
+            }
+            const fragment = presetFilterTemplate.content.cloneNode(true);
+            const rowEl = fragment.querySelector('.preset-filter-row');
+            if (!rowEl) {
+                return;
+            }
+            const columnSelect = rowEl.querySelector('.preset-filter-column');
+            const operatorSelect = rowEl.querySelector('.preset-filter-operator');
+            const valueInput = rowEl.querySelector('.preset-filter-value');
+            const removeBtn = rowEl.querySelector('.preset-filter-remove');
+            if (operatorSelect && filter && filter.operator) {
+                operatorSelect.value = filter.operator;
+            }
+            if (valueInput && filter && typeof filter.value === 'string') {
+                valueInput.value = filter.value;
+            }
+            if (removeBtn) {
+                removeBtn.addEventListener('click', () => {
+                    rowEl.remove();
+                });
+            }
+            presetFilterList.appendChild(fragment);
+            if (columnSelect) {
+                const desiredValue = filter && filter.column ? filter.column : '';
+                populateColumnSelect(columnSelect, buildColumnOptionList(), desiredValue);
+            }
+        };
+
+        const hydrateFilters = (filters) => {
+            clearFilterRows();
+            if (!Array.isArray(filters) || filters.length === 0) {
+                return;
+            }
+            filters.forEach((filter) => addFilterRow(filter));
+        };
+
+        const getFilterPayload = () => {
+            if (!presetFilterList) {
+                return [];
+            }
+            const rows = Array.from(presetFilterList.querySelectorAll('.preset-filter-row'));
+            const payload = [];
+            rows.forEach((rowEl) => {
+                const columnSelect = rowEl.querySelector('.preset-filter-column');
+                const operatorSelect = rowEl.querySelector('.preset-filter-operator');
+                const valueInput = rowEl.querySelector('.preset-filter-value');
+                if (!columnSelect || !operatorSelect || !valueInput) {
+                    return;
+                }
+                const column = columnSelect.value.trim().toUpperCase();
+                const operator = operatorSelect.value.trim();
+                const value = valueInput.value.trim();
+                if (column && operator && value) {
+                    payload.push({ column, operator, value });
+                }
+            });
+            return payload;
+        };
+
+        const registerFilterColumnSync = () => {
+            registerColumnObserver((options) => {
+                const selectedColumns = presetColumnsSelect
+                    ? Array.from(presetColumnsSelect.selectedOptions).map((opt) => opt.value)
+                    : [];
+                if (presetColumnsSelect) {
+                    populateColumnSelect(presetColumnsSelect, options, selectedColumns);
+                }
+                if (!presetFilterList) {
+                    return;
+                }
+                presetFilterList.querySelectorAll('.preset-filter-column').forEach((selectEl) => {
+                    const preselect = selectEl.value;
+                    populateColumnSelect(selectEl, options, preselect);
+                });
+            });
+        };
+
+        const toggleRoleWrapper = () => {
+            if (!presetRoleWrapper) {
+                return;
+            }
+            const needsRoles = presetVisibilitySelect && presetVisibilitySelect.value === 'role';
+            presetRoleWrapper.hidden = !needsRoles;
+        };
+
+        const resetPresetForm = () => {
+            if (presetNameInput) {
+                presetNameInput.value = '';
+            }
+            if (presetVisibilitySelect) {
+                presetVisibilitySelect.value = 'private';
+            }
+            if (presetRoleSelect) {
+                Array.from(presetRoleSelect.options).forEach((option) => {
+                    option.selected = false;
+                });
+            }
+            if (presetColumnsSelect) {
+                Array.from(presetColumnsSelect.options).forEach((option) => {
+                    option.selected = false;
+                });
+            }
+            if (presetTagsInput) {
+                presetTagsInput.value = '';
+            }
+            clearFilterRows();
+            toggleRoleWrapper();
+            togglePresetFeedback('', 'info');
+        };
+
+        const buildPresetPayload = () => {
+            const name = presetNameInput ? presetNameInput.value.trim() : '';
+            if (!name) {
+                throw new Error('Inserire un nome per il preset.');
+            }
+            const visibility = presetVisibilitySelect ? presetVisibilitySelect.value : 'private';
+            const columns = presetColumnsSelect
+                ? Array.from(presetColumnsSelect.selectedOptions).map((option) => option.value)
+                : [];
+            const allowedRoles = presetRoleSelect
+                ? Array.from(presetRoleSelect.selectedOptions).map((option) => option.value)
+                : [];
+            const tags = csvToArray(presetTagsInput ? presetTagsInput.value : '', false);
+            const filters = getFilterPayload();
+
+            return {
+                sheet_id: sheetContext.id,
+                name,
+                visibility,
+                allowed_roles: visibility === 'role' ? allowedRoles : [],
+                columns,
+                tags,
+                filters,
+            };
+        };
+
+        const updateTagsPreview = (activePreset) => {
+            if (!presetTagsPreview) {
+                return;
+            }
+            presetTagsPreview.innerHTML = '';
+            const tagsSource = activePreset && Array.isArray(activePreset.tags) && activePreset.tags.length
+                ? activePreset.tags
+                : Array.from(new Set(presetState.list.flatMap((preset) => Array.isArray(preset.tags) ? preset.tags : [])));
+            if (!tagsSource.length) {
+                return;
+            }
+            tagsSource.forEach((tag) => {
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-light text-dark border';
+                badge.textContent = tag;
+                presetTagsPreview.appendChild(badge);
+            });
+        };
+
+        const highlightActivePreset = () => {
+            if (!presetListEl) {
+                return;
+            }
+            presetListEl.querySelectorAll('[data-preset-id]').forEach((item) => {
+                const itemId = Number.parseInt(item.dataset.presetId || '0', 10);
+                item.classList.toggle('active', presetState.activeId === itemId);
+            });
+        };
+
+        const updateActivePresetLabel = () => {
+            if (!presetActiveLabel) {
+                return;
+            }
+            const activePreset = presetState.list.find((preset) => preset.id === presetState.activeId);
+            if (activePreset) {
+                presetActiveLabel.textContent = `Preset attivo: ${activePreset.name}`;
+                presetActiveLabel.classList.remove('bg-light');
+                presetActiveLabel.classList.add('bg-success', 'text-white');
+            } else {
+                presetActiveLabel.textContent = 'Nessun preset attivo';
+                presetActiveLabel.classList.add('bg-light');
+                presetActiveLabel.classList.remove('bg-success', 'text-white');
+            }
+            updateTagsPreview(activePreset || null);
+            highlightActivePreset();
+        };
+
+        const clearFiltersPlugin = () => {
+            if (!filtersPlugin) {
+                return;
+            }
+            if (typeof filtersPlugin.clearConditions === 'function') {
+                filtersPlugin.clearConditions();
+            } else {
+                for (let column = 0; column < hot.countCols(); column += 1) {
+                    filtersPlugin.removeConditions(column);
+                }
+            }
+            filtersPlugin.filter();
+        };
+
+        const applyPresetFilters = (filters) => {
+            clearFiltersPlugin();
+            if (!filtersPlugin || !Array.isArray(filters) || filters.length === 0) {
+                return;
+            }
+            filters.forEach((filter) => {
+                const columnIndex = columnIndexFromLabel(filter.column);
+                const conditionName = operatorMap[filter.operator] || 'contains';
+                if (columnIndex >= 0) {
+                    filtersPlugin.addCondition(columnIndex, conditionName, [filter.value], 'conjunction');
+                }
+            });
+            filtersPlugin.filter();
+        };
+
+        const applyPresetColumns = (columns) => {
+            if (!hiddenColumnsPlugin) {
+                return;
+            }
+            const columnCount = hot.countCols();
+            const allColumns = Array.from({ length: columnCount }, (_, index) => index);
+            hiddenColumnsPlugin.showColumns(allColumns);
+            if (!Array.isArray(columns) || columns.length === 0) {
+                hot.render();
+                return;
+            }
+            const visibleSet = new Set(
+                columns
+                    .map((columnLabel) => columnIndexFromLabel(columnLabel))
+                    .filter((index) => Number.isInteger(index) && index >= 0)
+            );
+            const toHide = allColumns.filter((index) => !visibleSet.has(index));
+            if (toHide.length > 0) {
+                hiddenColumnsPlugin.hideColumns(toHide);
+            }
+            hot.render();
+        };
+
+        const applyPresetToGrid = (preset) => {
+            applyPresetColumns(preset.columns);
+            applyPresetFilters(preset.filters);
+        };
+
+        const renderPresetList = () => {
+            if (!presetListEl || !presetEmptyState) {
+                return;
+            }
+            presetListEl.innerHTML = '';
+            if (!presetState.list.length) {
+                presetEmptyState.classList.remove('d-none');
+                updateActivePresetLabel();
+                return;
+            }
+            presetEmptyState.classList.add('d-none');
+            presetState.list.forEach((preset) => {
+                const item = document.createElement('li');
+                item.className = 'list-group-item d-flex justify-content-between align-items-start gap-3';
+                item.dataset.presetId = String(preset.id);
+
+                const infoWrapper = document.createElement('div');
+                const title = document.createElement('div');
+                title.className = 'fw-semibold';
+                title.textContent = preset.name;
+                const meta = document.createElement('div');
+                meta.className = 'text-muted small';
+                const visibilityLabel = preset.visibility === 'global'
+                    ? 'Globale'
+                    : (preset.visibility === 'role' ? 'Ruoli CRM' : 'Privato');
+                meta.textContent = visibilityLabel;
+                if (preset.visibility === 'role' && Array.isArray(preset.allowed_roles) && preset.allowed_roles.length) {
+                    const rolesLine = document.createElement('div');
+                    rolesLine.className = 'mt-1';
+                    preset.allowed_roles.forEach((role) => {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-secondary-subtle text-secondary-emphasis me-1 preset-role-pill';
+                        badge.textContent = role;
+                        rolesLine.appendChild(badge);
+                    });
+                    infoWrapper.appendChild(rolesLine);
+                }
+                infoWrapper.appendChild(title);
+                infoWrapper.appendChild(meta);
+                if (Array.isArray(preset.tags) && preset.tags.length) {
+                    const tagsRow = document.createElement('div');
+                    tagsRow.className = 'mt-2';
+                    preset.tags.forEach((tag) => {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-light text-dark border me-1';
+                        badge.textContent = tag;
+                        tagsRow.appendChild(badge);
+                    });
+                    infoWrapper.appendChild(tagsRow);
+                }
+
+                const actions = document.createElement('div');
+                actions.className = 'd-flex flex-column gap-2 align-items-end';
+                const applyBtn = document.createElement('button');
+                applyBtn.type = 'button';
+                applyBtn.className = 'btn btn-outline-primary btn-sm';
+                applyBtn.textContent = 'Applica';
+                applyBtn.dataset.presetAction = 'apply';
+                applyBtn.dataset.presetId = String(preset.id);
+                actions.appendChild(applyBtn);
+                if (preset.can_delete) {
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.className = 'btn btn-link btn-sm text-danger';
+                    deleteBtn.textContent = 'Elimina';
+                    deleteBtn.dataset.presetAction = 'delete';
+                    deleteBtn.dataset.presetId = String(preset.id);
+                    actions.appendChild(deleteBtn);
+                }
+
+                item.appendChild(infoWrapper);
+                item.appendChild(actions);
+                presetListEl.appendChild(item);
+            });
+            updateActivePresetLabel();
+        };
+
+        const fetchPresets = async () => {
+            presetState.loading = true;
+            if (presetListEl) {
+                presetListEl.classList.add('opacity-50');
+            }
+            try {
+                const response = await fetch(buildApiUrl(), {
+                    method: 'GET',
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                });
+                const result = await response.json();
+                if (!response.ok || result.status !== 'ok') {
+                    throw new Error(result.message || 'Impossibile caricare i preset.');
+                }
+                presetState.list = Array.isArray(result.data) ? result.data : [];
+                renderPresetList();
+            } catch (error) {
+                console.error('Preset API error', error);
+                togglePresetFeedback(error.message || 'Errore durante il caricamento dei preset.', 'danger');
+            } finally {
+                presetState.loading = false;
+                if (presetListEl) {
+                    presetListEl.classList.remove('opacity-50');
+                }
+            }
+        };
+
+        const savePreset = async () => {
+            if (!presetSaveBtn) {
+                return;
+            }
+            try {
+                const payload = buildPresetPayload();
+                presetSaveBtn.disabled = true;
+                const response = await fetch(buildApiUrl(), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-Token': sheetContext.csrfToken,
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(payload),
+                });
+                const result = await response.json();
+                if (!response.ok || result.status !== 'ok') {
+                    throw new Error(result.message || 'Errore durante il salvataggio del preset.');
+                }
+                togglePresetFeedback('Preset salvato correttamente.', 'success');
+                resetPresetForm();
+                await fetchPresets();
+                presetState.activeId = result.data?.id || null;
+                if (result.data) {
+                    applyPresetToGrid(result.data);
+                }
+                updateActivePresetLabel();
+            } catch (error) {
+                togglePresetFeedback(error.message || 'Impossibile salvare il preset.', 'danger');
+            } finally {
+                presetSaveBtn.disabled = false;
+            }
+        };
+
+        const deletePreset = async (presetId) => {
+            if (!presetId) {
+                return;
+            }
+            try {
+                const response = await fetch(buildApiUrl(), {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-Token': sheetContext.csrfToken,
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ id: presetId }),
+                });
+                const result = await response.json();
+                if (!response.ok || result.status !== 'ok') {
+                    throw new Error(result.message || 'Impossibile eliminare il preset.');
+                }
+                if (presetState.activeId === presetId) {
+                    presetState.activeId = null;
+                    clearFiltersPlugin();
+                    applyPresetColumns([]);
+                }
+                await fetchPresets();
+                togglePresetFeedback('Preset eliminato.', 'success');
+            } catch (error) {
+                togglePresetFeedback(error.message || 'Errore durante la rimozione del preset.', 'danger');
+            }
+        };
+
+        const handlePresetListClick = (event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) {
+                return;
+            }
+            const actionButton = target.closest('[data-preset-action]');
+            if (!actionButton) {
+                return;
+            }
+            const presetId = Number.parseInt(actionButton.dataset.presetId || '0', 10);
+            if (!presetId) {
+                return;
+            }
+            const targetPreset = presetState.list.find((preset) => preset.id === presetId);
+            if (actionButton.dataset.presetAction === 'apply' && targetPreset) {
+                presetState.activeId = presetId;
+                applyPresetToGrid(targetPreset);
+                updateActivePresetLabel();
+                hydrateFilters(targetPreset.filters);
+            }
+            if (actionButton.dataset.presetAction === 'delete') {
+                if (window.confirm('Eliminare definitivamente questo preset?')) {
+                    deletePreset(presetId);
+                }
+            }
+        };
+
+        if (presetVisibilitySelect) {
+            presetVisibilitySelect.addEventListener('change', () => toggleRoleWrapper());
+            toggleRoleWrapper();
+        }
+
+        if (presetResetBtn) {
+            presetResetBtn.addEventListener('click', () => resetPresetForm());
+        }
+
+        if (presetSaveBtn) {
+            presetSaveBtn.addEventListener('click', () => savePreset());
+        }
+
+        if (presetAddFilterBtn) {
+            presetAddFilterBtn.addEventListener('click', () => addFilterRow());
+        }
+
+        if (presetListEl) {
+            presetListEl.addEventListener('click', handlePresetListClick);
+        }
+
+        registerFilterColumnSync();
+        fetchPresets();
     })();
 </script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS office_spreadsheet_presets (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    spreadsheet_id BIGINT UNSIGNED NULL,
+    name VARCHAR(120) NOT NULL,
+    owner_id INT UNSIGNED NULL,
+    visibility ENUM('private','role','global') NOT NULL DEFAULT 'private',
+    allowed_roles SET('Admin','Manager','Operatore','Patronato','Cliente') NULL,
+    filters JSON NULL,
+    columns JSON NULL,
+    tags JSON NULL,
+    created_by INT UNSIGNED NULL,
+    updated_by INT UNSIGNED NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_office_preset_sheet (spreadsheet_id),
+    INDEX idx_office_preset_owner (owner_id),
+    CONSTRAINT fk_office_preset_sheet FOREIGN KEY (spreadsheet_id) REFERENCES office_spreadsheets(id) ON DELETE CASCADE,
+    CONSTRAINT fk_office_preset_owner FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_office_preset_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_office_preset_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
