@@ -225,7 +225,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                             <span class="nav-icon" data-color="blue" aria-hidden="true">
                                 <i class="fa-solid fa-file-pen"></i>
                             </span>
-                            <span class="nav-label">Documenti ONLYOFFICE</span>
+                            <span class="nav-label">Office</span>
                         </a>
                     </li>
                 <?php endif; ?>

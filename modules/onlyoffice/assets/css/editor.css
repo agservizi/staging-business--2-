@@ -1,9 +1,83 @@
-:root {
+.onlyoffice-dashboard,
+body.oo-layout {
     --oo-bg: #f4f5f7;
     --oo-panel-bg: #ffffff;
     --oo-border: #dfe1e6;
     --oo-primary: #1f6feb;
     --oo-text: #1d2125;
+}
+
+.onlyoffice-dashboard {
+    background: var(--oo-bg);
+}
+
+.onlyoffice-dashboard .onlyoffice-card {
+    border: 1px solid var(--oo-border);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.onlyoffice-dashboard .onlyoffice-panels .onlyoffice-card {
+    height: 100%;
+}
+
+.onlyoffice-dashboard .onlyoffice-create-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.onlyoffice-dashboard .onlyoffice-create-form {
+    background: var(--oo-panel-bg);
+    border: 1px dashed var(--oo-border);
+    border-radius: 10px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.onlyoffice-dashboard .onlyoffice-upload-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.onlyoffice-dashboard .onlyoffice-btn,
+.onlyoffice-dashboard .onlyoffice-btn:focus {
+    background: var(--oo-primary);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+}
+
+.onlyoffice-dashboard .onlyoffice-btn:hover {
+    background: #1555b0;
+    color: #fff;
+}
+
+.onlyoffice-dashboard .onlyoffice-table th,
+.onlyoffice-dashboard .onlyoffice-table td {
+    border-bottom: 1px solid var(--oo-border);
+}
+
+.onlyoffice-dashboard .onlyoffice-table td {
+    vertical-align: middle;
+}
+
+.onlyoffice-dashboard .onlyoffice-config-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.onlyoffice-dashboard .onlyoffice-config-list li {
+    background: var(--oo-panel-bg);
+    border: 1px solid var(--oo-border);
+    border-radius: 10px;
+    padding: 1rem;
 }
 
 body.oo-layout {
@@ -32,59 +106,12 @@ body.oo-layout {
     color: #555;
 }
 
-.oo-user-card {
-    text-align: right;
-}
-
-.oo-user-name {
-    font-weight: 600;
-}
-
-.oo-user-role {
-    display: block;
-    font-size: 0.85rem;
-    color: #666;
-}
-
-.oo-panels {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 24px;
-    padding: 24px 32px 0;
-}
-
-.oo-panel {
-    background: var(--oo-panel-bg);
-    border: 1px solid var(--oo-border);
-    border-radius: 8px;
-    padding: 20px;
-    margin: 24px 32px 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-}
-
-.oo-panel h2 {
-    margin-top: 0;
-}
-
-.oo-create-form,
-#oo-upload-form {
+.oo-editor-actions {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
+    gap: 12px;
 }
 
-.oo-create-form input,
-#oo-upload-form input {
-    padding: 8px 10px;
-    border: 1px solid var(--oo-border);
-    border-radius: 4px;
-}
-
-.oo-create-form button,
-#oo-upload-form button,
-.oo-editor-actions button,
-.oo-button {
+.oo-editor-actions button {
     background: var(--oo-primary);
     color: #fff;
     border: none;
@@ -94,45 +121,8 @@ body.oo-layout {
     font-weight: 600;
 }
 
-.oo-button {
-    text-decoration: none;
-}
-
-.oo-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.oo-table th,
-.oo-table td {
-    padding: 12px;
-    border-bottom: 1px solid var(--oo-border);
-    text-align: left;
-}
-
 .onlyoffice-editor {
     height: calc(100vh - 120px);
     margin: 16px 32px 32px;
     border: 1px solid var(--oo-border);
-}
-
-body.oo-layout.editor .oo-panel {
-    margin: 16px 32px;
-}
-
-.oo-editor-actions {
-    display: flex;
-    gap: 12px;
-}
-
-.oo-inline-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    gap: 16px;
-}
-
-.oo-inline-list li {
-    font-size: 0.95rem;
 }

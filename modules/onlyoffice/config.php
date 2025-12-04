@@ -120,7 +120,7 @@ function requireUser(): array
 
 function userCanEdit(array $user): bool
 {
-    return in_array($user['role'] ?? 'user', ['admin', 'operator'], true);
+  return in_array($user['role'] ?? 'user', ['admin', 'operator', 'manager', 'support'], true);
 }
 
 function resolvePermissions(array $user): array
@@ -128,12 +128,12 @@ function resolvePermissions(array $user): array
     $role = $user['role'] ?? 'user';
 
     return [
-        'edit' => in_array($role, ['admin', 'operator'], true),
-        'comment' => in_array($role, ['admin', 'operator'], true),
+      'edit' => in_array($role, ['admin', 'operator', 'manager', 'support'], true),
+      'comment' => in_array($role, ['admin', 'operator', 'manager', 'support'], true),
         'download' => true,
         'print' => true,
-        'fillForms' => in_array($role, ['admin', 'operator'], true),
-        'review' => $role === 'admin',
+      'fillForms' => in_array($role, ['admin', 'operator', 'manager', 'support'], true),
+      'review' => in_array($role, ['admin', 'manager'], true),
     ];
 }
 
