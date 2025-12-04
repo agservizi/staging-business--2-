@@ -43,7 +43,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <p class="text-uppercase small fw-semibold text-muted mb-1">Docs</p>
                                 <h2 class="h5 mb-0">Documenti smart</h2>
                             </div>
-                            <span class="badge bg-primary-subtle text-primary">Beta</span>
                         </div>
                         <p class="text-muted">Stili tipografici, commenti inline, cronologia versioni e template dedicati per contratti, lettere e comunicazioni ufficiali.</p>
                         <ul class="text-muted small mb-4">
@@ -67,7 +66,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <p class="text-uppercase small fw-semibold text-muted mb-1">Sheet</p>
                                 <h2 class="h5 mb-0">Fogli dinamici</h2>
                             </div>
-                            <span class="badge bg-success-subtle text-success">Preview</span>
                         </div>
                         <p class="text-muted">Dashboard numeriche, piani economici, liste KPI e riconciliazioni: tutto in un foglio reattivo collegato ai dati aziendali.</p>
                         <ul class="text-muted small mb-4">
@@ -79,7 +77,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <a class="btn btn-outline-success" href="<?php echo asset('modules/office-suite/spreadsheets/index.php'); ?>">
                                 Apri fogli condivisi
                             </a>
-                            <span class="text-muted small">Data-link e formule custom in sviluppo</span>
                         </div>
                     </div>
                 </div>
