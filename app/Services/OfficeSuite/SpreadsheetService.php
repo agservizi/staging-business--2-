@@ -70,6 +70,7 @@ final class SpreadsheetService
         $status = $this->normalizeStatus((string) ($payload['status'] ?? self::DEFAULT_STATUS));
         $gridState = (string) ($payload['grid'] ?? '');
         $tagsJson = $this->normalizeTags($payload['tags'] ?? null);
+        $metadataJson = $this->normalizeMetadata($payload['grid_meta'] ?? null);
         $sheetId = isset($payload['id']) ? (int) $payload['id'] : null;
         $ownerId = isset($payload['owner_id']) ? (int) $payload['owner_id'] : $userId;
         if ($ownerId !== null && $ownerId <= 0) {
@@ -95,7 +96,7 @@ final class SpreadsheetService
             }
 
             $newVersion = $currentVersion + 1;
-            $this->insertRevision($sheetId, $newVersion, $title, $gridState, $tagsJson, $userId);
+            $this->insertRevision($sheetId, $newVersion, $title, $gridState, $metadataJson, $userId);
             $this->touchSheet($sheetId, $newVersion);
 
             $this->pdo->commit();
@@ -134,7 +135,7 @@ final class SpreadsheetService
     public function getLatestRevision(int $sheetId): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT id, versione, grid_state, created_at '
+            'SELECT id, versione, grid_state, metadata, created_at '
             . 'FROM office_spreadsheet_revisions WHERE spreadsheet_id = :id '
             . 'ORDER BY versione DESC LIMIT 1'
         );
@@ -318,6 +319,25 @@ final class SpreadsheetService
         }
 
         return json_encode(array_values($tags), JSON_UNESCAPED_UNICODE);
+    }
+
+    private function normalizeMetadata(null|string $metadata): ?string
+    {
+        if ($metadata === null) {
+            return null;
+        }
+
+        $metadata = trim($metadata);
+        if ($metadata === '') {
+            return null;
+        }
+
+        json_decode($metadata, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new RuntimeException('Metadati del foglio non validi.');
+        }
+
+        return $metadata;
     }
 
     private function generateUuid(): string

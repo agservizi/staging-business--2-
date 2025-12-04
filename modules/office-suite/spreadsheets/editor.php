@@ -23,11 +23,15 @@ $statusOptions = [
 ];
 
 $categoryOptions = ['Standard', 'Finance', 'Operations', 'Logistica'];
+$hotLicenseKey = (string) env('HOT_LICENSE_KEY', 'non-commercial-and-evaluation');
+$hfLicenseKey = (string) env('HF_LICENSE_KEY', 'gpl-v3');
 
 $formError = null;
 $sheet = null;
 $latestRevision = null;
 $gridState = '';
+$gridMetadata = '';
+$gridMetaPayload = ['cellMeta' => []];
 $formData = [
     'id' => $sheetId,
     'title' => '',
@@ -41,6 +45,7 @@ if ($sheetId > 0) {
     if ($sheet) {
         $latestRevision = $sheetService->getLatestRevision($sheetId);
         $gridState = (string) ($latestRevision['grid_state'] ?? '');
+        $gridMetadata = (string) ($latestRevision['metadata'] ?? '');
         $formData['title'] = (string) ($sheet['titolo'] ?? '');
         $formData['category'] = (string) ($sheet['categoria'] ?? 'Standard');
         $formData['status'] = (string) ($sheet['stato'] ?? 'draft');
@@ -49,11 +54,34 @@ if ($sheetId > 0) {
 }
 
 if ($gridState === '' || $gridState === '[]') {
-    $emptyMatrix = [];
+    $gridMatrix = [];
     for ($row = 0; $row < 10; $row++) {
-        $emptyMatrix[$row] = array_fill(0, 8, '');
+        $gridMatrix[$row] = array_fill(0, 8, '');
     }
-    $gridState = json_encode($emptyMatrix);
+    $gridState = json_encode($gridMatrix);
+} else {
+    $gridMatrix = json_decode($gridState, true);
+    if (!is_array($gridMatrix) || empty($gridMatrix)) {
+        $gridMatrix = [];
+        for ($row = 0; $row < 10; $row++) {
+            $gridMatrix[$row] = array_fill(0, 8, '');
+        }
+        $gridState = json_encode($gridMatrix);
+    }
+}
+
+if ($gridMetadata === '') {
+    $gridMetaPayload = ['cellMeta' => []];
+    $gridMetadata = json_encode($gridMetaPayload);
+} else {
+    $gridMetaPayload = json_decode($gridMetadata, true);
+    if (!is_array($gridMetaPayload)) {
+        $gridMetaPayload = ['cellMeta' => []];
+    }
+    if (!isset($gridMetaPayload['cellMeta']) || !is_array($gridMetaPayload['cellMeta'])) {
+        $gridMetaPayload['cellMeta'] = [];
+    }
+    $gridMetadata = json_encode($gridMetaPayload);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -80,6 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'status' => $_POST['status'] ?? 'draft',
             'tags' => $_POST['tags'] ?? '',
             'grid' => $_POST['grid'] ?? '',
+            'grid_meta' => $_POST['grid_meta'] ?? '',
             'owner_id' => $userId,
         ];
 
@@ -91,6 +120,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'tags' => is_array($payload['tags']) ? implode(', ', $payload['tags']) : (string) $payload['tags'],
         ];
         $gridState = $payload['grid'];
+        $gridMetadata = $payload['grid_meta'];
+        $gridMetaPayload = json_decode($gridMetadata, true);
+        if (!is_array($gridMetaPayload)) {
+            $gridMetaPayload = ['cellMeta' => []];
+        }
+        if (!isset($gridMetaPayload['cellMeta']) || !is_array($gridMetaPayload['cellMeta'])) {
+            $gridMetaPayload['cellMeta'] = [];
+        }
+        $gridMetadata = json_encode($gridMetaPayload);
 
         try {
             $saved = $sheetService->saveSheet($payload, $userId);
@@ -116,6 +154,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
             <input type="hidden" name="sheet_id" value="<?php echo (int) $formData['id']; ?>">
             <input type="hidden" name="grid" id="grid-state-field" value="<?php echo htmlspecialchars($gridState, ENT_QUOTES, 'UTF-8'); ?>">
+            <input type="hidden" name="grid_meta" id="grid-meta-field" value="<?php echo htmlspecialchars($gridMetadata, ENT_QUOTES, 'UTF-8'); ?>">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-0 gap-3">
                 <div>
                     <h1 class="h4 mb-1"><?php echo $formData['id'] ? 'Modifica foglio' : 'Nuovo foglio'; ?></h1>
@@ -242,35 +281,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="sheet-layout d-flex flex-column">
                         <div class="formula-bar d-flex align-items-center gap-2">
                             <span class="badge bg-primary text-white">fx</span>
-                            <input class="form-control form-control-sm" type="text" placeholder="=SOMMA(A1:A10)" disabled>
+                            <input id="formula-display" class="form-control form-control-sm" type="text" placeholder="=SOMMA(A1:A10)" readonly>
                             <?php if ($latestRevision): ?>
                                 <span class="text-muted small">Versione <?php echo (int) $latestRevision['versione']; ?> · <?php echo sanitize_output(format_datetime_locale($latestRevision['created_at'] ?? null)); ?></span>
                             <?php endif; ?>
                         </div>
                         <div class="grid flex-grow-1">
-                            <table id="sheet-grid" class="table table-bordered table-sm mb-0">
-                                <thead>
-                                    <tr>
-                                        <th class="bg-light">&nbsp;</th>
-                                        <?php for ($col = 0; $col < 8; $col++): ?>
-                                            <th class="bg-light"><?php echo chr(65 + $col); ?></th>
-                                        <?php endfor; ?>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php for ($row = 1; $row <= 10; $row++): ?>
-                                        <tr>
-                                            <th class="bg-light"><?php echo $row; ?></th>
-                                            <?php for ($col = 0; $col < 8; $col++): ?>
-                                                <td contenteditable="true"></td>
-                                            <?php endfor; ?>
-                                        </tr>
-                                    <?php endfor; ?>
-                                </tbody>
-                            </table>
+                            <div id="sheet-grid" class="hot-container"></div>
                         </div>
                         <div class="grid-hint text-muted small p-3">
-                            Questa tabella placeholder sara' sostituita da Handsontable/Luckysheet con formule e data-link. Nel frattempo viene serializzata in JSON.
+                            Handsontable + HyperFormula sono attivi per calcoli client-side e serializzazione Office Suite.
                         </div>
                         <?php if (!empty($sheet) && !empty($sheet['revisions']) && $sheetId > 0): ?>
                             <div class="version-history border-top p-3 bg-light">
@@ -295,6 +315,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         </form>
     </main>
 </div>
+<link rel="stylesheet" href="<?php echo asset('assets/vendor/handsontable/handsontable.full.min.css'); ?>">
+<script>
+    window.HOT_LICENSE_KEY = <?php echo json_encode($hotLicenseKey, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+    window.HF_LICENSE_KEY = <?php echo json_encode($hfLicenseKey, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+</script>
 <style>
     .spreadsheet .toolbar-group {
         min-width: 150px;
@@ -335,29 +360,22 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         background: #fff;
     }
     .grid {
-        overflow: auto;
+        overflow: hidden;
         background: #fff;
+        border-top: 1px solid rgba(15,23,42,0.05);
     }
-    .grid table {
+    .hot-container {
         width: 100%;
-        min-width: 100%;
-        table-layout: fixed; /* mantiene le celle a dimensione fissa */
+        min-height: 520px;
     }
-    .grid td,
-    .grid th {
-        max-width: 220px;
-        word-break: break-word;
-        white-space: pre-wrap;
+    .hot-container .handsontable {
+        font-size: 0.95rem;
     }
-    .grid td:focus {
-        outline: 2px solid #4c6ef5;
-    }
-    .grid td.active-cell {
-        outline: 2px solid #0d6efd;
-        box-shadow: inset 0 0 0 1px rgba(13,110,253,0.4);
-    }
-    .grid.grid-needs-selection {
+    .hot-container.needs-selection {
         animation: grid-pulse 0.35s ease-in-out 0s 2;
+    }
+    .ht-highlight {
+        background-color: #fff3cd !important;
     }
     @keyframes grid-pulse {
         0% { box-shadow: 0 0 0 0 rgba(13,110,253,0); }
@@ -365,306 +383,292 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         100% { box-shadow: 0 0 0 0 rgba(13,110,253,0); }
     }
 </style>
+<script src="<?php echo asset('assets/vendor/hyperformula/hyperformula.full.min.js'); ?>"></script>
+<script src="<?php echo asset('assets/vendor/handsontable/handsontable.full.min.js'); ?>"></script>
 <script>
     (function () {
         const form = document.getElementById('sheet-editor-form');
         const gridField = document.getElementById('grid-state-field');
-        const gridTable = document.getElementById('sheet-grid');
+        const metaField = document.getElementById('grid-meta-field');
         const toolbarButtons = document.querySelectorAll('[data-grid-action]');
         const ribbonTabs = document.querySelectorAll('[data-ribbon-tab]');
         const ribbonPanes = document.querySelectorAll('[data-ribbon-pane]');
-        if (!form || !gridField || !gridTable) {
+        const gridContainer = document.getElementById('sheet-grid');
+        const formulaInput = document.getElementById('formula-display');
+
+        if (!form || !gridField || !metaField || !gridContainer || typeof Handsontable === 'undefined' || typeof HyperFormula === 'undefined') {
+            console.warn('Handsontable/HyperFormula non caricati, impossibile inizializzare il foglio.');
             return;
         }
 
-        const gridBody = gridTable.querySelector('tbody');
-        const headerRow = gridTable.querySelector('thead tr');
-        let activeCell = null;
-        const styleStateMap = {
-            bold: { property: 'fontWeight', value: '700' },
-            italic: { property: 'fontStyle', value: 'italic' },
-            underline: { property: 'textDecorationLine', value: 'underline' },
-            highlight: { property: 'backgroundColor', value: 'rgb(255, 243, 205)' },
-            'align-left': { property: 'textAlign', value: 'left' },
-            'align-center': { property: 'textAlign', value: 'center' },
-            'align-right': { property: 'textAlign', value: 'right' },
-        };
+        const initialMatrix = <?php echo json_encode($gridMatrix, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+        const initialMeta = <?php echo json_encode($gridMetaPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
 
-        const attachCellEvents = (cellEl) => {
-            if (!cellEl) {
-                return;
+        const normalizeMatrix = (matrix) => {
+            if (!Array.isArray(matrix) || matrix.length === 0) {
+                return Handsontable.helper.createEmptySpreadsheetData(10, 8);
             }
-            cellEl.addEventListener('focus', () => {
-                setActiveCell(cellEl);
-            });
-            cellEl.addEventListener('click', () => {
-                setActiveCell(cellEl);
+            const columnCount = Math.max(
+                8,
+                ...matrix.map((row) => (Array.isArray(row) ? row.length : 0))
+            );
+            return matrix.map((row) => {
+                const normalizedRow = [];
+                for (let col = 0; col < columnCount; col++) {
+                    normalizedRow[col] = row && row[col] !== undefined ? row[col] : '';
+                }
+                return normalizedRow;
             });
         };
 
-        const setActiveCell = (cell) => {
-            if (activeCell === cell) {
-                syncRibbonState();
-                return;
+        const ensureMetaShape = (payload) => {
+            if (!payload || typeof payload !== 'object') {
+                return { cellMeta: {} };
             }
-            if (activeCell) {
-                activeCell.classList.remove('active-cell');
+            if (!payload.cellMeta || typeof payload.cellMeta !== 'object') {
+                payload.cellMeta = {};
             }
-            activeCell = cell;
-            if (activeCell) {
-                activeCell.classList.add('active-cell');
-            }
-            syncRibbonState();
+            return payload;
         };
 
-        gridTable.querySelectorAll('tbody td').forEach((cell) => attachCellEvents(cell));
-
-        const populateGrid = () => {
-            if (!gridField.value) {
-                return;
+        const parseMetaPayload = (raw) => {
+            if (!raw) {
+                return { cellMeta: {} };
             }
-
             try {
-                const matrix = JSON.parse(gridField.value);
-                if (!Array.isArray(matrix)) {
+                const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                return ensureMetaShape(parsed);
+            } catch (error) {
+                console.warn('Metadati foglio non validi, verranno reimpostati.', error);
+                return { cellMeta: {} };
+            }
+        };
+
+        const applyInitialMeta = (metaPayload) => {
+            const shaped = ensureMetaShape(metaPayload);
+            Object.entries(shaped.cellMeta).forEach(([key, value]) => {
+                const [rowStr, colStr] = key.split(':');
+                const row = Number.parseInt(rowStr, 10);
+                const column = Number.parseInt(colStr, 10);
+                if (!Number.isInteger(row) || !Number.isInteger(column)) {
                     return;
                 }
-                const rows = gridTable.querySelectorAll('tbody tr');
-                rows.forEach((rowEl, rowIndex) => {
-                    const cells = rowEl.querySelectorAll('td');
-                    cells.forEach((cellEl, cellIndex) => {
-                        const value = matrix[rowIndex] && matrix[rowIndex][cellIndex] ? String(matrix[rowIndex][cellIndex]) : '';
-                        cellEl.textContent = value;
-                    });
-                });
-            } catch (error) {
-                console.warn('Impossibile decodificare la matrice del foglio:', error);
-            }
-        };
-
-        const serializeGrid = () => {
-            const rowsData = [];
-            gridTable.querySelectorAll('tbody tr').forEach((rowEl) => {
-                const rowData = [];
-                rowEl.querySelectorAll('td').forEach((cellEl) => {
-                    rowData.push(cellEl.textContent.trim());
-                });
-                rowsData.push(rowData);
-            });
-            gridField.value = JSON.stringify(rowsData);
-        };
-
-        const ensureActiveCell = () => {
-            if (activeCell) {
-                return true;
-            }
-            const fallbackCell = gridTable.querySelector('tbody td');
-            if (fallbackCell) {
-                fallbackCell.focus();
-            }
-            if (activeCell) {
-                return true;
-            }
-            gridTable.classList.add('grid-needs-selection');
-            setTimeout(() => gridTable.classList.remove('grid-needs-selection'), 400);
-            return false;
-        };
-
-        const syncRibbonState = () => {
-            toolbarButtons.forEach((button) => {
-                const action = button.dataset.gridAction;
-                const config = styleStateMap[action];
-                let isActive = false;
-                if (config && activeCell) {
-                    isActive = activeCell.style[config.property] === config.value;
+                if (value.className) {
+                    hot.setCellMeta(row, column, 'className', value.className);
                 }
-                button.classList.toggle('active', isActive);
-                button.setAttribute('aria-pressed', String(isActive));
+                if (value.type) {
+                    hot.setCellMeta(row, column, 'type', value.type);
+                }
+                if (value.numericFormat) {
+                    hot.setCellMeta(row, column, 'numericFormat', value.numericFormat);
+                }
             });
+            hot.render();
         };
 
-        const toggleStyle = (property, activeValue, fallbackValue = '') => {
-            if (!ensureActiveCell()) {
-                return;
+        const collectMetadata = () => {
+            const cellMeta = {};
+            hot.getCellsMeta().forEach((meta) => {
+                if (typeof meta.row !== 'number' || typeof meta.col !== 'number') {
+                    return;
+                }
+                const payload = {};
+                if (meta.className) {
+                    payload.className = meta.className;
+                }
+                if (meta.type) {
+                    payload.type = meta.type;
+                }
+                if (meta.numericFormat) {
+                    payload.numericFormat = meta.numericFormat;
+                }
+                if (Object.keys(payload).length > 0) {
+                    cellMeta[`${meta.row}:${meta.col}`] = payload;
+                }
+            });
+            return { cellMeta };
+        };
+
+        const persistState = () => {
+            gridField.value = JSON.stringify(hot.getSourceData());
+            metaField.value = JSON.stringify(collectMetadata());
+        };
+
+        const flashSelectionHint = () => {
+            gridContainer.classList.add('needs-selection');
+            window.setTimeout(() => gridContainer.classList.remove('needs-selection'), 400);
+        };
+
+        const hyperFormulaInstance = HyperFormula.buildEmpty({
+            licenseKey: window.HF_LICENSE_KEY || 'gpl-v3',
+        });
+
+        const hot = new Handsontable(gridContainer, {
+            data: normalizeMatrix(initialMatrix),
+            rowHeaders: true,
+            colHeaders: true,
+            stretchH: 'all',
+            height: 'auto',
+            width: '100%',
+            manualColumnResize: true,
+            manualRowResize: true,
+            contextMenu: true,
+            dropdownMenu: true,
+            filters: true,
+            multiColumnSorting: true,
+            licenseKey: window.HOT_LICENSE_KEY || 'non-commercial-and-evaluation',
+            formulas: {
+                engine: hyperFormulaInstance,
+            },
+        });
+
+        applyInitialMeta(parseMetaPayload(initialMeta));
+        persistState();
+
+        const getSelectedCells = () => {
+            const selections = hot.getSelected();
+            if (!selections || selections.length === 0) {
+                flashSelectionHint();
+                return [];
             }
-            const current = activeCell.style[property];
-            activeCell.style[property] = current === activeValue ? fallbackValue : activeValue;
-            syncRibbonState();
+            const cells = [];
+            selections.forEach(([rowStart, colStart, rowEnd, colEnd]) => {
+                for (let row = rowStart; row <= rowEnd; row++) {
+                    for (let col = colStart; col <= colEnd; col++) {
+                        cells.push([row, col]);
+                    }
+                }
+            });
+            return cells;
         };
 
-        const setStyle = (property, value) => {
-            if (!ensureActiveCell()) {
-                return;
-            }
-            activeCell.style[property] = value;
-            syncRibbonState();
-        };
-
-        const removeFormatting = () => {
-            if (!ensureActiveCell()) {
-                return;
-            }
-            activeCell.removeAttribute('style');
-            syncRibbonState();
-        };
-
-        const parseNumber = (raw) => {
-            if (!raw) {
+        const getActiveSelection = () => {
+            const selections = hot.getSelected();
+            if (!selections || selections.length === 0) {
                 return null;
             }
-            const normalized = raw.replace(/[^0-9,.-]/g, '').replace(',', '.');
+            return selections[selections.length - 1];
+        };
+
+        const updateCellClasses = (row, column, mutator) => {
+            const meta = hot.getCellMeta(row, column);
+            const classes = new Set((meta.className || '').split(' ').filter(Boolean));
+            mutator(classes);
+            const nextValue = Array.from(classes).join(' ');
+            if (nextValue) {
+                hot.setCellMeta(row, column, 'className', nextValue);
+            } else {
+                hot.removeCellMeta(row, column, 'className');
+            }
+        };
+
+        const toggleClass = (className) => {
+            const cells = getSelectedCells();
+            if (!cells.length) {
+                return;
+            }
+            cells.forEach(([row, column]) => {
+                updateCellClasses(row, column, (set) => {
+                    if (set.has(className)) {
+                        set.delete(className);
+                    } else {
+                        set.add(className);
+                    }
+                });
+            });
+            hot.render();
+            persistState();
+        };
+
+        const setAlignment = (targetClass) => {
+            const cells = getSelectedCells();
+            if (!cells.length) {
+                return;
+            }
+            const alignClasses = ['htLeft', 'htCenter', 'htRight'];
+            cells.forEach(([row, column]) => {
+                updateCellClasses(row, column, (set) => {
+                    alignClasses.forEach((cls) => set.delete(cls));
+                    set.add(targetClass);
+                });
+            });
+            hot.render();
+            persistState();
+        };
+
+        const clearFormatting = () => {
+            const cells = getSelectedCells();
+            if (!cells.length) {
+                return;
+            }
+            cells.forEach(([row, column]) => {
+                hot.removeCellMeta(row, column, 'className');
+                hot.removeCellMeta(row, column, 'type');
+                hot.removeCellMeta(row, column, 'numericFormat');
+            });
+            hot.render();
+            persistState();
+        };
+
+        const parseNumber = (rawValue) => {
+            if (rawValue === null || rawValue === undefined) {
+                return null;
+            }
+            const normalized = String(rawValue).replace(/[^0-9,.-]/g, '').replace(',', '.');
             const parsed = Number(normalized);
             return Number.isFinite(parsed) ? parsed : null;
         };
 
-        const formatCurrency = () => {
-            if (!ensureActiveCell()) {
+        const formatNumeric = (numericFormat) => {
+            const cells = getSelectedCells();
+            if (!cells.length) {
                 return;
             }
-            const raw = activeCell.textContent.trim();
-            const value = parseNumber(raw);
-            if (value === null) {
-                return;
-            }
-            activeCell.textContent = value.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
-            activeCell.style.textAlign = 'right';
-        };
-
-        const formatPercentage = () => {
-            if (!ensureActiveCell()) {
-                return;
-            }
-            const raw = activeCell.textContent.trim();
-            let value = parseNumber(raw);
-            if (value === null) {
-                return;
-            }
-            if (value > 1) {
-                value = value / 100;
-            }
-            activeCell.textContent = (value).toLocaleString('it-IT', { style: 'percent', minimumFractionDigits: 2 });
-            activeCell.style.textAlign = 'right';
-        };
-
-        const columnLabelFromIndex = (index) => {
-            let label = '';
-            let current = index;
-            while (current >= 0) {
-                label = String.fromCharCode((current % 26) + 65) + label;
-                current = Math.floor(current / 26) - 1;
-            }
-            return label;
-        };
-
-        const getColumnCount = () => {
-            return Math.max(headerRow.querySelectorAll('th').length - 1, 0);
+            cells.forEach(([row, column]) => {
+                const value = parseNumber(hot.getDataAtCell(row, column));
+                if (value === null) {
+                    return;
+                }
+                hot.setDataAtCell(row, column, value);
+                hot.setCellMeta(row, column, 'type', 'numeric');
+                hot.setCellMeta(row, column, 'numericFormat', numericFormat);
+            });
+            hot.render();
+            persistState();
         };
 
         const addRow = () => {
-            const columnCount = getColumnCount();
-            const newRow = document.createElement('tr');
-            const rowIndex = gridBody.querySelectorAll('tr').length + 1;
-            const headerCell = document.createElement('th');
-            headerCell.className = 'bg-light';
-            headerCell.textContent = rowIndex;
-            newRow.appendChild(headerCell);
-
-            for (let col = 0; col < columnCount; col++) {
-                const cell = document.createElement('td');
-                cell.contentEditable = 'true';
-                attachCellEvents(cell);
-                newRow.appendChild(cell);
-            }
-
-            gridBody.appendChild(newRow);
+            const selection = getActiveSelection();
+            const insertIndex = selection ? selection[2] + 1 : hot.countRows();
+            hot.alter('insert_row', insertIndex, 1);
+            persistState();
         };
 
         const removeRow = () => {
-            if (!ensureActiveCell()) {
+            if (hot.countRows() <= 1) {
                 return;
             }
-            const rowEl = activeCell.parentElement;
-            if (!rowEl) {
-                return;
-            }
-            const allRows = Array.from(gridBody.querySelectorAll('tr'));
-            if (allRows.length <= 1) {
-                return;
-            }
-            const rowIndex = allRows.indexOf(rowEl);
-            rowEl.remove();
-            gridBody.querySelectorAll('tr').forEach((trEl, index) => {
-                const header = trEl.querySelector('th');
-                if (header) {
-                    header.textContent = String(index + 1);
-                }
-            });
-            const fallbackRow = gridBody.querySelector('tr');
-            const fallbackCell = fallbackRow ? fallbackRow.querySelector('td') : null;
-            if (fallbackCell) {
-                fallbackCell.focus();
-            } else {
-                activeCell = null;
-            }
+            const selection = getActiveSelection();
+            const index = selection ? selection[0] : hot.countRows() - 1;
+            hot.alter('remove_row', index, 1);
+            persistState();
         };
 
         const addColumn = () => {
-            const columnCount = getColumnCount();
-            const newHeader = document.createElement('th');
-            newHeader.className = 'bg-light';
-            newHeader.textContent = columnLabelFromIndex(columnCount);
-            headerRow.appendChild(newHeader);
-
-            gridBody.querySelectorAll('tr').forEach((rowEl) => {
-                const cell = document.createElement('td');
-                cell.contentEditable = 'true';
-                attachCellEvents(cell);
-                rowEl.appendChild(cell);
-            });
+            const selection = getActiveSelection();
+            const insertIndex = selection ? selection[3] + 1 : hot.countCols();
+            hot.alter('insert_col', insertIndex, 1);
+            persistState();
         };
 
         const removeColumn = () => {
-            if (!ensureActiveCell()) {
+            if (hot.countCols() <= 1) {
                 return;
             }
-            const headerCells = headerRow.querySelectorAll('th');
-            const columnCount = headerCells.length - 1;
-            if (columnCount <= 1) {
-                return;
-            }
-            let columnIndex = -1;
-            const rowCells = activeCell.parentElement ? activeCell.parentElement.querySelectorAll('td') : [];
-            rowCells.forEach((cell, index) => {
-                if (cell === activeCell) {
-                    columnIndex = index;
-                }
-            });
-            if (columnIndex < 0) {
-                return;
-            }
-
-            headerRow.removeChild(headerCells[columnIndex + 1]);
-            gridBody.querySelectorAll('tr').forEach((rowEl) => {
-                const cells = rowEl.querySelectorAll('td');
-                if (cells[columnIndex]) {
-                    cells[columnIndex].remove();
-                }
-            });
-
-            const newColumnCount = getColumnCount();
-            headerRow.querySelectorAll('th').forEach((thEl, index) => {
-                if (index === 0) {
-                    return;
-                }
-                thEl.textContent = columnLabelFromIndex(index - 1);
-            });
-
-            const fallbackCell = gridBody.querySelector('td');
-            if (fallbackCell) {
-                fallbackCell.focus();
-            } else {
-                activeCell = null;
-            }
+            const selection = getActiveSelection();
+            const index = selection ? selection[1] : hot.countCols() - 1;
+            hot.alter('remove_col', index, 1);
+            persistState();
         };
 
         toolbarButtons.forEach((button) => {
@@ -672,43 +676,43 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 const action = button.dataset.gridAction;
                 switch (action) {
                     case 'bold':
-                        toggleStyle('fontWeight', '700');
+                        toggleClass('htBold');
                         break;
                     case 'italic':
-                        toggleStyle('fontStyle', 'italic');
+                        toggleClass('htItalic');
                         break;
                     case 'underline':
-                        toggleStyle('textDecorationLine', 'underline');
+                        toggleClass('htUnderline');
                         break;
                     case 'highlight':
-                        toggleStyle('backgroundColor', 'rgb(255, 243, 205)');
+                        toggleClass('ht-highlight');
                         break;
                     case 'currency':
-                        formatCurrency();
+                        formatNumeric({ pattern: '€ 0,0.00' });
                         break;
                     case 'percent':
-                        formatPercentage();
+                        formatNumeric({ pattern: '0.00%' });
                         break;
                     case 'clear-format':
-                        removeFormatting();
+                        clearFormatting();
                         break;
                     case 'align-left':
-                        setStyle('textAlign', 'left');
+                        setAlignment('htLeft');
                         break;
                     case 'align-center':
-                        setStyle('textAlign', 'center');
+                        setAlignment('htCenter');
                         break;
                     case 'align-right':
-                        setStyle('textAlign', 'right');
+                        setAlignment('htRight');
                         break;
                     case 'add-row':
                         addRow();
                         break;
-                    case 'add-column':
-                        addColumn();
-                        break;
                     case 'remove-row':
                         removeRow();
+                        break;
+                    case 'add-column':
+                        addColumn();
                         break;
                     case 'remove-column':
                         removeColumn();
@@ -730,21 +734,33 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             });
         };
 
-        ribbonTabs.forEach((tab) => {
-            tab.addEventListener('click', () => {
-                setActiveRibbonTab(tab.dataset.ribbonTab);
-            });
+        ribbonTabs.forEach((tab) => tab.addEventListener('click', () => setActiveRibbonTab(tab.dataset.ribbonTab)));
+
+        const syncFormulaBar = (row, column) => {
+            if (!formulaInput) {
+                return;
+            }
+            const cellLabel = Handsontable.helper.spreadsheetColumnLabel(column) + (row + 1);
+            const displayValue = hot.getDataAtCell(row, column) ?? '';
+            formulaInput.value = `${cellLabel}: ${displayValue}`;
+            formulaInput.dataset.cellRef = cellLabel;
+        };
+
+        hot.addHook('afterSelectionEnd', (row, column, row2, column2) => {
+            const targetRow = typeof row2 === 'number' ? row2 : row;
+            const targetCol = typeof column2 === 'number' ? column2 : column;
+            syncFormulaBar(targetRow, targetCol);
         });
 
-        const firstCell = gridTable.querySelector('tbody td');
-        if (firstCell) {
-            firstCell.focus();
-        }
-
-        populateGrid();
+        hot.addHook('afterChange', (changes, source) => {
+            if (source === 'loadData') {
+                return;
+            }
+            persistState();
+        });
 
         form.addEventListener('submit', () => {
-            serializeGrid();
+            persistState();
         });
     })();
 </script>

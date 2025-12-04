@@ -25,5 +25,9 @@
   "description": "",
   "devDependencies": {
     "sftp-sync-deploy": "^0.7.1"
+  },
+  "dependencies": {
+    "handsontable": "^16.2.0",
+    "hyperformula": "^3.1.0"
   }
 }
