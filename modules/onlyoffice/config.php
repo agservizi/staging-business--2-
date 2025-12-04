@@ -12,7 +12,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 const DOCUMENT_SERVER_URL = 'https://docspace-50jyxi.onlyoffice.com';
-const DOCUMENT_SERVER_SECRET = 'k6ZkDq3vF2x9tJrLp0YcA7wHqS1mV8eR';
+const DOCUMENT_SERVER_SECRET = 'sk-854d8c47ac9588791b451fdb3c34d883770b435b6f6419fb16f6d1d0f726b0c5';
 const DOCUMENT_SERVER_USE_JWT = true;
 
 const ENCRYPTED_STORAGE_PATH = __DIR__ . '/../../storage/onlyoffice';
