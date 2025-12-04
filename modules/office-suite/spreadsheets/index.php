@@ -44,7 +44,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <a class="btn btn-outline-secondary" href="<?php echo asset('modules/office-suite/index.php'); ?>">
                     <i class="fa-solid fa-grip me-2"></i>Hub Office
                 </a>
-                <a class="btn btn-success" href="<?php echo asset('modules/office-suite/spreadsheets/editor.php'); ?>">
+                <a class="btn hero-new-sheet-btn" href="<?php echo asset('modules/office-suite/spreadsheets/editor.php'); ?>">
                     <i class="fa-solid fa-table me-2"></i>Nuovo foglio
                 </a>
             </div>
@@ -129,4 +129,26 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         </div>
     </main>
 </div>
+<style>
+    .hero-new-sheet-btn {
+        background: linear-gradient(135deg, #0d6efd, #6610f2);
+        border: none;
+        color: #fff;
+        font-weight: 600;
+        padding: 0.75rem 1.5rem;
+        border-radius: 999px;
+        box-shadow: 0 0.25rem 1rem rgba(13, 110, 253, 0.35);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .hero-new-sheet-btn:hover,
+    .hero-new-sheet-btn:focus {
+        color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1.5rem rgba(102, 16, 242, 0.35);
+    }
+    .hero-new-sheet-btn:focus {
+        outline: 0;
+        box-shadow: 0 0.5rem 1.5rem rgba(102, 16, 242, 0.35), 0 0 0 0.25rem rgba(13, 110, 253, 0.35);
+    }
+</style>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
