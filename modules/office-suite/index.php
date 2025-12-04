@@ -51,12 +51,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <li>Esportazione DOCX/PDF tramite pipeline server.</li>
                             <li>Check di conformita' e note interne collegate al CRM.</li>
                         </ul>
-                        <div class="mt-auto d-flex justify-content-between align-items-center">
-                            <a class="btn btn-outline-primary" href="<?php echo asset('modules/office-suite/documents/index.php'); ?>">
-                                Apri raccolta documenti
-                            </a>
-                            <span class="text-muted small">Realtime e versioning in arrivo</span>
-                        </div>
+                            <div class="mt-auto d-flex justify-content-between align-items-center">
+                                <a class="btn btn-outline-primary" href="<?php echo asset('modules/office-suite/documents/index.php'); ?>">
+                                    Apri raccolta documenti
+                                </a>
+                            </div>
                     </div>
                 </div>
             </div>
