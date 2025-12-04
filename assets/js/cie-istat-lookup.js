@@ -9,6 +9,7 @@
     const defaultMaxResults = Number(globalConfig.maxResults) || 12;
     const defaultMinChars = Number(globalConfig.minChars) || 2;
     const defaultDebounce = Number(globalConfig.debounceMs) || 160;
+    const namespace = window.CIEIstatLookup || (window.CIEIstatLookup = {});
 
     let dataset = null;
     let datasetPromise = null;
@@ -216,6 +217,13 @@
     };
 
     const initInput = (input) => {
+        if (!(input instanceof HTMLElement)) {
+            return;
+        }
+        if (input.dataset.istatBound === 'true') {
+            return;
+        }
+        input.dataset.istatBound = 'true';
         const dropdown = createDropdown(input);
         injectStyles();
 
@@ -388,7 +396,40 @@
         });
     };
 
+    const collectInputs = (source) => {
+        if (!source) {
+            return Array.from(document.querySelectorAll('[data-istat-comune="true"]'));
+        }
+        if (typeof source === 'string') {
+            return Array.from(document.querySelectorAll(source));
+        }
+        if (source instanceof Element || source instanceof Document || source instanceof DocumentFragment) {
+            if (typeof source.matches === 'function' && source.matches('[data-istat-comune="true"]')) {
+                return [source];
+            }
+            if (typeof source.querySelectorAll === 'function') {
+                return Array.from(source.querySelectorAll('[data-istat-comune="true"]'));
+            }
+            return [];
+        }
+        if (source instanceof NodeList || Array.isArray(source)) {
+            const aggregate = [];
+            source.forEach((node) => {
+                aggregate.push(...collectInputs(node));
+            });
+            return aggregate;
+        }
+        return [];
+    };
+
+    const initScope = (target) => {
+        collectInputs(target).forEach(initInput);
+    };
+
+    namespace.init = initScope;
+    namespace.refresh = initScope;
+
     document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('[data-istat-comune="true"]').forEach(initInput);
+        initScope();
     });
 })();

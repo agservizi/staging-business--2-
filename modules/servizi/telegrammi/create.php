@@ -45,6 +45,8 @@ $defaultDestinatari = [
     ],
 ];
 
+$defaultReference = 'Telegramma - ' . date('Ymd-His');
+
 $pricingSummary = null;
 $pricingError = null;
 
@@ -287,7 +289,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label" for="riferimento">Riferimento interno</label>
-                                                <input type="text" class="form-control" id="riferimento" name="riferimento" placeholder="es. Pratica 2025-01" maxlength="160">
+                                                <input type="text" class="form-control" id="riferimento" name="riferimento" placeholder="es. Pratica 2025-01" maxlength="160" value="<?php echo sanitize_output($defaultReference); ?>" data-default-reference="<?php echo sanitize_output($defaultReference); ?>" data-reference-prefix="Telegramma" data-autofill="true">
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label" for="prodotto">Prodotto</label>
@@ -335,7 +337,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label" for="mittente-indirizzo-citta">Città</label>
-                                                <input type="text" class="form-control" id="mittente-indirizzo-citta" name="mittente[indirizzo][citta]" value="<?php echo sanitize_output($defaultMittente['indirizzo']['citta']); ?>" maxlength="120" required>
+                                                <input type="text" class="form-control" id="mittente-indirizzo-citta" name="mittente[indirizzo][citta]" value="<?php echo sanitize_output($defaultMittente['indirizzo']['citta']); ?>" maxlength="120" required data-istat-comune="true" data-istat-province-target="#mittente-indirizzo-provincia" data-istat-cap-target="#mittente-indirizzo-cap">
                                             </div>
                                             <div class="col-md-2">
                                                 <label class="form-label" for="mittente-indirizzo-provincia">Provincia</label>
@@ -398,7 +400,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                         </div>
                                                         <div class="col-md-4">
                                                             <label class="form-label" for="destinatari-<?php echo (int) $index; ?>-indirizzo-citta" data-id-base="destinatari-indirizzo-citta">Città</label>
-                                                            <input type="text" class="form-control" id="destinatari-<?php echo (int) $index; ?>-indirizzo-citta" name="destinatari[<?php echo (int) $index; ?>][indirizzo][citta]" data-id-base="destinatari-indirizzo-citta" data-field-path="indirizzo.citta" value="<?php echo sanitize_output($destinatario['indirizzo']['citta']); ?>" maxlength="120" required>
+                                                            <input type="text" class="form-control" id="destinatari-<?php echo (int) $index; ?>-indirizzo-citta" name="destinatari[<?php echo (int) $index; ?>][indirizzo][citta]" data-id-base="destinatari-indirizzo-citta" data-field-path="indirizzo.citta" value="<?php echo sanitize_output($destinatario['indirizzo']['citta']); ?>" maxlength="120" required data-istat-comune="true" data-istat-province-target="#destinatari-<?php echo (int) $index; ?>-indirizzo-provincia" data-istat-cap-target="#destinatari-<?php echo (int) $index; ?>-indirizzo-cap" data-istat-province-target-base="destinatari-indirizzo-provincia" data-istat-cap-target-base="destinatari-indirizzo-cap">
                                                         </div>
                                                         <div class="col-md-2">
                                                             <label class="form-label" for="destinatari-<?php echo (int) $index; ?>-indirizzo-provincia" data-id-base="destinatari-indirizzo-provincia">Provincia</label>
@@ -443,7 +445,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                     </div>
                                                     <div class="col-md-4">
                                                         <label class="form-label" data-id-base="destinatari-indirizzo-citta">Città</label>
-                                                        <input type="text" class="form-control" data-field-path="indirizzo.citta" data-id-base="destinatari-indirizzo-citta" maxlength="120" required>
+                                                        <input type="text" class="form-control" data-field-path="indirizzo.citta" data-id-base="destinatari-indirizzo-citta" maxlength="120" required data-istat-comune="true" data-istat-province-target-base="destinatari-indirizzo-provincia" data-istat-cap-target-base="destinatari-indirizzo-cap">
                                                     </div>
                                                     <div class="col-md-2">
                                                         <label class="form-label" data-id-base="destinatari-indirizzo-provincia">Provincia</label>
@@ -747,11 +749,68 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         </div>
     </main>
 </div>
+<?php
+$istatDatasetUrl = asset('customer-portal/assets/data/comuni.json');
+?>
+<script>
+window.CIEIstatLookupConfig = {
+    datasetUrl: '<?php echo sanitize_output($istatDatasetUrl); ?>',
+    fallbackUrl: 'https://raw.githubusercontent.com/matteocontrini/comuni-json/master/comuni.json',
+    maxResults: 12,
+    minChars: 2
+};
+</script>
+<script src="<?php echo asset('assets/js/cie-istat-lookup.js'); ?>"></script>
 <script>
 (function () {
     const form = document.querySelector('form[action="store.php"]');
     if (!form) {
         return;
+    }
+
+    initRiferimentoAutofill();
+
+    function initRiferimentoAutofill() {
+        const referenceField = form.querySelector('#riferimento');
+        if (!referenceField) {
+            return;
+        }
+        const clientField = form.querySelector('#cliente-id');
+        const defaultReference = referenceField.getAttribute('data-default-reference') || '';
+        const prefix = referenceField.getAttribute('data-reference-prefix') || 'Telegramma';
+        const maxLength = referenceField.getAttribute('maxlength') ? Number(referenceField.getAttribute('maxlength')) : 160;
+
+        if (!referenceField.value && defaultReference) {
+            referenceField.value = defaultReference;
+        }
+
+        function updateAutofillFlag() {
+            if (referenceField.value.trim() === '') {
+                referenceField.dataset.autofill = 'true';
+            } else {
+                referenceField.dataset.autofill = 'false';
+            }
+        }
+
+        referenceField.addEventListener('input', updateAutofillFlag);
+        updateAutofillFlag();
+
+        if (!clientField) {
+            return;
+        }
+
+        clientField.addEventListener('change', function () {
+            if (referenceField.dataset.autofill !== 'true') {
+                return;
+            }
+            const selectedOption = clientField.options[clientField.selectedIndex];
+            const optionLabel = selectedOption && selectedOption.value !== '' ? selectedOption.text.trim() : '';
+            let generatedValue = defaultReference || prefix;
+            if (optionLabel) {
+                generatedValue = prefix + ' - ' + optionLabel;
+            }
+            referenceField.value = generatedValue.slice(0, maxLength);
+        });
     }
 
     (function initDestinatari() {
@@ -799,6 +858,23 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     }
                 }
             });
+
+            const istatInputs = entry.querySelectorAll('[data-istat-comune="true"]');
+            if (istatInputs.length) {
+                istatInputs.forEach(function (input) {
+                    const provinceBase = input.getAttribute('data-istat-province-target-base');
+                    if (provinceBase) {
+                        input.setAttribute('data-istat-province-target', '#' + provinceBase + '-' + index);
+                    }
+                    const capBase = input.getAttribute('data-istat-cap-target-base');
+                    if (capBase) {
+                        input.setAttribute('data-istat-cap-target', '#' + capBase + '-' + index);
+                    }
+                });
+                if (window.CIEIstatLookup && typeof window.CIEIstatLookup.init === 'function') {
+                    window.CIEIstatLookup.init(istatInputs);
+                }
+            }
 
             const removeButton = entry.querySelector('.remove-destinatario');
             if (removeButton) {
