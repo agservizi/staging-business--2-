@@ -75,10 +75,10 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
                             <i class="fa-solid fa-calendar-plus topbar-btn-icon-lead" aria-hidden="true"></i>
                             <span class="topbar-btn-label d-none d-xxl-inline">Nuovo appuntamento</span>
                         </a>
-                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/office-suite/documents/editor.php'); ?>" aria-label="Crea un nuovo documento" title="Crea un nuovo documento" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Crea un nuovo documento">
-                            <i class="fa-solid fa-file-pen topbar-btn-icon-lead" aria-hidden="true"></i>
-                            <span class="topbar-btn-label d-none d-xxl-inline">Nuovo documento</span>
-                        </a>
+                            <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/office-suite/documents/editor.php'); ?>" aria-label="Crea un nuovo documento" title="Crea un nuovo documento" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Crea un nuovo documento">
+                                <i class="fa-solid fa-file-pen topbar-btn-icon-lead" aria-hidden="true"></i>
+                                <span class="topbar-btn-label d-none d-xxl-inline">Nuovo documento</span>
+                            </a>
                     </div>
                     <div class="dropdown d-md-none">
                         <button class="btn topbar-btn topbar-btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Azioni rapide">
