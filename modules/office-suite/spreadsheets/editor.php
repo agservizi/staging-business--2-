@@ -304,7 +304,15 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         background: #fff;
     }
     .grid table {
+        width: 100%;
         min-width: 100%;
+        table-layout: fixed; /* mantiene le celle a dimensione fissa */
+    }
+    .grid td,
+    .grid th {
+        max-width: 220px;
+        word-break: break-word;
+        white-space: pre-wrap;
     }
     .grid td:focus {
         outline: 2px solid #4c6ef5;
