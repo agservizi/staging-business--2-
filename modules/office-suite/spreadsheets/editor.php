@@ -151,42 +151,72 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                     </div>
                     <hr class="my-3">
-                    <div class="excel-ribbon d-flex flex-wrap align-items-center gap-4">
-                        <div class="ribbon-group">
-                            <p class="small text-uppercase fw-semibold text-muted mb-1">Formato</p>
-                            <div class="btn-group btn-group-sm" role="group" aria-label="Formato celle">
-                                <button class="btn btn-outline-secondary" type="button" data-grid-action="bold" title="Grassetto"><i class="fa-solid fa-bold"></i></button>
-                                <button class="btn btn-outline-secondary" type="button" data-grid-action="italic" title="Corsivo"><i class="fa-solid fa-italic"></i></button>
-                                <button class="btn btn-outline-secondary" type="button" data-grid-action="underline" title="Sottolineato"><i class="fa-solid fa-underline"></i></button>
-                                <button class="btn btn-outline-secondary" type="button" data-grid-action="highlight" title="Evidenzia cella"><i class="fa-solid fa-highlighter"></i></button>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <div>
+                            <p class="small text-uppercase fw-semibold text-muted mb-1">Barra stile Office</p>
+                            <p class="text-muted mb-0">Comandi Home / Inserisci ottimizzati per i fogli elettronici.</p>
+                        </div>
+                        <span class="badge bg-primary text-uppercase">Spreadsheet suite</span>
+                    </div>
+                    <ul class="nav nav-pills ribbon-tabs mt-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" type="button" data-ribbon-tab="home" aria-selected="true">Home</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" type="button" data-ribbon-tab="insert" aria-selected="false">Inserisci</button>
+                        </li>
+                    </ul>
+                    <div class="excel-ribbon mt-3">
+                        <div class="ribbon-pane active" data-ribbon-pane="home">
+                            <div class="ribbon-group">
+                                <p class="small text-uppercase fw-semibold text-muted mb-1">Formato</p>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Formato celle">
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="bold" title="Grassetto"><i class="fa-solid fa-bold"></i></button>
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="italic" title="Corsivo"><i class="fa-solid fa-italic"></i></button>
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="underline" title="Sottolineato"><i class="fa-solid fa-underline"></i></button>
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="highlight" title="Evidenzia cella"><i class="fa-solid fa-highlighter"></i></button>
+                                </div>
+                            </div>
+                            <div class="ribbon-group">
+                                <p class="small text-uppercase fw-semibold text-muted mb-1">Numeri</p>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Formattazione numerica">
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="currency" title="Formato valuta"><i class="fa-solid fa-euro-sign"></i></button>
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="percent" title="Formato percentuale"><i class="fa-solid fa-percent"></i></button>
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="clear-format" title="Rimuovi formattazione"><i class="fa-solid fa-eraser"></i></button>
+                                </div>
+                            </div>
+                            <div class="ribbon-group">
+                                <p class="small text-uppercase fw-semibold text-muted mb-1">Allineamento</p>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Allineamento testo">
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="align-left" title="Allinea a sinistra"><i class="fa-solid fa-align-left"></i></button>
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="align-center" title="Allinea al centro"><i class="fa-solid fa-align-center"></i></button>
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="align-right" title="Allinea a destra"><i class="fa-solid fa-align-right"></i></button>
+                                </div>
+                            </div>
+                            <div class="ms-auto text-muted small d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-table-list text-primary"></i>
+                                <span>Comandi principali sempre visibili.</span>
                             </div>
                         </div>
-                        <div class="ribbon-group">
-                            <p class="small text-uppercase fw-semibold text-muted mb-1">Numeri</p>
-                            <div class="btn-group btn-group-sm" role="group" aria-label="Formattazione numerica">
-                                <button class="btn btn-outline-secondary" type="button" data-grid-action="currency" title="Formato valuta"><i class="fa-solid fa-euro-sign"></i></button>
-                                <button class="btn btn-outline-secondary" type="button" data-grid-action="percent" title="Formato percentuale"><i class="fa-solid fa-percent"></i></button>
-                                <button class="btn btn-outline-secondary" type="button" data-grid-action="clear-format" title="Rimuovi formattazione"><i class="fa-solid fa-eraser"></i></button>
+                        <div class="ribbon-pane" data-ribbon-pane="insert">
+                            <div class="ribbon-group">
+                                <p class="small text-uppercase fw-semibold text-muted mb-1">Struttura foglio</p>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Struttura foglio">
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="add-row" title="Aggiungi riga"><i class="fa-solid fa-plus"></i> Riga</button>
+                                    <button class="btn btn-outline-secondary" type="button" data-grid-action="add-column" title="Aggiungi colonna"><i class="fa-solid fa-plus"></i> Colonna</button>
+                                </div>
                             </div>
-                        </div>
-                        <div class="ribbon-group">
-                            <p class="small text-uppercase fw-semibold text-muted mb-1">Allineamento</p>
-                            <div class="btn-group btn-group-sm" role="group" aria-label="Allineamento testo">
-                                <button class="btn btn-outline-secondary" type="button" data-grid-action="align-left" title="Allinea a sinistra"><i class="fa-solid fa-align-left"></i></button>
-                                <button class="btn btn-outline-secondary" type="button" data-grid-action="align-center" title="Allinea al centro"><i class="fa-solid fa-align-center"></i></button>
-                                <button class="btn btn-outline-secondary" type="button" data-grid-action="align-right" title="Allinea a destra"><i class="fa-solid fa-align-right"></i></button>
+                            <div class="ribbon-group">
+                                <p class="small text-uppercase fw-semibold text-muted mb-1">Segnaposto</p>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Oggetti inserimento">
+                                    <button class="btn btn-outline-secondary" type="button" disabled title="Grafico in arrivo"><i class="fa-solid fa-chart-line"></i></button>
+                                    <button class="btn btn-outline-secondary" type="button" disabled title="Pivot in arrivo"><i class="fa-solid fa-layer-group"></i></button>
+                                </div>
                             </div>
-                        </div>
-                        <div class="ribbon-group">
-                            <p class="small text-uppercase fw-semibold text-muted mb-1">Inserisci</p>
-                            <div class="btn-group btn-group-sm" role="group" aria-label="Struttura foglio">
-                                <button class="btn btn-outline-secondary" type="button" data-grid-action="add-row" title="Aggiungi riga"><i class="fa-solid fa-plus"></i> R</button>
-                                <button class="btn btn-outline-secondary" type="button" data-grid-action="add-column" title="Aggiungi colonna"><i class="fa-solid fa-plus"></i> C</button>
+                            <div class="ms-auto text-muted small d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-square-plus text-success"></i>
+                                <span>Prepara il foglio con righe e colonne aggiuntive.</span>
                             </div>
-                        </div>
-                        <div class="ms-auto text-muted small d-flex align-items-center gap-2">
-                            <i class="fa-solid fa-table-list text-primary"></i>
-                            <span>Barra in stile Office pronta per il grid engine.</span>
                         </div>
                     </div>
                 </div>
@@ -234,11 +264,31 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     .spreadsheet .toolbar-group {
         min-width: 150px;
     }
+    .ribbon-tabs .nav-link {
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
     .excel-ribbon .ribbon-group {
         min-width: 180px;
     }
     .excel-ribbon .btn {
         min-width: 36px;
+    }
+    .excel-ribbon {
+        border: 1px solid rgba(15,23,42,0.08);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        background: #fdfdff;
+    }
+    .ribbon-pane {
+        display: none;
+        flex-wrap: wrap;
+        gap: 1.25rem;
+        align-items: center;
+    }
+    .ribbon-pane.active {
+        display: flex;
     }
     .sheet-layout {
         min-height: 520px;
@@ -278,6 +328,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         const gridField = document.getElementById('grid-state-field');
         const gridTable = document.getElementById('sheet-grid');
         const toolbarButtons = document.querySelectorAll('[data-grid-action]');
+        const ribbonTabs = document.querySelectorAll('[data-ribbon-tab]');
+        const ribbonPanes = document.querySelectorAll('[data-ribbon-pane]');
         if (!form || !gridField || !gridTable) {
             return;
         }
@@ -508,6 +560,23 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     default:
                         break;
                 }
+            });
+        });
+
+        const setActiveRibbonTab = (targetTab) => {
+            ribbonTabs.forEach((tab) => {
+                const isActive = tab.dataset.ribbonTab === targetTab;
+                tab.classList.toggle('active', isActive);
+                tab.setAttribute('aria-selected', String(isActive));
+            });
+            ribbonPanes.forEach((pane) => {
+                pane.classList.toggle('active', pane.dataset.ribbonPane === targetTab);
+            });
+        };
+
+        ribbonTabs.forEach((tab) => {
+            tab.addEventListener('click', () => {
+                setActiveRibbonTab(tab.dataset.ribbonTab);
             });
         });
 
