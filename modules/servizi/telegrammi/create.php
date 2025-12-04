@@ -151,6 +151,30 @@ if ($tokenConfigured) {
     }
 }
 
+$clientCount = count($clients);
+$environmentLabel = stripos($baseUri, 'sandbox') !== false ? 'Sandbox' : 'Produzione';
+if ($pricingSummary !== null) {
+    $pricingStatusLabel = 'Listino sincronizzato';
+    $pricingStatusDetail = 'Tariffe aggiornate dall\'API.';
+    $pricingStatusTone = 'success';
+} elseif ($pricingError !== null) {
+    $pricingStatusLabel = 'Listino non disponibile';
+    $pricingStatusDetail = $pricingError;
+    $pricingStatusTone = 'warning';
+} else {
+    $pricingStatusLabel = 'Listino in attesa';
+    $pricingStatusDetail = 'Recupera il catalogo per confermare i costi.';
+    $pricingStatusTone = 'secondary';
+}
+
+$telegrammiStepper = [
+    ['title' => 'Intestazione', 'caption' => 'Cliente e prodotto'],
+    ['title' => 'Mittente', 'caption' => 'Origine certificata'],
+    ['title' => 'Destinatari', 'caption' => 'Consegna'],
+    ['title' => 'Contenuto', 'caption' => 'Testo e opzioni'],
+    ['title' => 'Invio', 'caption' => 'Note e inoltro'],
+];
+
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
@@ -168,6 +192,38 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </a>
             </div>
         </div>
+        <div class="card telegrammi-hero mb-4 border-0 shadow-sm">
+            <div class="card-body d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4">
+                <div class="telegrammi-hero-copy">
+                    <p class="text-uppercase small fw-semibold text-muted mb-2">Ufficio Postale · API certified</p>
+                    <h2 class="h4 mb-2">Compila e invia un telegramma professionale</h2>
+                    <p class="mb-0 text-muted">I dati vengono confezionati secondo le specifiche di <?php echo sanitize_output($baseUri); ?> e salvati nella tua pratica.</p>
+                </div>
+                <div class="telegrammi-hero-stats d-flex flex-wrap gap-3">
+                    <div class="telegrammi-hero-stat">
+                        <span class="label">Token</span>
+                        <span class="value text-<?php echo $tokenConfigured ? 'success' : 'danger'; ?>">
+                            <?php echo $tokenConfigured ? 'Configurato' : 'Assente'; ?>
+                        </span>
+                        <small class="text-muted">Ambiente <?php echo sanitize_output($environmentLabel); ?></small>
+                    </div>
+                    <div class="telegrammi-hero-stat">
+                        <span class="label">Catalogo</span>
+                        <span class="value text-<?php echo $pricingStatusTone; ?>">
+                            <?php echo sanitize_output($pricingStatusLabel); ?>
+                        </span>
+                        <small class="text-muted"><?php echo sanitize_output($pricingStatusDetail); ?></small>
+                    </div>
+                    <div class="telegrammi-hero-stat">
+                        <span class="label">Clienti associabili</span>
+                        <span class="value">
+                            <?php echo (int) $clientCount; ?>
+                        </span>
+                        <small class="text-muted">Rubrica CRM</small>
+                    </div>
+                </div>
+            </div>
+        </div>
         <?php if (!$tokenConfigured): ?>
         <div class="alert alert-warning" role="alert">
             Configura <code>UFFICIO_POSTALE_TOKEN</code> (o il token sandbox) nel file <code>.env</code> per poter inviare telegrammi. Endpoint corrente: <span class="fw-semibold"><?php echo sanitize_output($baseUri); ?></span>
@@ -176,47 +232,82 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
         <div class="row g-4">
             <div class="col-xxl-8">
-                <div class="card ag-card mb-4">
-                    <div class="card-header bg-transparent border-0">
-                        <h2 class="h5 mb-0">Dati invio</h2>
-                    </div>
-                    <div class="card-body">
-                        <form action="store.php" method="post" class="row g-3" autocomplete="off">
+                <div class="card ag-card mb-4 telegrammi-composer border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+                            <div>
+                                <p class="text-uppercase small fw-semibold text-muted mb-1">Canvas di invio</p>
+                                <h2 class="h4 mb-0">Dati invio</h2>
+                            </div>
+                            <span class="badge bg-light text-dark border">Payload JSON ready</span>
+                        </div>
+                        <?php if (!empty($telegrammiStepper)): ?>
+                        <div class="telegrammi-progress mb-4">
+                            <?php foreach ($telegrammiStepper as $index => $stepMeta): ?>
+                            <div class="telegrammi-progress-step">
+                                <span class="telegrammi-progress-index"><?php echo (int) ($index + 1); ?></span>
+                                <div>
+                                    <div class="telegrammi-progress-title"><?php echo sanitize_output($stepMeta['title']); ?></div>
+                                    <div class="telegrammi-progress-caption"><?php echo sanitize_output($stepMeta['caption']); ?></div>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+                        <form action="store.php" method="post" class="telegrammi-form" autocomplete="off">
                             <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-                            <fieldset <?php echo $tokenConfigured ? '' : 'disabled'; ?>>
-                                <div class="col-md-4">
-                                    <label class="form-label" for="cliente-id">Cliente (facoltativo)</label>
-                                    <select class="form-select" id="cliente-id" name="cliente_id">
-                                        <option value="">Nessun cliente</option>
-                                        <?php foreach ($clients as $client): ?>
-                                            <?php
-                                                $labelParts = array_filter([
-                                                    $client['ragione_sociale'] ?? null,
-                                                    trim((string) (($client['nome'] ?? '') . ' ' . ($client['cognome'] ?? ''))),
-                                                    $client['email'] ?? null,
-                                                ]);
-                                                $label = $labelParts ? implode(' • ', $labelParts) : ('Cliente #' . $client['id']);
-                                            ?>
-                                            <option value="<?php echo (int) $client['id']; ?>"><?php echo sanitize_output($label); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label" for="riferimento">Riferimento interno</label>
-                                    <input type="text" class="form-control" id="riferimento" name="riferimento" placeholder="es. Pratica 2025-01" maxlength="160">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label" for="prodotto">Prodotto</label>
-                                    <input type="text" class="form-control" id="prodotto" name="prodotto" value="telegramma" maxlength="80" required>
-                                    <div class="form-text">Valore restituito dal catalogo Ufficio Postale (es. <code>telegramma</code>, <code>telegramma_estero</code>).</div>
-                                </div>
-
-                                <div class="col-12">
-                                    <div class="bg-light rounded-3 p-3">
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <h2 class="h6 mb-0">Mittente</h2>
-                                            <span class="badge bg-secondary">Obbligatorio</span>
+                            <fieldset class="d-flex flex-column gap-5"<?php echo $tokenConfigured ? '' : ' disabled'; ?>>
+                                <section class="telegrammi-step" id="step-anagrafica">
+                                    <div class="telegrammi-step-header">
+                                        <div>
+                                            <p class="telegrammi-step-eyebrow text-muted mb-1">Step 1 · Anagrafica</p>
+                                            <h3 class="telegrammi-step-title h5 mb-1">Intestazione pratica</h3>
+                                            <p class="telegrammi-step-text text-muted mb-0">Associa un cliente e indica il prodotto previsto dal catalogo Ufficio Postale.</p>
                                         </div>
+                                        <span class="telegrammi-chip"><?php echo (int) $clientCount; ?> clienti</span>
+                                    </div>
+                                    <div class="telegrammi-pane">
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label" for="cliente-id">Cliente (facoltativo)</label>
+                                                <select class="form-select" id="cliente-id" name="cliente_id">
+                                                    <option value="">Nessun cliente</option>
+                                                    <?php foreach ($clients as $client): ?>
+                                                        <?php
+                                                            $labelParts = array_filter([
+                                                                $client['ragione_sociale'] ?? null,
+                                                                trim((string) (($client['nome'] ?? '') . ' ' . ($client['cognome'] ?? ''))),
+                                                                $client['email'] ?? null,
+                                                            ]);
+                                                            $label = $labelParts ? implode(' • ', $labelParts) : ('Cliente #' . $client['id']);
+                                                        ?>
+                                                        <option value="<?php echo (int) $client['id']; ?>"><?php echo sanitize_output($label); ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label" for="riferimento">Riferimento interno</label>
+                                                <input type="text" class="form-control" id="riferimento" name="riferimento" placeholder="es. Pratica 2025-01" maxlength="160">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label" for="prodotto">Prodotto</label>
+                                                <input type="text" class="form-control" id="prodotto" name="prodotto" value="telegramma" maxlength="80" required>
+                                                <div class="form-text">Valore restituito dal catalogo Ufficio Postale (es. <code>telegramma</code>, <code>telegramma_estero</code>).</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section class="telegrammi-step" id="step-mittente">
+                                    <div class="telegrammi-step-header">
+                                        <div>
+                                            <p class="telegrammi-step-eyebrow text-muted mb-1">Step 2 · Mittente</p>
+                                            <h3 class="telegrammi-step-title h5 mb-1">Origine del telegramma</h3>
+                                            <p class="telegrammi-step-text text-muted mb-0">Verifica i dati obbligatori richiesti dall'API prima di procedere.</p>
+                                        </div>
+                                        <span class="telegrammi-chip telegrammi-chip-required">Obbligatorio</span>
+                                    </div>
+                                    <div class="telegrammi-pane">
                                         <div class="row g-3">
                                             <div class="col-md-6">
                                                 <label class="form-label" for="mittente-nome">Nome / Ragione sociale</label>
@@ -253,19 +344,25 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </section>
 
-                                <div class="col-12">
-                                    <div class="bg-light rounded-3 p-3">
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <h2 class="h6 mb-0">Destinatari</h2>
+                                <section class="telegrammi-step" id="step-destinatari">
+                                    <div class="telegrammi-step-header">
+                                        <div>
+                                            <p class="telegrammi-step-eyebrow text-muted mb-1">Step 3 · Destinatari</p>
+                                            <h3 class="telegrammi-step-title h5 mb-1">Recapito e consegna</h3>
+                                            <p class="telegrammi-step-text text-muted mb-0">Ogni destinatario riceverà lo stesso testo; duplica solo i recapiti.</p>
+                                        </div>
+                                        <div class="telegrammi-step-actions d-flex flex-wrap gap-2">
                                             <button class="btn btn-outline-primary btn-sm" type="button" id="add-destinatario">
                                                 <i class="fa-solid fa-user-plus me-1"></i>Aggiungi destinatario
                                             </button>
                                         </div>
-                                        <div id="destinatari-container">
+                                    </div>
+                                    <div class="telegrammi-pane">
+                                        <div id="destinatari-container" class="telegrammi-destinatari-stack">
                                             <?php foreach ($defaultDestinatari as $index => $destinatario): ?>
-                                                <div class="destinatario-entry border rounded-3 p-3 mb-3" data-index="<?php echo (int) $index; ?>">
+                                                <div class="destinatario-entry telegrammi-destinatario border rounded-3 p-3 mb-3" data-index="<?php echo (int) $index; ?>">
                                                     <div class="d-flex justify-content-between align-items-center mb-3">
                                                         <h3 class="h6 mb-0">Destinatario <span class="destinatario-label"><?php echo (int) ($index + 1); ?></span></h3>
                                                         <?php if ($index > 0): ?>
@@ -312,7 +409,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <?php endforeach; ?>
                                         </div>
                                         <template id="destinatario-template">
-                                            <div class="destinatario-entry border rounded-3 p-3 mb-3" data-index="__INDEX__">
+                                            <div class="destinatario-entry telegrammi-destinatario border rounded-3 p-3 mb-3" data-index="__INDEX__">
                                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                                     <h3 class="h6 mb-0">Destinatario <span class="destinatario-label">__LABEL__</span></h3>
                                                     <button type="button" class="btn btn-outline-danger btn-sm remove-destinatario">
@@ -393,162 +490,204 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                 </div>
                                             </div>
                                         </template>
-                                        <p class="small text-muted mb-0">Aggiungi un destinatario per ogni telegramma che vuoi inoltrare in questa pratica. Tutti riceveranno lo stesso testo.</p>
+                                        <p class="small text-muted mb-0">Aggiungi un destinatario per ogni telegramma che vuoi inoltrare. Tutti riceveranno lo stesso testo.</p>
                                     </div>
-                                </div>
+                                </section>
 
-                                <div class="col-12">
-                                    <label class="form-label" for="documento">Testo del telegramma</label>
-                                    <textarea class="form-control" id="documento" name="documento" rows="6" placeholder="Gentile destinatario, ..." required></textarea>
-                                    <div class="form-text">Ogni riga vuota separa i paragrafi nel telegramma.</div>
-                                </div>
-
-                                <div class="col-12">
-                                    <div class="accordion" id="telegrammi-advanced">
-                                        <div class="accordion-item">
-                                            <h2 class="accordion-header" id="telegrammi-advanced-heading">
-                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#telegrammi-advanced-body" aria-expanded="false" aria-controls="telegrammi-advanced-body">
-                                                    Opzioni avanzate
-                                                </button>
-                                            </h2>
-                                            <div id="telegrammi-advanced-body" class="accordion-collapse collapse" aria-labelledby="telegrammi-advanced-heading" data-bs-parent="#telegrammi-advanced">
-                                                <div class="accordion-body">
-                                                    <div class="mb-4" data-advanced-section="opzioni" data-mode="form">
-                                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                                            <div>
-                                                                <h3 class="h6 mb-1">Opzioni aggiuntive</h3>
-                                                                <p class="small text-muted mb-0">Configura parametri accessori come ritiro, consegna programmata o servizi supplementari.</p>
+                                <section class="telegrammi-step" id="step-contenuto">
+                                    <div class="telegrammi-step-header">
+                                        <div>
+                                            <p class="telegrammi-step-eyebrow text-muted mb-1">Step 4 · Contenuto</p>
+                                            <h3 class="telegrammi-step-title h5 mb-1">Testo e preferenze</h3>
+                                            <p class="telegrammi-step-text text-muted mb-0">Scrivi il testo del telegramma e gestisci le preferenze richieste dall'API.</p>
+                                        </div>
+                                        <span class="telegrammi-chip">Payload</span>
+                                    </div>
+                                    <div class="telegrammi-pane">
+                                        <label class="form-label" for="documento">Testo del telegramma</label>
+                                        <textarea class="form-control" id="documento" name="documento" rows="6" placeholder="Gentile destinatario, ..." required></textarea>
+                                        <div class="form-text">Ogni riga vuota separa i paragrafi nel telegramma.</div>
+                                    </div>
+                                    <div class="telegrammi-pane telegrammi-pane-neutral">
+                                        <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-3">
+                                            <div>
+                                                <p class="telegrammi-step-eyebrow text-muted mb-1">Strumenti avanzati</p>
+                                                <h4 class="h6 mb-1">Opzioni aggiuntive, callback e payload custom</h4>
+                                                <p class="small text-muted mb-0">Passa dall'editor visuale al JSON per rispettare le specifiche ufficiali dell'API.</p>
+                                            </div>
+                                            <span class="telegrammi-chip telegrammi-chip-muted">JSON ready</span>
+                                        </div>
+                                        <div class="accordion telegrammi-advanced" id="telegrammi-advanced">
+                                            <div class="accordion-item">
+                                                <h2 class="accordion-header" id="telegrammi-advanced-heading">
+                                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#telegrammi-advanced-body" aria-expanded="false" aria-controls="telegrammi-advanced-body">
+                                                        Opzioni avanzate
+                                                    </button>
+                                                </h2>
+                                                <div id="telegrammi-advanced-body" class="accordion-collapse collapse" aria-labelledby="telegrammi-advanced-heading" data-bs-parent="#telegrammi-advanced">
+                                                    <div class="accordion-body">
+                                                        <div class="mb-4" data-advanced-section="opzioni" data-mode="form">
+                                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                <div>
+                                                                    <h3 class="h6 mb-1">Opzioni aggiuntive</h3>
+                                                                    <p class="small text-muted mb-0">Configura parametri accessori come ritiro, consegna programmata o servizi supplementari.</p>
+                                                                </div>
+                                                                <div class="btn-group btn-group-sm" role="group" aria-label="Gestione opzioni">
+                                                                    <button type="button" class="btn btn-outline-primary" data-action="add-row">
+                                                                        <i class="fa-solid fa-plus me-1"></i>Voce
+                                                                    </button>
+                                                                    <button type="button" class="btn btn-outline-secondary" data-action="toggle-mode">
+                                                                        <i class="fa-solid fa-code me-1"></i>Editor JSON
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                            <div class="btn-group btn-group-sm" role="group" aria-label="Gestione opzioni">
-                                                                <button type="button" class="btn btn-outline-primary" data-action="add-row">
-                                                                    <i class="fa-solid fa-plus me-1"></i>Voce
-                                                                </button>
-                                                                <button type="button" class="btn btn-outline-secondary" data-action="toggle-mode">
+                                                            <div class="border rounded-3 p-3 mb-3" data-role="form">
+                                                                <div class="mb-3">
+                                                                    <div class="small fw-semibold text-muted mb-2">Suggerimenti rapidi</div>
+                                                                    <div class="d-flex flex-wrap gap-2" data-role="presets">
+                                                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="ritiro" data-template-type="boolean" data-template-value="true">Ritiro a domicilio</button>
+                                                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="ritiro_note" data-template-type="string" data-template-value="Indicazioni citofono">Note per l'addetto</button>
+                                                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="consegna_fascia" data-template-type="string" data-template-value="09:00-12:00">Fascia consegna 09-12</button>
+                                                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="notifica_email" data-template-type="boolean" data-template-value="true">Notifica email</button>
+                                                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="notifica_sms" data-template-type="boolean" data-template-value="true">Notifica SMS</button>
+                                                                    </div>
+                                                                    <p class="small text-muted mb-0">Personalizza i valori dopo averli aggiunti oppure usa "Voce" per inserire campi liberi.</p>
+                                                                </div>
+                                                                <div class="kv-rows" data-role="rows"></div>
+                                                                <p class="small text-muted" data-role="empty-state">Nessuna opzione configurata. Aggiungi un campo per estendere il comportamento del servizio.</p>
+                                                                <p class="small text-muted mb-0">Lascia vuoto se non servono opzioni accessorie.</p>
+                                                            </div>
+                                                            <div class="d-none" data-role="json">
+                                                                <textarea class="form-control font-monospace" id="opzioni-json-editor" data-role="json-editor" rows="6" placeholder="{&#10;    &quot;ritiro&quot;: true&#10;}"></textarea>
+                                                                <div class="form-text">Inserisci un oggetto JSON valido. Il contenuto sovrascrive l'editor strutturato.</div>
+                                                            </div>
+                                                            <input type="hidden" name="opzioni_mode" value="form" data-role="mode-input">
+                                                            <input type="hidden" name="opzioni_json" id="opzioni-json" data-role="hidden-input">
+                                                        </div>
+
+                                                        <div class="mb-4" data-advanced-section="callback" data-mode="form">
+                                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                <div>
+                                                                    <h3 class="h6 mb-1">Callback</h3>
+                                                                    <p class="small text-muted mb-0">Ricevi notifiche automatiche quando cambia lo stato del telegramma.</p>
+                                                                </div>
+                                                                <button type="button" class="btn btn-outline-secondary btn-sm" data-action="toggle-mode">
                                                                     <i class="fa-solid fa-code me-1"></i>Editor JSON
                                                                 </button>
                                                             </div>
-                                                        </div>
-                                                        <div class="border rounded-3 p-3 mb-3" data-role="form">
-                                                            <div class="mb-3">
-                                                                <div class="small fw-semibold text-muted mb-2">Suggerimenti rapidi</div>
-                                                                <div class="d-flex flex-wrap gap-2" data-role="presets">
-                                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="ritiro" data-template-type="boolean" data-template-value="true">Ritiro a domicilio</button>
-                                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="ritiro_note" data-template-type="string" data-template-value="Indicazioni citofono">Note per l'addetto</button>
-                                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="consegna_fascia" data-template-type="string" data-template-value="09:00-12:00">Fascia consegna 09-12</button>
-                                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="notifica_email" data-template-type="boolean" data-template-value="true">Notifica email</button>
-                                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="notifica_sms" data-template-type="boolean" data-template-value="true">Notifica SMS</button>
+                                                            <div class="border rounded-3 p-3 mb-3" data-role="form">
+                                                                <div class="row g-3">
+                                                                    <div class="col-md-8">
+                                                                        <label class="form-label" for="callback-url">URL di callback</label>
+                                                                        <input type="url" class="form-control" id="callback-url" data-role="callback-url" placeholder="https://example.com/hooks/telegrammi">
+                                                                    </div>
+                                                                    <div class="col-md-4">
+                                                                        <label class="form-label" for="callback-method">Metodo HTTP</label>
+                                                                        <select class="form-select" id="callback-method" data-role="callback-method">
+                                                                            <option value="">Predefinito (POST)</option>
+                                                                            <option value="POST">POST</option>
+                                                                            <option value="PUT">PUT</option>
+                                                                            <option value="PATCH">PATCH</option>
+                                                                            <option value="GET">GET</option>
+                                                                        </select>
+                                                                    </div>
+                                                                    <div class="col-12">
+                                                                        <label class="form-label d-flex justify-content-between align-items-center" for="callback-headers">
+                                                                            Header HTTP opzionali
+                                                                            <button type="button" class="btn btn-outline-primary btn-sm" data-action="add-header">
+                                                                                <i class="fa-solid fa-plus me-1"></i>Header
+                                                                            </button>
+                                                                        </label>
+                                                                        <div class="kv-headers" data-role="headers-rows"></div>
+                                                                        <p class="small text-muted mb-0">Aggiungi chiavi/valori per firmare o autenticare le notifiche.</p>
+                                                                    </div>
                                                                 </div>
-                                                                <p class="small text-muted mb-0">Personalizza i valori dopo averli aggiunti oppure usa "Voce" per inserire campi liberi.</p>
                                                             </div>
-                                                            <div class="kv-rows" data-role="rows"></div>
-                                                            <p class="small text-muted" data-role="empty-state">Nessuna opzione configurata. Aggiungi un campo per estendere il comportamento del servizio.</p>
-                                                            <p class="small text-muted mb-0">Lascia vuoto se non servono opzioni accessorie.</p>
+                                                            <div class="d-none" data-role="json">
+                                                                <textarea class="form-control font-monospace" id="callback-json-editor" data-role="json-editor" rows="6" placeholder="{&#10;    &quot;url&quot;: &quot;https://example.com/hooks/telegrammi&quot;,&#10;    &quot;method&quot;: &quot;POST&quot;&#10;}"></textarea>
+                                                                <div class="form-text">Inserisci un oggetto JSON valido conforme all'API.</div>
+                                                            </div>
+                                                            <input type="hidden" name="callback_mode" value="form" data-role="mode-input">
+                                                            <input type="hidden" name="callback_json" id="callback-json" data-role="hidden-input">
                                                         </div>
-                                                        <div class="d-none" data-role="json">
-                                                            <textarea class="form-control font-monospace" id="opzioni-json-editor" data-role="json-editor" rows="6" placeholder="{&#10;    &quot;ritiro&quot;: true&#10;}"></textarea>
-                                                            <div class="form-text">Inserisci un oggetto JSON valido. Il contenuto sovrascrive l'editor strutturato.</div>
-                                                        </div>
-                                                        <input type="hidden" name="opzioni_mode" value="form" data-role="mode-input">
-                                                        <input type="hidden" name="opzioni_json" id="opzioni-json" data-role="hidden-input">
-                                                    </div>
 
-                                                    <div class="mb-4" data-advanced-section="callback" data-mode="form">
-                                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                                            <div>
-                                                                <h3 class="h6 mb-1">Callback</h3>
-                                                                <p class="small text-muted mb-0">Ricevi notifiche automatiche quando cambia lo stato del telegramma.</p>
-                                                            </div>
-                                                            <button type="button" class="btn btn-outline-secondary btn-sm" data-action="toggle-mode">
-                                                                <i class="fa-solid fa-code me-1"></i>Editor JSON
-                                                            </button>
-                                                        </div>
-                                                        <div class="border rounded-3 p-3 mb-3" data-role="form">
-                                                            <div class="row g-3">
-                                                                <div class="col-md-8">
-                                                                    <label class="form-label" for="callback-url">URL di callback</label>
-                                                                    <input type="url" class="form-control" id="callback-url" data-role="callback-url" placeholder="https://example.com/hooks/telegrammi">
+                                                        <div class="mb-0" data-advanced-section="extra" data-mode="form">
+                                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                <div>
+                                                                    <h3 class="h6 mb-1">Payload aggiuntivo</h3>
+                                                                    <p class="small text-muted mb-0">Includi eventuali campi personalizzati che non hanno un campo dedicato.</p>
                                                                 </div>
-                                                                <div class="col-md-4">
-                                                                    <label class="form-label" for="callback-method">Metodo HTTP</label>
-                                                                    <select class="form-select" id="callback-method" data-role="callback-method">
-                                                                        <option value="">Predefinito (POST)</option>
-                                                                        <option value="POST">POST</option>
-                                                                        <option value="PUT">PUT</option>
-                                                                        <option value="PATCH">PATCH</option>
-                                                                        <option value="GET">GET</option>
-                                                                    </select>
-                                                                </div>
-                                                                <div class="col-12">
-                                                                    <label class="form-label d-flex justify-content-between align-items-center" for="callback-headers">
-                                                                        Header HTTP opzionali
-                                                                        <button type="button" class="btn btn-outline-primary btn-sm" data-action="add-header">
-                                                                            <i class="fa-solid fa-plus me-1"></i>Header
-                                                                        </button>
-                                                                    </label>
-                                                                    <div class="kv-headers" data-role="headers-rows"></div>
-                                                                    <p class="small text-muted mb-0">Aggiungi chiavi/valori per firmare o autenticare le notifiche.</p>
+                                                                <div class="btn-group btn-group-sm" role="group" aria-label="Gestione payload aggiuntivo">
+                                                                    <button type="button" class="btn btn-outline-primary" data-action="add-row">
+                                                                        <i class="fa-solid fa-plus me-1"></i>Campo
+                                                                    </button>
+                                                                    <button type="button" class="btn btn-outline-secondary" data-action="toggle-mode">
+                                                                        <i class="fa-solid fa-code me-1"></i>Editor JSON
+                                                                    </button>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                        <div class="d-none" data-role="json">
-                                                            <textarea class="form-control font-monospace" id="callback-json-editor" data-role="json-editor" rows="6" placeholder="{&#10;    &quot;url&quot;: &quot;https://example.com/hooks/telegrammi&quot;,&#10;    &quot;method&quot;: &quot;POST&quot;&#10;}"></textarea>
-                                                            <div class="form-text">Inserisci un oggetto JSON valido conforme all'API.</div>
-                                                        </div>
-                                                        <input type="hidden" name="callback_mode" value="form" data-role="mode-input">
-                                                        <input type="hidden" name="callback_json" id="callback-json" data-role="hidden-input">
-                                                    </div>
-
-                                                    <div class="mb-0" data-advanced-section="extra" data-mode="form">
-                                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                                            <div>
-                                                                <h3 class="h6 mb-1">Payload aggiuntivo</h3>
-                                                                <p class="small text-muted mb-0">Includi eventuali campi personalizzati che non hanno un campo dedicato.</p>
-                                                            </div>
-                                                            <div class="btn-group btn-group-sm" role="group" aria-label="Gestione payload aggiuntivo">
-                                                                <button type="button" class="btn btn-outline-primary" data-action="add-row">
-                                                                    <i class="fa-solid fa-plus me-1"></i>Campo
-                                                                </button>
-                                                                <button type="button" class="btn btn-outline-secondary" data-action="toggle-mode">
-                                                                    <i class="fa-solid fa-code me-1"></i>Editor JSON
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <div class="border rounded-3 p-3 mb-3" data-role="form">
-                                                            <div class="mb-3">
-                                                                <div class="small fw-semibold text-muted mb-2">Suggerimenti rapidi</div>
-                                                                <div class="d-flex flex-wrap gap-2" data-role="presets">
-                                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="riferimento_esterno" data-template-type="string" data-template-value="CRM-12345">Riferimento esterno</button>
-                                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="metadata" data-template-type="json" data-template-value="{&quot;origine&quot;:&quot;crm&quot;}">Metadata JSON</button>
-                                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="priorita" data-template-type="number" data-template-value="1">Priorità</button>
+                                                            <div class="border rounded-3 p-3 mb-3" data-role="form">
+                                                                <div class="mb-3">
+                                                                    <div class="small fw-semibold text-muted mb-2">Suggerimenti rapidi</div>
+                                                                    <div class="d-flex flex-wrap gap-2" data-role="presets">
+                                                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="riferimento_esterno" data-template-type="string" data-template-value="CRM-12345">Riferimento esterno</button>
+                                                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="metadata" data-template-type="json" data-template-value="{&quot;origine&quot;:&quot;crm&quot;}">Metadata JSON</button>
+                                                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-template-key="priorita" data-template-type="number" data-template-value="1">Priorità</button>
+                                                                    </div>
+                                                                    <p class="small text-muted mb-0">Usa i template per partire da esempi comuni oppure aggiungi campi manualmente.</p>
                                                                 </div>
-                                                                <p class="small text-muted mb-0">Usa i template per partire da esempi comuni oppure aggiungi campi manualmente.</p>
+                                                                <div class="kv-rows" data-role="rows"></div>
+                                                                <p class="small text-muted" data-role="empty-state">Nessun payload personalizzato impostato. Aggiungi solo ciò che serve davvero.</p>
+                                                                <p class="small text-muted mb-0">Verrà unito al payload finale. Chiavi già definite verranno sovrascritte.</p>
                                                             </div>
-                                                            <div class="kv-rows" data-role="rows"></div>
-                                                            <p class="small text-muted" data-role="empty-state">Nessun payload personalizzato impostato. Aggiungi solo ciò che serve davvero.</p>
-                                                            <p class="small text-muted mb-0">Verrà unito al payload finale. Chiavi già definite verranno sovrascritte.</p>
+                                                            <div class="d-none" data-role="json">
+                                                                <textarea class="form-control font-monospace" id="extra-json-editor" data-role="json-editor" rows="6" placeholder="{&#10;    &quot;etag&quot;: &quot;custom&quot;&#10;}"></textarea>
+                                                                <div class="form-text">Inserisci un oggetto JSON valido per popolare il payload personalizzato.</div>
+                                                            </div>
+                                                            <input type="hidden" name="extra_mode" value="form" data-role="mode-input">
+                                                            <input type="hidden" name="extra_json" id="extra-json" data-role="hidden-input">
                                                         </div>
-                                                        <div class="d-none" data-role="json">
-                                                            <textarea class="form-control font-monospace" id="extra-json-editor" data-role="json-editor" rows="6" placeholder="{&#10;    &quot;etag&quot;: &quot;custom&quot;&#10;}"></textarea>
-                                                            <div class="form-text">Inserisci un oggetto JSON valido per popolare il payload personalizzato.</div>
-                                                        </div>
-                                                        <input type="hidden" name="extra_mode" value="form" data-role="mode-input">
-                                                        <input type="hidden" name="extra_json" id="extra-json" data-role="hidden-input">
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </section>
 
-                                <div class="col-12">
-                                    <label class="form-label" for="note">Note interne</label>
-                                    <textarea class="form-control" id="note" name="note" rows="3" maxlength="2000"></textarea>
-                                </div>
-                                <div class="col-12">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fa-solid fa-paper-plane me-2"></i>Invia telegramma
-                                    </button>
-                                </div>
+                                <section class="telegrammi-step" id="step-invio">
+                                    <div class="telegrammi-step-header">
+                                        <div>
+                                            <p class="telegrammi-step-eyebrow text-muted mb-1">Step 5 · Invio</p>
+                                            <h3 class="telegrammi-step-title h5 mb-1">Note e validazione finale</h3>
+                                            <p class="telegrammi-step-text text-muted mb-0">Aggiungi note interne, verifica la checklist e inoltra il payload all'API.</p>
+                                        </div>
+                                        <span class="telegrammi-chip">Review</span>
+                                    </div>
+                                    <div class="telegrammi-pane">
+                                        <div class="row g-4 align-items-start">
+                                            <div class="col-lg-7">
+                                                <label class="form-label" for="note">Note interne</label>
+                                                <textarea class="form-control" id="note" name="note" rows="3" maxlength="2000"></textarea>
+                                            </div>
+                                            <div class="col-lg-5">
+                                                <div class="telegrammi-checklist border rounded-3 p-3 h-100">
+                                                    <p class="small fw-semibold text-muted text-uppercase mb-2">Checklist API</p>
+                                                    <ul class="list-unstyled mb-0 telegrammi-checklist-list">
+                                                        <li><i class="fa-solid fa-circle-check text-success me-2"></i>Prodotto coerente con il catalogo Ufficio Postale.</li>
+                                                        <li><i class="fa-solid fa-circle-check text-success me-2"></i>Destinatari completi di indirizzo, CAP e provincia.</li>
+                                                        <li><i class="fa-solid fa-circle-check text-success me-2"></i>Opzioni, callback e payload extra validati in JSON.</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                                <span class="text-muted small">Il payload viene validato prima di raggiungere <?php echo sanitize_output($baseUri); ?>.</span>
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fa-solid fa-paper-plane me-2"></i>Invia telegramma
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
                             </fieldset>
                         </form>
                     </div>
