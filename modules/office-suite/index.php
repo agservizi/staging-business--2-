@@ -27,7 +27,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <a class="btn btn-light" href="<?php echo asset('modules/office-suite/documents/editor.php'); ?>">
                         <i class="fa-solid fa-file-pen me-2"></i>Nuovo documento
                     </a>
-                    <a class="btn btn-outline-light" href="<?php echo asset('modules/office-suite/spreadsheets/editor.php'); ?>">
+                    <a class="btn btn-light" href="<?php echo asset('modules/office-suite/spreadsheets/editor.php'); ?>">
                         <i class="fa-solid fa-table-columns me-2"></i>Nuovo foglio
                     </a>
                 </div>
