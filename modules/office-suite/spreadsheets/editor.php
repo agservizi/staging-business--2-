@@ -150,6 +150,45 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <input id="sheet-tags" class="form-control form-control-sm" type="text" name="tags" value="<?php echo sanitize_output($formData['tags']); ?>" placeholder="kpi, budget">
                         </div>
                     </div>
+                    <hr class="my-3">
+                    <div class="excel-ribbon d-flex flex-wrap align-items-center gap-4">
+                        <div class="ribbon-group">
+                            <p class="small text-uppercase fw-semibold text-muted mb-1">Formato</p>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Formato celle">
+                                <button class="btn btn-outline-secondary" type="button" data-grid-action="bold" title="Grassetto"><i class="fa-solid fa-bold"></i></button>
+                                <button class="btn btn-outline-secondary" type="button" data-grid-action="italic" title="Corsivo"><i class="fa-solid fa-italic"></i></button>
+                                <button class="btn btn-outline-secondary" type="button" data-grid-action="underline" title="Sottolineato"><i class="fa-solid fa-underline"></i></button>
+                                <button class="btn btn-outline-secondary" type="button" data-grid-action="highlight" title="Evidenzia cella"><i class="fa-solid fa-highlighter"></i></button>
+                            </div>
+                        </div>
+                        <div class="ribbon-group">
+                            <p class="small text-uppercase fw-semibold text-muted mb-1">Numeri</p>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Formattazione numerica">
+                                <button class="btn btn-outline-secondary" type="button" data-grid-action="currency" title="Formato valuta"><i class="fa-solid fa-euro-sign"></i></button>
+                                <button class="btn btn-outline-secondary" type="button" data-grid-action="percent" title="Formato percentuale"><i class="fa-solid fa-percent"></i></button>
+                                <button class="btn btn-outline-secondary" type="button" data-grid-action="clear-format" title="Rimuovi formattazione"><i class="fa-solid fa-eraser"></i></button>
+                            </div>
+                        </div>
+                        <div class="ribbon-group">
+                            <p class="small text-uppercase fw-semibold text-muted mb-1">Allineamento</p>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Allineamento testo">
+                                <button class="btn btn-outline-secondary" type="button" data-grid-action="align-left" title="Allinea a sinistra"><i class="fa-solid fa-align-left"></i></button>
+                                <button class="btn btn-outline-secondary" type="button" data-grid-action="align-center" title="Allinea al centro"><i class="fa-solid fa-align-center"></i></button>
+                                <button class="btn btn-outline-secondary" type="button" data-grid-action="align-right" title="Allinea a destra"><i class="fa-solid fa-align-right"></i></button>
+                            </div>
+                        </div>
+                        <div class="ribbon-group">
+                            <p class="small text-uppercase fw-semibold text-muted mb-1">Inserisci</p>
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Struttura foglio">
+                                <button class="btn btn-outline-secondary" type="button" data-grid-action="add-row" title="Aggiungi riga"><i class="fa-solid fa-plus"></i> R</button>
+                                <button class="btn btn-outline-secondary" type="button" data-grid-action="add-column" title="Aggiungi colonna"><i class="fa-solid fa-plus"></i> C</button>
+                            </div>
+                        </div>
+                        <div class="ms-auto text-muted small d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-table-list text-primary"></i>
+                            <span>Barra in stile Office pronta per il grid engine.</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="sheet-layout d-flex flex-column">
@@ -195,6 +234,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     .spreadsheet .toolbar-group {
         min-width: 150px;
     }
+    .excel-ribbon .ribbon-group {
+        min-width: 180px;
+    }
+    .excel-ribbon .btn {
+        min-width: 36px;
+    }
     .sheet-layout {
         min-height: 520px;
         background: #fdfdff;
@@ -214,15 +259,59 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     .grid td:focus {
         outline: 2px solid #4c6ef5;
     }
+    .grid td.active-cell {
+        outline: 2px solid #0d6efd;
+        box-shadow: inset 0 0 0 1px rgba(13,110,253,0.4);
+    }
+    .grid.grid-needs-selection {
+        animation: grid-pulse 0.35s ease-in-out 0s 2;
+    }
+    @keyframes grid-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(13,110,253,0); }
+        50% { box-shadow: 0 0 0 4px rgba(13,110,253,0.35); }
+        100% { box-shadow: 0 0 0 0 rgba(13,110,253,0); }
+    }
 </style>
 <script>
     (function () {
         const form = document.getElementById('sheet-editor-form');
         const gridField = document.getElementById('grid-state-field');
         const gridTable = document.getElementById('sheet-grid');
+        const toolbarButtons = document.querySelectorAll('[data-grid-action]');
         if (!form || !gridField || !gridTable) {
             return;
         }
+
+        const gridBody = gridTable.querySelector('tbody');
+        const headerRow = gridTable.querySelector('thead tr');
+        let activeCell = null;
+
+        const attachCellEvents = (cellEl) => {
+            if (!cellEl) {
+                return;
+            }
+            cellEl.addEventListener('focus', () => {
+                setActiveCell(cellEl);
+            });
+            cellEl.addEventListener('click', () => {
+                setActiveCell(cellEl);
+            });
+        };
+
+        const setActiveCell = (cell) => {
+            if (activeCell === cell) {
+                return;
+            }
+            if (activeCell) {
+                activeCell.classList.remove('active-cell');
+            }
+            activeCell = cell;
+            if (activeCell) {
+                activeCell.classList.add('active-cell');
+            }
+        };
+
+        gridTable.querySelectorAll('tbody td').forEach((cell) => attachCellEvents(cell));
 
         const populateGrid = () => {
             if (!gridField.value) {
@@ -258,6 +347,169 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             });
             gridField.value = JSON.stringify(rowsData);
         };
+
+        const ensureActiveCell = () => {
+            if (activeCell) {
+                return true;
+            }
+            gridTable.classList.add('grid-needs-selection');
+            setTimeout(() => gridTable.classList.remove('grid-needs-selection'), 400);
+            return false;
+        };
+
+        const toggleStyle = (property, activeValue, fallbackValue = '') => {
+            if (!ensureActiveCell()) {
+                return;
+            }
+            const current = activeCell.style[property];
+            activeCell.style[property] = current === activeValue ? fallbackValue : activeValue;
+        };
+
+        const setStyle = (property, value) => {
+            if (!ensureActiveCell()) {
+                return;
+            }
+            activeCell.style[property] = value;
+        };
+
+        const removeFormatting = () => {
+            if (!ensureActiveCell()) {
+                return;
+            }
+            activeCell.removeAttribute('style');
+        };
+
+        const parseNumber = (raw) => {
+            if (!raw) {
+                return null;
+            }
+            const normalized = raw.replace(/[^0-9,.-]/g, '').replace(',', '.');
+            const parsed = Number(normalized);
+            return Number.isFinite(parsed) ? parsed : null;
+        };
+
+        const formatCurrency = () => {
+            if (!ensureActiveCell()) {
+                return;
+            }
+            const raw = activeCell.textContent.trim();
+            const value = parseNumber(raw);
+            if (value === null) {
+                return;
+            }
+            activeCell.textContent = value.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+            activeCell.style.textAlign = 'right';
+        };
+
+        const formatPercentage = () => {
+            if (!ensureActiveCell()) {
+                return;
+            }
+            const raw = activeCell.textContent.trim();
+            let value = parseNumber(raw);
+            if (value === null) {
+                return;
+            }
+            if (value > 1) {
+                value = value / 100;
+            }
+            activeCell.textContent = (value).toLocaleString('it-IT', { style: 'percent', minimumFractionDigits: 2 });
+            activeCell.style.textAlign = 'right';
+        };
+
+        const columnLabelFromIndex = (index) => {
+            let label = '';
+            let current = index;
+            while (current >= 0) {
+                label = String.fromCharCode((current % 26) + 65) + label;
+                current = Math.floor(current / 26) - 1;
+            }
+            return label;
+        };
+
+        const getColumnCount = () => {
+            return Math.max(headerRow.querySelectorAll('th').length - 1, 0);
+        };
+
+        const addRow = () => {
+            const columnCount = getColumnCount();
+            const newRow = document.createElement('tr');
+            const rowIndex = gridBody.querySelectorAll('tr').length + 1;
+            const headerCell = document.createElement('th');
+            headerCell.className = 'bg-light';
+            headerCell.textContent = rowIndex;
+            newRow.appendChild(headerCell);
+
+            for (let col = 0; col < columnCount; col++) {
+                const cell = document.createElement('td');
+                cell.contentEditable = 'true';
+                attachCellEvents(cell);
+                newRow.appendChild(cell);
+            }
+
+            gridBody.appendChild(newRow);
+        };
+
+        const addColumn = () => {
+            const columnCount = getColumnCount();
+            const newHeader = document.createElement('th');
+            newHeader.className = 'bg-light';
+            newHeader.textContent = columnLabelFromIndex(columnCount);
+            headerRow.appendChild(newHeader);
+
+            gridBody.querySelectorAll('tr').forEach((rowEl) => {
+                const cell = document.createElement('td');
+                cell.contentEditable = 'true';
+                attachCellEvents(cell);
+                rowEl.appendChild(cell);
+            });
+        };
+
+        toolbarButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const action = button.dataset.gridAction;
+                switch (action) {
+                    case 'bold':
+                        toggleStyle('fontWeight', '700');
+                        break;
+                    case 'italic':
+                        toggleStyle('fontStyle', 'italic');
+                        break;
+                    case 'underline':
+                        toggleStyle('textDecorationLine', 'underline');
+                        break;
+                    case 'highlight':
+                        toggleStyle('backgroundColor', 'rgb(255, 243, 205)');
+                        break;
+                    case 'currency':
+                        formatCurrency();
+                        break;
+                    case 'percent':
+                        formatPercentage();
+                        break;
+                    case 'clear-format':
+                        removeFormatting();
+                        break;
+                    case 'align-left':
+                        setStyle('textAlign', 'left');
+                        break;
+                    case 'align-center':
+                        setStyle('textAlign', 'center');
+                        break;
+                    case 'align-right':
+                        setStyle('textAlign', 'right');
+                        break;
+                    case 'add-row':
+                        addRow();
+                        break;
+                    case 'add-column':
+                        addColumn();
+                        break;
+                    default:
+                        break;
+                }
+            });
+        });
 
         populateGrid();
 
