@@ -283,6 +283,153 @@ function render_mail_template(string $title, string $content): string
 HTML;
 }
 
+function send_opportunity_confirmation_email(array $payload): bool
+{
+    $customerEmail = trim((string) ($payload['customer_email'] ?? ''));
+    if ($customerEmail === '') {
+        return false;
+    }
+
+    $category = (string) ($payload['category'] ?? '');
+    $code = (string) ($payload['code'] ?? '');
+    $categoryLabel = match ($category) {
+        'telefonia' => 'contratto telefonico',
+        'luce' => 'fornitura luce',
+        'gas' => 'fornitura gas',
+        default => 'richiesta',
+    };
+
+    $customerName = trim(
+        sprintf(
+            '%s %s',
+            (string) ($payload['customer_first_name'] ?? ''),
+            (string) ($payload['customer_last_name'] ?? '')
+        )
+    );
+
+    $providerLabel = (string) ($payload['provider_label'] ?? 'gestore selezionato');
+    $offerLabel = (string) ($payload['offer_label'] ?? 'offerta dedicata');
+
+    $escape = static fn (string $value): string => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+
+    $primaryText = $code !== ''
+        ? sprintf('Codice richiesta %s', $code)
+        : 'Richiesta registrata';
+
+    $content = <<<HTML
+        <p style="font-size: 16px; margin-top: 0;">Ciao {$escape($customerName)}.</p>
+        <p style="margin-bottom: 16px;">Abbiamo ricevuto la tua richiesta per {$escape($categoryLabel)} con il gestore <strong>{$escape($providerLabel)}</strong> e l'offerta <strong>{$escape($offerLabel)}</strong>. I nostri operatori stanno verificando i dati inviati.</p>
+        <div style="background: #0b2f6b; color: #fff; padding: 18px 24px; border-radius: 12px; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85;">{$escape($categoryLabel)}</p>
+            <p style="margin: 4px 0 0; font-size: 24px; font-weight: 600;">{$escape($primaryText)}</p>
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+            <div style="flex: 1 1 160px; min-width: 140px; background: #eef4ff; border-radius: 12px; padding: 16px;">
+                <p style="margin: 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #4b6cb7;">Step 1</p>
+                <p style="margin: 4px 0 0; font-size: 15px; font-weight: 600; color: #1c2534;">Verifica documenti</p>
+                <p style="margin: 6px 0 0; font-size: 13px; color: #4d5a6d;">Confermeremo i dati identificativi e i consensi caricati.</p>
+            </div>
+            <div style="flex: 1 1 160px; min-width: 140px; background: #fef6e7; border-radius: 12px; padding: 16px;">
+                <p style="margin: 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #bb6b00;">Step 2</p>
+                <p style="margin: 4px 0 0; font-size: 15px; font-weight: 600; color: #1c2534;">Firma OTP</p>
+                <p style="margin: 6px 0 0; font-size: 13px; color: #4d5a6d;">Riceverai email/SMS dal gestore per la firma digitale.</p>
+            </div>
+            <div style="flex: 1 1 160px; min-width: 140px; background: #eafaf0; border-radius: 12px; padding: 16px;">
+                <p style="margin: 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #0f7b3d;">Step 3</p>
+                <p style="margin: 4px 0 0; font-size: 15px; font-weight: 600; color: #1c2534;">Attivazione</p>
+                <p style="margin: 6px 0 0; font-size: 13px; color: #4d5a6d;">Una volta firmato il contratto, riceverai la conferma attivazione.</p>
+            </div>
+        </div>
+        <p style="margin-bottom: 16px;">Ricorda che ogni email o SMS di conferma inviato dai gestori ha validità di <strong>6 ore</strong>. Trascorso questo tempo senza firma, la richiesta viene annullata automaticamente e dovrà essere ripresentata.</p>
+        <p style="margin-bottom: 16px;">Per qualsiasi dubbio puoi rispondere a questa comunicazione o contattare il nostro supporto indicando il codice <strong>{$escape($code)}</strong>.</p>
+        <p style="margin-bottom: 0;">Grazie per aver scelto Coresuite Business.</p>
+    HTML;
+
+    $subject = $code !== ''
+        ? sprintf('Richiesta %s ricevuta (%s)', $categoryLabel, $code)
+        : sprintf('Richiesta %s ricevuta', $categoryLabel);
+
+    $htmlBody = render_mail_template($subject, $content);
+
+    return send_system_mail($customerEmail, $subject, $htmlBody, [
+        'metadata' => array_filter([
+            'opportunity_code' => $code,
+            'opportunity_category' => $category,
+        ]),
+    ]);
+}
+
+function send_opportunity_status_update_email(array $payload): bool
+{
+    $recipient = trim((string) ($payload['collaborator_email'] ?? ''));
+    if ($recipient === '') {
+        return false;
+    }
+
+    $collaboratorName = trim((string) ($payload['collaborator_name'] ?? ''));
+    $code = (string) ($payload['code'] ?? '');
+    $category = (string) ($payload['category'] ?? '');
+    $statusLabel = (string) ($payload['status_label'] ?? '');
+    $statusCode = (string) ($payload['status_code'] ?? '');
+    $statusDisplay = $statusLabel !== '' ? $statusLabel : ($statusCode !== '' ? strtoupper($statusCode) : 'Aggiornamento stato');
+    $customerName = trim(
+        sprintf(
+            '%s %s',
+            (string) ($payload['customer_first_name'] ?? ''),
+            (string) ($payload['customer_last_name'] ?? '')
+        )
+    );
+    $adminNotes = trim((string) ($payload['admin_notes'] ?? ''));
+    $updatedAt = $payload['updated_at'] ?? null;
+
+    $categoryLabel = match ($category) {
+        'telefonia' => 'Telefonia',
+        'luce' => 'Luce',
+        'gas' => 'Gas',
+        default => 'Opportunity',
+    };
+
+    $escape = static fn (string $value): string => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    $timestampLabel = '';
+    if ($updatedAt) {
+        $timestampLabel = function_exists('format_datetime_locale')
+            ? format_datetime_locale($updatedAt)
+            : date('d/m/Y H:i', strtotime((string) $updatedAt));
+    }
+
+    $notesBlock = '';
+    if ($adminNotes !== '') {
+        $notesBlock = '<p style="margin: 0; font-size: 13px; color: #0f172a;">Nota interna:</p>' .
+            '<blockquote style="margin: 8px 0 0; padding: 12px 16px; background: #f8fafc; border-left: 4px solid #0b2f6b; border-radius: 8px; color: #1e293b;">' . $escape($adminNotes) . '</blockquote>';
+    }
+
+    $content = <<<HTML
+        <p style="font-size: 16px; margin-top: 0;">Ciao {$escape($collaboratorName ?: 'collega')}.</p>
+        <p style="margin-bottom: 16px;">Abbiamo aggiornato lo stato della opportunity {$escape($code !== '' ? ('#' . $code) : '')} per il cliente <strong>{$escape($customerName ?: '—')}</strong>.</p>
+        <div style="background: #0b2f6b; color: #fff; padding: 18px 24px; border-radius: 12px; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.85;">{$escape($categoryLabel)}</p>
+            <p style="margin: 4px 0 0; font-size: 24px; font-weight: 600;">{$escape($statusDisplay)}</p>
+            <p style="margin: 6px 0 0; font-size: 13px; color: rgba(255,255,255,0.8);">Aggiornato {$escape($timestampLabel ?: 'ora')}</p>
+        </div>
+        {$notesBlock}
+        <p style="margin: 20px 0 0;">Per ulteriori modifiche puoi accedere all'area Opportunity e completare gli step richiesti.</p>
+    HTML;
+
+    $subject = $code !== ''
+        ? sprintf('Opportunity %s aggiornata (%s)', $code, $statusDisplay)
+        : sprintf('Opportunity aggiornata (%s)', $statusDisplay);
+
+    $htmlBody = render_mail_template($subject, $content);
+
+    return send_system_mail($recipient, $subject, $htmlBody, [
+        'metadata' => array_filter([
+            'opportunity_code' => $code,
+            'opportunity_category' => $category,
+            'opportunity_status' => $statusCode ?: $statusLabel,
+        ]),
+    ]);
+}
+
 /**
  * @return array<int, array{name:string,mime:string,content:string}>
  */

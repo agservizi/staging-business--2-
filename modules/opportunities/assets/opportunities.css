@@ -1,0 +1,131 @@
+.opportunity-card {
+    border-radius: 1rem;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: #fff;
+}
+
+.opportunity-card .card-body {
+    padding: 1.5rem;
+}
+
+.opportunity-status-badge {
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.opportunity-code {
+    font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.9rem;
+}
+
+.opportunity-funnel {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.opportunity-funnel-step {
+    flex: 1 1 180px;
+    min-width: 160px;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    background: #f8fafc;
+    border: 1px dashed rgba(15, 23, 42, 0.12);
+}
+
+.opportunity-funnel-step h4 {
+    font-size: 0.95rem;
+    margin-bottom: 0.35rem;
+}
+
+.opportunity-funnel-step small {
+    color: #6b7280;
+}
+
+.dropzone-area {
+    border: 2px dashed rgba(15, 23, 42, 0.15);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    background: #fefefe;
+    text-align: center;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.dropzone-area.dragover {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.dropzone-files {
+    margin-top: 1rem;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.dropzone-file-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    background: #f8fafc;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.dropzone-file-entry .file-meta {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.dropzone-file-entry .file-actions button {
+    border: none;
+    background: transparent;
+    color: #ef4444;
+}
+
+.opportunity-summary {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 1rem;
+    padding: 1.25rem;
+}
+
+@media (max-width: 768px) {
+    .opportunity-card .card-body {
+        padding: 1rem;
+    }
+    .opportunity-funnel-step {
+        flex-basis: 100%;
+    }
+}
+
+.op-settings-status {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 0.85rem;
+    padding: 1rem;
+    background: #fdfdfd;
+}
+
+.op-settings-provider {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 0.9rem;
+    padding: 1rem;
+    background: #f8fafc;
+}
+
+.op-settings-offers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.op-settings-offer {
+    border: 1px dashed rgba(15, 23, 42, 0.2);
+    border-radius: 0.75rem;
+    padding: 0.85rem;
+    background: #fff;
+}

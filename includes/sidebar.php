@@ -228,6 +228,21 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                             <span class="nav-label">Office Suite</span>
                         </a>
                     </li>
+
+                    <?php
+                        $opportunityActive = nav_active('modules/opportunities', $currentPath);
+                        $opportunityHref = $role === 'Collaboratore'
+                            ? base_url('modules/opportunities/collaborator/index.php')
+                            : base_url('modules/opportunities/index.php');
+                    ?>
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center <?php echo $opportunityActive; ?>" href="<?php echo $opportunityHref; ?>" aria-label="Opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Opportunity"<?php echo $opportunityActive ? ' aria-current="page"' : ''; ?>>
+                            <span class="nav-icon" data-color="indigo" aria-hidden="true">
+                                <i class="fa-solid fa-sitemap"></i>
+                            </span>
+                            <span class="nav-label">Opportunity</span>
+                        </a>
+                    </li>
                 <?php endif; ?>
 
                 <?php if (!$isPatronato && current_user_has_capability('email.marketing.manage', 'email.marketing.view')): ?>
