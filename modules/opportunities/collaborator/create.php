@@ -4,6 +4,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../../../includes/mailer.php';
 
+use App\Services\Opportunities\OpportunityUploadStorage;
+
 require_role('Collaboratore');
 
 $pageTitle = 'Nuova Opportunity';
@@ -13,11 +15,88 @@ $errors = [];
 $formData = $_POST;
 $hasSubmitted = $_SERVER['REQUEST_METHOD'] === 'POST';
 $draftStorageKey = 'opportunity_collaborator_draft_' . $collaboratorId;
+$existingUploadTokens = [];
+$existingUploadTokensValue = '';
+$extractUploadTokens = static function ($rawValue): array {
+    if ($rawValue === null) {
+        return [];
+    }
+    if (is_array($rawValue)) {
+        $tokens = $rawValue;
+    } else {
+        $rawString = trim((string) $rawValue);
+        if ($rawString === '') {
+            return [];
+        }
+        $tokens = null;
+        if ($rawString[0] === '[') {
+            $decoded = json_decode($rawString, true);
+            if (is_array($decoded)) {
+                $tokens = $decoded;
+            }
+        }
+        if ($tokens === null) {
+            $tokens = explode(',', $rawString);
+        }
+    }
+    $tokens = array_map(static fn ($token): string => trim((string) $token), $tokens);
+    $tokens = array_filter($tokens, static fn (string $token): bool => $token !== '');
+
+    return array_values(array_unique($tokens));
+};
+
+$requestedUploadTokens = $extractUploadTokens($_POST['upload_tokens_payload'] ?? null);
+$existingUploadTokensValue = $requestedUploadTokens !== [] ? implode(',', $requestedUploadTokens) : '';
+$missingTempUploads = [];
+if ($requestedUploadTokens !== []) {
+    try {
+        $availableUploads = OpportunityUploadStorage::listTokens($collaboratorId);
+    } catch (RuntimeException $exception) {
+        $availableUploads = [];
+    }
+    $uploadsByToken = [];
+    foreach ($availableUploads as $uploadMeta) {
+        $tokenValue = (string) ($uploadMeta['token'] ?? '');
+        if ($tokenValue === '') {
+            continue;
+        }
+        $uploadsByToken[$tokenValue] = $uploadMeta;
+    }
+    foreach ($requestedUploadTokens as $token) {
+        if ($token !== '' && isset($uploadsByToken[$token])) {
+            $existingUploadTokens[] = $uploadsByToken[$token];
+        }
+    }
+    $foundTokens = array_filter(array_map(static function (array $upload): string {
+        return (string) ($upload['token'] ?? '');
+    }, $existingUploadTokens), static fn (string $token): bool => $token !== '');
+    $missingTempUploads = array_values(array_diff($requestedUploadTokens, $foundTokens));
+}
+
+if ($missingTempUploads && $hasSubmitted) {
+    add_flash('warning', 'Alcuni allegati temporanei sono scaduti e devono essere ricaricati.');
+}
+
 $documentTypePresets = [
     "Carta d'identità" => 'Comune',
     'Passaporto' => 'Ministero Affari Esteri',
     'Patente' => 'MIT UCO Motorizzazione',
 ];
+$isCloningOpportunity = false;
+$clonedOpportunityMeta = null;
+if (!$hasSubmitted) {
+    $cloneId = isset($_GET['clone_id']) ? (int) $_GET['clone_id'] : 0;
+    if ($cloneId > 0) {
+        $clonePayload = $opportunityService->getCollaboratorClonePayload($cloneId, $collaboratorId);
+        if ($clonePayload) {
+            $formData = array_merge($clonePayload['form'] ?? [], $formData);
+            $clonedOpportunityMeta = $clonePayload['meta'] ?? null;
+            $isCloningOpportunity = true;
+        } else {
+            add_flash('warning', 'Non è stato possibile duplicare la opportunity selezionata oppure non ti appartiene.');
+        }
+    }
+}
 $documentTypeValue = $formData['document_type'] ?? "Carta d'identità";
 $documentTypeHasPreset = array_key_exists($documentTypeValue, $documentTypePresets);
 $documentIssuedByValue = $formData['document_issued_by'] ?? ($documentTypePresets[$documentTypeValue] ?? '');
@@ -110,14 +189,41 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             <ul class="mb-0 ps-3" id="client-error-summary-list"></ul>
         </div>
 
-        <div class="alert alert-secondary d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2" role="status">
+        <?php if ($isCloningOpportunity && $clonedOpportunityMeta): ?>
+            <div class="alert alert-warning d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3" role="status">
+                <div>
+                    <strong>Duplicazione attiva</strong>
+                    <p class="mb-0 small">
+                        Origine: <?php echo sanitize_output($clonedOpportunityMeta['code'] ?? 'N/D'); ?>
+                        <?php if (!empty($clonedOpportunityMeta['provider_label'])): ?> · Gestore: <?php echo sanitize_output($clonedOpportunityMeta['provider_label']); ?><?php endif; ?>
+                        <?php $cloneCreatedLabel = format_datetime_locale($clonedOpportunityMeta['created_at'] ?? null); ?>
+                        <?php if ($cloneCreatedLabel): ?> · Inviata il <?php echo sanitize_output($cloneCreatedLabel); ?><?php endif; ?>.
+                        Ricorda di caricare nuovamente gli allegati.
+                    </p>
+                </div>
+                <a class="btn btn-outline-secondary btn-sm" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
+                    <i class="fa-solid fa-arrow-rotate-left me-1"></i>Annulla duplicazione
+                </a>
+            </div>
+        <?php endif; ?>
+
+        <div class="alert alert-secondary d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3" role="status">
             <div>
                 <strong>Salvataggio automatico bozza</strong>
-                <p class="mb-0 small" id="draft-status-label">I dati vengono salvati in locale ogni pochi secondi. Puoi chiudere la pagina e riprendere più tardi.</p>
+                <p class="mb-1 small" id="draft-status-label">I dati vengono salvati in locale ogni pochi secondi. Puoi chiudere la pagina e riprendere più tardi.</p>
+                <p class="mb-0 small text-muted" id="remote-draft-status-label">Bozza cloud non ancora salvata.</p>
             </div>
-            <button class="btn btn-outline-secondary btn-sm" type="button" id="clear-draft-button">
-                <i class="fa-solid fa-eraser me-1"></i>Svuota bozza
-            </button>
+            <div class="d-flex flex-column flex-md-row gap-2">
+                <button class="btn btn-outline-secondary btn-sm" type="button" id="clear-draft-button">
+                    <i class="fa-solid fa-eraser me-1"></i>Svuota bozza locale
+                </button>
+                <button class="btn btn-outline-primary btn-sm d-none" type="button" id="restore-remote-draft-button">
+                    <i class="fa-solid fa-cloud-arrow-down me-1"></i>Ripristina bozza cloud
+                </button>
+                <button class="btn btn-outline-danger btn-sm d-none" type="button" id="clear-remote-draft-button">
+                    <i class="fa-solid fa-cloud-xmark me-1"></i>Elimina bozza cloud
+                </button>
+            </div>
         </div>
 
         <form class="row g-4" method="post" enctype="multipart/form-data" id="opportunity-form">
@@ -278,6 +384,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <div class="card shadow-sm">
                     <div class="card-body">
                         <h2 class="h6 text-uppercase text-muted mb-3">Dettagli telefonia</h2>
+                        <div class="alert alert-warning d-none" role="alert" aria-live="polite" id="telefonia-section-warning">
+                            <i class="fa-solid fa-circle-exclamation me-1"></i>
+                            <span class="warning-text">Compila i campi obbligatori della sezione telefonia.</span>
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label">Operatore attuale</label>
@@ -296,6 +406,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <div class="card shadow-sm">
                     <div class="card-body">
                         <h2 class="h6 text-uppercase text-muted mb-3">Dettagli luce</h2>
+                        <div class="alert alert-warning d-none" role="alert" aria-live="polite" id="luce-section-warning">
+                            <i class="fa-solid fa-circle-exclamation me-1"></i>
+                            <span class="warning-text">Compila i campi obbligatori della sezione luce.</span>
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label">Codice POD</label>
@@ -310,6 +424,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <div class="card shadow-sm">
                     <div class="card-body">
                         <h2 class="h6 text-uppercase text-muted mb-3">Dettagli gas</h2>
+                        <div class="alert alert-warning d-none" role="alert" aria-live="polite" id="gas-section-warning">
+                            <i class="fa-solid fa-circle-exclamation me-1"></i>
+                            <span class="warning-text">Compila i campi obbligatori della sezione gas.</span>
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label">Codice PDR</label>
@@ -368,9 +486,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <h2 class="h6 text-uppercase text-muted mb-3">Allegati</h2>
                         <div class="dropzone-area" id="dropzone-area">
                             <p class="mb-1"><i class="fa-solid fa-cloud-arrow-up me-2"></i>Trascina qui i file o clicca per selezionare</p>
-                            <p class="text-muted small mb-0">Documenti accettati: PDF, JPG, PNG, ZIP (max 10MB ciascuno).</p>
+                            <p class="text-muted small mb-0">Documenti accettati: PDF, JPG, PNG, ZIP (max 10MB ciascuno). Mostriamo progresso e puoi riprovare in caso di errore.</p>
                             <input class="d-none" type="file" name="documents[]" id="documents-input" multiple>
                         </div>
+                        <input type="hidden" name="upload_tokens_payload" id="upload-tokens-field" value="<?php echo sanitize_output($existingUploadTokensValue); ?>">
                         <div class="dropzone-files" id="dropzone-files"></div>
                     </div>
                 </div>
@@ -411,6 +530,7 @@ window.CIEIstatLookupConfig = {
     const csrfToken = '<?php echo sanitize_output($csrfToken); ?>';
     const opportunityForm = document.getElementById('opportunity-form');
     const hasSubmitted = <?php echo $hasSubmitted ? 'true' : 'false'; ?>;
+    const isCloning = <?php echo $isCloningOpportunity ? 'true' : 'false'; ?>;
     const draftStorageKey = '<?php echo sanitize_output($draftStorageKey); ?>';
     const categorySelect = document.getElementById('category-select');
     const providerSelect = document.getElementById('provider-select');
@@ -425,6 +545,9 @@ window.CIEIstatLookupConfig = {
     const dropzoneArea = document.getElementById('dropzone-area');
     const documentsInput = document.getElementById('documents-input');
     const dropzoneFiles = document.getElementById('dropzone-files');
+    const uploadTokensField = document.getElementById('upload-tokens-field');
+    const uploadEndpoint = "<?php echo sanitize_output(asset('api/opportunities/uploads.php')); ?>";
+    const existingUploads = <?php echo json_encode($existingUploadTokens, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
     const taxCodeInput = document.getElementById('customer-tax-code');
     const taxCodeLookupBtn = document.getElementById('tax-code-lookup');
     const taxCodeLookupSpinner = document.getElementById('tax-code-lookup-spinner');
@@ -441,6 +564,10 @@ window.CIEIstatLookupConfig = {
     const defaultCapFeedbackMessage = 'Inserisci il CAP per validarlo automaticamente.';
     const clearDraftButton = document.getElementById('clear-draft-button');
     const draftStatusLabel = document.getElementById('draft-status-label');
+    const remoteDraftStatusLabel = document.getElementById('remote-draft-status-label');
+    const restoreRemoteDraftButton = document.getElementById('restore-remote-draft-button');
+    const clearRemoteDraftButton = document.getElementById('clear-remote-draft-button');
+    const remoteDraftEndpoint = "<?php echo sanitize_output(asset('api/opportunities/drafts.php')); ?>";
     const clientErrorSummary = document.getElementById('client-error-summary');
     const clientErrorSummaryList = document.getElementById('client-error-summary-list');
     const canUseDrafts = (() => {
@@ -456,6 +583,7 @@ window.CIEIstatLookupConfig = {
             return false;
         }
     })();
+    const canUseServerDrafts = Boolean(remoteDraftEndpoint);
     const documentTypeSelect = document.getElementById('document-type-select');
     const documentIssuedBySelect = document.getElementById('document-issued-by-select');
     const documentAuthorityDefaults = {
@@ -467,6 +595,11 @@ window.CIEIstatLookupConfig = {
     let lastLookupTaxCode = '';
     let pendingPrefillData = null;
     let capLookupRequestId = 0;
+    let lastDraftSavedAt = null;
+    let remoteDraftAvailable = false;
+    let remoteDraftPayload = null;
+    let remoteDraftSavedAt = null;
+    let remoteDraftSaving = false;
 
     const escapeHtml = (value) => {
         if (value === null || value === undefined) {
@@ -555,6 +688,67 @@ window.CIEIstatLookupConfig = {
         };
         draftStatusLabel.classList.add(toneClass[tone] || 'text-muted');
         draftStatusLabel.textContent = message;
+    };
+
+    const formatDraftTimestamp = (timestamp) => {
+        if (!timestamp) {
+            return '';
+        }
+        const date = new Date(Number(timestamp));
+        if (Number.isNaN(date.getTime())) {
+            return '';
+        }
+        try {
+            return new Intl.DateTimeFormat('it-IT', {
+                hour: '2-digit',
+                minute: '2-digit',
+            }).format(date);
+        } catch (error) {
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+    };
+
+    const buildLastSavedMessage = (timestamp = lastDraftSavedAt) => {
+        const formatted = formatDraftTimestamp(timestamp);
+        return formatted ? `Ultimo salvataggio: ${formatted}` : 'Ultimo salvataggio: —';
+    };
+
+    const updateRemoteDraftStatus = (message, tone = 'muted') => {
+        if (!remoteDraftStatusLabel) {
+            return;
+        }
+        remoteDraftStatusLabel.classList.remove('text-muted', 'text-success', 'text-warning', 'text-danger');
+        const toneClass = {
+            muted: 'text-muted',
+            success: 'text-success',
+            warning: 'text-warning',
+            danger: 'text-danger',
+        };
+        remoteDraftStatusLabel.classList.add(toneClass[tone] || 'text-muted');
+        remoteDraftStatusLabel.textContent = message;
+    };
+
+    const parseServerDraftTimestamp = (value) => {
+        if (!value) {
+            return null;
+        }
+        const normalized = value.replace(' ', 'T');
+        const parsed = Date.parse(normalized);
+        return Number.isNaN(parsed) ? null : parsed;
+    };
+
+    const refreshRemoteDraftButtons = () => {
+        const shouldShowActions = remoteDraftAvailable;
+        if (restoreRemoteDraftButton) {
+            restoreRemoteDraftButton.classList.toggle('d-none', !shouldShowActions);
+            restoreRemoteDraftButton.disabled = !shouldShowActions;
+        }
+        if (clearRemoteDraftButton) {
+            clearRemoteDraftButton.classList.toggle('d-none', !shouldShowActions);
+            clearRemoteDraftButton.disabled = !shouldShowActions;
+        }
     };
 
     const getFieldNodes = (name) => {
@@ -648,7 +842,7 @@ window.CIEIstatLookupConfig = {
             if (!field || typeof field.name !== 'string' || field.name === '' || field.type === 'file') {
                 return;
             }
-            if (field.name === 'csrf_token' || field.name === 'documents[]') {
+            if (field.name === 'csrf_token' || field.name === 'documents[]' || field.name === 'upload_tokens_payload') {
                 return;
             }
             if ((field.type === 'checkbox' || field.type === 'radio') && !field.checked) {
@@ -714,8 +908,13 @@ window.CIEIstatLookupConfig = {
             return;
         }
         try {
-            window.localStorage.setItem(draftStorageKey, JSON.stringify(payload));
-            updateDraftStatus('Bozza salvata pochi secondi fa.', 'success');
+            const serialized = {
+                data: payload,
+                savedAt: Date.now(),
+            };
+            window.localStorage.setItem(draftStorageKey, JSON.stringify(serialized));
+            lastDraftSavedAt = serialized.savedAt;
+            updateDraftStatus(buildLastSavedMessage(), 'success');
         } catch (error) {
             updateDraftStatus('Impossibile salvare la bozza su questo dispositivo.', 'warning');
         }
@@ -742,11 +941,22 @@ window.CIEIstatLookupConfig = {
             window.localStorage.removeItem(draftStorageKey);
             return;
         }
-        applyDraftPayload(payload);
-        updateDraftStatus('Bozza ripristinata automaticamente.', 'success');
+        let fields = payload;
+        let savedAt = null;
+        if (payload && typeof payload === 'object' && payload.data) {
+            fields = payload.data;
+            savedAt = payload.savedAt ?? payload.meta?.savedAt ?? null;
+        }
+        if (!fields || typeof fields !== 'object') {
+            return;
+        }
+        applyDraftPayload(fields);
+        lastDraftSavedAt = savedAt || Date.now();
+        updateDraftStatus(buildLastSavedMessage(lastDraftSavedAt), 'success');
     };
 
     const clearDraft = (resetForm = false, statusOverride = null) => {
+        const savedAtBeforeClear = lastDraftSavedAt;
         if (canUseDrafts) {
             try {
                 window.localStorage.removeItem(draftStorageKey);
@@ -762,9 +972,15 @@ window.CIEIstatLookupConfig = {
             hideClientErrorSummary();
         }
         const hasOverride = statusOverride && typeof statusOverride === 'object';
-        const message = hasOverride && statusOverride.message ? statusOverride.message : 'Bozza eliminata.';
+        let message = 'Bozza eliminata.';
+        if (hasOverride && typeof statusOverride.message === 'function') {
+            message = statusOverride.message(savedAtBeforeClear);
+        } else if (hasOverride && typeof statusOverride.message === 'string') {
+            message = statusOverride.message;
+        }
         const tone = hasOverride && statusOverride.tone ? statusOverride.tone : 'muted';
         updateDraftStatus(message, tone);
+        lastDraftSavedAt = null;
     };
 
     if (!canUseDrafts) {
@@ -772,6 +988,144 @@ window.CIEIstatLookupConfig = {
         clearDraftButton?.setAttribute('disabled', 'disabled');
         clearDraftButton?.setAttribute('aria-disabled', 'true');
     }
+
+    const describeRemoteDraftStatus = () => {
+        if (!canUseServerDrafts) {
+            return 'Bozza cloud non disponibile su questo account.';
+        }
+        if (!remoteDraftAvailable) {
+            return 'Bozza cloud non ancora salvata.';
+        }
+        const formatted = formatDraftTimestamp(remoteDraftSavedAt);
+        return formatted ? `Bozza cloud aggiornata alle ${formatted}.` : 'Bozza cloud aggiornata di recente.';
+    };
+
+    const saveRemoteDraft = async () => {
+        if (!canUseServerDrafts || remoteDraftSaving) {
+            return;
+        }
+        const payload = collectDraftPayload();
+        if (!payload) {
+            return;
+        }
+        remoteDraftSaving = true;
+        try {
+            const response = await fetch(remoteDraftEndpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-Token': csrfToken,
+                },
+                body: JSON.stringify({ data: payload }),
+            });
+            if (!response.ok) {
+                throw new Error('Remote draft save failed');
+            }
+            const body = await response.json();
+            const draft = body.draft ?? null;
+            if (draft && typeof draft === 'object' && draft.data && typeof draft.data === 'object') {
+                remoteDraftPayload = draft.data;
+                remoteDraftSavedAt = parseServerDraftTimestamp(draft.saved_at ?? null) ?? Date.now();
+            } else {
+                remoteDraftPayload = payload;
+                remoteDraftSavedAt = Date.now();
+            }
+            remoteDraftAvailable = true;
+            updateRemoteDraftStatus(describeRemoteDraftStatus(), 'success');
+            refreshRemoteDraftButtons();
+        } catch (error) {
+            updateRemoteDraftStatus('Non riesco a salvare la bozza cloud. Ritenterò automaticamente.', 'warning');
+        } finally {
+            remoteDraftSaving = false;
+        }
+    };
+
+    const fetchRemoteDraft = async () => {
+        if (!canUseServerDrafts) {
+            return;
+        }
+        try {
+            const response = await fetch(remoteDraftEndpoint, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+            if (!response.ok) {
+                throw new Error('Remote draft fetch failed');
+            }
+            const body = await response.json();
+            const draft = body.draft ?? null;
+            if (draft && typeof draft === 'object' && draft.data && typeof draft.data === 'object') {
+                remoteDraftPayload = draft.data;
+                remoteDraftSavedAt = parseServerDraftTimestamp(draft.saved_at ?? null) ?? Date.now();
+                remoteDraftAvailable = true;
+                updateRemoteDraftStatus(describeRemoteDraftStatus(), 'success');
+            } else {
+                remoteDraftPayload = null;
+                remoteDraftSavedAt = null;
+                remoteDraftAvailable = false;
+                updateRemoteDraftStatus('Bozza cloud non ancora salvata.', 'muted');
+            }
+            refreshRemoteDraftButtons();
+        } catch (error) {
+            remoteDraftAvailable = false;
+            updateRemoteDraftStatus('Servizio bozza cloud non disponibile al momento.', 'warning');
+            refreshRemoteDraftButtons();
+        }
+    };
+
+    const clearRemoteDraft = async (showFeedback = true) => {
+        if (!canUseServerDrafts) {
+            return;
+        }
+        if (!remoteDraftAvailable) {
+            if (showFeedback) {
+                updateRemoteDraftStatus('Nessuna bozza cloud da eliminare.', 'muted');
+            }
+            return;
+        }
+        try {
+            const response = await fetch(remoteDraftEndpoint, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-Token': csrfToken,
+                },
+            });
+            if (!response.ok) {
+                throw new Error('Remote draft delete failed');
+            }
+            remoteDraftAvailable = false;
+            remoteDraftPayload = null;
+            remoteDraftSavedAt = null;
+            if (showFeedback) {
+                updateRemoteDraftStatus('Bozza cloud eliminata.', 'muted');
+            } else {
+                updateRemoteDraftStatus('Bozza cloud liberata dopo l\'invio.', 'muted');
+            }
+            refreshRemoteDraftButtons();
+        } catch (error) {
+            updateRemoteDraftStatus('Errore durante l\'eliminazione della bozza cloud.', 'danger');
+        }
+    };
+
+    const applyRemoteDraft = () => {
+        if (!remoteDraftPayload) {
+            return;
+        }
+        applyDraftPayload(remoteDraftPayload);
+        lastDraftSavedAt = remoteDraftSavedAt ?? Date.now();
+        updateDraftStatus('Bozza cloud applicata al modulo.', 'success');
+        updateRemoteDraftStatus(describeRemoteDraftStatus(), 'success');
+    };
 
     const syncDocumentAuthority = (force = false) => {
         if (!documentTypeSelect || !documentIssuedBySelect) {
@@ -984,6 +1338,61 @@ window.CIEIstatLookupConfig = {
         gasSection.hidden = category !== 'gas';
     };
 
+    const sectionValidationConfig = {
+        telefonia: {
+            section: telefoniaSection,
+            warning: document.getElementById('telefonia-section-warning'),
+            fields: [
+                { selector: 'input[name="telefonia_line_number"]', label: 'Numero linea' },
+            ],
+        },
+        luce: {
+            section: luceSection,
+            warning: document.getElementById('luce-section-warning'),
+            fields: [
+                { selector: 'input[name="luce_pod"]', label: 'Codice POD' },
+            ],
+        },
+        gas: {
+            section: gasSection,
+            warning: document.getElementById('gas-section-warning'),
+            fields: [
+                { selector: 'input[name="gas_pdr"]', label: 'Codice PDR' },
+            ],
+        },
+    };
+
+    const evaluateSectionValidation = () => {
+        const category = categorySelect.value;
+        Object.entries(sectionValidationConfig).forEach(([key, config]) => {
+            if (!config.section || !config.warning) {
+                return;
+            }
+            const shouldValidate = category === key;
+            if (!shouldValidate) {
+                config.warning.classList.add('d-none');
+                config.section.classList.remove('border-danger');
+                return;
+            }
+            const missingFields = config.fields.filter(({ selector }) => {
+                const node = opportunityForm.querySelector(selector);
+                return node ? node.value.trim() === '' : false;
+            });
+            if (missingFields.length === 0) {
+                config.warning.classList.add('d-none');
+                config.section.classList.remove('border-danger');
+            } else {
+                const label = missingFields.map(({ label }) => label).join(', ');
+                const warningText = config.warning.querySelector('.warning-text');
+                if (warningText) {
+                    warningText.textContent = `Completa: ${label}.`;
+                }
+                config.warning.classList.remove('d-none');
+                config.section.classList.add('border-danger');
+            }
+        });
+    };
+
     const togglePaymentHolderFields = () => {
         paymentHolderFields.hidden = paymentHolderToggle.checked;
     };
@@ -999,39 +1408,340 @@ window.CIEIstatLookupConfig = {
         }
     };
 
-    const renderFileList = () => {
+    const uploadConfig = {
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'zip'],
+        maxFileSize: 10 * 1024 * 1024,
+    };
+    let uploadEntries = [];
+
+    const formatFileSize = (bytes) => {
+        if (!Number.isFinite(bytes) || bytes <= 0) {
+            return '0 KB';
+        }
+        if (bytes >= 1024 * 1024) {
+            return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        }
+        return `${(bytes / 1024).toFixed(1)} KB`;
+    };
+
+    const getCompletedTokens = () => uploadEntries
+        .filter((entry) => entry.status === 'completed' && entry.token)
+        .map((entry) => entry.token);
+
+    const syncUploadTokensField = () => {
+        if (!uploadTokensField) {
+            return;
+        }
+        uploadTokensField.value = getCompletedTokens().join(',');
+    };
+
+    const renderUploadEntries = () => {
+        if (!dropzoneFiles) {
+            return;
+        }
         dropzoneFiles.innerHTML = '';
-        Array.from(documentsInput.files).forEach((file, index) => {
-            const entry = document.createElement('div');
-            entry.className = 'dropzone-file-entry';
-            entry.innerHTML = `
-                <div class="file-meta">
-                    <strong>${file.name}</strong>
-                    <small>${(file.size / 1024).toFixed(1)} KB</small>
-                </div>
-                <div class="file-actions">
-                    <button type="button" data-index="${index}" aria-label="Rimuovi"><i class="fa-solid fa-times"></i></button>
-                </div>
-            `;
-            entry.querySelector('button')?.addEventListener('click', (event) => {
-                const target = event.currentTarget;
-                const removeIndex = Number(target.getAttribute('data-index'));
-                const dt = new DataTransfer();
-                Array.from(documentsInput.files).forEach((fileItem, idx) => {
-                    if (idx !== removeIndex) {
-                        dt.items.add(fileItem);
-                    }
-                });
-                documentsInput.files = dt.files;
-                renderFileList();
-            });
-            dropzoneFiles.appendChild(entry);
+        if (uploadEntries.length === 0) {
+            const emptyState = document.createElement('p');
+            emptyState.className = 'text-muted small mb-0';
+            emptyState.textContent = 'Nessun allegato caricato.';
+            dropzoneFiles.appendChild(emptyState);
+            return;
+        }
+        uploadEntries.forEach((entry) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'dropzone-file-entry';
+
+            const meta = document.createElement('div');
+            meta.className = 'file-meta';
+            const nameNode = document.createElement('strong');
+            nameNode.textContent = entry.name;
+            const sizeNode = document.createElement('small');
+            sizeNode.textContent = formatFileSize(entry.size);
+            const statusNode = document.createElement('small');
+            const statusClass = entry.status === 'completed'
+                ? 'text-success'
+                : entry.status === 'error'
+                    ? 'text-danger'
+                    : entry.status === 'uploading'
+                        ? 'text-primary'
+                        : 'text-muted';
+            statusNode.className = `upload-status ${statusClass}`;
+            statusNode.textContent = entry.status === 'completed'
+                ? 'Caricato'
+                : entry.status === 'uploading'
+                    ? `Caricamento ${entry.progress}%`
+                    : entry.status === 'error'
+                        ? (entry.error || 'Upload non riuscito.')
+                        : entry.status === 'canceled'
+                            ? 'Upload annullato'
+                            : 'In coda';
+            meta.append(nameNode, sizeNode, statusNode);
+
+            if (entry.status === 'uploading') {
+                const progressBar = document.createElement('div');
+                progressBar.className = 'upload-progress';
+                const progressValue = document.createElement('div');
+                progressValue.className = 'upload-progress-value';
+                progressValue.style.width = `${entry.progress}%`;
+                progressBar.appendChild(progressValue);
+                meta.appendChild(progressBar);
+            }
+
+            const actions = document.createElement('div');
+            actions.className = 'file-actions';
+            if (entry.status === 'error' && entry.file) {
+                const retryButton = document.createElement('button');
+                retryButton.type = 'button';
+                retryButton.classList.add('text-warning');
+                retryButton.setAttribute('aria-label', 'Riprova upload');
+                retryButton.innerHTML = '<i class="fa-solid fa-rotate-right"></i>';
+                retryButton.addEventListener('click', () => retryUploadEntry(entry.id));
+                actions.appendChild(retryButton);
+            }
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.classList.add('text-danger');
+            removeButton.setAttribute('aria-label', entry.status === 'uploading' ? 'Annulla caricamento' : 'Rimuovi');
+            removeButton.innerHTML = '<i class="fa-solid fa-times"></i>';
+            removeButton.addEventListener('click', () => removeUploadEntry(entry.id));
+            actions.appendChild(removeButton);
+
+            wrapper.append(meta, actions);
+            dropzoneFiles.appendChild(wrapper);
         });
     };
+
+    const validateFileForUpload = (file) => {
+        if (!file) {
+            return 'File non valido.';
+        }
+        if (file.size <= 0) {
+            return 'File vuoto o danneggiato.';
+        }
+        if (file.size > uploadConfig.maxFileSize) {
+            return 'Il file supera il limite di 10MB.';
+        }
+        const extension = file.name.includes('.')
+            ? file.name.split('.').pop().toLowerCase()
+            : '';
+        if (extension && !uploadConfig.allowedExtensions.includes(extension)) {
+            return 'Formato non supportato.';
+        }
+        return null;
+    };
+
+    const deleteUploadToken = async (token) => {
+        if (!token) {
+            return;
+        }
+        try {
+            await fetch(`${uploadEndpoint}?token=${encodeURIComponent(token)}` , {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-Token': csrfToken,
+                },
+                body: JSON.stringify({ token }),
+            });
+        } catch (error) {
+            console.warn('Impossibile eliminare l\'upload temporaneo', error);
+        }
+    };
+
+    const removeUploadEntry = (entryId) => {
+        const index = uploadEntries.findIndex((entry) => entry.id === entryId);
+        if (index === -1) {
+            return;
+        }
+        const entry = uploadEntries[index];
+        if (entry.xhr && entry.status === 'uploading') {
+            entry.xhr.abort();
+        }
+        const token = entry.token;
+        uploadEntries.splice(index, 1);
+        renderUploadEntries();
+        syncUploadTokensField();
+        if (token) {
+            deleteUploadToken(token);
+        }
+    };
+
+    const retryUploadEntry = (entryId) => {
+        const entry = uploadEntries.find((upload) => upload.id === entryId);
+        if (!entry || !entry.file) {
+            return;
+        }
+        entry.error = null;
+        entry.progress = 0;
+        startUpload(entry);
+    };
+
+    const startUpload = (entry) => {
+        if (!uploadEndpoint || !entry.file) {
+            entry.status = 'error';
+            entry.error = 'Upload non disponibile su questa pagina.';
+            renderUploadEntries();
+            return;
+        }
+        const xhr = new XMLHttpRequest();
+        entry.xhr = xhr;
+        entry.status = 'uploading';
+        entry.progress = 0;
+        renderUploadEntries();
+
+        xhr.upload.addEventListener('progress', (event) => {
+            if (!event.lengthComputable) {
+                return;
+            }
+            entry.progress = Math.round((event.loaded / event.total) * 100);
+            renderUploadEntries();
+        });
+
+        xhr.addEventListener('load', () => {
+            entry.xhr = null;
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const payload = JSON.parse(xhr.responseText || '{}');
+                    const upload = payload.upload ?? null;
+                    if (!upload || !upload.token) {
+                        throw new Error('Risposta server non valida.');
+                    }
+                    entry.status = 'completed';
+                    entry.progress = 100;
+                    entry.token = upload.token;
+                    entry.file = null;
+                    entry.error = null;
+                    syncUploadTokensField();
+                    renderUploadEntries();
+                    return;
+                } catch (error) {
+                    entry.status = 'error';
+                    entry.error = error.message || 'Upload non riuscito.';
+                    renderUploadEntries();
+                    return;
+                }
+            }
+            let message = 'Upload non riuscito.';
+            try {
+                const errorPayload = JSON.parse(xhr.responseText || '{}');
+                if (errorPayload.error) {
+                    message = errorPayload.error;
+                }
+            } catch (error) {
+                // ignore JSON parse issues
+            }
+            entry.status = 'error';
+            entry.error = message;
+            renderUploadEntries();
+        });
+
+        xhr.addEventListener('error', () => {
+            entry.xhr = null;
+            entry.status = 'error';
+            entry.error = 'Connessione interrotta. Riprova.';
+            renderUploadEntries();
+        });
+
+        xhr.addEventListener('abort', () => {
+            entry.xhr = null;
+            entry.status = 'canceled';
+            entry.error = 'Upload annullato.';
+            renderUploadEntries();
+        });
+
+        const formData = new FormData();
+        formData.append('csrf_token', csrfToken);
+        formData.append('file', entry.file);
+        xhr.open('POST', uploadEndpoint);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.send(formData);
+    };
+
+    const queueFileForUpload = (file) => {
+        if (!file) {
+            return;
+        }
+        const entry = {
+            id: `upload-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            file,
+            name: file.name,
+            size: file.size,
+            status: 'queued',
+            progress: 0,
+            token: null,
+            error: null,
+            xhr: null,
+        };
+        uploadEntries.push(entry);
+        renderUploadEntries();
+        const validationError = validateFileForUpload(file);
+        if (validationError) {
+            entry.status = 'error';
+            entry.error = validationError;
+            renderUploadEntries();
+            return;
+        }
+        startUpload(entry);
+    };
+
+    const handleSelectedFiles = (files) => {
+        if (!files || files.length === 0) {
+            return;
+        }
+        Array.from(files).forEach((file) => queueFileForUpload(file));
+        if (documentsInput) {
+            documentsInput.value = '';
+        }
+    };
+
+    const mountExistingUploads = () => {
+        if (!Array.isArray(existingUploads) || existingUploads.length === 0) {
+            renderUploadEntries();
+            syncUploadTokensField();
+            return;
+        }
+        uploadEntries = existingUploads.map((upload) => ({
+            id: `existing-${upload.token}`,
+            file: null,
+            name: upload.original_name || 'Documento',
+            size: Number(upload.size || 0),
+            status: 'completed',
+            progress: 100,
+            token: upload.token,
+            error: null,
+            xhr: null,
+        }));
+        syncUploadTokensField();
+        renderUploadEntries();
+    };
+
+    const clearAllUploads = (deleteRemote = false) => {
+        const tokensToDelete = deleteRemote ? getCompletedTokens() : [];
+        uploadEntries.forEach((entry) => {
+            if (entry.xhr && entry.status === 'uploading') {
+                entry.xhr.abort();
+            }
+        });
+        uploadEntries = [];
+        syncUploadTokensField();
+        renderUploadEntries();
+        if (deleteRemote && tokensToDelete.length) {
+            tokensToDelete.forEach((token) => deleteUploadToken(token));
+        }
+    };
+
+    mountExistingUploads();
 
     const debouncedSaveDraft = debounce(() => {
         saveDraft();
     }, 800);
+
+    const debouncedRemoteSave = debounce(() => {
+        saveRemoteDraft();
+    }, 1600);
 
     const handleFormMutationForDraft = (event) => {
         if (!event) {
@@ -1047,6 +1757,9 @@ window.CIEIstatLookupConfig = {
         if (canUseDrafts) {
             debouncedSaveDraft();
         }
+        if (canUseServerDrafts) {
+            debouncedRemoteSave();
+        }
     };
 
     if (opportunityForm) {
@@ -1054,6 +1767,7 @@ window.CIEIstatLookupConfig = {
             opportunityForm.addEventListener(eventName, handleFormMutationForDraft);
         });
         opportunityForm.addEventListener('submit', (event) => {
+            evaluateSectionValidation();
             if (!opportunityForm.checkValidity()) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -1072,9 +1786,17 @@ window.CIEIstatLookupConfig = {
             hideClientErrorSummary();
             if (canUseDrafts) {
                 clearDraft(false, {
-                    message: 'Invio in corso, la bozza salvata è stata rimossa.',
+                    message: (savedAt) => {
+                        const timeLabel = formatDraftTimestamp(savedAt);
+                        return timeLabel
+                            ? `Invio in corso, ultimo salvataggio: ${timeLabel}. Bozza rimossa.`
+                            : 'Invio in corso, la bozza salvata è stata rimossa.';
+                    },
                     tone: 'success',
                 });
+            }
+            if (canUseServerDrafts) {
+                clearRemoteDraft(false);
             }
         });
     }
@@ -1272,33 +1994,47 @@ window.CIEIstatLookupConfig = {
     dropzoneArea.addEventListener('drop', (event) => {
         event.preventDefault();
         dropzoneArea.classList.remove('dragover');
-        const dt = new DataTransfer();
-        Array.from(documentsInput.files).forEach((file) => dt.items.add(file));
-        Array.from(event.dataTransfer?.files || []).forEach((file) => dt.items.add(file));
-        documentsInput.files = dt.files;
-        renderFileList();
+        handleSelectedFiles(event.dataTransfer?.files || null);
     });
-    documentsInput.addEventListener('change', renderFileList);
+    documentsInput.addEventListener('change', () => handleSelectedFiles(documentsInput.files));
     bindCapLookup();
 
-    if (!hasSubmitted) {
+    if (!hasSubmitted && !isCloning) {
         loadDraftFromStorage();
+    } else if (isCloning) {
+        updateDraftStatus('Stai duplicando una opportunity: il salvataggio parte dopo le prime modifiche.', 'info');
+    }
+
+    if (canUseServerDrafts) {
+        fetchRemoteDraft();
+    } else {
+        updateRemoteDraftStatus('Bozza cloud non disponibile su questo dispositivo.', 'warning');
     }
 
     clearDraftButton?.addEventListener('click', () => {
         clearDraft(true);
-        renderFileList();
+        clearAllUploads(true);
         refreshProviderOptions();
         refreshOfferOptions();
         toggleCategorySections();
+        evaluateSectionValidation();
         updatePaymentMethodOptions();
         handlePaymentMethodChange();
+    });
+
+    restoreRemoteDraftButton?.addEventListener('click', () => {
+        applyRemoteDraft();
+    });
+
+    clearRemoteDraftButton?.addEventListener('click', () => {
+        clearRemoteDraft(true);
     });
 
     categorySelect.addEventListener('change', () => {
         refreshProviderOptions();
         refreshOfferOptions();
         toggleCategorySections();
+        evaluateSectionValidation();
         updatePaymentMethodOptions();
         handlePaymentMethodChange();
     });
@@ -1313,10 +2049,10 @@ window.CIEIstatLookupConfig = {
     refreshProviderOptions();
     refreshOfferOptions();
     toggleCategorySections();
+    evaluateSectionValidation();
     updatePaymentMethodOptions();
     togglePaymentHolderFields();
     handlePaymentMethodChange();
-    renderFileList();
     initializeDocumentAuthoritySync();
 </script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

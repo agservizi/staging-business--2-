@@ -345,17 +345,18 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 ?>
                 <div class="col-12 opportunity-list-entry" data-search-index="<?php echo sanitize_output($searchIndexValue); ?>">
                     <div class="card opportunity-card shadow-sm">
-                        <div class="card-body d-flex flex-column flex-lg-row justify-content-between gap-3">
-                            <div>
-                                <p class="text-uppercase small text-muted mb-1 d-flex align-items-center gap-2 flex-wrap">
-                                    <span><?php echo sanitize_output(strtoupper($opportunity['category'] ?? '')); ?></span>
-                                    <span class="opportunity-code"><?php echo sanitize_output($opportunity['code'] ?? ''); ?></span>
-                                </p>
-                                <h3 class="h5 mb-1"><?php echo sanitize_output($opportunity['customer_first_name'] . ' ' . $opportunity['customer_last_name']); ?></h3>
-                                <p class="text-muted mb-0">Gestore: <?php echo sanitize_output($opportunity['provider_label'] ?? ''); ?></p>
-                            </div>
-                            <div class="text-end">
-                                <?php
+                        <div class="card-body">
+                            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                                <div>
+                                    <p class="text-uppercase small text-muted mb-1 d-flex align-items-center gap-2 flex-wrap">
+                                        <span><?php echo sanitize_output(strtoupper($opportunity['category'] ?? '')); ?></span>
+                                        <span class="opportunity-code"><?php echo sanitize_output($opportunity['code'] ?? ''); ?></span>
+                                    </p>
+                                    <h3 class="h5 mb-1"><?php echo sanitize_output($opportunity['customer_first_name'] . ' ' . $opportunity['customer_last_name']); ?></h3>
+                                    <p class="text-muted mb-0">Gestore: <?php echo sanitize_output($opportunity['provider_label'] ?? ''); ?></p>
+                                </div>
+                                <div class="text-lg-end">
+                                    <?php
                                 $badgeClass = 'bg-secondary';
                                 $statusColor = $opportunity['status_color'] ?? '';
                                 $colorToBootstrap = [
@@ -382,13 +383,23 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 }
                                 $badgeTooltip = implode(' • ', $tooltipParts);
                                 ?>
-                                <span class="badge <?php echo $badgeClass; ?> opportunity-status-badge"<?php if ($badgeTooltip !== ''): ?> data-bs-toggle="tooltip" data-bs-placement="top" title="<?php echo sanitize_output($badgeTooltip); ?>"<?php endif; ?>>
-                                    <?php echo sanitize_output($opportunity['status_label'] ?? $opportunity['status_code'] ?? ''); ?>
-                                </span>
-                                <p class="text-muted small mb-0 mt-2">
-                                    Inviata il <?php echo sanitize_output(format_datetime_locale($opportunity['created_at'] ?? null)); ?>
-                                </p>
+                                    ?>
+                                    <span class="badge <?php echo $badgeClass; ?> opportunity-status-badge"<?php if ($badgeTooltip !== ''): ?> data-bs-toggle="tooltip" data-bs-placement="top" title="<?php echo sanitize_output($badgeTooltip); ?>"<?php endif; ?>>
+                                        <?php echo sanitize_output($opportunity['status_label'] ?? $opportunity['status_code'] ?? ''); ?>
+                                    </span>
+                                    <p class="text-muted small mb-0 mt-2">
+                                        Inviata il <?php echo sanitize_output(format_datetime_locale($opportunity['created_at'] ?? null)); ?>
+                                    </p>
+                                </div>
                             </div>
+                            <?php if (!empty($opportunity['id'])): ?>
+                                <?php $cloneUrl = asset('modules/opportunities/collaborator/create.php?clone_id=' . (int) $opportunity['id']); ?>
+                                <div class="d-flex justify-content-end mt-3">
+                                    <a class="btn btn-outline-primary btn-sm" href="<?php echo sanitize_output($cloneUrl); ?>">
+                                        <i class="fa-solid fa-clone me-1"></i>Duplica opportunity
+                                    </a>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

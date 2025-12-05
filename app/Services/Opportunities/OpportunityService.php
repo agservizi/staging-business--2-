@@ -4,15 +4,162 @@ declare(strict_types=1);
 namespace App\Services\Opportunities;
 
 use DateTimeImmutable;
+use JsonException;
 use PDO;
 use RuntimeException;
 
 final class OpportunityService
 {
     private const CATEGORIES = ['telefonia', 'luce', 'gas'];
+    private const CLONEABLE_FIELDS = [
+        'category',
+        'provider_id',
+        'offer_id',
+        'customer_first_name',
+        'customer_last_name',
+        'customer_tax_code',
+        'customer_birth_date',
+        'customer_birth_place',
+        'customer_phone',
+        'customer_email',
+        'customer_address',
+        'customer_city',
+        'customer_postal_code',
+        'customer_province',
+        'document_type',
+        'document_number',
+        'document_issued_by',
+        'document_issued_at',
+        'document_expires_at',
+        'telefonia_current_operator',
+        'telefonia_line_number',
+        'luce_pod',
+        'gas_pdr',
+        'payment_method',
+        'payment_iban',
+        'payment_holder_is_customer',
+        'payment_holder_first_name',
+        'payment_holder_last_name',
+        'payment_holder_tax_code',
+        'additional_notes',
+    ];
 
     public function __construct(private PDO $pdo)
     {
+    }
+
+    /**
+     * @return array{data:array<string,mixed>,saved_at:string|null}|null
+     */
+    public function getCollaboratorDraft(int $userId): ?array
+    {
+        if ($userId <= 0) {
+            return null;
+        }
+
+        $row = $this->fetchDraftRow($userId);
+        if ($row === null) {
+            return null;
+        }
+
+        $payload = $this->decodeDraftPayload($row['payload'] ?? null);
+        if ($payload === null) {
+            return null;
+        }
+
+        return [
+            'data' => $payload,
+            'saved_at' => $row['updated_at'] ?? null,
+        ];
+    }
+
+    /**
+     * @param array<string,mixed> $payload
+     * @return array{data:array<string,mixed>,saved_at:string|null}
+     */
+    public function saveCollaboratorDraft(int $userId, array $payload): array
+    {
+        if ($userId <= 0) {
+            throw new RuntimeException('Utente non valido.');
+        }
+
+        $encoded = $this->encodeDraftPayload($payload);
+
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO opportunity_drafts (collaborator_id, payload)
+             VALUES (:user, :payload)
+             ON DUPLICATE KEY UPDATE payload = VALUES(payload), updated_at = CURRENT_TIMESTAMP'
+        );
+        $stmt->bindValue(':user', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':payload', $encoded, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $row = $this->fetchDraftRow($userId);
+        if ($row === null) {
+            throw new RuntimeException('Impossibile recuperare la bozza salvata.');
+        }
+
+        $resultPayload = $this->decodeDraftPayload($row['payload'] ?? null) ?? [];
+
+        return [
+            'data' => $resultPayload,
+            'saved_at' => $row['updated_at'] ?? null,
+        ];
+    }
+
+    public function deleteCollaboratorDraft(int $userId): void
+    {
+        if ($userId <= 0) {
+            return;
+        }
+
+        $stmt = $this->pdo->prepare('DELETE FROM opportunity_drafts WHERE collaborator_id = :user');
+        $stmt->bindValue(':user', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+    }
+
+    /**
+     * @return array<string,mixed>|null
+     */
+    private function decodeDraftPayload(null|string $encoded): ?array
+    {
+        if ($encoded === null || $encoded === '') {
+            return null;
+        }
+
+        try {
+            $decoded = json_decode($encoded, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            return null;
+        }
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    /**
+     * @param array<string,mixed> $payload
+     */
+    private function encodeDraftPayload(array $payload): string
+    {
+        try {
+            return json_encode($payload, JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            throw new RuntimeException('Impossibile serializzare la bozza: ' . $exception->getMessage(), 0, $exception);
+        }
+    }
+
+    /**
+     * @return array<string,string>|null
+     */
+    private function fetchDraftRow(int $userId): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT payload, updated_at FROM opportunity_drafts WHERE collaborator_id = :user LIMIT 1');
+        $stmt->bindValue(':user', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
     }
 
     /**
@@ -241,6 +388,62 @@ final class OpportunityService
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return $result ?: null;
+    }
+
+    /**
+     * @return array{form:array<string,mixed>,meta:array<string,mixed>}|null
+     */
+    public function getCollaboratorClonePayload(int $opportunityId, int $userId): ?array
+    {
+        if ($opportunityId <= 0 || $userId <= 0) {
+            return null;
+        }
+
+        $columns = implode(', ', array_unique(array_merge([
+            'id',
+            'code',
+            'provider_label',
+            'offer_label',
+            'created_at',
+        ], self::CLONEABLE_FIELDS)));
+
+        $stmt = $this->pdo->prepare(
+            'SELECT ' . $columns . ' FROM opportunities WHERE id = :id AND collaborator_id = :user LIMIT 1'
+        );
+        $stmt->bindValue(':id', $opportunityId, PDO::PARAM_INT);
+        $stmt->bindValue(':user', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return null;
+        }
+
+        $formPayload = [];
+        foreach (self::CLONEABLE_FIELDS as $field) {
+            if (!array_key_exists($field, $row)) {
+                continue;
+            }
+            $value = $row[$field];
+            if ($field === 'payment_holder_is_customer') {
+                $formPayload[$field] = ((int) $value) === 1 ? '1' : '0';
+            } elseif (in_array($field, ['provider_id', 'offer_id'], true)) {
+                $formPayload[$field] = $value !== null ? (string) $value : '';
+            } else {
+                $formPayload[$field] = $value ?? '';
+            }
+        }
+
+        return [
+            'form' => $formPayload,
+            'meta' => [
+                'code' => $row['code'] ?? null,
+                'category' => $row['category'] ?? null,
+                'provider_label' => $row['provider_label'] ?? null,
+                'offer_label' => $row['offer_label'] ?? null,
+                'created_at' => $row['created_at'] ?? null,
+            ],
+        ];
     }
 
     /**
@@ -499,7 +702,20 @@ final class OpportunityService
             'additional_notes' => $this->nullOrString($input['additional_notes'] ?? null),
         ];
 
-        $normalizedFiles = $this->normalizeUploadedFiles($uploadedFiles);
+        $uploadTokens = $this->extractUploadTokens($input);
+        $resolvedUploads = ['files' => [], 'tokens' => []];
+        if ($uploadTokens !== []) {
+            $resolvedUploads = OpportunityUploadStorage::resolveFiles($collaboratorId, $uploadTokens);
+            $missingTokens = array_diff($uploadTokens, $resolvedUploads['tokens'] ?? []);
+            if ($missingTokens !== []) {
+                throw new RuntimeException('Alcuni allegati temporanei sono scaduti. Caricali nuovamente.');
+            }
+        }
+
+        $normalizedFiles = array_merge(
+            $this->normalizeUploadedFiles($uploadedFiles),
+            $resolvedUploads['files'] ?? []
+        );
 
         $this->pdo->beginTransaction();
         try {
@@ -517,6 +733,10 @@ final class OpportunityService
 
             if ($normalizedFiles) {
                 $this->persistFiles($opportunityId, $normalizedFiles, $collaboratorId);
+                $resolvedTokens = $resolvedUploads['tokens'] ?? [];
+                if ($resolvedTokens) {
+                    OpportunityUploadStorage::cleanupTokens($collaboratorId, $resolvedTokens);
+                }
             }
 
             $this->pdo->commit();
@@ -1002,6 +1222,49 @@ final class OpportunityService
     }
 
     /**
+     * @param array<string,mixed> $input
+     * @return array<int,string>
+     */
+    private function extractUploadTokens(array $input): array
+    {
+        if (!isset($input['upload_tokens_payload'])) {
+            return [];
+        }
+
+        $rawValue = $input['upload_tokens_payload'];
+        $tokens = [];
+
+        if (is_array($rawValue)) {
+            $tokens = $rawValue;
+        } elseif (is_string($rawValue)) {
+            $trimmed = trim($rawValue);
+            if ($trimmed === '') {
+                return [];
+            }
+            if (str_starts_with($trimmed, '[')) {
+                try {
+                    $decoded = json_decode($trimmed, true, 512, JSON_THROW_ON_ERROR);
+                    if (is_array($decoded)) {
+                        $tokens = $decoded;
+                    }
+                } catch (JsonException) {
+                    $tokens = [];
+                }
+            }
+            if ($tokens === []) {
+                $tokens = explode(',', $trimmed);
+            }
+        } elseif (is_scalar($rawValue)) {
+            $tokens = [(string) $rawValue];
+        }
+
+        $tokens = array_map(static fn ($token): string => trim((string) $token), $tokens);
+        $tokens = array_filter($tokens, static fn (string $token): bool => $token !== '');
+
+        return array_values(array_unique($tokens));
+    }
+
+    /**
      * @param array<string,mixed> $files
      * @return array<int,array{name:string,type:string,tmp_name:string,size:int}>
      */
@@ -1068,7 +1331,7 @@ final class OpportunityService
     }
 
     /**
-     * @param array<int,array{name:string,type:string,tmp_name:string,size:int}> $files
+     * @param array<int,array{name:string,type:string,tmp_name:string,size:int,token?:string}> $files
      */
     private function persistFiles(int $opportunityId, array $files, int $uploaderId): void
     {
@@ -1095,9 +1358,7 @@ final class OpportunityService
             }
 
             $targetPath = $targetDir . '/' . $storedName;
-            if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
-                throw new RuntimeException('Impossibile salvare uno degli allegati.');
-            }
+            $this->transferUploadedFile($file, $targetPath);
 
             $relativePath = 'storage/uploads/opportunities/' . $opportunityId . '/' . $storedName;
             $checksum = hash_file('sha256', $targetPath) ?: null;
@@ -1112,6 +1373,32 @@ final class OpportunityService
                 ':checksum' => $checksum,
                 ':uploaded_by' => $uploaderId,
             ]);
+        }
+    }
+
+    /**
+     * @param array{name:string,type:string,tmp_name:string,size:int,token?:string} $file
+     */
+    private function transferUploadedFile(array $file, string $targetPath): void
+    {
+        $sourcePath = (string) $file['tmp_name'];
+        if ($sourcePath === '' || !is_file($sourcePath)) {
+            throw new RuntimeException('Il file temporaneo non è più disponibile.');
+        }
+
+        $token = isset($file['token']) ? trim((string) $file['token']) : '';
+        if ($token !== '') {
+            if (!@rename($sourcePath, $targetPath)) {
+                if (!@copy($sourcePath, $targetPath)) {
+                    throw new RuntimeException('Impossibile spostare uno degli allegati temporanei.');
+                }
+                @unlink($sourcePath);
+            }
+            return;
+        }
+
+        if (!move_uploaded_file($sourcePath, $targetPath)) {
+            throw new RuntimeException('Impossibile salvare uno degli allegati.');
         }
     }
 
