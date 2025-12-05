@@ -108,7 +108,7 @@ final class OpportunityService
             }
             $key = $month->format('Y-m');
             $monthKeys[$key] = [
-                'label' => $month->format('M Y'),
+                'label' => $this->formatItalianMonth($month),
                 'value' => 0,
             ];
         }
@@ -988,6 +988,29 @@ final class OpportunityService
         }
 
         return $normalized;
+    }
+
+    private function formatItalianMonth(DateTimeImmutable $date): string
+    {
+        static $months = [
+            1 => 'Gen',
+            2 => 'Feb',
+            3 => 'Mar',
+            4 => 'Apr',
+            5 => 'Mag',
+            6 => 'Giu',
+            7 => 'Lug',
+            8 => 'Ago',
+            9 => 'Set',
+            10 => 'Ott',
+            11 => 'Nov',
+            12 => 'Dic',
+        ];
+
+        $monthIndex = (int) $date->format('n');
+        $monthLabel = $months[$monthIndex] ?? $date->format('M');
+
+        return sprintf('%s %s', $monthLabel, $date->format('Y'));
     }
 
     /**

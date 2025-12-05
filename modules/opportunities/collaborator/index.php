@@ -119,7 +119,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div>
-                                <p class="text-uppercase small text-muted mb-1">Trend</p>
+                                <p class="text-uppercase small text-muted mb-1">Andamento</p>
                                 <h2 class="h5 mb-0">Ultimi 6 mesi</h2>
                             </div>
                         </div>
