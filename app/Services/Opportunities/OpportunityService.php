@@ -165,7 +165,51 @@ final class OpportunityService
     /**
      * @return array<int,array<string,mixed>>
      */
-    public function listCollaboratorOpportunities(int $userId, array $filters = []): array
+    public function listCollaboratorOpportunities(int $userId, array $filters = [], ?int $limit = null, int $offset = 0): array
+    {
+        [$conditions, $params] = $this->buildCollaboratorListConditions($userId, $filters);
+
+        $whereClause = implode(' AND ', $conditions);
+        $limitClause = '';
+        if ($limit !== null) {
+            $limitClause = ' LIMIT :limit OFFSET :offset';
+        }
+
+        $stmt = $this->pdo->prepare(
+            'SELECT o.*, s.label AS status_label, s.color AS status_color
+             FROM opportunities o
+             LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+             WHERE ' . $whereClause . '
+             ORDER BY o.created_at DESC' . $limitClause
+        );
+        foreach ($params as $key => $value) {
+            $paramType = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $stmt->bindValue($key, $value, $paramType);
+        }
+        if ($limit !== null) {
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', max(0, $offset), PDO::PARAM_INT);
+        }
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    public function countCollaboratorOpportunities(int $userId, array $filters = []): int
+    {
+        [$conditions, $params] = $this->buildCollaboratorListConditions($userId, $filters);
+        $whereClause = implode(' AND ', $conditions);
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) AS total FROM opportunities o WHERE ' . $whereClause);
+        $stmt->execute($params);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return (int) ($row['total'] ?? 0);
+    }
+
+    /**
+     * @return array{0:array<int,string>,1:array<string,mixed>}
+     */
+    private function buildCollaboratorListConditions(int $userId, array $filters): array
     {
         $conditions = ['o.collaborator_id = :user'];
         $params = [':user' => $userId];
@@ -188,18 +232,7 @@ final class OpportunityService
             $params[':search'] = '%' . $search . '%';
         }
 
-        $whereClause = implode(' AND ', $conditions);
-
-        $stmt = $this->pdo->prepare(
-            'SELECT o.*, s.label AS status_label, s.color AS status_color
-             FROM opportunities o
-             LEFT JOIN opportunity_statuses s ON s.code = o.status_code
-             WHERE ' . $whereClause . '
-             ORDER BY o.created_at DESC'
-        );
-        $stmt->execute($params);
-
-        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        return [$conditions, $params];
     }
 
     /**

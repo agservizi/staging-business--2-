@@ -47,7 +47,21 @@ if ($searchQuery !== '') {
     $listFilters['search'] = $searchQuery;
 }
 
-$opportunities = $opportunityService->listCollaboratorOpportunities($collaboratorId, $listFilters);
+$perPage = 10;
+$currentPage = max(1, (int) ($_GET['page'] ?? 1));
+$totalOpportunities = $opportunityService->countCollaboratorOpportunities($collaboratorId, $listFilters);
+$totalPages = $totalOpportunities > 0 ? (int) ceil($totalOpportunities / $perPage) : 1;
+if ($totalPages <= 0) {
+    $totalPages = 1;
+}
+if ($currentPage > $totalPages && $totalOpportunities > 0) {
+    $currentPage = $totalPages;
+}
+$offset = ($currentPage - 1) * $perPage;
+$opportunities = $opportunityService->listCollaboratorOpportunities($collaboratorId, $listFilters, $perPage, $offset);
+$displayStart = $totalOpportunities > 0 ? $offset + 1 : 0;
+$displayEnd = $totalOpportunities > 0 ? min($totalOpportunities, $offset + count($opportunities)) : 0;
+$hasPagination = $totalPages > 1;
 $remoteDraft = $opportunityService->getCollaboratorDraft($collaboratorId);
 $remoteDraftData = is_array($remoteDraft['data'] ?? null) ? $remoteDraft['data'] : [];
 $hasRemoteDraft = $remoteDraftData !== [];
@@ -73,6 +87,12 @@ if ($searchQuery !== '') {
 $filterQueryString = http_build_query($filterQueryParams);
 $hasActiveFilters = !empty($filterQueryParams);
 $exportUrl = asset('modules/opportunities/collaborator/export.php' . ($filterQueryString !== '' ? ('?' . $filterQueryString) : ''));
+$paginationBaseParams = $filterQueryParams;
+$listBaseUrl = asset('modules/opportunities/collaborator/index.php');
+$buildPageUrl = static function (int $page) use ($paginationBaseParams, $listBaseUrl): string {
+    $query = array_merge($paginationBaseParams, ['page' => $page]);
+    return $listBaseUrl . '?' . http_build_query($query);
+};
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -322,7 +342,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <input class="form-control" type="search" id="opportunity-quick-search" placeholder="Filtra nella lista corrente">
                     <div class="form-text text-muted">Il filtro è istantaneo e non ricarica la pagina.</div>
                 </div>
-                <div class="text-muted small">Suggerimento: usa anche i filtri avanzati per restringere i risultati dal server.</div>
+                <div class="text-muted small text-end">
+                    <div>Mostrando <?php echo sanitize_output(number_format($displayStart)); ?> - <?php echo sanitize_output(number_format($displayEnd)); ?> di <?php echo sanitize_output(number_format($totalOpportunities)); ?> opportunity.</div>
+                    <div>Suggerimento: usa i filtri avanzati per restringere i risultati dal server.</div>
+                </div>
             </div>
             <div class="alert alert-info d-none" id="opportunity-quick-search-empty" role="alert">
                 Nessuna opportunity corrisponde al testo digitato.
@@ -345,28 +368,49 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     $draftSavedLabel = format_datetime_locale($remoteDraftSavedAt) ?? 'data non disponibile';
                 ?>
                 <div class="col-12" data-role="remote-draft-card">
-                    <div class="card opportunity-card border border-warning-subtle shadow-sm">
+                    <div class="card shadow-sm border-warning-subtle">
                         <div class="card-body">
-                            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                                 <div>
-                                    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
-                                        <span class="badge bg-warning text-dark">Bozza non inviata</span>
-                                        <span class="text-uppercase small text-muted">Aggiornata <?php echo sanitize_output($draftSavedLabel); ?></span>
-                                    </div>
-                                    <h3 class="h5 mb-1"><?php echo sanitize_output($draftCustomer); ?></h3>
-                                    <p class="text-muted mb-0">Categoria selezionata: <?php echo sanitize_output($draftCategoryLabel); ?></p>
+                                    <p class="text-uppercase small text-muted mb-0">Bozze salvate</p>
+                                    <h3 class="h6 mb-0">Hai una opportunity in stato di bozza</h3>
                                 </div>
-                                <div class="d-flex flex-column flex-md-row gap-2">
-                                    <a class="btn btn-warning" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
-                                        <i class="fa-solid fa-pen-to-square me-1"></i>Continua la bozza
-                                    </a>
-                                    <button class="btn btn-outline-danger" type="button" data-action="discard-remote-draft">
-                                        <span data-role="label">Elimina bozza</span>
-                                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" data-role="spinner"></span>
-                                    </button>
-                                </div>
+                                <span class="badge bg-warning text-dark">Da completare</span>
                             </div>
-                            <p class="text-muted small mb-0 mt-3">
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-3">
+                                    <thead>
+                                        <tr class="text-muted">
+                                            <th scope="col">Cliente</th>
+                                            <th scope="col">Categoria</th>
+                                            <th scope="col">Ultimo salvataggio</th>
+                                            <th scope="col" class="text-end">Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <strong><?php echo sanitize_output($draftCustomer); ?></strong><br>
+                                                <small class="text-muted">Bozza cloud</small>
+                                            </td>
+                                            <td><?php echo sanitize_output($draftCategoryLabel); ?></td>
+                                            <td><?php echo sanitize_output($draftSavedLabel); ?></td>
+                                            <td class="text-end">
+                                                <div class="d-flex justify-content-end gap-2 flex-wrap">
+                                                    <a class="btn btn-sm btn-warning" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
+                                                        <i class="fa-solid fa-pen-to-square me-1"></i>Continua
+                                                    </a>
+                                                    <button class="btn btn-sm btn-outline-danger" type="button" data-action="discard-remote-draft">
+                                                        <span data-role="label">Elimina</span>
+                                                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" data-role="spinner"></span>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-muted small mb-0">
                                 Le bozze compaiono qui ma non vengono conteggiate finché non invii la opportunity.
                             </p>
                         </div>
@@ -459,6 +503,35 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </div>
             <?php endforeach; ?>
         </div>
+        <?php if ($hasPagination && $opportunities): ?>
+            <?php
+                $window = 5;
+                $startPage = max(1, $currentPage - (int) floor($window / 2));
+                $endPage = min($totalPages, $startPage + $window - 1);
+                if ($endPage - $startPage + 1 < $window) {
+                    $startPage = max(1, $endPage - $window + 1);
+                }
+            ?>
+            <nav aria-label="Paginazione opportunity" class="mt-4">
+                <ul class="pagination justify-content-center flex-wrap gap-2">
+                    <li class="page-item <?php echo $currentPage === 1 ? 'disabled' : ''; ?>">
+                        <a class="page-link" href="<?php echo $currentPage === 1 ? '#' : sanitize_output($buildPageUrl($currentPage - 1)); ?>" tabindex="<?php echo $currentPage === 1 ? '-1' : '0'; ?>">&laquo; Prec.</a>
+                    </li>
+                    <?php for ($page = $startPage; $page <= $endPage; $page += 1): ?>
+                        <li class="page-item <?php echo $page === $currentPage ? 'active' : ''; ?>">
+                            <?php if ($page === $currentPage): ?>
+                                <span class="page-link"><?php echo $page; ?></span>
+                            <?php else: ?>
+                                <a class="page-link" href="<?php echo sanitize_output($buildPageUrl($page)); ?>"><?php echo $page; ?></a>
+                            <?php endif; ?>
+                        </li>
+                    <?php endfor; ?>
+                    <li class="page-item <?php echo $currentPage >= $totalPages ? 'disabled' : ''; ?>">
+                        <a class="page-link" href="<?php echo $currentPage >= $totalPages ? '#' : sanitize_output($buildPageUrl($currentPage + 1)); ?>" tabindex="<?php echo $currentPage >= $totalPages ? '-1' : '0'; ?>">Succ. &raquo;</a>
+                    </li>
+                </ul>
+            </nav>
+        <?php endif; ?>
     </main>
 </div>
 <link rel="stylesheet" href="<?php echo asset('modules/opportunities/assets/opportunities.css'); ?>">
