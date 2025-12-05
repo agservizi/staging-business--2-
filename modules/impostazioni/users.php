@@ -8,13 +8,14 @@ require_role('Admin', 'Manager');
 $pageTitle = 'Gestione utenti';
 $csrfToken = csrf_token();
 
-$allowedRoles = ['Admin', 'Manager', 'Operatore', 'Patronato', 'Cliente'];
+$allowedRoles = ['Admin', 'Manager', 'Operatore', 'Patronato', 'Cliente', 'Collaboratore'];
 $roleLabels = [
     'Admin' => 'Amministratore',
     'Manager' => 'Manager',
     'Operatore' => 'Operatore',
     'Patronato' => 'Operatore Patronato',
     'Cliente' => 'Cliente',
+    'Collaboratore' => 'Collaboratore',
 ];
 $createData = ['first_name' => '', 'last_name' => '', 'username' => '', 'email' => '', 'role' => 'Operatore'];
 $createErrors = [];

@@ -1,4 +1,5 @@
 <?php
+use App\Services\Opportunities\OpportunityService;
 use App\Services\SettingsService;
 
 require_once __DIR__ . '/../../includes/auth.php';
@@ -191,6 +192,52 @@ $cafPatronatoServiceSuggestions = $settingsService->suggestCafPatronatoServices(
 $cafPatronatoServiceSuggestions = settings_filter_service_suggestions($cafPatronatoServices, $cafPatronatoServiceSuggestions);
 
 $servicePricing = $settingsService->getServicePricing();
+$opportunityStatuses = [];
+$opportunityProvidersByCategory = [];
+$opportunityStatusPreview = [];
+$opportunityCategorySummary = [];
+$opportunityCardSummary = [
+    'statuses' => 0,
+    'providers' => 0,
+    'offers' => 0,
+];
+$opportunityCategoryLabels = [
+    'telefonia' => 'Telefonia',
+    'luce' => 'Luce',
+    'gas' => 'Gas',
+];
+
+try {
+    $opportunityService = new OpportunityService($pdo);
+    $opportunityStatuses = $opportunityService->listStatusesDetailed();
+    $opportunityProvidersByCategory = $opportunityService->listProvidersWithOffers();
+} catch (Throwable $exception) {
+    error_log('Impostazioni: impossibile leggere i dati Opportunity - ' . $exception->getMessage());
+}
+
+$opportunityCardSummary['statuses'] = count($opportunityStatuses);
+foreach ($opportunityProvidersByCategory as $categoryProviders) {
+    $opportunityCardSummary['providers'] += count($categoryProviders);
+    foreach ($categoryProviders as $providerData) {
+        $opportunityCardSummary['offers'] += count($providerData['offers'] ?? []);
+    }
+}
+
+$opportunityStatusPreview = array_slice($opportunityStatuses, 0, 5);
+
+foreach ($opportunityCategoryLabels as $categoryKey => $categoryLabel) {
+    $providers = $opportunityProvidersByCategory[$categoryKey] ?? [];
+    $offers = 0;
+    foreach ($providers as $providerData) {
+        $offers += count($providerData['offers'] ?? []);
+    }
+    $opportunityCategorySummary[] = [
+        'key' => $categoryKey,
+        'label' => $categoryLabel,
+        'providers' => count($providers),
+        'offers' => $offers,
+    ];
+}
 
 $backupPerPage = 10;
 $backupPage = max(1, (int) ($_GET['page_backup'] ?? 1));
@@ -940,6 +987,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="email-marketing" type="button">Email marketing</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-section-target="opportunities" type="button">Opportunity</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="pricing" type="button">Listini</button>
@@ -1803,6 +1853,96 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <code><?php echo sanitize_output($emailMarketingWebhookEndpoint); ?></code>
                         </div>
                         <p class="text-muted small mt-2 mb-0">Proteggi l'endpoint verificando il segreto configurato sopra.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xxl-7" data-section="opportunities">
+                <div class="card ag-card h-100" id="opportunity-settings-card">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Modulo Opportunity</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-4">Controlla lo stato del workflow commerciale e raggiungi in un click la configurazione completa di stati, gestori e offerte.</p>
+                        <div class="row g-3">
+                            <div class="col-12 col-lg-6">
+                                <div class="border rounded-3 p-3 h-100 bg-body-secondary">
+                                    <h6 class="fw-semibold mb-3">Workflow attuale</h6>
+                                    <?php if ($opportunityStatusPreview): ?>
+                                        <ul class="list-unstyled mb-0">
+                                            <?php foreach ($opportunityStatusPreview as $status): ?>
+                                                <li class="d-flex justify-content-between align-items-center py-2 border-bottom border-light-subtle">
+                                                    <div>
+                                                        <strong class="d-block"><?php echo sanitize_output($status['label']); ?></strong>
+                                                        <small class="text-muted">Codice: <?php echo sanitize_output($status['code']); ?></small>
+                                                    </div>
+                                                    <span class="badge bg-light text-dark text-uppercase small"><?php echo sanitize_output($status['color']); ?></span>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                        <?php if (count($opportunityStatuses) > count($opportunityStatusPreview)): ?>
+                                            <p class="text-muted small mt-2 mb-0">Altri <?php echo (int) (count($opportunityStatuses) - count($opportunityStatusPreview)); ?> stati configurati.</p>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <p class="text-muted mb-0">Nessuno stato configurato. Aggiungili dalle impostazioni dedicate.</p>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <div class="border rounded-3 p-3 h-100 bg-body-secondary">
+                                    <h6 class="fw-semibold mb-3">Gestori e offerte</h6>
+                                    <?php if ($opportunityCategorySummary): ?>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm align-middle mb-0">
+                                                <tbody>
+                                                    <?php foreach ($opportunityCategorySummary as $category): ?>
+                                                        <tr>
+                                                            <td class="text-uppercase text-muted small"><?php echo sanitize_output($category['label']); ?></td>
+                                                            <td>
+                                                                <strong><?php echo (int) $category['providers']; ?></strong>
+                                                                <small class="text-muted">gestori</small>
+                                                            </td>
+                                                            <td>
+                                                                <strong><?php echo (int) $category['offers']; ?></strong>
+                                                                <small class="text-muted">offerte</small>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    <?php else: ?>
+                                        <p class="text-muted mb-0">Nessun gestore configurato al momento.</p>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php
+                            $opportunityMetricsLabels = [
+                                'statuses' => 'Stati disponibili',
+                                'providers' => 'Gestori',
+                                'offers' => 'Offerte',
+                            ];
+                        ?>
+                        <div class="row g-3 mt-1">
+                            <?php foreach ($opportunityMetricsLabels as $metricKey => $metricLabel): ?>
+                                <div class="col-12 col-md-4">
+                                    <div class="border rounded-3 px-3 py-3 h-100 bg-body-secondary">
+                                        <p class="text-muted text-uppercase small mb-1"><?php echo sanitize_output($metricLabel); ?></p>
+                                        <strong class="fs-4">
+                                            <?php echo sanitize_output(number_format((int) ($opportunityCardSummary[$metricKey] ?? 0), 0, ',', '.')); ?>
+                                        </strong>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="d-flex flex-column flex-md-row gap-2 mt-4">
+                            <a class="btn btn-warning flex-grow-1" href="<?php echo asset('modules/opportunities/settings.php'); ?>">
+                                <i class="fa-solid fa-sliders me-2"></i>Gestisci impostazioni
+                            </a>
+                            <a class="btn btn-outline-secondary flex-grow-1" href="<?php echo asset('modules/opportunities/index.php'); ?>">
+                                <i class="fa-solid fa-diagram-project me-2"></i>Apri pipeline
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
