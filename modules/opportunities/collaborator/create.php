@@ -105,6 +105,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         <?php endif; ?>
 
+        <div class="alert alert-danger d-none" role="alert" id="client-error-summary" aria-live="assertive">
+            <h2 class="h6 mb-2">Controlla i seguenti campi prima di inviare:</h2>
+            <ul class="mb-0 ps-3" id="client-error-summary-list"></ul>
+        </div>
+
         <div class="alert alert-secondary d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2" role="status">
             <div>
                 <strong>Salvataggio automatico bozza</strong>
@@ -436,6 +441,8 @@ window.CIEIstatLookupConfig = {
     const defaultCapFeedbackMessage = 'Inserisci il CAP per validarlo automaticamente.';
     const clearDraftButton = document.getElementById('clear-draft-button');
     const draftStatusLabel = document.getElementById('draft-status-label');
+    const clientErrorSummary = document.getElementById('client-error-summary');
+    const clientErrorSummaryList = document.getElementById('client-error-summary-list');
     const canUseDrafts = (() => {
         try {
             if (typeof window === 'undefined' || !window.localStorage) {
@@ -558,6 +565,80 @@ window.CIEIstatLookupConfig = {
         return Array.from(opportunityForm.querySelectorAll(`[name="${selector}"]`));
     };
 
+    let lastInvalidFields = [];
+
+    const getFieldLabelText = (field) => {
+        if (!field) {
+            return 'Campo obbligatorio';
+        }
+        if (field.dataset?.fieldLabel) {
+            return field.dataset.fieldLabel;
+        }
+        if (field.id) {
+            const labelForId = opportunityForm?.querySelector(`label[for="${field.id}"]`);
+            if (labelForId) {
+                return labelForId.textContent.trim();
+            }
+        }
+        const wrappingLabel = field.closest('label');
+        if (wrappingLabel) {
+            return wrappingLabel.textContent.trim();
+        }
+        const formGroupLabel = field.closest('.col-md-4, .col-md-6, .col-md-8, .col-12, .row')?.querySelector('label');
+        if (formGroupLabel) {
+            return formGroupLabel.textContent.trim();
+        }
+        return field.name || 'Campo obbligatorio';
+    };
+
+    const hideClientErrorSummary = () => {
+        if (!clientErrorSummary || !clientErrorSummaryList) {
+            return;
+        }
+        clientErrorSummary.classList.add('d-none');
+        clientErrorSummaryList.innerHTML = '';
+        lastInvalidFields = [];
+    };
+
+    const showClientErrorSummary = (fields) => {
+        if (!clientErrorSummary || !clientErrorSummaryList) {
+            return;
+        }
+        const validFields = (fields || []).filter((field) => field instanceof HTMLElement);
+        if (!validFields.length) {
+            hideClientErrorSummary();
+            return;
+        }
+        lastInvalidFields = validFields;
+        clientErrorSummaryList.innerHTML = '';
+        validFields.forEach((field, index) => {
+            const item = document.createElement('li');
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn btn-link p-0';
+            button.dataset.errorIndex = String(index);
+            button.textContent = getFieldLabelText(field);
+            item.appendChild(button);
+            clientErrorSummaryList.appendChild(item);
+        });
+        clientErrorSummary.classList.remove('d-none');
+        clientErrorSummary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    clientErrorSummaryList?.addEventListener('click', (event) => {
+        const target = event.target instanceof HTMLElement ? event.target.closest('button[data-error-index]') : null;
+        if (!target) {
+            return;
+        }
+        event.preventDefault();
+        const index = Number(target.dataset.errorIndex);
+        const field = Number.isNaN(index) ? null : lastInvalidFields[index];
+        if (field) {
+            field.focus({ preventScroll: true });
+            field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+
     const collectDraftPayload = () => {
         if (!opportunityForm) {
             return null;
@@ -665,7 +746,7 @@ window.CIEIstatLookupConfig = {
         updateDraftStatus('Bozza ripristinata automaticamente.', 'success');
     };
 
-    const clearDraft = (resetForm = false) => {
+    const clearDraft = (resetForm = false, statusOverride = null) => {
         if (canUseDrafts) {
             try {
                 window.localStorage.removeItem(draftStorageKey);
@@ -678,9 +759,19 @@ window.CIEIstatLookupConfig = {
             providerSelect.dataset.selected = '';
             offerSelect.dataset.selected = '';
             togglePaymentHolderFields();
+            hideClientErrorSummary();
         }
-        updateDraftStatus('Bozza eliminata.', 'muted');
+        const hasOverride = statusOverride && typeof statusOverride === 'object';
+        const message = hasOverride && statusOverride.message ? statusOverride.message : 'Bozza eliminata.';
+        const tone = hasOverride && statusOverride.tone ? statusOverride.tone : 'muted';
+        updateDraftStatus(message, tone);
     };
+
+    if (!canUseDrafts) {
+        updateDraftStatus('Il salvataggio automatico non è disponibile su questo browser. Completa il modulo senza chiudere la pagina.', 'warning');
+        clearDraftButton?.setAttribute('disabled', 'disabled');
+        clearDraftButton?.setAttribute('aria-disabled', 'true');
+    }
 
     const syncDocumentAuthority = (force = false) => {
         if (!documentTypeSelect || !documentIssuedBySelect) {
@@ -942,15 +1033,49 @@ window.CIEIstatLookupConfig = {
         saveDraft();
     }, 800);
 
+    const handleFormMutationForDraft = (event) => {
+        if (!event) {
+            return;
+        }
+        if (clientErrorSummary && !clientErrorSummary.classList.contains('d-none')) {
+            hideClientErrorSummary();
+        }
+        const target = event.target;
+        if (!target || !target.name || target.type === 'file') {
+            return;
+        }
+        if (canUseDrafts) {
+            debouncedSaveDraft();
+        }
+    };
+
     if (opportunityForm) {
         ['input', 'change'].forEach((eventName) => {
-            opportunityForm.addEventListener(eventName, (event) => {
-                const target = event.target;
-                if (!target || !target.name || target.type === 'file') {
-                    return;
+            opportunityForm.addEventListener(eventName, handleFormMutationForDraft);
+        });
+        opportunityForm.addEventListener('submit', (event) => {
+            if (!opportunityForm.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+                const invalidFields = Array.from(opportunityForm.querySelectorAll(':invalid'));
+                showClientErrorSummary(invalidFields);
+                if (invalidFields[0]) {
+                    invalidFields[0].focus({ preventScroll: true });
+                    invalidFields[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
-                debouncedSaveDraft();
-            });
+                if (typeof opportunityForm.reportValidity === 'function') {
+                    opportunityForm.reportValidity();
+                }
+                updateDraftStatus('Completa i campi mancanti per proseguire.', 'warning');
+                return;
+            }
+            hideClientErrorSummary();
+            if (canUseDrafts) {
+                clearDraft(false, {
+                    message: 'Invio in corso, la bozza salvata è stata rimossa.',
+                    tone: 'success',
+                });
+            }
         });
     }
 
@@ -1172,6 +1297,7 @@ window.CIEIstatLookupConfig = {
 
     categorySelect.addEventListener('change', () => {
         refreshProviderOptions();
+        refreshOfferOptions();
         toggleCategorySections();
         updatePaymentMethodOptions();
         handlePaymentMethodChange();
@@ -1185,6 +1311,7 @@ window.CIEIstatLookupConfig = {
     paymentMethodSelect.addEventListener('change', handlePaymentMethodChange);
 
     refreshProviderOptions();
+    refreshOfferOptions();
     toggleCategorySections();
     updatePaymentMethodOptions();
     togglePaymentHolderFields();
