@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
-require_once __DIR__ . '/../../includes/mailer.php';
+require_once __DIR__ . '/../../../includes/mailer.php';
 
 require_role('Collaboratore');
 
@@ -35,11 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-require_once __DIR__ . '/../../includes/header.php';
-require_once __DIR__ . '/../../includes/sidebar.php';
+require_once __DIR__ . '/../../../includes/header.php';
+require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
-    <?php require_once __DIR__ . '/../../includes/topbar.php'; ?>
+    <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
             <div>
@@ -442,4 +442,4 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     handlePaymentMethodChange();
     renderFileList();
 </script>
-<?php require_once __DIR__ . '/../../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

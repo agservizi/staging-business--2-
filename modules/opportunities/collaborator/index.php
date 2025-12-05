@@ -8,11 +8,11 @@ require_role('Collaboratore');
 $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
 $opportunities = $opportunityService->listCollaboratorOpportunities($collaboratorId);
 
-require_once __DIR__ . '/../../includes/header.php';
-require_once __DIR__ . '/../../includes/sidebar.php';
+require_once __DIR__ . '/../../../includes/header.php';
+require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
-    <?php require_once __DIR__ . '/../../includes/topbar.php'; ?>
+    <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
             <div>
@@ -73,4 +73,4 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     </main>
 </div>
 <link rel="stylesheet" href="<?php echo asset('modules/opportunities/assets/opportunities.css'); ?>">
-<?php require_once __DIR__ . '/../../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
