@@ -1544,7 +1544,7 @@ window.CIEIstatLookupConfig = {
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-Token': csrfToken,
                 },
-                body: JSON.stringify({ token }),
+                body: JSON.stringify({ token, _token: csrfToken }),
             });
         } catch (error) {
             console.warn('Impossibile eliminare l\'upload temporaneo', error);
@@ -1653,10 +1653,12 @@ window.CIEIstatLookupConfig = {
         });
 
         const formData = new FormData();
-        formData.append('csrf_token', csrfToken);
+        formData.append('_token', csrfToken);
         formData.append('file', entry.file);
         xhr.open('POST', uploadEndpoint);
+        xhr.withCredentials = true;
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('X-CSRF-Token', csrfToken);
         xhr.send(formData);
     };
 
@@ -1944,18 +1946,27 @@ window.CIEIstatLookupConfig = {
         try {
             const response = await fetch('<?php echo asset('modules/opportunities/collaborator/customer_lookup.php'); ?>', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-Token': csrfToken,
                 },
                 body: new URLSearchParams({
                     tax_code: rawValue,
-                    csrf_token: csrfToken,
+                    _token: csrfToken,
                 }),
             });
-            const data = await response.json();
-            if (!data.success) {
-                showLookupMessage(data.message || 'Nessun cliente trovato.', 'danger');
+            const responseText = await response.text();
+            let data = null;
+            try {
+                data = responseText ? JSON.parse(responseText) : null;
+            } catch (parseError) {
+                throw new Error('Risposta non valida dal server.');
+            }
+            if (!response.ok || !data?.success) {
+                const message = data?.message || 'Nessun cliente trovato.';
+                showLookupMessage(message, 'danger');
                 lastLookupTaxCode = '';
                 return;
             }

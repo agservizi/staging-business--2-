@@ -13,6 +13,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+if (!isset($_POST['_token']) && isset($_POST['csrf_token'])) {
+    $_POST['_token'] = $_POST['csrf_token'];
+}
+
 try {
     require_valid_csrf();
 } catch (Throwable $exception) {
