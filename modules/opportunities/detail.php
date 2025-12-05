@@ -1,8 +1,6 @@
 <?php
 declare(strict_types=1);
 
-use RuntimeException;
-
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/../../includes/mailer.php';
 
