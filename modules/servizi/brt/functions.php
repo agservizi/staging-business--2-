@@ -1527,14 +1527,12 @@ function brt_get_shipments(array $filters = [], int $limit = 200, int $offset = 
         $total = (int) $countStmt->fetchColumn();
     }
 
-    $sql .= ' ORDER BY created_at DESC LIMIT :limit OFFSET :offset';
+    $sql .= ' ORDER BY created_at DESC LIMIT ' . (int) $limit . ' OFFSET ' . (int) $offset;
 
     $stmt = $pdo->prepare($sql);
     foreach ($filterParams as $key => $value) {
         $stmt->bindValue($key, $value);
     }
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     return $stmt->fetchAll() ?: [];
 }
