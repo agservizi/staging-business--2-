@@ -151,13 +151,24 @@ $sidebarHomeHref = $isCollaborator
         </div>
         <ul class="nav nav-pills flex-column gap-1" role="list">
             <?php if ($isCollaborator): ?>
-                <?php $collabOpportunityActive = nav_active('modules/opportunities/collaborator', $currentPath); ?>
+                <?php
+                    $collabDashboardActive = nav_active('modules/opportunities/collaborator/index.php', $currentPath);
+                    $collabListActive = nav_active('modules/opportunities/collaborator/list.php', $currentPath);
+                ?>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo $collabOpportunityActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/index.php'); ?>" aria-label="Opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Opportunity"<?php echo $collabOpportunityActive ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo $collabDashboardActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/index.php'); ?>" aria-label="Dashboard opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Dashboard opportunity"<?php echo $collabDashboardActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="indigo" aria-hidden="true">
                             <i class="fa-solid fa-sitemap"></i>
                         </span>
-                        <span class="nav-label">Opportunity</span>
+                        <span class="nav-label">Dashboard OP</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $collabListActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/list.php'); ?>" aria-label="Elenco opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Elenco opportunity"<?php echo $collabListActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="teal" aria-hidden="true">
+                            <i class="fa-solid fa-list-check"></i>
+                        </span>
+                        <span class="nav-label">Elenco OP</span>
                     </a>
                 </li>
                 <?php
