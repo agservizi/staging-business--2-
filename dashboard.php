@@ -4,6 +4,11 @@ require_once __DIR__ . '/includes/db_connect.php';
 require_once __DIR__ . '/includes/helpers.php';
 
 $currentRole = $_SESSION['role'] ?? '';
+if ($currentRole === 'Collaboratore') {
+    header('Location: ' . base_url('modules/opportunities/collaborator/index.php'));
+    exit;
+}
+
 if ($currentRole === 'Patronato') {
     header('Location: ' . base_url('modules/servizi/caf-patronato/index.php'));
     exit;

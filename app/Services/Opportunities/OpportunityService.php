@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Services\Opportunities;
 
+use DateTimeImmutable;
 use PDO;
 use RuntimeException;
 
@@ -29,6 +30,132 @@ final class OpportunityService
         $stmt->execute([':user' => $userId]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    public function getCollaboratorSummary(int $userId): array
+    {
+        $emptySummary = [
+            'totals' => [
+                'total' => 0,
+                'active' => 0,
+                'won' => 0,
+                'lost' => 0,
+            ],
+            'status_breakdown' => [],
+            'monthly_trend' => [
+                'labels' => [],
+                'values' => [],
+            ],
+            'last_activity' => null,
+        ];
+
+        if ($userId <= 0) {
+            return $emptySummary;
+        }
+
+        $statusBreakdown = [];
+        $totals = [
+            'total' => 0,
+            'active' => 0,
+            'won' => 0,
+            'lost' => 0,
+        ];
+
+        $statusStmt = $this->pdo->prepare(
+            'SELECT o.status_code, s.label, s.color, s.ordering, COUNT(*) AS total
+             FROM opportunities o
+             LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+             WHERE o.collaborator_id = :user
+             GROUP BY o.status_code, s.label, s.color, s.ordering
+             ORDER BY s.ordering ASC'
+        );
+        $statusStmt->execute([':user' => $userId]);
+
+        while ($row = $statusStmt->fetch(PDO::FETCH_ASSOC)) {
+            $count = (int) ($row['total'] ?? 0);
+            $code = (string) ($row['status_code'] ?? '');
+            $statusBreakdown[] = [
+                'code' => $code,
+                'label' => (string) ($row['label'] ?? $code),
+                'color' => (string) ($row['color'] ?? 'secondary'),
+                'total' => $count,
+            ];
+            $totals['total'] += $count;
+
+            if ($code === 'attivato') {
+                $totals['won'] += $count;
+            } elseif ($code === 'annullato') {
+                $totals['lost'] += $count;
+            }
+        }
+
+        $totals['active'] = max(0, $totals['total'] - $totals['won'] - $totals['lost']);
+
+        $monthlyTrend = [
+            'labels' => [],
+            'values' => [],
+        ];
+
+        $currentMonth = new DateTimeImmutable('first day of this month 00:00:00');
+        $monthKeys = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $month = $currentMonth->modify(sprintf('-%d months', $i));
+            if ($month === false) {
+                continue;
+            }
+            $key = $month->format('Y-m');
+            $monthKeys[$key] = [
+                'label' => $month->format('M Y'),
+                'value' => 0,
+            ];
+        }
+
+        $trendStmt = $this->pdo->prepare(
+            'SELECT DATE_FORMAT(o.created_at, "%Y-%m") AS month_key, COUNT(*) AS total
+             FROM opportunities o
+             WHERE o.collaborator_id = :user AND o.created_at >= :startDate
+             GROUP BY month_key
+             ORDER BY month_key'
+        );
+        $trendStmt->execute([
+            ':user' => $userId,
+            ':startDate' => ($currentMonth->modify('-5 months') ?: $currentMonth)->format('Y-m-01 00:00:00'),
+        ]);
+
+        while ($row = $trendStmt->fetch(PDO::FETCH_ASSOC)) {
+            $key = (string) ($row['month_key'] ?? '');
+            if ($key === '' || !isset($monthKeys[$key])) {
+                continue;
+            }
+            $monthKeys[$key]['value'] = (int) ($row['total'] ?? 0);
+        }
+
+        foreach ($monthKeys as $monthData) {
+            $monthlyTrend['labels'][] = $monthData['label'];
+            $monthlyTrend['values'][] = $monthData['value'];
+        }
+
+        $activityStmt = $this->pdo->prepare(
+            'SELECT o.code, o.status_code, s.label AS status_label, s.color AS status_color,
+                    COALESCE(o.last_status_change, o.updated_at, o.created_at) AS reference_date
+             FROM opportunities o
+             LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+             WHERE o.collaborator_id = :user
+             ORDER BY reference_date DESC
+             LIMIT 1'
+        );
+        $activityStmt->execute([':user' => $userId]);
+        $lastActivity = $activityStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        return [
+            'totals' => $totals,
+            'status_breakdown' => $statusBreakdown,
+            'monthly_trend' => $monthlyTrend,
+            'last_activity' => $lastActivity,
+        ];
     }
 
     /**

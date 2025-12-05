@@ -3,6 +3,7 @@ $currentUri = $_SERVER['REQUEST_URI'] ?? '';
 $currentPath = basename(parse_url($currentUri, PHP_URL_PATH) ?? '');
 $role = $_SESSION['role'] ?? '';
 $isPatronato = $role === 'Patronato';
+$isCollaborator = $role === 'Collaboratore';
 
 if (!function_exists('nav_active')) {
     function nav_active(string $needle, string $currentPath): string
@@ -127,11 +128,14 @@ if ($isPatronato) {
 
 $sidebarLogoRelative = 'assets/uploads/branding/sidebar-logo.png';
 $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
+$sidebarHomeHref = $isCollaborator
+    ? base_url('modules/opportunities/collaborator/index.php')
+    : base_url('dashboard.php');
 ?>
 <nav id="sidebarMenu" class="sidebar border-end" aria-label="Menu principale">
     <div class="px-3 py-4 sidebar-inner">
         <div class="sidebar-brand mb-4">
-            <a class="sidebar-brand-link" href="<?php echo base_url('dashboard.php'); ?>" aria-label="Coresuite Business">
+            <a class="sidebar-brand-link" href="<?php echo $sidebarHomeHref; ?>" aria-label="Coresuite Business">
                 <span class="sidebar-logo" aria-hidden="true">
                     <?php if ($sidebarLogoAvailable): ?>
                         <img class="sidebar-logo-img" src="<?php echo asset($sidebarLogoRelative); ?>" alt="">
@@ -146,6 +150,29 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
             </a>
         </div>
         <ul class="nav nav-pills flex-column gap-1" role="list">
+            <?php if ($isCollaborator): ?>
+                <?php $collabOpportunityActive = nav_active('modules/opportunities/collaborator', $currentPath); ?>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $collabOpportunityActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/index.php'); ?>" aria-label="Opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Opportunity"<?php echo $collabOpportunityActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="indigo" aria-hidden="true">
+                            <i class="fa-solid fa-sitemap"></i>
+                        </span>
+                        <span class="nav-label">Opportunity</span>
+                    </a>
+                </li>
+                <?php
+                    $profileActive = (nav_active('modules/impostazioni/profile.php', $currentPath) === 'active'
+                        || nav_active('profile.php', $currentPath) === 'active') ? 'active' : '';
+                ?>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $profileActive; ?>" href="<?php echo base_url('modules/impostazioni/profile.php'); ?>" aria-label="Profilo" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Profilo"<?php echo $profileActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="orange" aria-hidden="true">
+                            <i class="fa-solid fa-id-badge"></i>
+                        </span>
+                        <span class="nav-label">Profilo</span>
+                    </a>
+                </li>
+            <?php else: ?>
             <?php if (!$isPatronato): ?>
                 <?php $dashboardActive = nav_active('dashboard.php', $currentPath); ?>
                 <li class="nav-item">
@@ -290,6 +317,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                         <span class="nav-label">Impostazioni</span>
                     </a>
                 </li>
+            <?php endif; ?>
             <?php endif; ?>
         </ul>
         <div class="sidebar-footer" aria-label="Versione applicazione">

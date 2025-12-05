@@ -2,7 +2,7 @@
 $username = current_user_display_name();
 $role = $_SESSION['role'] ?? '';
 
-$canSeeDocumentActions = $role !== 'Cliente' && $role !== 'Patronato';
+$canSeeDocumentActions = $role !== 'Cliente' && $role !== 'Patronato' && $role !== 'Collaboratore';
 $recentDocuments = [];
 $documentsTableAvailable = false;
 $documentsLoadFailed = false;
