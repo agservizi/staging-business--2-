@@ -357,12 +357,32 @@ final class OpportunityService
             $this->requireString($input, 'gas_pdr', 'Codice PDR');
         }
 
-        $paymentMethod = $category === 'telefonia'
-            ? 'iban'
+        $rawPaymentMethod = $category === 'telefonia'
+            ? (string) ($input['payment_method'] ?? 'iban')
             : $this->requireString($input, 'payment_method', 'Metodo di pagamento');
+
+        $paymentMethod = strtolower(trim($rawPaymentMethod));
+        if ($paymentMethod === '') {
+            $paymentMethod = 'iban';
+        }
+
+        $categoryAllowsBollettino = in_array($category, ['luce', 'gas'], true);
+        $telefoniaAllowsBollettino = false;
+        if ($category === 'telefonia') {
+            $providerSlug = strtolower((string) ($provider['slug'] ?? ''));
+            $providerName = strtolower((string) ($provider['name'] ?? ''));
+            $slugAllows = $providerSlug !== '' && str_contains($providerSlug, 'enel') && str_contains($providerSlug, 'fibra');
+            $nameAllows = $providerName !== '' && str_contains($providerName, 'enel') && str_contains($providerName, 'fibra');
+            $telefoniaAllowsBollettino = $slugAllows || $nameAllows;
+        }
+        $bollettinoAllowed = $categoryAllowsBollettino || $telefoniaAllowsBollettino;
 
         if (!in_array($paymentMethod, ['iban', 'bollettino'], true)) {
             throw new RuntimeException('Metodo di pagamento non valido.');
+        }
+
+        if ($paymentMethod === 'bollettino' && !$bollettinoAllowed) {
+            throw new RuntimeException('Il bollettino non è disponibile per il gestore selezionato.');
         }
 
         if ($paymentMethod === 'iban') {

@@ -11,6 +11,18 @@ $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
 $catalog = $opportunityService->getProviderCatalog();
 $errors = [];
 $formData = $_POST;
+$documentTypePresets = [
+    "Carta d'identità" => 'Comune',
+    'Passaporto' => 'Ministero Affari Esteri',
+    'Patente' => 'MIT UCO Motorizzazione',
+];
+$documentTypeValue = $formData['document_type'] ?? "Carta d'identità";
+$documentTypeHasPreset = array_key_exists($documentTypeValue, $documentTypePresets);
+$documentIssuedByValue = $formData['document_issued_by'] ?? ($documentTypePresets[$documentTypeValue] ?? '');
+$documentAuthorityOptions = array_values(array_unique(array_merge(
+    array_values($documentTypePresets),
+    $documentIssuedByValue !== '' ? [$documentIssuedByValue] : []
+)));
 $csrfToken = csrf_token();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -200,16 +212,30 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <h2 class="h6 text-uppercase text-muted mb-3">Documento identità</h2>
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <label class="form-label">Tipologia</label>
-                                <input class="form-control" type="text" name="document_type" required value="<?php echo sanitize_output($formData['document_type'] ?? 'Carta d\'identità'); ?>">
+                                <label class="form-label" for="document-type-select">Tipologia</label>
+                                <select class="form-select" name="document_type" id="document-type-select" required>
+                                    <?php foreach ($documentTypePresets as $label => $authority): ?>
+                                        <option value="<?php echo sanitize_output($label); ?>" <?php echo $documentTypeValue === $label ? 'selected' : ''; ?>><?php echo sanitize_output($label); ?></option>
+                                    <?php endforeach; ?>
+                                    <?php if (!$documentTypeHasPreset && $documentTypeValue !== ''): ?>
+                                        <option value="<?php echo sanitize_output($documentTypeValue); ?>" selected><?php echo sanitize_output($documentTypeValue); ?></option>
+                                    <?php endif; ?>
+                                </select>
+                                <div class="form-text text-muted">Scegli il documento consegnato dal cliente.</div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Numero</label>
                                 <input class="form-control" type="text" name="document_number" required value="<?php echo sanitize_output($formData['document_number'] ?? ''); ?>">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Autorità rilascio</label>
-                                <input class="form-control" type="text" name="document_issued_by" value="<?php echo sanitize_output($formData['document_issued_by'] ?? ''); ?>">
+                                <label class="form-label" for="document-issued-by-select">Autorità rilascio</label>
+                                <select class="form-select" name="document_issued_by" id="document-issued-by-select">
+                                    <option value="" <?php echo $documentIssuedByValue === '' ? 'selected' : ''; ?>>Seleziona autorità</option>
+                                    <?php foreach ($documentAuthorityOptions as $authorityLabel): ?>
+                                        <option value="<?php echo sanitize_output($authorityLabel); ?>" <?php echo $documentIssuedByValue === $authorityLabel ? 'selected' : ''; ?>><?php echo sanitize_output($authorityLabel); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <div class="form-text text-muted">Valore aggiornato automaticamente in base alla tipologia.</div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Data rilascio</label>
@@ -387,6 +413,14 @@ window.CIEIstatLookupConfig = {
     const customerPostalCodeInput = document.getElementById('customer-postal-code');
     const capLookupFeedback = document.getElementById('cap-lookup-feedback');
     const defaultCapFeedbackMessage = 'Inserisci il CAP per validarlo automaticamente.';
+    const documentTypeSelect = document.getElementById('document-type-select');
+    const documentIssuedBySelect = document.getElementById('document-issued-by-select');
+    const documentAuthorityDefaults = {
+        "Carta d'identità": 'Comune',
+        Passaporto: 'Ministero Affari Esteri',
+        Patente: 'MIT UCO Motorizzazione',
+    };
+    const paymentMethodBollettinoOption = paymentMethodSelect ? paymentMethodSelect.querySelector('option[value="bollettino"]') : null;
     let lastLookupTaxCode = '';
     let pendingPrefillData = null;
     let capLookupRequestId = 0;
@@ -432,6 +466,24 @@ window.CIEIstatLookupConfig = {
         input.dispatchEvent(new Event('change', { bubbles: true }));
     };
 
+    const ensureSelectOption = (select, value, label) => {
+        if (!select || value === null || value === undefined) {
+            return;
+        }
+        const normalizedValue = String(value).trim();
+        if (!normalizedValue) {
+            return;
+        }
+        const exists = Array.from(select.options).some((option) => option.value === normalizedValue);
+        if (exists) {
+            return;
+        }
+        const option = document.createElement('option');
+        option.value = normalizedValue;
+        option.textContent = label || normalizedValue;
+        select.appendChild(option);
+    };
+
     const setCapFeedback = (message, state = 'muted') => {
         if (!capLookupFeedback) {
             return;
@@ -445,6 +497,45 @@ window.CIEIstatLookupConfig = {
         capLookupFeedback.classList.remove('text-muted', 'text-success', 'text-warning', 'text-danger');
         capLookupFeedback.classList.add(classMap[state] || 'text-muted');
         capLookupFeedback.textContent = message;
+    };
+
+    const syncDocumentAuthority = (force = false) => {
+        if (!documentTypeSelect || !documentIssuedBySelect) {
+            return;
+        }
+        const presetValue = documentAuthorityDefaults[documentTypeSelect.value];
+        if (!presetValue) {
+            return;
+        }
+        const isManual = documentIssuedBySelect.dataset.manual === 'true';
+        if (isManual && !force) {
+            return;
+        }
+        ensureSelectOption(documentIssuedBySelect, presetValue, presetValue);
+        documentIssuedBySelect.value = presetValue;
+        documentIssuedBySelect.dataset.manual = 'false';
+    };
+
+    const initializeDocumentAuthoritySync = () => {
+        if (!documentIssuedBySelect) {
+            return;
+        }
+        const presetValue = documentTypeSelect ? documentAuthorityDefaults[documentTypeSelect.value] : '';
+        if (documentIssuedBySelect.value && presetValue && documentIssuedBySelect.value !== presetValue) {
+            documentIssuedBySelect.dataset.manual = 'true';
+        } else {
+            documentIssuedBySelect.dataset.manual = 'false';
+            if (!documentIssuedBySelect.value && presetValue) {
+                syncDocumentAuthority(true);
+            }
+        }
+        documentIssuedBySelect.addEventListener('change', () => {
+            documentIssuedBySelect.dataset.manual = 'true';
+        });
+        documentTypeSelect?.addEventListener('change', () => {
+            documentIssuedBySelect.dataset.manual = 'false';
+            syncDocumentAuthority(true);
+        });
     };
 
     const applyIstatMatch = (match) => {
@@ -547,14 +638,18 @@ window.CIEIstatLookupConfig = {
         }
     };
 
-    const refreshOfferOptions = () => {
+    const getSelectedProvider = () => {
         const category = categorySelect.value;
         const providerId = Number(providerSelect.value);
-        offerSelect.innerHTML = '<option value="">Seleziona offerta</option>';
-        if (!category || !providerId) {
-            return;
+        if (!category || !providerId || !Array.isArray(catalog[category])) {
+            return null;
         }
-        const provider = catalog[category]?.find((entry) => Number(entry.id) === providerId);
+        return catalog[category].find((entry) => Number(entry.id) === providerId) || null;
+    };
+
+    const refreshOfferOptions = () => {
+        offerSelect.innerHTML = '<option value="">Seleziona offerta</option>';
+        const provider = getSelectedProvider();
         if (!provider) {
             return;
         }
@@ -572,18 +667,47 @@ window.CIEIstatLookupConfig = {
         }
     };
 
+    const providerSupportsTelefoniaBollettino = (provider) => {
+        if (!provider) {
+            return false;
+        }
+        const slug = (provider.slug ?? '').toString().toLowerCase();
+        const name = (provider.name ?? '').toString().toLowerCase();
+        const slugMatch = slug.includes('enel') && slug.includes('fibra');
+        const nameMatch = name.includes('enel') && name.includes('fibra');
+        return slugMatch || nameMatch;
+    };
+
+    const isBollettinoAllowed = () => {
+        const category = categorySelect.value;
+        if (category === 'luce' || category === 'gas') {
+            return true;
+        }
+        if (category === 'telefonia') {
+            return providerSupportsTelefoniaBollettino(getSelectedProvider());
+        }
+        return false;
+    };
+
+    const updatePaymentMethodOptions = () => {
+        if (!paymentMethodSelect) {
+            return;
+        }
+        const bollettinoAllowed = isBollettinoAllowed();
+        if (paymentMethodBollettinoOption) {
+            paymentMethodBollettinoOption.hidden = !bollettinoAllowed;
+            paymentMethodBollettinoOption.disabled = !bollettinoAllowed;
+        }
+        if (!bollettinoAllowed && paymentMethodSelect.value === 'bollettino') {
+            paymentMethodSelect.value = 'iban';
+        }
+    };
+
     const toggleCategorySections = () => {
         const category = categorySelect.value;
         telefoniaSection.hidden = category !== 'telefonia';
         luceSection.hidden = category !== 'luce';
         gasSection.hidden = category !== 'gas';
-        if (category === 'telefonia') {
-            paymentMethodSelect.value = 'iban';
-            paymentMethodSelect.disabled = true;
-            paymentIbanField.required = true;
-        } else {
-            paymentMethodSelect.disabled = false;
-        }
     };
 
     const togglePaymentHolderFields = () => {
@@ -722,15 +846,35 @@ window.CIEIstatLookupConfig = {
             }
         });
         const paymentMethodValue = pendingPrefillData.payment_method;
-        if (paymentMethodValue && opportunityForm.elements.namedItem('payment_method')) {
-            opportunityForm.elements.namedItem('payment_method').value = paymentMethodValue;
-            handlePaymentMethodChange();
+        const paymentMethodField = opportunityForm.elements.namedItem('payment_method');
+        if (paymentMethodValue && paymentMethodField && typeof paymentMethodField.value !== 'undefined') {
+            paymentMethodField.value = paymentMethodValue;
         }
         const holderIsCustomer = Number(pendingPrefillData.payment_holder_is_customer ?? 1) === 1;
         if (paymentHolderToggle) {
             paymentHolderToggle.checked = holderIsCustomer;
             togglePaymentHolderFields();
         }
+        let documentTypeChanged = false;
+        if (documentTypeSelect && pendingPrefillData.document_type) {
+            ensureSelectOption(documentTypeSelect, pendingPrefillData.document_type, pendingPrefillData.document_type);
+            if (documentTypeSelect.value !== pendingPrefillData.document_type) {
+                documentTypeSelect.value = pendingPrefillData.document_type;
+                documentTypeChanged = true;
+            }
+        }
+        if (documentIssuedBySelect) {
+            if (pendingPrefillData.document_issued_by) {
+                ensureSelectOption(documentIssuedBySelect, pendingPrefillData.document_issued_by, pendingPrefillData.document_issued_by);
+                documentIssuedBySelect.value = pendingPrefillData.document_issued_by;
+                documentIssuedBySelect.dataset.manual = 'true';
+            } else if (documentTypeChanged || documentIssuedBySelect.value === '') {
+                documentIssuedBySelect.dataset.manual = 'false';
+                syncDocumentAuthority(true);
+            }
+        }
+        updatePaymentMethodOptions();
+        handlePaymentMethodChange();
         showLookupMessage('Dati precompilati dal precedente invio.', 'success');
     };
 
@@ -816,15 +960,23 @@ window.CIEIstatLookupConfig = {
     categorySelect.addEventListener('change', () => {
         refreshProviderOptions();
         toggleCategorySections();
+        updatePaymentMethodOptions();
+        handlePaymentMethodChange();
     });
-    providerSelect.addEventListener('change', refreshOfferOptions);
+    providerSelect.addEventListener('change', () => {
+        refreshOfferOptions();
+        updatePaymentMethodOptions();
+        handlePaymentMethodChange();
+    });
     paymentHolderToggle.addEventListener('change', togglePaymentHolderFields);
     paymentMethodSelect.addEventListener('change', handlePaymentMethodChange);
 
     refreshProviderOptions();
     toggleCategorySections();
+    updatePaymentMethodOptions();
     togglePaymentHolderFields();
     handlePaymentMethodChange();
     renderFileList();
+    initializeDocumentAuthoritySync();
 </script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
