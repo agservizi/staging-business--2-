@@ -5,6 +5,7 @@ require_once __DIR__ . '/../bootstrap.php';
 
 require_role('Collaboratore');
 
+$csrfToken = csrf_token();
 $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
 $statusOptions = $opportunityService->getStatusOptions();
 $statusCodes = array_column($statusOptions, 'code');
@@ -47,6 +48,10 @@ if ($searchQuery !== '') {
 }
 
 $opportunities = $opportunityService->listCollaboratorOpportunities($collaboratorId, $listFilters);
+$remoteDraft = $opportunityService->getCollaboratorDraft($collaboratorId);
+$remoteDraftData = is_array($remoteDraft['data'] ?? null) ? $remoteDraft['data'] : [];
+$hasRemoteDraft = $remoteDraftData !== [];
+$remoteDraftSavedAt = $remoteDraft['saved_at'] ?? null;
 $collaboratorDashboard = $opportunityService->getCollaboratorSummary($collaboratorId);
 $collaboratorTotals = $collaboratorDashboard['totals'] ?? ['total' => 0, 'active' => 0, 'won' => 0, 'lost' => 0];
 $collaboratorStatusBreakdown = $collaboratorDashboard['status_breakdown'] ?? [];
@@ -325,10 +330,59 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <?php endif; ?>
 
         <div class="row g-4">
-            <?php if (!$opportunities): ?>
+            <?php if ($hasRemoteDraft): ?>
+                <?php
+                    $draftCategoryKey = strtolower((string) ($remoteDraftData['category'] ?? ''));
+                    $draftCategoryLabel = $draftCategoryKey !== ''
+                        ? ($categoryOptions[$draftCategoryKey] ?? ucfirst($draftCategoryKey))
+                        : 'Categoria non selezionata';
+                    $draftCustomer = trim(
+                        (string) ($remoteDraftData['customer_first_name'] ?? '') . ' ' . (string) ($remoteDraftData['customer_last_name'] ?? '')
+                    );
+                    if ($draftCustomer === '') {
+                        $draftCustomer = 'Cliente non indicato';
+                    }
+                    $draftSavedLabel = format_datetime_locale($remoteDraftSavedAt) ?? 'data non disponibile';
+                ?>
+                <div class="col-12" data-role="remote-draft-card">
+                    <div class="card opportunity-card border border-warning-subtle shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                                        <span class="badge bg-warning text-dark">Bozza non inviata</span>
+                                        <span class="text-uppercase small text-muted">Aggiornata <?php echo sanitize_output($draftSavedLabel); ?></span>
+                                    </div>
+                                    <h3 class="h5 mb-1"><?php echo sanitize_output($draftCustomer); ?></h3>
+                                    <p class="text-muted mb-0">Categoria selezionata: <?php echo sanitize_output($draftCategoryLabel); ?></p>
+                                </div>
+                                <div class="d-flex flex-column flex-md-row gap-2">
+                                    <a class="btn btn-warning" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
+                                        <i class="fa-solid fa-pen-to-square me-1"></i>Continua la bozza
+                                    </a>
+                                    <button class="btn btn-outline-danger" type="button" data-action="discard-remote-draft">
+                                        <span data-role="label">Elimina bozza</span>
+                                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" data-role="spinner"></span>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-muted small mb-0 mt-3">
+                                Le bozze compaiono qui ma non vengono conteggiate finché non invii la opportunity.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+            <?php if (!$opportunities && !$hasRemoteDraft): ?>
                 <div class="col-12">
                     <div class="alert alert-info mb-0" role="alert">
                         Nessuna opportunity registrata. Crea la prima utilizzando il pulsante in alto.
+                    </div>
+                </div>
+            <?php elseif (!$opportunities && $hasRemoteDraft): ?>
+                <div class="col-12">
+                    <div class="alert alert-warning mb-0" role="alert">
+                        Hai una bozza salvata: completila e inviala per farla comparire nell'elenco principale.
                     </div>
                 </div>
             <?php endif; ?>
@@ -410,6 +464,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 <link rel="stylesheet" href="<?php echo asset('modules/opportunities/assets/opportunities.css'); ?>">
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const remoteDraftEndpoint = "<?php echo sanitize_output(asset('api/opportunities/drafts.php')); ?>";
+    const csrfToken = "<?php echo sanitize_output($csrfToken); ?>";
     const quickSearchInput = document.getElementById('opportunity-quick-search');
     const listEntries = Array.from(document.querySelectorAll('.opportunity-list-entry'));
     const emptyAlert = document.getElementById('opportunity-quick-search-empty');
@@ -501,6 +557,48 @@ document.addEventListener('DOMContentLoaded', function () {
                 drawChart();
             }
         }
+    }
+
+    const discardDraftButton = document.querySelector('[data-action="discard-remote-draft"]');
+    if (discardDraftButton && remoteDraftEndpoint) {
+        discardDraftButton.addEventListener('click', async () => {
+            if (!window.confirm('Vuoi davvero eliminare la bozza cloud?')) {
+                return;
+            }
+            const label = discardDraftButton.querySelector('[data-role="label"]');
+            const spinner = discardDraftButton.querySelector('[data-role="spinner"]');
+            discardDraftButton.disabled = true;
+            if (label) {
+                label.textContent = 'Eliminazione…';
+            }
+            if (spinner) {
+                spinner.classList.remove('d-none');
+            }
+            try {
+                const response = await fetch(remoteDraftEndpoint, {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-Token': csrfToken,
+                    },
+                });
+                if (!response.ok) {
+                    throw new Error('Delete failed');
+                }
+                window.location.reload();
+            } catch (error) {
+                discardDraftButton.disabled = false;
+                if (label) {
+                    label.textContent = 'Riprova eliminazione';
+                }
+                if (spinner) {
+                    spinner.classList.add('d-none');
+                }
+                alert('Non sono riuscito a eliminare la bozza. Riprova tra qualche istante.');
+            }
+        });
     }
 });
 </script>
