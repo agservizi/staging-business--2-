@@ -74,6 +74,13 @@
         return normalized.replace(/'/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
     };
 
+    const normalizeCap = (value) => {
+        if (value === undefined || value === null) {
+            return '';
+        }
+        return String(value).trim().toUpperCase();
+    };
+
     const prepareDataset = (entries) => {
         if (!Array.isArray(entries)) {
             return [];
@@ -426,8 +433,22 @@
         collectInputs(target).forEach(initInput);
     };
 
+    const matchCapEntries = (capValue, data) => {
+        const normalizedCap = normalizeCap(capValue);
+        if (!normalizedCap) {
+            return [];
+        }
+        return data.filter((entry) => Array.isArray(entry.cap) && entry.cap.some((value) => normalizeCap(value) === normalizedCap));
+    };
+
     namespace.init = initScope;
     namespace.refresh = initScope;
+    namespace.findByCap = (capValue) => loadDataset().then((data) => matchCapEntries(capValue, data));
+    namespace.findFirstByCap = (capValue) => loadDataset()
+        .then((data) => {
+            const matches = matchCapEntries(capValue, data);
+            return matches.length ? matches[0] : null;
+        });
 
     document.addEventListener('DOMContentLoaded', () => {
         initScope();

@@ -46,6 +46,34 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-uppercase small fw-semibold text-muted mb-1">Opportunity</p>
                 <h1 class="h4 mb-0">Nuova opportunity</h1>
                 <p class="text-muted mb-0">Registra contratti telefonici, luce e gas per l'approvazione dell'admin.</p>
+
+            <div class="modal fade" id="customerPrefillModal" tabindex="-1" aria-labelledby="customerPrefillModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content border-0 shadow-lg">
+                        <div class="modal-header border-0">
+                            <div>
+                                <p class="text-uppercase small text-muted mb-1">Archivio clienti</p>
+                                <h5 class="modal-title" id="customerPrefillModalLabel">Dati trovati per il codice fiscale inserito</h5>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted">Conferma per compilare automaticamente il modulo con i dati salvati in precedenza.</p>
+                            <div class="table-responsive border rounded-3">
+                                <table class="table table-sm mb-0">
+                                    <tbody id="customer-prefill-details">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><i class="fa-solid fa-circle-xmark me-2"></i>Annulla</button>
+                            <button type="button" class="btn btn-warning" id="customer-prefill-apply"><i class="fa-solid fa-wand-magic-sparkles me-2"></i>Usa questi dati</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             </div>
             <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/index.php'); ?>">
                 <i class="fa-solid fa-arrow-left me-2"></i>Torna alla lista
@@ -100,8 +128,15 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <input class="form-control" type="text" name="customer_last_name" required value="<?php echo sanitize_output($formData['customer_last_name'] ?? ''); ?>">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Codice fiscale</label>
-                                <input class="form-control" type="text" name="customer_tax_code" required value="<?php echo sanitize_output($formData['customer_tax_code'] ?? ''); ?>">
+                                <label class="form-label" for="customer-tax-code">Codice fiscale</label>
+                                <div class="input-group">
+                                    <input class="form-control" type="text" name="customer_tax_code" id="customer-tax-code" required value="<?php echo sanitize_output($formData['customer_tax_code'] ?? ''); ?>" placeholder="RSSMRA90A01H501U">
+                                    <button class="btn btn-outline-secondary" type="button" id="tax-code-lookup">
+                                        <span id="tax-code-lookup-label">Recupera</span>
+                                        <span class="spinner-border spinner-border-sm d-none" id="tax-code-lookup-spinner" role="status" aria-hidden="true"></span>
+                                    </button>
+                                </div>
+                                <div class="form-text" id="tax-code-lookup-feedback">Inserisci il codice fiscale e recupera un cliente già registrato.</div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Data di nascita</label>
@@ -124,16 +159,35 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <input class="form-control" type="text" name="customer_address" value="<?php echo sanitize_output($formData['customer_address'] ?? ''); ?>">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Città</label>
-                                <input class="form-control" type="text" name="customer_city" value="<?php echo sanitize_output($formData['customer_city'] ?? ''); ?>">
+                                <label class="form-label" for="customer-city">Città</label>
+                                <input
+                                    class="form-control"
+                                    type="text"
+                                    name="customer_city"
+                                    id="customer-city"
+                                    value="<?php echo sanitize_output($formData['customer_city'] ?? ''); ?>"
+                                    data-istat-comune="true"
+                                    data-istat-province-target="#customer-province"
+                                    data-istat-cap-target="#customer-postal-code"
+                                >
+                                <div class="form-text text-muted">Suggerimenti dal database ISTAT disponibili durante la digitazione.</div>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">CAP</label>
-                                <input class="form-control" type="text" name="customer_postal_code" value="<?php echo sanitize_output($formData['customer_postal_code'] ?? ''); ?>">
+                                <label class="form-label" for="customer-postal-code">CAP</label>
+                                <input
+                                    class="form-control"
+                                    type="text"
+                                    name="customer_postal_code"
+                                    id="customer-postal-code"
+                                    value="<?php echo sanitize_output($formData['customer_postal_code'] ?? ''); ?>"
+                                    inputmode="numeric"
+                                    maxlength="10"
+                                >
+                                <div class="form-text text-muted" id="cap-lookup-feedback">Inserisci il CAP per validarlo automaticamente.</div>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Provincia</label>
-                                <input class="form-control" type="text" name="customer_province" value="<?php echo sanitize_output($formData['customer_province'] ?? ''); ?>">
+                                <label class="form-label" for="customer-province">Provincia</label>
+                                <input class="form-control" type="text" name="customer_province" id="customer-province" value="<?php echo sanitize_output($formData['customer_province'] ?? ''); ?>" maxlength="5">
                             </div>
                         </div>
                     </div>
@@ -289,9 +343,23 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         </form>
     </main>
 </div>
+<?php
+$istatDatasetUrl = asset('customer-portal/assets/data/comuni.json');
+?>
 <link rel="stylesheet" href="<?php echo asset('modules/opportunities/assets/opportunities.css'); ?>">
 <script>
+window.CIEIstatLookupConfig = {
+    datasetUrl: '<?php echo sanitize_output($istatDatasetUrl); ?>',
+    fallbackUrl: 'https://raw.githubusercontent.com/matteocontrini/comuni-json/master/comuni.json',
+    maxResults: 12,
+    minChars: 2
+};
+</script>
+<script src="<?php echo asset('assets/js/cie-istat-lookup.js'); ?>"></script>
+<script>
     const catalog = <?php echo json_encode($catalog, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+    const csrfToken = '<?php echo sanitize_output($csrfToken); ?>';
+    const opportunityForm = document.getElementById('opportunity-form');
     const categorySelect = document.getElementById('category-select');
     const providerSelect = document.getElementById('provider-select');
     const offerSelect = document.getElementById('offer-select');
@@ -305,6 +373,158 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     const dropzoneArea = document.getElementById('dropzone-area');
     const documentsInput = document.getElementById('documents-input');
     const dropzoneFiles = document.getElementById('dropzone-files');
+    const taxCodeInput = document.getElementById('customer-tax-code');
+    const taxCodeLookupBtn = document.getElementById('tax-code-lookup');
+    const taxCodeLookupSpinner = document.getElementById('tax-code-lookup-spinner');
+    const taxCodeLookupLabel = document.getElementById('tax-code-lookup-label');
+    const taxCodeLookupFeedback = document.getElementById('tax-code-lookup-feedback');
+    const taxCodePrefillDetails = document.getElementById('customer-prefill-details');
+    const taxCodePrefillApply = document.getElementById('customer-prefill-apply');
+    const taxCodePrefillModalEl = document.getElementById('customerPrefillModal');
+    const taxCodePrefillModal = window.bootstrap && taxCodePrefillModalEl ? new bootstrap.Modal(taxCodePrefillModalEl) : null;
+    const customerCityInput = document.getElementById('customer-city');
+    const customerProvinceInput = document.getElementById('customer-province');
+    const customerPostalCodeInput = document.getElementById('customer-postal-code');
+    const capLookupFeedback = document.getElementById('cap-lookup-feedback');
+    const defaultCapFeedbackMessage = 'Inserisci il CAP per validarlo automaticamente.';
+    let lastLookupTaxCode = '';
+    let pendingPrefillData = null;
+    let capLookupRequestId = 0;
+
+    const escapeHtml = (value) => {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        return value
+            .toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    };
+
+    const debounce = (callback, delay = 250) => {
+        let timer = null;
+        return (...args) => {
+            if (timer) {
+                window.clearTimeout(timer);
+            }
+            timer = window.setTimeout(() => {
+                callback.apply(null, args);
+            }, delay);
+        };
+    };
+
+    const updateInputValue = (input, value) => {
+        if (!input || value === null || value === undefined) {
+            return;
+        }
+        const trimmedValue = String(value).trim();
+        if (!trimmedValue) {
+            return;
+        }
+        if (input.value.trim() === trimmedValue) {
+            return;
+        }
+        input.value = trimmedValue;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    const setCapFeedback = (message, state = 'muted') => {
+        if (!capLookupFeedback) {
+            return;
+        }
+        const classMap = {
+            muted: 'text-muted',
+            success: 'text-success',
+            warning: 'text-warning',
+            danger: 'text-danger',
+        };
+        capLookupFeedback.classList.remove('text-muted', 'text-success', 'text-warning', 'text-danger');
+        capLookupFeedback.classList.add(classMap[state] || 'text-muted');
+        capLookupFeedback.textContent = message;
+    };
+
+    const applyIstatMatch = (match) => {
+        if (!match) {
+            return;
+        }
+        updateInputValue(customerCityInput, match.nome);
+        if (match.sigla) {
+            updateInputValue(customerProvinceInput, match.sigla);
+        }
+        if (Array.isArray(match.cap) && match.cap.length === 1) {
+            updateInputValue(customerPostalCodeInput, match.cap[0]);
+        }
+    };
+
+    const lookupCapViaIstat = (rawValue) => {
+        if (!customerPostalCodeInput) {
+            return;
+        }
+        const sanitized = (rawValue || '').trim().toUpperCase();
+        if (!sanitized) {
+            setCapFeedback(defaultCapFeedbackMessage);
+            return;
+        }
+        if (sanitized.length < 4) {
+            setCapFeedback('Inserisci almeno 4 caratteri per avviare la verifica.', 'muted');
+            return;
+        }
+        if (!window.CIEIstatLookup || typeof window.CIEIstatLookup.findByCap !== 'function') {
+            setCapFeedback('Catalogo ISTAT non disponibile al momento.', 'warning');
+            return;
+        }
+        const currentRequest = ++capLookupRequestId;
+        setCapFeedback('Verifico il CAP nel catalogo ISTAT…');
+        window.CIEIstatLookup.findByCap(sanitized)
+            .then((matches) => {
+                if (currentRequest !== capLookupRequestId) {
+                    return;
+                }
+                if (!Array.isArray(matches) || matches.length === 0) {
+                    setCapFeedback('CAP non presente nel catalogo ISTAT.', 'danger');
+                    return;
+                }
+                if (matches.length === 1) {
+                    applyIstatMatch(matches[0]);
+                    setCapFeedback('Comune e provincia aggiornati con i dati ISTAT.', 'success');
+                    return;
+                }
+                setCapFeedback('CAP associato a più comuni, seleziona quello corretto.', 'warning');
+            })
+            .catch(() => {
+                if (currentRequest === capLookupRequestId) {
+                    setCapFeedback('Impossibile completare la verifica ISTAT.', 'danger');
+                }
+            });
+    };
+
+    const bindCapLookup = () => {
+        if (!customerPostalCodeInput) {
+            return;
+        }
+        setCapFeedback(defaultCapFeedbackMessage);
+        const debouncedLookup = debounce(() => lookupCapViaIstat(customerPostalCodeInput.value), 400);
+        customerPostalCodeInput.addEventListener('input', () => {
+            const currentValue = customerPostalCodeInput.value.trim();
+            if (!currentValue) {
+                setCapFeedback(defaultCapFeedbackMessage);
+                return;
+            }
+            if (currentValue.length < 4) {
+                setCapFeedback('Inserisci almeno 4 caratteri per avviare la verifica.', 'muted');
+                return;
+            }
+            debouncedLookup();
+        });
+        customerPostalCodeInput.addEventListener('blur', () => lookupCapViaIstat(customerPostalCodeInput.value));
+        if (customerPostalCodeInput.value.trim().length >= 4) {
+            lookupCapViaIstat(customerPostalCodeInput.value);
+        }
+    };
 
     const refreshProviderOptions = () => {
         const category = categorySelect.value;
@@ -411,6 +631,170 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         });
     };
 
+    const setLookupLoading = (loading) => {
+        if (!taxCodeLookupBtn) {
+            return;
+        }
+        taxCodeLookupBtn.disabled = loading;
+        if (taxCodeLookupSpinner) {
+            taxCodeLookupSpinner.classList.toggle('d-none', !loading);
+        }
+        if (taxCodeLookupLabel) {
+            taxCodeLookupLabel.textContent = loading ? 'Ricerca…' : 'Recupera';
+        }
+    };
+
+    const showLookupMessage = (message, state = 'muted') => {
+        if (!taxCodeLookupFeedback) {
+            return;
+        }
+        taxCodeLookupFeedback.textContent = message;
+        taxCodeLookupFeedback.className = 'form-text' + (state === 'danger' ? ' text-danger' : (state === 'success' ? ' text-success' : '')); 
+    };
+
+    const renderPrefillDetails = (data) => {
+        if (!taxCodePrefillDetails) {
+            return;
+        }
+        const rows = [];
+        const displayMap = {
+            'Nome': `${data.customer_first_name ?? ''} ${data.customer_last_name ?? ''}`.trim(),
+            'Codice fiscale': data.customer_tax_code ?? '',
+            'Telefono': data.customer_phone ?? '',
+            'Email': data.customer_email ?? '',
+            'Indirizzo': data.customer_address ?? '',
+            'Città': data.customer_city ?? '',
+            'CAP': data.customer_postal_code ?? '',
+            'Provincia': data.customer_province ?? '',
+            'Documento': [data.document_type, data.document_number].filter(Boolean).join(' · '),
+            'Operatore telefonia': data.telefonia_current_operator ?? '',
+            'POD': data.luce_pod ?? '',
+            'PDR': data.gas_pdr ?? '',
+        };
+        Object.entries(displayMap).forEach(([label, value]) => {
+            if (!value) {
+                return;
+            }
+            rows.push(`<tr><th class="text-muted" style="width: 180px;">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`);
+        });
+        taxCodePrefillDetails.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="2" class="text-muted">Nessun dettaglio disponibile.</td></tr>';
+    };
+
+    const applyPrefillData = () => {
+        if (!pendingPrefillData) {
+            return;
+        }
+        if (!opportunityForm) {
+            return;
+        }
+        const map = {
+            customer_first_name: 'customer_first_name',
+            customer_last_name: 'customer_last_name',
+            customer_tax_code: 'customer_tax_code',
+            customer_birth_date: 'customer_birth_date',
+            customer_birth_place: 'customer_birth_place',
+            customer_phone: 'customer_phone',
+            customer_email: 'customer_email',
+            customer_address: 'customer_address',
+            customer_city: 'customer_city',
+            customer_postal_code: 'customer_postal_code',
+            customer_province: 'customer_province',
+            document_type: 'document_type',
+            document_number: 'document_number',
+            document_issued_by: 'document_issued_by',
+            document_issued_at: 'document_issued_at',
+            document_expires_at: 'document_expires_at',
+            telefonia_current_operator: 'telefonia_current_operator',
+            telefonia_line_number: 'telefonia_line_number',
+            luce_pod: 'luce_pod',
+            gas_pdr: 'gas_pdr',
+            payment_method: 'payment_method',
+            payment_iban: 'payment_iban',
+            payment_holder_first_name: 'payment_holder_first_name',
+            payment_holder_last_name: 'payment_holder_last_name',
+            payment_holder_tax_code: 'payment_holder_tax_code',
+        };
+        Object.entries(map).forEach(([sourceKey, fieldName]) => {
+            const value = pendingPrefillData[sourceKey] ?? '';
+            const field = opportunityForm.elements.namedItem(fieldName);
+            if (field && typeof field.value !== 'undefined' && value !== '') {
+                field.value = value;
+            }
+        });
+        const paymentMethodValue = pendingPrefillData.payment_method;
+        if (paymentMethodValue && opportunityForm.elements.namedItem('payment_method')) {
+            opportunityForm.elements.namedItem('payment_method').value = paymentMethodValue;
+            handlePaymentMethodChange();
+        }
+        const holderIsCustomer = Number(pendingPrefillData.payment_holder_is_customer ?? 1) === 1;
+        if (paymentHolderToggle) {
+            paymentHolderToggle.checked = holderIsCustomer;
+            togglePaymentHolderFields();
+        }
+        showLookupMessage('Dati precompilati dal precedente invio.', 'success');
+    };
+
+    const lookupTaxCode = async (auto = false) => {
+        if (!taxCodeInput) {
+            return;
+        }
+        const rawValue = taxCodeInput.value.trim().toUpperCase();
+        if (rawValue === '' || rawValue.length < 11) {
+            if (!auto) {
+                showLookupMessage('Inserisci un codice fiscale valido per avviare la ricerca.', 'danger');
+            }
+            return;
+        }
+        if (auto && rawValue === lastLookupTaxCode) {
+            return;
+        }
+        lastLookupTaxCode = rawValue;
+        setLookupLoading(true);
+        showLookupMessage('Ricerca del cliente in corso…');
+        try {
+            const response = await fetch('<?php echo asset('modules/opportunities/collaborator/customer_lookup.php'); ?>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: new URLSearchParams({
+                    tax_code: rawValue,
+                    csrf_token: csrfToken,
+                }),
+            });
+            const data = await response.json();
+            if (!data.success) {
+                showLookupMessage(data.message || 'Nessun cliente trovato.', 'danger');
+                lastLookupTaxCode = '';
+                return;
+            }
+            pendingPrefillData = data.customer || null;
+            if (pendingPrefillData) {
+                renderPrefillDetails(pendingPrefillData);
+                if (taxCodePrefillModal) {
+                    taxCodePrefillModal.show();
+                }
+                showLookupMessage('Dati trovati. Conferma dal riepilogo per applicarli.', 'success');
+            }
+        } catch (error) {
+            console.error(error);
+            showLookupMessage('Errore durante la ricerca. Riprova tra qualche istante.', 'danger');
+            lastLookupTaxCode = '';
+        } finally {
+            setLookupLoading(false);
+        }
+    };
+
+    taxCodeLookupBtn?.addEventListener('click', () => lookupTaxCode(false));
+    taxCodeInput?.addEventListener('blur', () => lookupTaxCode(true));
+    taxCodePrefillApply?.addEventListener('click', () => {
+        applyPrefillData();
+        if (taxCodePrefillModal) {
+            taxCodePrefillModal.hide();
+        }
+    });
+
     dropzoneArea.addEventListener('click', () => documentsInput.click());
     dropzoneArea.addEventListener('dragover', (event) => {
         event.preventDefault();
@@ -427,6 +811,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         renderFileList();
     });
     documentsInput.addEventListener('change', renderFileList);
+    bindCapLookup();
 
     categorySelect.addEventListener('change', () => {
         refreshProviderOptions();

@@ -159,6 +159,37 @@ final class OpportunityService
     }
 
     /**
+     * @return array<string,mixed>|null
+     */
+    public function findCustomerByTaxCode(string $taxCode): ?array
+    {
+        $normalized = strtoupper(trim($taxCode));
+        if ($normalized === '') {
+            return null;
+        }
+
+        $stmt = $this->pdo->prepare(
+            'SELECT customer_first_name, customer_last_name, customer_tax_code,
+                    customer_birth_date, customer_birth_place,
+                    customer_phone, customer_email,
+                    customer_address, customer_city, customer_postal_code, customer_province,
+                    document_type, document_number, document_issued_by, document_issued_at, document_expires_at,
+                    telefonia_current_operator, telefonia_line_number,
+                    luce_pod, gas_pdr,
+                    payment_method, payment_iban, payment_holder_is_customer,
+                    payment_holder_first_name, payment_holder_last_name, payment_holder_tax_code
+             FROM opportunities
+             WHERE UPPER(customer_tax_code) = :taxCode
+             ORDER BY id DESC
+             LIMIT 1'
+        );
+        $stmt->execute([':taxCode' => $normalized]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $result ?: null;
+    }
+
+    /**
      * @param array<string,mixed> $filters
      * @return array<int,array<string,mixed>>
      */
