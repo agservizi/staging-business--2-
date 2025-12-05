@@ -6,7 +6,47 @@ require_once __DIR__ . '/../bootstrap.php';
 require_role('Collaboratore');
 
 $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
-$opportunities = $opportunityService->listCollaboratorOpportunities($collaboratorId);
+$statusOptions = $opportunityService->getStatusOptions();
+$statusCodes = array_column($statusOptions, 'code');
+$categoryOptions = [
+    'telefonia' => 'Telefonia',
+    'luce' => 'Luce',
+    'gas' => 'Gas',
+];
+$stalledThresholdDays = (int) (env('OPPORTUNITY_COLLABORATOR_STALE_DAYS') ?? 5);
+if ($stalledThresholdDays <= 0) {
+    $stalledThresholdDays = 5;
+}
+$stalledLimit = (int) (env('OPPORTUNITY_COLLABORATOR_STALE_LIMIT') ?? 5);
+if ($stalledLimit <= 0) {
+    $stalledLimit = 5;
+}
+$collaboratorStalledReminders = $opportunityService->getCollaboratorStalledReminders($collaboratorId, $stalledThresholdDays, $stalledLimit);
+
+$statusFilter = isset($_GET['status']) ? trim((string) $_GET['status']) : '';
+if ($statusFilter !== '' && !in_array($statusFilter, $statusCodes, true)) {
+    $statusFilter = '';
+}
+
+$categoryFilter = isset($_GET['category']) ? strtolower(trim((string) $_GET['category'])) : '';
+if ($categoryFilter !== '' && !isset($categoryOptions[$categoryFilter])) {
+    $categoryFilter = '';
+}
+
+$searchQuery = trim((string) ($_GET['q'] ?? ''));
+
+$listFilters = [];
+if ($statusFilter !== '') {
+    $listFilters['status'] = $statusFilter;
+}
+if ($categoryFilter !== '') {
+    $listFilters['category'] = $categoryFilter;
+}
+if ($searchQuery !== '') {
+    $listFilters['search'] = $searchQuery;
+}
+
+$opportunities = $opportunityService->listCollaboratorOpportunities($collaboratorId, $listFilters);
 $collaboratorDashboard = $opportunityService->getCollaboratorSummary($collaboratorId);
 $collaboratorTotals = $collaboratorDashboard['totals'] ?? ['total' => 0, 'active' => 0, 'won' => 0, 'lost' => 0];
 $collaboratorStatusBreakdown = $collaboratorDashboard['status_breakdown'] ?? [];
@@ -14,6 +54,20 @@ $collaboratorMonthlyTrend = $collaboratorDashboard['monthly_trend'] ?? ['labels'
 $collaboratorTrendValues = $collaboratorMonthlyTrend['values'] ?? [];
 $collaboratorTrendMax = $collaboratorTrendValues ? max($collaboratorTrendValues) : 0;
 $collaboratorLastActivity = $collaboratorDashboard['last_activity'] ?? null;
+$collaboratorTrendJson = json_encode($collaboratorMonthlyTrend, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+$filterQueryParams = [];
+if ($statusFilter !== '') {
+    $filterQueryParams['status'] = $statusFilter;
+}
+if ($categoryFilter !== '') {
+    $filterQueryParams['category'] = $categoryFilter;
+}
+if ($searchQuery !== '') {
+    $filterQueryParams['q'] = $searchQuery;
+}
+$filterQueryString = http_build_query($filterQueryParams);
+$hasActiveFilters = !empty($filterQueryParams);
+$exportUrl = asset('modules/opportunities/collaborator/export.php' . ($filterQueryString !== '' ? ('?' . $filterQueryString) : ''));
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -29,6 +83,98 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
                 <i class="fa-solid fa-plus me-2"></i>Nuova OP
             </a>
+        </div>
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <form class="row g-3 align-items-end" method="get">
+                    <div class="col-12 col-md-4 col-xl-3">
+                        <label class="form-label text-uppercase small text-muted">Stato</label>
+                        <select class="form-select" name="status">
+                            <option value="">Tutti gli stati</option>
+                            <?php foreach ($statusOptions as $status): ?>
+                                <?php $code = (string) ($status['code'] ?? ''); ?>
+                                <option value="<?php echo sanitize_output($code); ?>" <?php echo $statusFilter === $code ? 'selected' : ''; ?>>
+                                    <?php echo sanitize_output($status['label'] ?? $code); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-4 col-xl-3">
+                        <label class="form-label text-uppercase small text-muted">Categoria</label>
+                        <select class="form-select" name="category">
+                            <option value="">Tutte le categorie</option>
+                            <?php foreach ($categoryOptions as $key => $label): ?>
+                                <option value="<?php echo sanitize_output($key); ?>" <?php echo $categoryFilter === $key ? 'selected' : ''; ?>><?php echo sanitize_output($label); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-4 col-xl-3">
+                        <label class="form-label text-uppercase small text-muted">Ricerca</label>
+                        <input class="form-control" type="text" name="q" value="<?php echo sanitize_output($searchQuery); ?>" placeholder="Codice, cliente o gestore">
+                    </div>
+                    <div class="col-12 col-xl-3 d-flex flex-wrap gap-2 justify-content-xl-end">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fa-solid fa-filter me-2"></i>Applica
+                        </button>
+                        <?php if ($hasActiveFilters): ?>
+                            <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/index.php'); ?>">
+                                Reimposta
+                            </a>
+                        <?php endif; ?>
+                        <a class="btn btn-outline-success" href="<?php echo sanitize_output($exportUrl); ?>">
+                            <i class="fa-solid fa-file-arrow-down me-2"></i>Esporta CSV
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="card shadow-sm mb-4 border-warning-subtle">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <p class="text-uppercase small text-muted mb-1">Promemoria</p>
+                        <h2 class="h6 mb-0">Pratiche da sollecitare</h2>
+                        <small class="text-muted">Monitoriamo le opportunity ferme da oltre <?php echo (int) $stalledThresholdDays; ?> giorni senza aggiornamenti.</small>
+                    </div>
+                    <span class="badge bg-warning-subtle text-warning fw-semibold">
+                        <?php echo count($collaboratorStalledReminders); ?> aperte
+                    </span>
+                </div>
+                <?php if ($collaboratorStalledReminders): ?>
+                    <ul class="list-unstyled mb-0 d-flex flex-column gap-3">
+                        <?php foreach ($collaboratorStalledReminders as $reminder): ?>
+                            <?php
+                                $customerName = trim(($reminder['customer_first_name'] ?? '') . ' ' . ($reminder['customer_last_name'] ?? ''));
+                                $daysWaiting = max(0, (int) ($reminder['days_waiting'] ?? 0));
+                                $lastUpdate = format_datetime_locale($reminder['reference_date'] ?? null) ?? 'data non disponibile';
+                            ?>
+                            <li class="d-flex flex-column flex-lg-row gap-2 justify-content-between">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <strong class="text-body"><?php echo sanitize_output($reminder['code'] ?? ''); ?></strong>
+                                        <?php if (!empty($reminder['status_label'])): ?>
+                                            <span class="badge bg-light text-muted border">Stato: <?php echo sanitize_output($reminder['status_label']); ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="text-muted small">
+                                        Cliente: <?php echo sanitize_output($customerName ?: 'N/D'); ?>
+                                        <?php if (!empty($reminder['provider_label'])): ?> · Gestore: <?php echo sanitize_output($reminder['provider_label']); ?><?php endif; ?>
+                                    </div>
+                                </div>
+                                <div class="text-lg-end small text-muted">
+                                    <div class="fw-semibold text-warning">Fermo da <?php echo $daysWaiting; ?> <?php echo $daysWaiting === 1 ? 'giorno' : 'giorni'; ?></div>
+                                    <div>Ultimo aggiornamento: <?php echo sanitize_output($lastUpdate); ?></div>
+                                </div>
+                            </li>
+                        <?php endforeach; ?>
+                        <?php if (count($collaboratorStalledReminders) >= $stalledLimit): ?>
+                            <li class="text-muted small">Visualizzate al massimo <?php echo (int) $stalledLimit; ?> pratiche più datate.</li>
+                        <?php endif; ?>
+                    </ul>
+                <?php else: ?>
+                    <p class="text-muted mb-0">Ottimo lavoro! Nessuna opportunity supera la soglia impostata.</p>
+                <?php endif; ?>
+            </div>
         </div>
         <?php
             $statCards = [
@@ -122,8 +268,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <p class="text-uppercase small text-muted mb-1">Andamento</p>
                                 <h2 class="h5 mb-0">Ultimi 6 mesi</h2>
                             </div>
+                            <div class="text-muted small" data-trend-delta>In caricamento…</div>
                         </div>
                         <?php if (!empty($collaboratorMonthlyTrend['labels'])): ?>
+                            <div class="mb-3">
+                                <canvas id="trend-chart" height="180" role="img" aria-label="Andamento opportunity ultimi 6 mesi"></canvas>
+                            </div>
                             <div class="d-flex flex-column gap-2 mb-3">
                                 <?php foreach ($collaboratorMonthlyTrend['labels'] as $index => $label): ?>
                                     <?php $value = (int) ($collaboratorMonthlyTrend['values'][$index] ?? 0); ?>
@@ -160,6 +310,20 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         </div>
 
+        <?php if ($opportunities): ?>
+            <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-3">
+                <div style="min-width: 260px; max-width: 420px;">
+                    <label class="form-label text-uppercase small text-muted" for="opportunity-quick-search">Ricerca rapida</label>
+                    <input class="form-control" type="search" id="opportunity-quick-search" placeholder="Filtra nella lista corrente">
+                    <div class="form-text text-muted">Il filtro è istantaneo e non ricarica la pagina.</div>
+                </div>
+                <div class="text-muted small">Suggerimento: usa anche i filtri avanzati per restringere i risultati dal server.</div>
+            </div>
+            <div class="alert alert-info d-none" id="opportunity-quick-search-empty" role="alert">
+                Nessuna opportunity corrisponde al testo digitato.
+            </div>
+        <?php endif; ?>
+
         <div class="row g-4">
             <?php if (!$opportunities): ?>
                 <div class="col-12">
@@ -169,7 +333,17 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </div>
             <?php endif; ?>
             <?php foreach ($opportunities as $opportunity): ?>
-                <div class="col-12">
+                <?php
+                    $searchIndexParts = [
+                        (string) ($opportunity['code'] ?? ''),
+                        (string) ($opportunity['customer_first_name'] ?? ''),
+                        (string) ($opportunity['customer_last_name'] ?? ''),
+                        (string) ($opportunity['provider_label'] ?? ''),
+                        (string) ($opportunity['status_label'] ?? $opportunity['status_code'] ?? ''),
+                    ];
+                    $searchIndexValue = mb_strtolower(trim(implode(' ', array_filter($searchIndexParts))));
+                ?>
+                <div class="col-12 opportunity-list-entry" data-search-index="<?php echo sanitize_output($searchIndexValue); ?>">
                     <div class="card opportunity-card shadow-sm">
                         <div class="card-body d-flex flex-column flex-lg-row justify-content-between gap-3">
                             <div>
@@ -194,8 +368,21 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 if ($statusColor && isset($colorToBootstrap[$statusColor])) {
                                     $badgeClass = $colorToBootstrap[$statusColor];
                                 }
+                                $adminNotes = trim((string) ($opportunity['admin_notes'] ?? ''));
+                                if ($adminNotes !== '') {
+                                    $adminNotes = mb_strimwidth($adminNotes, 0, 160, '…');
+                                }
+                                $lastUpdate = format_datetime_locale($opportunity['last_status_change'] ?? $opportunity['updated_at'] ?? $opportunity['created_at'] ?? null);
+                                $tooltipParts = [];
+                                if ($adminNotes !== '') {
+                                    $tooltipParts[] = 'Note admin: ' . $adminNotes;
+                                }
+                                if ($lastUpdate) {
+                                    $tooltipParts[] = 'Ultimo aggiornamento: ' . $lastUpdate;
+                                }
+                                $badgeTooltip = implode(' • ', $tooltipParts);
                                 ?>
-                                <span class="badge <?php echo $badgeClass; ?> opportunity-status-badge">
+                                <span class="badge <?php echo $badgeClass; ?> opportunity-status-badge"<?php if ($badgeTooltip !== ''): ?> data-bs-toggle="tooltip" data-bs-placement="top" title="<?php echo sanitize_output($badgeTooltip); ?>"<?php endif; ?>>
                                     <?php echo sanitize_output($opportunity['status_label'] ?? $opportunity['status_code'] ?? ''); ?>
                                 </span>
                                 <p class="text-muted small mb-0 mt-2">
@@ -210,4 +397,100 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     </main>
 </div>
 <link rel="stylesheet" href="<?php echo asset('modules/opportunities/assets/opportunities.css'); ?>">
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const quickSearchInput = document.getElementById('opportunity-quick-search');
+    const listEntries = Array.from(document.querySelectorAll('.opportunity-list-entry'));
+    const emptyAlert = document.getElementById('opportunity-quick-search-empty');
+
+    if (quickSearchInput && listEntries.length) {
+        const applyQuickSearch = () => {
+            const term = quickSearchInput.value.trim().toLowerCase();
+            let visible = 0;
+            listEntries.forEach((entry) => {
+                const haystack = (entry.dataset.searchIndex || '').toLowerCase();
+                const match = term === '' || haystack.includes(term);
+                entry.classList.toggle('d-none', !match);
+                if (match) {
+                    visible += 1;
+                }
+            });
+            if (emptyAlert) {
+                emptyAlert.classList.toggle('d-none', visible !== 0);
+            }
+        };
+        quickSearchInput.addEventListener('input', applyQuickSearch);
+        applyQuickSearch();
+    }
+
+    if (window.bootstrap && typeof window.bootstrap.Tooltip === 'function') {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach((triggerEl) => {
+            new window.bootstrap.Tooltip(triggerEl);
+        });
+    }
+
+    const trendCanvas = document.getElementById('trend-chart');
+    if (trendCanvas) {
+        const trendData = <?php echo $collaboratorTrendJson ?: 'null'; ?>;
+        if (trendData && Array.isArray(trendData.labels) && Array.isArray(trendData.values) && trendData.labels.length) {
+            const dataset = trendData.values.map((value) => Number(value) || 0);
+            const ctx = trendCanvas.getContext('2d');
+            const drawChart = () => {
+                new window.Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: trendData.labels,
+                        datasets: [{
+                            label: 'Opportunity registrate',
+                            data: dataset,
+                            borderColor: '#f59f00',
+                            backgroundColor: 'rgba(245, 159, 0, 0.15)',
+                            tension: 0.35,
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                ticks: {
+                                    precision: 0,
+                                },
+                                beginAtZero: true,
+                            },
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: (context) => `${context.parsed.y} opportunity` } },
+                        },
+                    },
+                });
+                const deltaBadge = document.querySelector('[data-trend-delta]');
+                if (deltaBadge && dataset.length >= 2) {
+                    const latest = dataset[dataset.length - 1];
+                    const previous = dataset[dataset.length - 2] || 0;
+                    const delta = previous === 0 ? (latest > 0 ? 100 : 0) : ((latest - previous) / previous) * 100;
+                    const formatted = `${delta > 0 ? '+' : ''}${delta.toFixed(1)}% vs mese precedente`;
+                    deltaBadge.textContent = formatted;
+                    deltaBadge.classList.toggle('text-success', delta >= 0);
+                    deltaBadge.classList.toggle('text-danger', delta < 0);
+                }
+            };
+
+            if (!window.Chart) {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js';
+                script.onload = drawChart;
+                document.head.appendChild(script);
+            } else {
+                drawChart();
+            }
+        }
+    }
+});
+</script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

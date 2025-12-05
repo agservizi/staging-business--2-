@@ -11,6 +11,8 @@ $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
 $catalog = $opportunityService->getProviderCatalog();
 $errors = [];
 $formData = $_POST;
+$hasSubmitted = $_SERVER['REQUEST_METHOD'] === 'POST';
+$draftStorageKey = 'opportunity_collaborator_draft_' . $collaboratorId;
 $documentTypePresets = [
     "Carta d'identità" => 'Comune',
     'Passaporto' => 'Ministero Affari Esteri',
@@ -92,9 +94,26 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </a>
         </div>
 
-        <?php foreach ($errors as $message): ?>
-            <div class="alert alert-warning" role="alert"><?php echo sanitize_output($message); ?></div>
-        <?php endforeach; ?>
+        <?php if ($errors): ?>
+            <div class="alert alert-danger" role="alert">
+                <h2 class="h6 mb-2">Controlla i seguenti punti prima di procedere:</h2>
+                <ul class="mb-0 ps-3">
+                    <?php foreach ($errors as $message): ?>
+                        <li><?php echo sanitize_output($message); ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
+
+        <div class="alert alert-secondary d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2" role="status">
+            <div>
+                <strong>Salvataggio automatico bozza</strong>
+                <p class="mb-0 small" id="draft-status-label">I dati vengono salvati in locale ogni pochi secondi. Puoi chiudere la pagina e riprendere più tardi.</p>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm" type="button" id="clear-draft-button">
+                <i class="fa-solid fa-eraser me-1"></i>Svuota bozza
+            </button>
+        </div>
 
         <form class="row g-4" method="post" enctype="multipart/form-data" id="opportunity-form">
             <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
@@ -386,6 +405,8 @@ window.CIEIstatLookupConfig = {
     const catalog = <?php echo json_encode($catalog, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
     const csrfToken = '<?php echo sanitize_output($csrfToken); ?>';
     const opportunityForm = document.getElementById('opportunity-form');
+    const hasSubmitted = <?php echo $hasSubmitted ? 'true' : 'false'; ?>;
+    const draftStorageKey = '<?php echo sanitize_output($draftStorageKey); ?>';
     const categorySelect = document.getElementById('category-select');
     const providerSelect = document.getElementById('provider-select');
     const offerSelect = document.getElementById('offer-select');
@@ -413,6 +434,21 @@ window.CIEIstatLookupConfig = {
     const customerPostalCodeInput = document.getElementById('customer-postal-code');
     const capLookupFeedback = document.getElementById('cap-lookup-feedback');
     const defaultCapFeedbackMessage = 'Inserisci il CAP per validarlo automaticamente.';
+    const clearDraftButton = document.getElementById('clear-draft-button');
+    const draftStatusLabel = document.getElementById('draft-status-label');
+    const canUseDrafts = (() => {
+        try {
+            if (typeof window === 'undefined' || !window.localStorage) {
+                return false;
+            }
+            const testKey = '__opportunity_draft_test__';
+            window.localStorage.setItem(testKey, '1');
+            window.localStorage.removeItem(testKey);
+            return true;
+        } catch (error) {
+            return false;
+        }
+    })();
     const documentTypeSelect = document.getElementById('document-type-select');
     const documentIssuedBySelect = document.getElementById('document-issued-by-select');
     const documentAuthorityDefaults = {
@@ -497,6 +533,153 @@ window.CIEIstatLookupConfig = {
         capLookupFeedback.classList.remove('text-muted', 'text-success', 'text-warning', 'text-danger');
         capLookupFeedback.classList.add(classMap[state] || 'text-muted');
         capLookupFeedback.textContent = message;
+    };
+
+    const updateDraftStatus = (message, tone = 'muted') => {
+        if (!draftStatusLabel) {
+            return;
+        }
+        draftStatusLabel.classList.remove('text-muted', 'text-success', 'text-warning', 'text-danger');
+        const toneClass = {
+            muted: 'text-muted',
+            success: 'text-success',
+            warning: 'text-warning',
+            danger: 'text-danger',
+        };
+        draftStatusLabel.classList.add(toneClass[tone] || 'text-muted');
+        draftStatusLabel.textContent = message;
+    };
+
+    const getFieldNodes = (name) => {
+        if (!opportunityForm || !name) {
+            return [];
+        }
+        const selector = name.replace(/"/g, '\\"');
+        return Array.from(opportunityForm.querySelectorAll(`[name="${selector}"]`));
+    };
+
+    const collectDraftPayload = () => {
+        if (!opportunityForm) {
+            return null;
+        }
+        const payload = {};
+        Array.from(opportunityForm.elements).forEach((field) => {
+            if (!field || typeof field.name !== 'string' || field.name === '' || field.type === 'file') {
+                return;
+            }
+            if (field.name === 'csrf_token' || field.name === 'documents[]') {
+                return;
+            }
+            if ((field.type === 'checkbox' || field.type === 'radio') && !field.checked) {
+                return;
+            }
+            payload[field.name] = field.value;
+        });
+        if (paymentHolderToggle) {
+            payload.payment_holder_is_customer = paymentHolderToggle.checked ? '1' : '0';
+        }
+        if (providerSelect?.value) {
+            payload.provider_id = providerSelect.value;
+        }
+        if (offerSelect?.value) {
+            payload.offer_id = offerSelect.value;
+        }
+        return payload;
+    };
+
+    const applyDraftPayload = (payload) => {
+        if (!payload || typeof payload !== 'object') {
+            return;
+        }
+        Object.entries(payload).forEach(([name, value]) => {
+            if (value === undefined || value === null || name === '') {
+                return;
+            }
+            if (name === 'provider_id' && providerSelect) {
+                providerSelect.dataset.selected = value;
+                return;
+            }
+            if (name === 'offer_id' && offerSelect) {
+                offerSelect.dataset.selected = value;
+                return;
+            }
+            if (name === 'payment_holder_is_customer' && paymentHolderToggle) {
+                paymentHolderToggle.checked = String(value) === '1';
+                return;
+            }
+            const nodes = getFieldNodes(name);
+            if (!nodes.length) {
+                return;
+            }
+            nodes.forEach((node) => {
+                if (node.type === 'checkbox') {
+                    node.checked = String(value) === '1' || node.value === value;
+                } else if (node.type === 'radio') {
+                    node.checked = node.value === value;
+                } else {
+                    node.value = value;
+                }
+            });
+        });
+        togglePaymentHolderFields();
+    };
+
+    const saveDraft = () => {
+        if (!canUseDrafts) {
+            return;
+        }
+        const payload = collectDraftPayload();
+        if (!payload) {
+            return;
+        }
+        try {
+            window.localStorage.setItem(draftStorageKey, JSON.stringify(payload));
+            updateDraftStatus('Bozza salvata pochi secondi fa.', 'success');
+        } catch (error) {
+            updateDraftStatus('Impossibile salvare la bozza su questo dispositivo.', 'warning');
+        }
+    };
+
+    const loadDraftFromStorage = () => {
+        if (!canUseDrafts) {
+            return;
+        }
+        let raw = null;
+        try {
+            raw = window.localStorage.getItem(draftStorageKey);
+        } catch (error) {
+            updateDraftStatus('Impossibile accedere alla bozza salvata.', 'warning');
+            return;
+        }
+        if (!raw) {
+            return;
+        }
+        let payload = null;
+        try {
+            payload = JSON.parse(raw);
+        } catch (error) {
+            window.localStorage.removeItem(draftStorageKey);
+            return;
+        }
+        applyDraftPayload(payload);
+        updateDraftStatus('Bozza ripristinata automaticamente.', 'success');
+    };
+
+    const clearDraft = (resetForm = false) => {
+        if (canUseDrafts) {
+            try {
+                window.localStorage.removeItem(draftStorageKey);
+            } catch (error) {
+                // ignore
+            }
+        }
+        if (resetForm && opportunityForm) {
+            opportunityForm.reset();
+            providerSelect.dataset.selected = '';
+            offerSelect.dataset.selected = '';
+            togglePaymentHolderFields();
+        }
+        updateDraftStatus('Bozza eliminata.', 'muted');
     };
 
     const syncDocumentAuthority = (force = false) => {
@@ -755,6 +938,22 @@ window.CIEIstatLookupConfig = {
         });
     };
 
+    const debouncedSaveDraft = debounce(() => {
+        saveDraft();
+    }, 800);
+
+    if (opportunityForm) {
+        ['input', 'change'].forEach((eventName) => {
+            opportunityForm.addEventListener(eventName, (event) => {
+                const target = event.target;
+                if (!target || !target.name || target.type === 'file') {
+                    return;
+                }
+                debouncedSaveDraft();
+            });
+        });
+    }
+
     const setLookupLoading = (loading) => {
         if (!taxCodeLookupBtn) {
             return;
@@ -956,6 +1155,20 @@ window.CIEIstatLookupConfig = {
     });
     documentsInput.addEventListener('change', renderFileList);
     bindCapLookup();
+
+    if (!hasSubmitted) {
+        loadDraftFromStorage();
+    }
+
+    clearDraftButton?.addEventListener('click', () => {
+        clearDraft(true);
+        renderFileList();
+        refreshProviderOptions();
+        refreshOfferOptions();
+        toggleCategorySections();
+        updatePaymentMethodOptions();
+        handlePaymentMethodChange();
+    });
 
     categorySelect.addEventListener('change', () => {
         refreshProviderOptions();

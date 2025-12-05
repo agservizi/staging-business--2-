@@ -18,16 +18,39 @@ final class OpportunityService
     /**
      * @return array<int,array<string,mixed>>
      */
-    public function listCollaboratorOpportunities(int $userId): array
+    public function listCollaboratorOpportunities(int $userId, array $filters = []): array
     {
+        $conditions = ['o.collaborator_id = :user'];
+        $params = [':user' => $userId];
+
+        $status = isset($filters['status']) ? trim((string) $filters['status']) : '';
+        if ($status !== '') {
+            $conditions[] = 'o.status_code = :status';
+            $params[':status'] = $status;
+        }
+
+        $category = isset($filters['category']) ? strtolower(trim((string) $filters['category'])) : '';
+        if ($category !== '' && in_array($category, self::CATEGORIES, true)) {
+            $conditions[] = 'o.category = :category';
+            $params[':category'] = $this->validateCategory($category);
+        }
+
+        $search = isset($filters['search']) ? trim((string) $filters['search']) : '';
+        if ($search !== '') {
+            $conditions[] = '(o.code LIKE :search OR o.customer_first_name LIKE :search OR o.customer_last_name LIKE :search OR o.provider_label LIKE :search)';
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        $whereClause = implode(' AND ', $conditions);
+
         $stmt = $this->pdo->prepare(
             'SELECT o.*, s.label AS status_label, s.color AS status_color
              FROM opportunities o
              LEFT JOIN opportunity_statuses s ON s.code = o.status_code
-             WHERE o.collaborator_id = :user
+             WHERE ' . $whereClause . '
              ORDER BY o.created_at DESC'
         );
-        $stmt->execute([':user' => $userId]);
+        $stmt->execute($params);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
@@ -156,6 +179,37 @@ final class OpportunityService
             'monthly_trend' => $monthlyTrend,
             'last_activity' => $lastActivity,
         ];
+    }
+
+    /**
+     * @return array<int,array<string,mixed>>
+     */
+    public function getCollaboratorStalledReminders(int $userId, int $thresholdDays = 5, int $limit = 5): array
+    {
+        if ($userId <= 0 || $thresholdDays <= 0 || $limit <= 0) {
+            return [];
+        }
+
+        $referenceExpr = 'COALESCE(o.last_status_change, o.updated_at, o.created_at)';
+        $sql = 'SELECT o.code, o.status_code, s.label AS status_label, s.color AS status_color,
+                       o.provider_label, o.customer_first_name, o.customer_last_name,
+                       ' . $referenceExpr . ' AS reference_date,
+                       TIMESTAMPDIFF(DAY, ' . $referenceExpr . ', NOW()) AS days_waiting
+                FROM opportunities o
+                LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+                WHERE o.collaborator_id = :user
+                  AND o.status_code NOT IN (\'attivato\', \'annullato\')
+                  AND TIMESTAMPDIFF(DAY, ' . $referenceExpr . ', NOW()) >= :threshold
+                ORDER BY reference_date ASC
+                LIMIT :limit';
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':user', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':threshold', $thresholdDays, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     /**
