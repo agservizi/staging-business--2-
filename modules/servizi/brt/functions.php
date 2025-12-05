@@ -1501,8 +1501,15 @@ function brt_get_shipments(array $filters = [], int $limit = 200, int $offset = 
     }
 
     if (!empty($filters['search'])) {
-        $where[] = '(parcel_id LIKE :search OR consignee_name LIKE :search OR alphanumeric_sender_reference LIKE :search)';
-        $filterParams[':search'] = '%' . $filters['search'] . '%';
+        $where[] = '(
+            parcel_id LIKE :search_parcel
+            OR consignee_name LIKE :search_consignee
+            OR alphanumeric_sender_reference LIKE :search_reference
+        )';
+        $searchValue = '%' . $filters['search'] . '%';
+        $filterParams[':search_parcel'] = $searchValue;
+        $filterParams[':search_consignee'] = $searchValue;
+        $filterParams[':search_reference'] = $searchValue;
     }
 
     $sql = 'SELECT s.*, m.reference AS manifest_reference, m.pdf_path AS manifest_pdf_path, m.generated_at AS manifest_generated_at, '
