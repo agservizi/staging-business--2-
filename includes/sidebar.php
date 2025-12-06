@@ -131,6 +131,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
 $sidebarHomeHref = $isCollaborator
     ? base_url('modules/opportunities/collaborator/index.php')
     : base_url('dashboard.php');
+$appVersion = env('APP_VERSION', '1.0.0');
 ?>
 <nav id="sidebarMenu" class="sidebar border-end" aria-label="Menu principale">
     <div class="px-3 py-4 sidebar-inner">
@@ -332,7 +333,7 @@ $sidebarHomeHref = $isCollaborator
             <?php endif; ?>
         </ul>
         <div class="sidebar-footer" aria-label="Versione applicazione">
-            v. 1.0.0
+            v. <?php echo htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8'); ?>
         </div>
     </div>
 </nav>
