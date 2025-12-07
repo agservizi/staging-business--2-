@@ -185,13 +185,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST['payment_iban'] = strtoupper(str_replace(' ', '', (string) $_POST['payment_iban']));
         }
 
-        if ($isEditingOpportunity) {
-            $opportunity = $opportunityService->updateOpportunityByCollaborator($editOpportunityId, $collaboratorId, $_POST, $_FILES['documents'] ?? []);
-            add_flash('success', 'Opportunity aggiornata e rimessa in verifica.');
-            header('Location: view.php?id=' . $editOpportunityId);
-            exit;
-        }
-
         $stripeIbanValidation = null;
         $paymentMethod = $_POST['payment_method'] ?? 'iban';
         $paymentIban = $_POST['payment_iban'] ?? '';
@@ -279,8 +272,17 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
         <?php if ($isEditingOpportunity): ?>
             <div class="alert alert-info d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3" role="status">
+                        $_POST['payment_iban_stripe_bank_code'] = $stripeIbanValidation['bank_code'] ?? null;
+                        $_POST['payment_iban_stripe_last4'] = $stripeIbanValidation['last4'] ?? null;
                 <div>
                     <strong>Rettifica richiesta</strong>
+
+                    if ($isEditingOpportunity) {
+                        $opportunity = $opportunityService->updateOpportunityByCollaborator($editOpportunityId, $collaboratorId, $_POST, $_FILES['documents'] ?? []);
+                        add_flash('success', 'Opportunity aggiornata e rimessa in verifica.');
+                        header('Location: view.php?id=' . $editOpportunityId);
+                        exit;
+                    }
                     <p class="mb-0">Aggiorna i dati segnalati e salva: l'admin riesaminerà la pratica dopo l'invio.</p>
                 </div>
                 <div class="text-muted small">Opportunity #<?php echo (int) $editOpportunityId; ?></div>

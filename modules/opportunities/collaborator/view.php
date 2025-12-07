@@ -53,6 +53,9 @@ if (!empty($opportunity['metadata'])) {
 }
 $telefoniaContractType = strtolower((string) ($metadata['telefonia_contract_type'] ?? 'migrazione'));
 $isTelefoniaMigration = ($opportunity['category'] ?? '') === 'telefonia' && $telefoniaContractType === 'migrazione';
+$stripeIbanValidated = (($opportunity['payment_method'] ?? '') === 'iban') && !empty($metadata['payment_iban_stripe_pm_id'] ?? '');
+$stripeIbanBank = (string) ($metadata['payment_iban_stripe_bank_code'] ?? '');
+$stripeIbanLast4 = (string) ($metadata['payment_iban_stripe_last4'] ?? '');
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -201,7 +204,23 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-md-6">
                                 <p class="text-uppercase small text-muted mb-1">IBAN</p>
-                                <p class="mb-0"><?php echo sanitize_output($opportunity['payment_iban'] ?? '—'); ?></p>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <p class="mb-0"><?php echo sanitize_output($opportunity['payment_iban'] ?? '—'); ?></p>
+                                    <?php if ($stripeIbanValidated): ?>
+                                        <?php
+                                            $stripeDetails = [];
+                                            if ($stripeIbanBank !== '') {
+                                                $stripeDetails[] = 'banca ' . sanitize_output($stripeIbanBank);
+                                            }
+                                            if ($stripeIbanLast4 !== '') {
+                                                $stripeDetails[] = '***' . sanitize_output($stripeIbanLast4);
+                                            }
+                                        ?>
+                                        <span class="badge bg-success-subtle text-success" title="IBAN validato tramite Stripe">
+                                            Validato<?php echo $stripeDetails ? ' (' . implode(' · ', $stripeDetails) . ')' : ''; ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             <div class="col-12">
                                 <p class="text-uppercase small text-muted mb-1">Note collaboratore</p>

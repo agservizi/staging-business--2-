@@ -935,6 +935,22 @@ final class OpportunityService
             $this->requireString($input, 'payment_holder_tax_code', 'Codice fiscale intestatario IBAN');
         }
 
+        if ($paymentMethod === 'iban') {
+            $stripePmId = trim((string) ($input['payment_iban_stripe_pm_id'] ?? ''));
+            if ($stripePmId !== '') {
+                $metadata['payment_iban_stripe_pm_id'] = $stripePmId;
+                $metadata['payment_iban_stripe_validated_at'] = $metadata['payment_iban_stripe_validated_at'] ?? (new DateTimeImmutable())->format('c');
+                $stripeBank = trim((string) ($input['payment_iban_stripe_bank_code'] ?? ''));
+                if ($stripeBank !== '') {
+                    $metadata['payment_iban_stripe_bank_code'] = $stripeBank;
+                }
+                $stripeLast4 = trim((string) ($input['payment_iban_stripe_last4'] ?? ''));
+                if ($stripeLast4 !== '') {
+                    $metadata['payment_iban_stripe_last4'] = $stripeLast4;
+                }
+            }
+        }
+
         $code = $this->generateUniqueCode();
 
         $commissionAmount = $offer['commission'] ?? $provider['default_commission'] ?? null;
@@ -1154,6 +1170,22 @@ final class OpportunityService
             $this->requireString($input, 'payment_holder_first_name', 'Nome intestatario IBAN');
             $this->requireString($input, 'payment_holder_last_name', 'Cognome intestatario IBAN');
             $this->requireString($input, 'payment_holder_tax_code', 'Codice fiscale intestatario IBAN');
+        }
+
+        if ($paymentMethod === 'iban') {
+            $stripePmId = trim((string) ($input['payment_iban_stripe_pm_id'] ?? ''));
+            if ($stripePmId !== '') {
+                $metadata['payment_iban_stripe_pm_id'] = $stripePmId;
+                $metadata['payment_iban_stripe_validated_at'] = $metadata['payment_iban_stripe_validated_at'] ?? (new DateTimeImmutable())->format('c');
+                $stripeBank = trim((string) ($input['payment_iban_stripe_bank_code'] ?? ''));
+                if ($stripeBank !== '') {
+                    $metadata['payment_iban_stripe_bank_code'] = $stripeBank;
+                }
+                $stripeLast4 = trim((string) ($input['payment_iban_stripe_last4'] ?? ''));
+                if ($stripeLast4 !== '') {
+                    $metadata['payment_iban_stripe_last4'] = $stripeLast4;
+                }
+            }
         }
 
         $commissionAmount = $offer['commission'] ?? $provider['default_commission'] ?? null;
