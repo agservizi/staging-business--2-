@@ -20,7 +20,6 @@
         "bacon/bacon-qr-code": "^2.0",
         "mpdf/mpdf": "^8.2",
         "stripe/stripe-php": "^14.8",
-        "guzzlehttp/guzzle": "^7.0",
-        "php-webdriver/webdriver": "^1.15"
+        "guzzlehttp/guzzle": "^7.0"
     }
 }
