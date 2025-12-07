@@ -102,11 +102,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <i class="fa-solid fa-plus me-2"></i>Nuova OP
             </a>
         </div>
-        <?php if (!$opportunities && !$hasRemoteDraft): ?>
+        <?php if ($totalOpportunities <= 0 && !$hasRemoteDraft): ?>
             <div class="alert alert-info mb-4" role="alert">
                 Nessuna opportunity registrata. Crea la prima utilizzando il pulsante in alto.
             </div>
-        <?php elseif (!$opportunities && $hasRemoteDraft): ?>
+        <?php elseif ($totalOpportunities <= 0 && $hasRemoteDraft): ?>
             <div class="alert alert-warning mb-4" role="alert">
                 Hai una bozza salvata: completila e inviala per farla comparire nell'elenco principale.
             </div>
