@@ -11,6 +11,7 @@ use RuntimeException;
 final class OpportunityService
 {
     private const CATEGORIES = ['telefonia', 'luce', 'gas'];
+    private const COMMISSION_STATUS_EXCLUSIONS = ['annullato', 'annullata', 'cancellato', 'cancellata', 'cancelled', 'canceled'];
     private const CLONEABLE_FIELDS = [
         'category',
         'provider_id',
@@ -429,16 +430,17 @@ final class OpportunityService
         }
 
         $oldestMonth = $currentMonth->modify(sprintf('-%d months', $months - 1)) ?: $currentMonth;
-        $stmt = $this->pdo->prepare(
-            'SELECT DATE_FORMAT(created_at, "%Y-%m") AS month_key,
-                    SUM(COALESCE(commission_amount, 0)) AS total_commission,
-                    COUNT(*) AS total_opportunities
-             FROM opportunities
-             WHERE collaborator_id = :user
-               AND created_at >= :fromDate
-             GROUP BY month_key
-             ORDER BY month_key'
-        );
+                $statusFilter = $this->buildCommissionStatusExclusion('o.status_code');
+                $stmt = $this->pdo->prepare(
+                        'SELECT DATE_FORMAT(o.created_at, "%Y-%m") AS month_key,
+                                        SUM(COALESCE(o.commission_amount, 0)) AS total_commission,
+                                        COUNT(*) AS total_opportunities
+                         FROM opportunities o
+                         WHERE o.collaborator_id = :user
+                             AND o.created_at >= :fromDate' . $statusFilter . '
+                         GROUP BY month_key
+                         ORDER BY month_key'
+                );
         $stmt->bindValue(':user', $userId, PDO::PARAM_INT);
         $stmt->bindValue(':fromDate', $oldestMonth->format('Y-m-01 00:00:00'));
         $stmt->execute();
@@ -452,10 +454,11 @@ final class OpportunityService
             $monthMap[$key]['opportunities'] = (int) ($row['total_opportunities'] ?? 0);
         }
 
+        $lifetimeClause = $this->buildCommissionStatusExclusion('o.status_code');
         $lifetimeStmt = $this->pdo->prepare(
-            'SELECT SUM(COALESCE(commission_amount, 0)) AS total
-             FROM opportunities
-             WHERE collaborator_id = :user'
+            'SELECT SUM(COALESCE(o.commission_amount, 0)) AS total
+             FROM opportunities o
+             WHERE o.collaborator_id = :user' . $lifetimeClause
         );
         $lifetimeStmt->execute([':user' => $userId]);
         $lifetimeTotal = (float) ($lifetimeStmt->fetchColumn() ?: 0);
@@ -476,6 +479,7 @@ final class OpportunityService
         }
 
         $bounds = $this->resolveMonthBounds($monthKey);
+                $statusFilter = $this->buildCommissionStatusExclusion('o.status_code');
                 $stmt = $this->pdo->prepare(
                         'SELECT o.id, o.code, o.provider_label, o.offer_label,
                                         COALESCE(s.label, o.status_code) AS status_label,
@@ -487,7 +491,7 @@ final class OpportunityService
                          LEFT JOIN opportunity_statuses s ON s.code = o.status_code
                          WHERE o.collaborator_id = :user
                              AND o.created_at >= :start
-                             AND o.created_at < :end
+                             AND o.created_at < :end' . $statusFilter . '
                          ORDER BY o.created_at DESC'
                 );
         $stmt->execute([
@@ -505,12 +509,13 @@ final class OpportunityService
     public function getCommissionMonthOptions(?int $collaboratorId = null, int $limit = 12): array
     {
         $limit = max(1, min(36, $limit));
-        $sql = 'SELECT DATE_FORMAT(created_at, "%Y-%m") AS month_key
-                FROM opportunities
-                WHERE commission_amount IS NOT NULL';
+        $sql = 'SELECT DATE_FORMAT(o.created_at, "%Y-%m") AS month_key
+                FROM opportunities o
+                WHERE o.commission_amount IS NOT NULL';
         if ($collaboratorId !== null) {
-            $sql .= ' AND collaborator_id = :user';
+            $sql .= ' AND o.collaborator_id = :user';
         }
+        $sql .= $this->buildCommissionStatusExclusion('o.status_code');
         $sql .= ' GROUP BY month_key ORDER BY month_key DESC LIMIT :limit';
 
         $stmt = $this->pdo->prepare($sql);
@@ -562,7 +567,7 @@ final class OpportunityService
              FROM opportunities o
              LEFT JOIN users u ON u.id = o.collaborator_id
              WHERE o.created_at >= :start
-               AND o.created_at < :end
+                             AND o.created_at < :end' . $this->buildCommissionStatusExclusion('o.status_code') . '
              GROUP BY o.collaborator_id, u.nome, u.cognome, u.email
              ORDER BY total_commission DESC'
         );
@@ -572,6 +577,25 @@ final class OpportunityService
         ]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    private function buildCommissionStatusExclusion(string $column = 'status_code'): string
+    {
+        if (!self::COMMISSION_STATUS_EXCLUSIONS) {
+            return '';
+        }
+
+        $quoted = array_map(function (string $code): string {
+            return $this->pdo->quote($code);
+        }, self::COMMISSION_STATUS_EXCLUSIONS);
+
+        if (!$quoted) {
+            return '';
+        }
+
+        $list = implode(',', $quoted);
+
+        return sprintf(' AND (%1$s IS NULL OR %1$s NOT IN (%2$s))', $column, $list);
     }
 
     /**
