@@ -86,12 +86,18 @@ final class CoverageProviderRegistry
                 'cap' => ['label' => 'CAP', 'required' => false],
             ],
             'actions' => [
-                ['action' => 'wait_for', 'selector' => 'a[href*="check-coverage-super-fibra" i], .js-external-popup-open, [data-button-text-desk*="copertura fibra" i]', 'timeout' => 35, 'continue_on_error' => true],
+                ['action' => 'wait_for', 'selector' => 'a[href*="check-coverage-super-fibra" i], .js-external-popup-open, [data-button-text-desk*="copertura fibra" i], #copertura .coverage-fields, .coverage-fields input#pac-input', 'timeout' => 35, 'continue_on_error' => true],
                 ['action' => 'wait_for', 'selector' => '.cmp-cookie-consent__accept button, button[id*="accept" i], button[class*="accept" i], button[name*="accept" i], button[data-cookie*="accept" i], button[data-action*="accept" i], button[data-gtm*="consent" i], button[data-testid*="accept" i], #cookiebar-accept, #cookiebar button.accept, #onetrust-accept-btn-handler', 'timeout' => 5, 'continue_on_error' => true],
                 ['action' => 'click', 'selector' => '.cmp-cookie-consent__accept button, button[id*="accept" i], button[class*="accept" i], button[name*="accept" i], button[data-cookie*="accept" i], button[data-action*="accept" i], button[data-gtm*="consent" i], button[data-testid*="accept" i], #cookiebar-accept, #cookiebar button.accept, #onetrust-accept-btn-handler', 'continue_on_error' => true],
                 ['action' => 'click', 'selector' => 'button[id*="reject" i], button[class*="reject" i], button[name*="reject" i], button[data-action*="reject" i], button[data-action*="continue" i], button[data-testid*="reject" i], #cookiebar-continue, #cookiebar button.continue', 'continue_on_error' => true],
                 ['action' => 'execute_script', 'script' => '(function(){var overlays=document.querySelectorAll("#cookiebar,.cmp-cookie-consent,#onetrust-consent-sdk");overlays.forEach(function(el){el.style.display="none";});})();', 'continue_on_error' => true],
                 ['action' => 'pause', 'milliseconds' => 500],
+                [
+                    'action' => 'execute_script',
+                    'script' => '(function(){var target=document.querySelector("#copertura, .coverage");if(!target){return;}try{target.scrollIntoView({behavior:"smooth",block:"start"});}catch(e){window.scrollTo(0,target.getBoundingClientRect().top+window.scrollY-100);}})();',
+                    'continue_on_error' => true,
+                ],
+                ['action' => 'pause', 'milliseconds' => 600],
                 ['action' => 'click', 'selector' => 'a[href*="check-coverage-super-fibra" i], .js-external-popup-open, [data-button-text-desk*="copertura fibra" i]', 'scroll' => true, 'continue_on_error' => true],
                 [
                     'action' => 'execute_script',
