@@ -6,6 +6,79 @@ $canSeeDocumentActions = $role !== 'Cliente' && $role !== 'Patronato' && $role !
 $recentDocuments = [];
 $documentsTableAvailable = false;
 $documentsLoadFailed = false;
+$collaboratorNotifications = [];
+$collaboratorNotificationCount = 0;
+$collaboratorNotificationsError = false;
+
+if ($role === 'Collaboratore') {
+    $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
+    $lookbackDays = 30;
+    $maxPerSource = 6;
+
+    if ($collaboratorId > 0 && isset($pdo) && $pdo instanceof PDO) {
+        try {
+            $statusSql = 'SELECT o.id, o.code, o.status_code, COALESCE(s.label, o.status_code) AS status_label, o.last_status_change
+                FROM opportunities o
+                LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+                WHERE o.collaborator_id = :collaborator
+                  AND o.last_status_change IS NOT NULL
+                  AND o.last_status_change >= DATE_SUB(NOW(), INTERVAL ' . (int) $lookbackDays . ' DAY)
+                ORDER BY o.last_status_change DESC
+                LIMIT ' . (int) $maxPerSource;
+            $statusStmt = $pdo->prepare($statusSql);
+            $statusStmt->execute([':collaborator' => $collaboratorId]);
+            while ($row = $statusStmt->fetch(PDO::FETCH_ASSOC)) {
+                $collaboratorNotifications[] = [
+                    'type' => 'status',
+                    'title' => sprintf('Opportunity %s', sanitize_output($row['code'] ?? '')), // short label first
+                    'subtitle' => sprintf('Stato: %s', sanitize_output($row['status_label'] ?? ($row['status_code'] ?? ''))),
+                    'timestamp' => $row['last_status_change'] ?? null,
+                    'url' => asset('modules/opportunities/collaborator/view.php?id=' . (int) ($row['id'] ?? 0)),
+                ];
+            }
+        } catch (Throwable $exception) {
+            $collaboratorNotificationsError = true;
+        }
+
+        try {
+            $ticketSql = 'SELECT tm.id, tm.ticket_id, tm.author_name, tm.created_at, t.codice, t.subject
+                FROM ticket_messages tm
+                INNER JOIN tickets t ON tm.ticket_id = t.id
+                LEFT JOIN users u ON tm.author_id = u.id
+                WHERE t.created_by = :collaborator
+                  AND tm.is_internal = 0
+                  AND tm.visibility = "customer"
+                  AND (tm.author_id IS NULL OR tm.author_id <> :collaborator)
+                  AND (u.ruolo IS NULL OR u.ruolo <> "Collaboratore")
+                  AND tm.created_at >= DATE_SUB(NOW(), INTERVAL ' . (int) $lookbackDays . ' DAY)
+                ORDER BY tm.created_at DESC
+                LIMIT ' . (int) $maxPerSource;
+            $ticketStmt = $pdo->prepare($ticketSql);
+            $ticketStmt->execute([':collaborator' => $collaboratorId]);
+            while ($row = $ticketStmt->fetch(PDO::FETCH_ASSOC)) {
+                $collaboratorNotifications[] = [
+                    'type' => 'ticket',
+                    'title' => sprintf('Ticket #%s', sanitize_output($row['codice'] ?? $row['ticket_id'] ?? '')), // show code fallback
+                    'subtitle' => sprintf('Risposta admin: %s', sanitize_output($row['subject'] ?? 'Aggiornamento ticket')),
+                    'timestamp' => $row['created_at'] ?? null,
+                    'url' => asset('modules/opportunities/collaborator/ticket-view.php?id=' . (int) ($row['ticket_id'] ?? 0)),
+                ];
+            }
+        } catch (Throwable $exception) {
+            $collaboratorNotificationsError = true;
+        }
+
+        if ($collaboratorNotifications) {
+            usort($collaboratorNotifications, static function (array $a, array $b): int {
+                $aTime = strtotime((string) ($a['timestamp'] ?? '')) ?: 0;
+                $bTime = strtotime((string) ($b['timestamp'] ?? '')) ?: 0;
+                return $bTime <=> $aTime;
+            });
+            $collaboratorNotificationCount = count($collaboratorNotifications);
+            $collaboratorNotifications = array_slice($collaboratorNotifications, 0, 10);
+        }
+    }
+}
 
 if (!function_exists('topbar_documents_table_available')) {
     /**
@@ -61,6 +134,50 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
             </div>
 
             <div class="topbar-actions">
+                <?php if ($role === 'Collaboratore'): ?>
+                    <div class="dropdown me-1">
+                        <button class="btn topbar-btn topbar-btn-icon position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifiche">
+                            <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                            <?php if ($collaboratorNotificationCount > 0): ?>
+                                <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle" aria-label="<?php echo (int) $collaboratorNotificationCount; ?> notifiche"><?php echo (int) $collaboratorNotificationCount; ?></span>
+                            <?php endif; ?>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end topbar-dropdown" style="min-width: 360px;">
+                            <div class="dropdown-header">
+                                <div class="fw-semibold">Notifiche</div>
+                                <p class="text-muted small mb-0">Cambi di stato (admin) e risposte ticket (ultimi 30 giorni).</p>
+                            </div>
+                            <?php if ($collaboratorNotifications): ?>
+                                <?php foreach ($collaboratorNotifications as $notification): ?>
+                                    <?php
+                                        $isTicket = ($notification['type'] ?? '') === 'ticket';
+                                        $iconClass = $isTicket ? 'fa-ticket' : 'fa-arrow-right-arrow-left';
+                                        $iconTone = $isTicket ? 'text-info' : 'text-primary';
+                                        $timestamp = $notification['timestamp'] ?? null;
+                                        $dateLabel = $timestamp ? format_datetime_locale($timestamp) : '';
+                                    ?>
+                                    <a class="dropdown-item" href="<?php echo sanitize_output($notification['url']); ?>">
+                                        <div class="d-flex align-items-start gap-3">
+                                            <div class="<?php echo $iconTone; ?>" aria-hidden="true">
+                                                <i class="fa-solid <?php echo $iconClass; ?>"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <div class="fw-semibold text-truncate"><?php echo sanitize_output($notification['title']); ?></div>
+                                                <div class="small text-muted text-truncate">
+                                                    <?php echo sanitize_output($notification['subtitle']); ?><?php echo $dateLabel !== '' ? ' · ' . sanitize_output($dateLabel) : ''; ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                <?php endforeach; ?>
+                            <?php elseif ($collaboratorNotificationsError): ?>
+                                <p class="dropdown-item-text text-danger small mb-0 px-3">Errore nel caricare le notifiche.</p>
+                            <?php else: ?>
+                                <p class="dropdown-item-text text-muted small mb-0 px-3">Nessuna notifica recente.</p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
                 <?php if ($canSeeDocumentActions): ?>
                     <div class="topbar-quick-actions d-none d-md-flex">
                         <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/servizi/entrate-uscite/create.php'); ?>" aria-label="Registra una nuova entrata o uscita" title="Registra una nuova entrata o uscita" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Registra una nuova entrata o uscita">
