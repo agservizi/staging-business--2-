@@ -261,7 +261,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                 <a class="btn btn-icon btn-soft-accent btn-sm" href="view.php?id=<?php echo (int) $ticket['id']; ?>" title="Apri" data-bs-toggle="tooltip" data-bs-placement="top">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
-                                                <button class="btn btn-icon btn-soft-warning btn-sm" type="button" data-ticket-assign="<?php echo (int) $ticket['id']; ?>" title="Assegna" data-bs-toggle="tooltip" data-bs-placement="top">
+                                                <button class="btn btn-icon btn-soft-warning btn-sm border border-warning" type="button" data-ticket-assign="<?php echo (int) $ticket['id']; ?>" title="Assegna" data-bs-toggle="tooltip" data-bs-placement="top">
                                                     <i class="fa-solid fa-user-check"></i>
                                                 </button>
                                                 <button class="btn btn-icon btn-soft-danger btn-sm" type="button" data-ticket-archive="<?php echo (int) $ticket['id']; ?>" title="Archivia" data-bs-toggle="tooltip" data-bs-placement="top">
