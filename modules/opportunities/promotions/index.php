@@ -11,6 +11,39 @@ $library = new PromotionLibraryService();
 $csrfToken = csrf_token();
 $currentPath = isset($_GET['path']) ? (string) $_GET['path'] : '';
 $errors = [];
+$normalizeUploads = static function (?array $input): array {
+    if ($input === null || !isset($input['name'])) {
+        return [];
+    }
+
+    if (!is_array($input['name'])) {
+        return [$input];
+    }
+
+    $files = [];
+    $total = count($input['name']);
+    for ($index = 0; $index < $total; $index += 1) {
+        $name = $input['name'][$index] ?? '';
+        $error = isset($input['error'][$index]) ? (int) $input['error'][$index] : UPLOAD_ERR_NO_FILE;
+        $tmpName = $input['tmp_name'][$index] ?? '';
+        $size = $input['size'][$index] ?? 0;
+        $type = $input['type'][$index] ?? '';
+
+        if ((string) $name === '' && $error === UPLOAD_ERR_NO_FILE) {
+            continue;
+        }
+
+        $files[] = [
+            'name' => $name,
+            'type' => $type,
+            'tmp_name' => $tmpName,
+            'size' => $size,
+            'error' => $error,
+        ];
+    }
+
+    return $files;
+};
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_valid_csrf();
@@ -26,9 +59,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        if ($action === 'upload_file') {
-            $library->uploadFile($_FILES['promo_file'] ?? [], $currentPath);
-            add_flash('success', 'File caricato con successo.');
+        if ($action === 'upload_files') {
+            $uploads = $normalizeUploads($_FILES['promo_files'] ?? null);
+            if ($uploads === []) {
+                throw new RuntimeException('Seleziona almeno un file da caricare.');
+            }
+
+            $result = $library->uploadMany($uploads, $currentPath);
+            if ($result['uploaded'] > 0) {
+                add_flash('success', sprintf('%d file caricati correttamente.', $result['uploaded']));
+            }
+            if ($result['errors'] !== []) {
+                $message = implode(' ', $result['errors']);
+                add_flash($result['uploaded'] > 0 ? 'warning' : 'danger', $message);
+            }
+
             header('Location: index.php' . ($currentPath !== '' ? '?path=' . urlencode($currentPath) : ''));
             exit;
         }
@@ -119,14 +164,18 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <div class="card shadow-sm h-100">
                     <div class="card-body">
                         <p class="text-uppercase small text-muted mb-1">Carica file promo</p>
-                        <form method="post" enctype="multipart/form-data" class="d-flex flex-column gap-3">
+                        <form method="post" enctype="multipart/form-data" class="d-flex flex-column gap-3" novalidate>
                             <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
-                            <input type="hidden" name="action" value="upload_file">
+                            <input type="hidden" name="action" value="upload_files">
                             <input type="hidden" name="current_path" value="<?php echo sanitize_output($currentPath); ?>">
                             <div>
-                                <label class="form-label">Seleziona file</label>
-                                <input class="form-control" type="file" name="promo_file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" required>
-                                <small class="text-muted">Consentiti PDF e immagini fino a 20MB.</small>
+                                <label class="form-label">Seleziona uno o più file</label>
+                                <div class="dropzone-area" data-promo-dropzone role="button" tabindex="0">
+                                    <p class="mb-1"><i class="fa-solid fa-cloud-arrow-up me-2"></i>Trascina qui i file oppure clicca per selezionarli</p>
+                                    <p class="text-muted small mb-0">PDF o immagini (max 20MB ciascuno).</p>
+                                    <input class="d-none" type="file" name="promo_files[]" id="promo-files" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" multiple>
+                                </div>
+                                <div class="dropzone-files" data-dropzone-files></div>
                             </div>
                             <button class="btn btn-primary" type="submit">
                                 <i class="fa-solid fa-cloud-arrow-up me-2"></i>Carica nella cartella corrente
@@ -230,4 +279,81 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     </main>
 </div>
 <link rel="stylesheet" href="<?php echo sanitize_output(asset('modules/opportunities/assets/opportunities.css')); ?>">
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const dropzone = document.querySelector('[data-promo-dropzone]');
+    const input = document.getElementById('promo-files');
+    const list = document.querySelector('[data-dropzone-files]');
+    if (!dropzone || !input || !list || typeof DataTransfer === 'undefined') {
+        return;
+    }
+
+    const refreshList = () => {
+        list.innerHTML = '';
+        Array.from(input.files || []).forEach((file, index) => {
+            const entry = document.createElement('div');
+            entry.className = 'dropzone-file-entry';
+            entry.innerHTML = `
+                <div class="file-meta">
+                    <strong>${file.name}</strong>
+                    <small>${(file.size / 1024).toFixed(1)} KB</small>
+                </div>
+                <div class="file-actions">
+                    <button type="button" data-index="${index}" aria-label="Rimuovi ${file.name}">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+            `;
+            entry.querySelector('button')?.addEventListener('click', (event) => {
+                const target = event.currentTarget;
+                const removeIndex = Number(target?.getAttribute('data-index'));
+                const transfer = new DataTransfer();
+                Array.from(input.files || []).forEach((fileItem, idx) => {
+                    if (idx !== removeIndex) {
+                        transfer.items.add(fileItem);
+                    }
+                });
+                input.files = transfer.files;
+                refreshList();
+            });
+            list.appendChild(entry);
+        });
+    };
+
+    const appendFiles = (fileList) => {
+        const transfer = new DataTransfer();
+        Array.from(input.files || []).forEach((existing) => transfer.items.add(existing));
+        Array.from(fileList || []).forEach((file) => transfer.items.add(file));
+        input.files = transfer.files;
+        refreshList();
+    };
+
+    dropzone.addEventListener('click', () => input.click());
+    dropzone.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            input.click();
+        }
+    });
+
+    dropzone.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', (event) => {
+        event.preventDefault();
+        dropzone.classList.remove('dragover');
+        appendFiles(event.dataTransfer?.files);
+    });
+
+    input.addEventListener('change', () => refreshList());
+
+    refreshList();
+});
+</script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

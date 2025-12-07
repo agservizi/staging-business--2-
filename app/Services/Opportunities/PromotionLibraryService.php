@@ -161,6 +161,31 @@ final class PromotionLibraryService
         ];
     }
 
+    /**
+     * @param array<int,array{name?:string,type?:string,tmp_name?:string,error?:int,size?:int}> $files
+     * @return array{uploaded:int,errors:array<int,string>}
+     */
+    public function uploadMany(array $files, string $targetFolder = ''): array
+    {
+        $uploaded = 0;
+        $errors = [];
+
+        foreach ($files as $file) {
+            try {
+                $this->uploadFile($file, $targetFolder);
+                $uploaded += 1;
+            } catch (RuntimeException $exception) {
+                $fileName = trim((string) ($file['name'] ?? ''));
+                if ($fileName === '') {
+                    $fileName = 'File';
+                }
+                $errors[] = sprintf('%s: %s', $fileName, $exception->getMessage());
+            }
+        }
+
+        return ['uploaded' => $uploaded, 'errors' => $errors];
+    }
+
     public function deleteFile(string $relativeFile): void
     {
         $relative = $this->normalizeRelativePath($relativeFile);
