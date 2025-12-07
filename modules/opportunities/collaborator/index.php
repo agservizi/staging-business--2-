@@ -59,6 +59,8 @@ if ($currentPage > $totalPages && $totalOpportunities > 0) {
 }
 $offset = ($currentPage - 1) * $perPage;
 $opportunities = $opportunityService->listCollaboratorOpportunities($collaboratorId, $listFilters, $perPage, $offset);
+$displayStart = $totalOpportunities > 0 ? $offset + 1 : 0;
+$displayEnd = $totalOpportunities > 0 ? min($totalOpportunities, $offset + count($opportunities)) : 0;
 $remoteDraft = $opportunityService->getCollaboratorDraft($collaboratorId);
 $remoteDraftData = is_array($remoteDraft['data'] ?? null) ? $remoteDraft['data'] : [];
 $hasRemoteDraft = $remoteDraftData !== [];
@@ -98,7 +100,20 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <i class="fa-solid fa-plus me-2"></i>Nuova OP
             </a>
         </div>
-        
+
+        <?php if ($opportunities): ?>
+            <div class="alert alert-secondary border-start border-4 border-primary-subtle mb-4" role="status">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        Mostrando <?php echo sanitize_output(number_format($displayStart)); ?> - <?php echo sanitize_output(number_format($displayEnd)); ?> di <?php echo sanitize_output(number_format($totalOpportunities)); ?> opportunity.
+                    </div>
+                    <div class="text-muted small">
+                        Suggerimento: usa i <a class="text-decoration-underline" href="<?php echo sanitize_output($advancedFiltersUrl); ?>">filtri avanzati</a> nella vista elenco dedicata.
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <div class="card shadow-sm mb-4 border-warning-subtle">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
