@@ -1917,7 +1917,37 @@ final class OpportunityService
     {
         $normalized = strtoupper(str_replace(' ', '', $iban));
         if (!preg_match('/^[A-Z]{2}[0-9A-Z]{13,30}$/', $normalized)) {
-            throw new RuntimeException('IBAN non valido.');
+            throw new RuntimeException('IBAN non valido (formato errato).');
         }
+
+        if (!$this->isIbanChecksumValid($normalized)) {
+            throw new RuntimeException('IBAN non valido (checksum fallita).');
+        }
+    }
+
+    private function isIbanChecksumValid(string $iban): bool
+    {
+        $rearranged = substr($iban, 4) . substr($iban, 0, 4);
+        $numeric = '';
+        $length = strlen($rearranged);
+        for ($i = 0; $i < $length; $i++) {
+            $char = $rearranged[$i];
+            if (ctype_alpha($char)) {
+                $numeric .= (string) (ord($char) - 55); // A=10, B=11, ...
+            } else {
+                $numeric .= $char;
+            }
+        }
+
+        $remainder = 0;
+        $chunk = '';
+        $numLength = strlen($numeric);
+        for ($i = 0; $i < $numLength; $i++) {
+            $chunk .= $numeric[$i];
+            $remainder = (int) ($chunk % 97);
+            $chunk = (string) $remainder;
+        }
+
+        return $remainder === 1;
     }
 }

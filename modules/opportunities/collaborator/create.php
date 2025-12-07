@@ -5,6 +5,7 @@ require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../../../includes/mailer.php';
 
 use App\Services\Opportunities\OpportunityUploadStorage;
+use App\Services\Payments\StripeBankValidator;
 
 require_role('Collaboratore');
 
@@ -111,6 +112,28 @@ $csrfToken = csrf_token();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_valid_csrf();
     try {
+        if (isset($_POST['customer_tax_code'])) {
+            $_POST['customer_tax_code'] = strtoupper((string) $_POST['customer_tax_code']);
+        }
+        if (isset($_POST['payment_iban'])) {
+            $_POST['payment_iban'] = strtoupper(str_replace(' ', '', (string) $_POST['payment_iban']));
+        }
+
+        $stripeIbanValidation = null;
+        $paymentMethod = $_POST['payment_method'] ?? 'iban';
+        $paymentIban = $_POST['payment_iban'] ?? '';
+        if ($paymentMethod === 'iban' && $paymentIban !== '') {
+            $holderIsCustomer = ($_POST['payment_holder_is_customer'] ?? '1') === '1';
+            $holderFirst = $holderIsCustomer ? ($_POST['customer_first_name'] ?? '') : ($_POST['payment_holder_first_name'] ?? '');
+            $holderLast = $holderIsCustomer ? ($_POST['customer_last_name'] ?? '') : ($_POST['payment_holder_last_name'] ?? '');
+            $holderName = trim(trim((string) $holderFirst) . ' ' . trim((string) $holderLast));
+            $holderEmail = (string) ($_POST['customer_email'] ?? '');
+
+            $ibanValidator = new StripeBankValidator();
+            $stripeIbanValidation = $ibanValidator->validateIban((string) $paymentIban, $holderName, $holderEmail !== '' ? $holderEmail : null);
+            // Facoltativo: disponibile per logging o audit
+            $_POST['payment_iban_stripe_pm_id'] = $stripeIbanValidation['payment_method_id'];
+        }
         $opportunity = $opportunityService->createOpportunity($_POST, $collaboratorId, $_FILES['documents'] ?? []);
         send_opportunity_confirmation_email([
             'customer_email' => $opportunity['customer_email'] ?? ($_POST['customer_email'] ?? ''),
@@ -274,7 +297,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <div class="col-md-4">
                                 <label class="form-label" for="customer-tax-code">Codice fiscale</label>
                                 <div class="input-group">
-                                    <input class="form-control" type="text" name="customer_tax_code" id="customer-tax-code" required value="<?php echo sanitize_output($formData['customer_tax_code'] ?? ''); ?>" placeholder="RSSMRA90A01H501U">
+                                    <input class="form-control" type="text" name="customer_tax_code" id="customer-tax-code" required value="<?php echo sanitize_output($formData['customer_tax_code'] ?? ''); ?>" placeholder="RSSMRA90A01H501U" style="text-transform: uppercase;">
                                     <button class="btn btn-outline-secondary" type="button" id="tax-code-lookup">
                                         <span id="tax-code-lookup-label">Recupera</span>
                                         <span class="spinner-border spinner-border-sm d-none" id="tax-code-lookup-spinner" role="status" aria-hidden="true"></span>
@@ -454,7 +477,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">IBAN</label>
-                                <input class="form-control" type="text" name="payment_iban" id="payment-iban-field" value="<?php echo sanitize_output($formData['payment_iban'] ?? ''); ?>">
+                                <input class="form-control" type="text" name="payment_iban" id="payment-iban-field" value="<?php echo sanitize_output($formData['payment_iban'] ?? ''); ?>" maxlength="34" pattern="[A-Za-z0-9]{15,34}" title="Inserisci un IBAN valido senza spazi (15-34 caratteri)." style="text-transform: uppercase;">
                             </div>
                             <div class="col-12">
                                 <input type="hidden" name="payment_holder_is_customer" value="0">
@@ -602,6 +625,32 @@ window.CIEIstatLookupConfig = {
     let remoteDraftPayload = null;
     let remoteDraftSavedAt = null;
     let remoteDraftSaving = false;
+
+    if (paymentIbanField) {
+        paymentIbanField.addEventListener('input', () => {
+            const { selectionStart, selectionEnd, value } = paymentIbanField;
+            const upper = value.toUpperCase();
+            if (value !== upper) {
+                paymentIbanField.value = upper;
+                if (selectionStart !== null && selectionEnd !== null) {
+                    paymentIbanField.setSelectionRange(selectionStart, selectionEnd);
+                }
+            }
+        });
+    }
+
+    if (taxCodeInput) {
+        taxCodeInput.addEventListener('input', () => {
+            const { selectionStart, selectionEnd, value } = taxCodeInput;
+            const upper = value.toUpperCase();
+            if (value !== upper) {
+                taxCodeInput.value = upper;
+                if (selectionStart !== null && selectionEnd !== null) {
+                    taxCodeInput.setSelectionRange(selectionStart, selectionEnd);
+                }
+            }
+        });
+    }
 
     const escapeHtml = (value) => {
         if (value === null || value === undefined) {
