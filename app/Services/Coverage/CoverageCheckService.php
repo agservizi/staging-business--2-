@@ -35,8 +35,7 @@ final class CoverageCheckService
     public function check(CoverageRequest $request): array
     {
         $provider = $this->registry->get($request->providerKey());
-        $driver = $this->createDriver();
-
+        $driver = null;
         $stepsLog = [];
         $extracted = [];
         $status = 'completed';
@@ -45,6 +44,7 @@ final class CoverageCheckService
         $screenshot = null;
 
         try {
+            $driver = $this->createDriver();
             $driver->get($provider['url']);
             usleep(1_500_000);
 
@@ -71,7 +71,7 @@ final class CoverageCheckService
             $message = 'Errore Selenium: ' . $exception->getMessage();
         } finally {
             try {
-                $driver->quit();
+                $driver?->quit();
             } catch (Throwable $quitError) {
                 // Ignoriamo errori in chiusura sessione
             }
