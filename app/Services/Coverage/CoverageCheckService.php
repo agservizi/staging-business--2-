@@ -56,7 +56,7 @@ final class CoverageCheckService
         $screenshot = null;
 
         try {
-            $driver = $this->createDriver();
+            $driver = $this->createDriver($provider, $request);
             $driver->get($provider['url']);
             usleep(1_500_000);
 
@@ -107,9 +107,12 @@ final class CoverageCheckService
         ];
     }
 
-    private function createDriver(): RemoteWebDriver
+    /**
+     * @param array<string,mixed> $provider
+     */
+    private function createDriver(array $provider, CoverageRequest $request): RemoteWebDriver
     {
-        $capabilities = $this->buildCapabilities();
+        $capabilities = $this->buildCapabilities($provider, $request);
         try {
             return RemoteWebDriver::create(
                 $this->resolvedEndpoint(),
@@ -122,7 +125,10 @@ final class CoverageCheckService
         }
     }
 
-    private function buildCapabilities(): DesiredCapabilities
+    /**
+     * @param array<string,mixed> $provider
+     */
+    private function buildCapabilities(array $provider, CoverageRequest $request): DesiredCapabilities
     {
         $capabilities = match ($this->browser) {
             'firefox' => DesiredCapabilities::firefox(),
@@ -137,12 +143,43 @@ final class CoverageCheckService
                 'osVersion' => $this->seleniumOsVersion,
                 'projectName' => $this->seleniumBuildName,
                 'buildName' => sprintf('%s %s', $this->seleniumBuildName, (string) env('APP_VERSION', '1.0')),
-                'sessionName' => sprintf('%s %s', $this->seleniumSessionPrefix, date('Y-m-d H:i:s')),
+                'sessionName' => $this->composeSessionName($provider, $request),
                 'local' => 'false',
             ]);
         }
 
         return $capabilities;
+    }
+
+    /**
+     * @param array<string,mixed> $provider
+     */
+    private function composeSessionName(array $provider, CoverageRequest $request): string
+    {
+        $parts = [
+            $this->seleniumSessionPrefix,
+            date('Y-m-d H:i:s'),
+        ];
+
+        $providerLabel = trim((string) ($provider['label'] ?? ($provider['key'] ?? '')));
+        if ($providerLabel !== '') {
+            $parts[] = $providerLabel;
+        }
+
+        $addressParts = array_filter([
+            $request->field('address'),
+            $request->field('city'),
+        ], static fn (string $value): bool => $value !== '');
+        if ($addressParts !== []) {
+            $parts[] = implode(', ', $addressParts);
+        }
+
+        $sessionName = implode(' | ', $parts);
+        if (mb_strlen($sessionName, 'UTF-8') > 190) {
+            $sessionName = mb_substr($sessionName, 0, 190, 'UTF-8');
+        }
+
+        return $sessionName;
     }
 
     private function resolvedEndpoint(): string
