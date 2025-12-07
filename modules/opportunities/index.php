@@ -148,11 +148,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <td><?php echo sanitize_output(format_datetime_locale($opportunity['created_at'] ?? null)); ?></td>
                                 <td class="text-end">
                                     <?php if (($opportunity['status_code'] ?? '') === 'annullato'): ?>
-                                        <form class="d-inline" method="post" action="<?php echo asset('modules/opportunities/detail.php?id=' . (int) $opportunity['id']); ?>" onsubmit="return confirm('Riaprire questa opportunity per rettifica al collaboratore?');">
+                                        <form class="d-inline" method="post" action="<?php echo asset('modules/opportunities/detail.php?id=' . (int) $opportunity['id']); ?>">
                                             <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                             <input type="hidden" name="form_action" value="reopen_for_correction">
                                             <input type="hidden" name="reopen_note" value="Richiesta rettifica dall'elenco amministrazione">
-                                            <button class="btn btn-sm btn-outline-secondary" type="submit" title="Riapri per rettifica">
+                                            <button class="btn btn-sm btn-outline-secondary js-reopen-opportunity" type="button" title="Riapri per rettifica" data-opportunity-code="<?php echo sanitize_output($opportunity['code'] ?? ''); ?>">
                                                 <i class="fa-solid fa-rotate-left"></i>
                                             </button>
                                         </form>
@@ -170,5 +170,58 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </div>
     </main>
 </div>
+<div class="modal fade" id="reopenConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Riapri per rettifica</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">Confermi di riaprire l'opportunity <span class="fw-semibold" id="reopenOpportunityCode"></span> per rettifica al collaboratore?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" id="confirmReopenSubmit">Conferma</button>
+            </div>
+        </div>
+    </div>
+</div>
 <link rel="stylesheet" href="<?php echo asset('modules/opportunities/assets/opportunities.css'); ?>">
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    let pendingReopenForm = null;
+    const modalElement = document.getElementById('reopenConfirmModal');
+    const codeTarget = document.getElementById('reopenOpportunityCode');
+    const confirmButton = document.getElementById('confirmReopenSubmit');
+
+    if (!modalElement || !confirmButton) {
+        return;
+    }
+
+    const bootstrapModal = new bootstrap.Modal(modalElement);
+
+    document.querySelectorAll('.js-reopen-opportunity').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            pendingReopenForm = btn.closest('form');
+            if (!pendingReopenForm) {
+                return;
+            }
+            const code = btn.getAttribute('data-opportunity-code') || '';
+            if (codeTarget) {
+                codeTarget.textContent = code ? '#' + code : '';
+            }
+            bootstrapModal.show();
+        });
+    });
+
+    confirmButton.addEventListener('click', function () {
+        if (pendingReopenForm) {
+            pendingReopenForm.submit();
+            pendingReopenForm = null;
+        }
+        bootstrapModal.hide();
+    });
+});
+</script>
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
