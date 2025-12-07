@@ -10,11 +10,6 @@ use App\Services\Opportunities\PromotionLibraryService;
 $library = new PromotionLibraryService();
 $currentPath = isset($_GET['path']) ? (string) $_GET['path'] : '';
 $errors = [];
-$defaultLibraryPath = $library->normalizeInputPath(PromotionLibraryService::DEFAULT_ROOT_FOLDER);
-if ($currentPath === '' && $library->folderExists($defaultLibraryPath)) {
-    $currentPath = $defaultLibraryPath;
-}
-
 try {
     $listing = $library->listContents($currentPath);
 } catch (RuntimeException $exception) {
