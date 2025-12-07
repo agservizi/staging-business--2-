@@ -79,7 +79,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <div id="flowReopen" class="accordion-collapse collapse" aria-labelledby="flowReopenHeading" data-bs-parent="#guideFlows">
                                     <div class="accordion-body">
                                         <ul class="mb-0">
-                                            <li>L'admin può riaprire una pratica in stato “in_verifica”.</li>
+                                            <li>L'admin può riaprire una pratica in stato “in verifica”.</li>
                                             <li>Accedi a “Elenco OP” e clicca “Modifica” per correggere.</li>
                                             <li>Salva: la pratica torna in verifica e lo stato viene aggiornato.</li>
                                         </ul>
@@ -113,7 +113,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <div class="d-flex flex-column gap-3">
                             <div>
                                 <p class="fw-semibold mb-1">Perché non vedo IBAN validato?</p>
-                                <p class="text-muted mb-0 small">Assicurati di premere “Valida IBAN” nel form. In dettaglio comparirà badge “Validato” con banca/cifre.</p>
+                                <p class="text-muted mb-0 small">La validazione IBAN avviene automaticamente in salvataggio quando compili il campo IBAN e i dati intestatario. In dettaglio comparirà il badge “Validato” con banca/cifre se l'esito Stripe è positivo.</p>
                             </div>
                             <div>
                                 <p class="fw-semibold mb-1">Quando servono operatore e numero?</p>
@@ -129,7 +129,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div>
                                 <p class="fw-semibold mb-1">Cosa significa stato “in_verifica”?</p>
-                                <p class="text-muted mb-0 small">La pratica è in revisione admin. Se riaperta, puoi modificarla; quando chiusa passa ad “attivata” o “annullata”.</p>
+                                <p class="text-muted mb-0 small">La pratica è in revisione admin. Se riaperta, puoi modificarla; quando chiusa passa ad “attivata” o “annullata”. L'etichetta può apparire come “in verifica”.</p>
                             </div>
                         </div>
                     </div>
