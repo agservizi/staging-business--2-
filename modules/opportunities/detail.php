@@ -71,6 +71,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: detail.php?id=' . $opportunityId);
             exit;
         }
+        if ($action === 'reopen_for_correction') {
+            $reopenNote = isset($_POST['reopen_note']) ? trim((string) $_POST['reopen_note']) : null;
+            $newStatus = 'in_verifica';
+            $opportunityService->updateStatus($opportunityId, $newStatus, $managerId, $reopenNote, []);
+            $updatedOpportunity = $opportunityService->findById($opportunityId);
+            if ($updatedOpportunity !== null) {
+                $collaboratorName = trim(sprintf('%s %s', (string) ($updatedOpportunity['collaborator_name'] ?? ''), (string) ($updatedOpportunity['collaborator_surname'] ?? '')));
+                send_opportunity_status_update_email([
+                    'collaborator_email' => $updatedOpportunity['collaborator_email'] ?? null,
+                    'collaborator_name' => $collaboratorName,
+                    'status_label' => $updatedOpportunity['status_label'] ?? null,
+                    'status_code' => $newStatus,
+                    'code' => $updatedOpportunity['code'] ?? null,
+                    'category' => $updatedOpportunity['category'] ?? null,
+                    'customer_first_name' => $updatedOpportunity['customer_first_name'] ?? null,
+                    'customer_last_name' => $updatedOpportunity['customer_last_name'] ?? null,
+                    'admin_notes' => $reopenNote,
+                    'updated_at' => $updatedOpportunity['last_status_change'] ?? null,
+                ]);
+            }
+            add_flash('success', 'Opportunity riaperta per rettifica collaboratore.');
+            header('Location: detail.php?id=' . $opportunityId);
+            exit;
+        }
     } catch (RuntimeException $exception) {
         $errors[] = $exception->getMessage();
         if ($action === 'update_status') {
@@ -301,6 +325,16 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                             <button class="btn btn-primary w-100" type="submit">
                                 <i class="fa-solid fa-rotate me-2"></i>Salva aggiornamento
+                            </button>
+                        </form>
+                        <hr>
+                        <form method="post" class="d-flex flex-column gap-2">
+                            <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                            <input type="hidden" name="form_action" value="reopen_for_correction">
+                            <label class="form-label text-uppercase small text-muted mb-1" for="reopen-note">Nota per il collaboratore (opzionale)</label>
+                            <textarea class="form-control" id="reopen-note" name="reopen_note" rows="2" placeholder="Spiega cosa va rettificato."></textarea>
+                            <button class="btn btn-outline-warning w-100" type="submit">
+                                <i class="fa-solid fa-rotate-left me-2"></i>Riapri per rettifica
                             </button>
                         </form>
                     </div>
