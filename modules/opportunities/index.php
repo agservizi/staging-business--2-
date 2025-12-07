@@ -24,6 +24,7 @@ if ($searchFilter !== '') {
 
 $opportunities = $opportunityService->listAdminOpportunities($filters);
 $statuses = $opportunityService->getStatusOptions();
+$csrfToken = csrf_token();
 
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
@@ -146,6 +147,16 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 </td>
                                 <td><?php echo sanitize_output(format_datetime_locale($opportunity['created_at'] ?? null)); ?></td>
                                 <td class="text-end">
+                                    <?php if (($opportunity['status_code'] ?? '') === 'annullato'): ?>
+                                        <form class="d-inline" method="post" action="<?php echo asset('modules/opportunities/detail.php?id=' . (int) $opportunity['id']); ?>" onsubmit="return confirm('Riaprire questa opportunity per rettifica al collaboratore?');">
+                                            <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                                            <input type="hidden" name="form_action" value="reopen_for_correction">
+                                            <input type="hidden" name="reopen_note" value="Richiesta rettifica dall'elenco amministrazione">
+                                            <button class="btn btn-sm btn-outline-secondary" type="submit" title="Riapri per rettifica">
+                                                <i class="fa-solid fa-rotate-left"></i>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
                                     <a class="btn btn-sm btn-outline-primary" href="<?php echo asset('modules/opportunities/detail.php?id=' . (int) $opportunity['id']); ?>">
                                         <i class="fa-solid fa-eye me-1"></i>Gestisci
                                     </a>
