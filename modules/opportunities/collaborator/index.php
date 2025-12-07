@@ -102,7 +102,15 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <i class="fa-solid fa-plus me-2"></i>Nuova OP
             </a>
         </div>
-
+        <?php if (!$opportunities && !$hasRemoteDraft): ?>
+            <div class="alert alert-info mb-4" role="alert">
+                Nessuna opportunity registrata. Crea la prima utilizzando il pulsante in alto.
+            </div>
+        <?php elseif (!$opportunities && $hasRemoteDraft): ?>
+            <div class="alert alert-warning mb-4" role="alert">
+                Hai una bozza salvata: completila e inviala per farla comparire nell'elenco principale.
+            </div>
+        <?php endif; ?>
 
         <div class="card shadow-sm mb-4 border-warning-subtle">
             <div class="card-body">
@@ -400,19 +408,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 Le bozze compaiono qui ma non vengono conteggiate finché non invii la opportunity.
                             </p>
                         </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-            <?php if (!$opportunities && !$hasRemoteDraft): ?>
-                <div class="col-12">
-                    <div class="alert alert-info mb-0" role="alert">
-                        Nessuna opportunity registrata. Crea la prima utilizzando il pulsante in alto.
-                    </div>
-                </div>
-            <?php elseif (!$opportunities && $hasRemoteDraft): ?>
-                <div class="col-12">
-                    <div class="alert alert-warning mb-0" role="alert">
-                        Hai una bozza salvata: completila e inviala per farla comparire nell'elenco principale.
                     </div>
                 </div>
             <?php endif; ?>
