@@ -157,6 +157,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     $collabListActive = nav_active('modules/opportunities/collaborator/list.php', $currentPath);
                     $collabFilesActive = nav_active('modules/opportunities/collaborator/promotions.php', $currentPath);
                     $collabCommissionActive = nav_active('modules/opportunities/collaborator/commissions.php', $currentPath);
+                    $collabTicketsActive = nav_active('modules/opportunities/collaborator/tickets.php', $currentPath);
                 ?>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center <?php echo $collabDashboardActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/index.php'); ?>" aria-label="Dashboard opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Dashboard opportunity"<?php echo $collabDashboardActive ? ' aria-current="page"' : ''; ?>>
@@ -188,6 +189,14 @@ $appVersion = env('APP_VERSION', '1.0.0');
                             <i class="fa-solid fa-hand-holding-dollar"></i>
                         </span>
                         <span class="nav-label">Provvigioni</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $collabTicketsActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/tickets.php'); ?>" aria-label="Ticket" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Ticket"<?php echo $collabTicketsActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="crimson" aria-hidden="true">
+                            <i class="fa-solid fa-ticket"></i>
+                        </span>
+                        <span class="nav-label">Ticket</span>
                     </a>
                 </li>
                 <?php
