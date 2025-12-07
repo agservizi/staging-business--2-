@@ -133,6 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stripeIbanValidation = $ibanValidator->validateIban((string) $paymentIban, $holderName, $holderEmail !== '' ? $holderEmail : null);
             // Facoltativo: disponibile per logging o audit
             $_POST['payment_iban_stripe_pm_id'] = $stripeIbanValidation['payment_method_id'];
+            add_flash('success', 'IBAN validato con Stripe: banca ' . sanitize_output($stripeIbanValidation['bank_code'] ?? 'n/d') . ', codice ' . sanitize_output($stripeIbanValidation['last4'] ?? 'xxxx'));
         }
         $opportunity = $opportunityService->createOpportunity($_POST, $collaboratorId, $_FILES['documents'] ?? []);
         send_opportunity_confirmation_email([
@@ -146,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         add_flash('success', 'Opportunity registrata. Riceverai aggiornamenti dal team.');
-        header('Location: index.php');
+        header('Location: list.php');
         exit;
     } catch (RuntimeException $exception) {
         $errors[] = $exception->getMessage();
