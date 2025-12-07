@@ -41,18 +41,18 @@ if ($role === 'Collaboratore') {
         }
 
         try {
-            $ticketSql = 'SELECT tm.id, tm.ticket_id, tm.author_name, tm.created_at, t.codice, t.subject
-                FROM ticket_messages tm
-                INNER JOIN tickets t ON tm.ticket_id = t.id
-                LEFT JOIN users u ON tm.author_id = u.id
-                WHERE t.created_by = :collaborator
-                  AND tm.is_internal = 0
-                  AND tm.visibility = "customer"
-                  AND (tm.author_id IS NULL OR tm.author_id <> :collaborator)
-                  AND (u.ruolo IS NULL OR u.ruolo <> "Collaboratore")
-                  AND tm.created_at >= DATE_SUB(NOW(), INTERVAL ' . (int) $lookbackDays . ' DAY)
-                ORDER BY tm.created_at DESC
-                LIMIT ' . (int) $maxPerSource;
+                        $ticketSql = 'SELECT tm.id, tm.ticket_id, tm.author_name, tm.created_at, t.codice, t.subject
+                                FROM ticket_messages tm
+                                INNER JOIN tickets t ON tm.ticket_id = t.id
+                                LEFT JOIN users u ON tm.author_id = u.id
+                                WHERE t.created_by = :collaborator
+                                    AND tm.is_internal = 0
+                                    AND tm.visibility = \'customer\'
+                                    AND (tm.author_id IS NULL OR tm.author_id <> :collaborator)
+                                    AND (u.ruolo IS NULL OR u.ruolo <> \'Collaboratore\')
+                                    AND tm.created_at >= DATE_SUB(NOW(), INTERVAL ' . (int) $lookbackDays . ' DAY)
+                                ORDER BY tm.created_at DESC
+                                LIMIT ' . (int) $maxPerSource;
             $ticketStmt = $pdo->prepare($ticketSql);
             $ticketStmt->execute([':collaborator' => $collaboratorId]);
             while ($row = $ticketStmt->fetch(PDO::FETCH_ASSOC)) {
@@ -175,6 +175,15 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
                             <?php else: ?>
                                 <p class="dropdown-item-text text-muted small mb-0 px-3">Nessuna notifica recente.</p>
                             <?php endif; ?>
+                            <div class="dropdown-divider"></div>
+                            <div class="px-3 pb-2 d-grid gap-2">
+                                <a class="btn btn-sm btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/list.php'); ?>">
+                                    <i class="fa-solid fa-table-list me-2"></i>Elenco opportunity
+                                </a>
+                                <a class="btn btn-sm btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/tickets.php'); ?>">
+                                    <i class="fa-solid fa-ticket me-2"></i>Elenco ticket
+                                </a>
+                            </div>
                         </div>
                     </div>
                 <?php endif; ?>
