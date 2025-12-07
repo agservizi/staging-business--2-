@@ -86,11 +86,16 @@ final class CoverageProviderRegistry
                 'cap' => ['label' => 'CAP', 'required' => false],
             ],
             'actions' => [
-                ['action' => 'wait_for', 'selector' => 'a[href*="check-coverage-super-fibra" i], .js-external-popup-open', 'timeout' => 30],
+                ['action' => 'wait_for', 'selector' => 'a[href*="check-coverage-super-fibra" i], .js-external-popup-open, [data-button-text-desk*="copertura fibra" i]', 'timeout' => 35],
                 ['action' => 'wait_for', 'selector' => '.cmp-cookie-consent__accept button, button[data-cookie*="accept" i], #cookiebar-accept, #cookiebar button.accept', 'timeout' => 5, 'continue_on_error' => true],
                 ['action' => 'click', 'selector' => '.cmp-cookie-consent__accept button, button[data-cookie*="accept" i], #cookiebar-accept, #cookiebar button.accept', 'continue_on_error' => true],
                 ['action' => 'pause', 'milliseconds' => 500],
-                ['action' => 'click', 'selector' => 'a[href*="check-coverage-super-fibra" i], .js-external-popup-open', 'scroll' => true],
+                ['action' => 'click', 'selector' => 'a[href*="check-coverage-super-fibra" i], .js-external-popup-open, [data-button-text-desk*="copertura fibra" i]', 'scroll' => true, 'continue_on_error' => true],
+                [
+                    'action' => 'execute_script',
+                    'script' => '(function(){var btn=document.querySelector("a[href*=\'check-coverage-super-fibra\' i], .js-external-popup-open, [data-button-text-desk*=\'copertura fibra\' i]"); if(btn){btn.scrollIntoView({behavior:\'smooth\',block:\'center\'}); setTimeout(function(){btn.click();},100);}})();',
+                    'continue_on_error' => true,
+                ],
                 ['action' => 'wait_for', 'selector' => '#js-external-popup-placeholder iframe, #js-external-popup-placeholder form', 'timeout' => 30],
                 ['action' => 'pause', 'milliseconds' => 800],
                 ['action' => 'switch_to_frame', 'selector' => '#js-external-popup-placeholder iframe', 'continue_on_error' => true],
