@@ -173,7 +173,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="col-md-3">
                         <label class="form-label" for="filter-assigned">Assegnato a</label>
                         <select class="form-select" id="filter-assigned" name="assigned_to">
-                            <option value="">Team</option>
+                            <option value="">Qualsiasi</option>
                             <?php foreach ($agents as $agent): ?>
                                 <?php $agentLabel = trim(($agent['cognome'] ?? '') . ' ' . ($agent['nome'] ?? '') . ' (' . ($agent['username'] ?? '') . ')'); ?>
                                 <option value="<?php echo (int) $agent['id']; ?>" <?php echo (int) ($filters['assigned_to'] ?? 0) === (int) $agent['id'] ? 'selected' : ''; ?>><?php echo sanitize_output($agentLabel); ?></option>
@@ -191,7 +191,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="col-12 d-flex justify-content-end gap-2">
                         <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-filter me-1"></i>Filtra</button>
                         <?php if ($hasFilters): ?>
-                            <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-rotate-left me-1"></i>Reset</a>
+                            <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-rotate-left me-1"></i>Reimposta</a>
                         <?php endif; ?>
                     </div>
                 </form>
@@ -241,16 +241,20 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         $customerLabel = $customerLabel !== '' ? $customerLabel : 'Cliente #' . (int) ($ticket['customer_id'] ?? 0);
                                         $agentLabel = trim((string) (($ticket['agent_lastname'] ?? '') . ' ' . ($ticket['agent_name'] ?? '')));
                                         $agentLabel = $agentLabel !== '' ? $agentLabel : 'Da assegnare';
+                                        $statusLabel = ticket_status_label((string) ($ticket['status'] ?? ''));
+                                        $priorityLabel = ticket_priority_label((string) ($ticket['priority'] ?? ''));
+                                        $channelLabel = ticket_channel_label((string) ($ticket['channel'] ?? ''));
+                                        $typeLabel = ticket_type_label((string) ($ticket['type'] ?? ''));
                                     ?>
                                     <tr data-ticket-row="<?php echo (int) $ticket['id']; ?>">
                                         <td>
                                             <div class="fw-semibold">#<?php echo sanitize_output($ticket['codice'] ?? $ticket['id']); ?> · <?php echo sanitize_output($ticket['subject'] ?? ''); ?></div>
-                                            <small class="text-muted text-uppercase">Canale: <?php echo sanitize_output($ticket['channel'] ?? 'PORTAL'); ?> · Tipo: <?php echo sanitize_output($ticket['type'] ?? 'SUPPORT'); ?></small>
+                                            <small class="text-muted text-uppercase">Canale: <?php echo sanitize_output($channelLabel !== '' ? $channelLabel : ($ticket['channel'] ?? '')); ?> · Tipo: <?php echo sanitize_output($typeLabel !== '' ? $typeLabel : ($ticket['type'] ?? '')); ?></small>
                                         </td>
                                         <td><?php echo sanitize_output($customerLabel); ?></td>
                                         <td><?php echo sanitize_output($agentLabel); ?></td>
-                                        <td><span class="badge <?php echo $priorityBadge; ?> text-uppercase"><?php echo sanitize_output($ticket['priority']); ?></span></td>
-                                        <td><span class="badge <?php echo $statusBadge; ?> text-uppercase"><?php echo sanitize_output($ticket['status']); ?></span></td>
+                                        <td><span class="badge <?php echo $priorityBadge; ?> text-uppercase"><?php echo sanitize_output($priorityLabel !== '' ? $priorityLabel : ($ticket['priority'] ?? '')); ?></span></td>
+                                        <td><span class="badge <?php echo $statusBadge; ?> text-uppercase"><?php echo sanitize_output($statusLabel !== '' ? $statusLabel : ($ticket['status'] ?? '')); ?></span></td>
                                         <td><?php echo sanitize_output(date('d/m/Y H:i', strtotime((string) $ticket['updated_at']))); ?></td>
                                         <td class="text-end">
                                             <div class="d-inline-flex gap-2 justify-content-end flex-wrap">

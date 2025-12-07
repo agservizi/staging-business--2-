@@ -25,6 +25,7 @@ $statusOptions = ticket_status_options();
 $priorityOptions = ticket_priority_options();
 $agents = ticket_assignments($pdo);
 $csrfToken = csrf_token();
+$ticketStatusLabel = ticket_status_label((string) ($ticket['status'] ?? ''));
 $pageTitle = 'Ticket #' . sanitize_output((string) ($ticket['codice'] ?? $ticket['id']));
 
 $tags = [];
@@ -67,7 +68,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="card ag-card mb-4">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <h2 class="h5 mb-0">Stato e SLA</h2>
-                        <span class="badge <?php echo ticket_status_badge((string) $ticket['status']); ?> text-uppercase"><?php echo sanitize_output($ticket['status']); ?></span>
+                        <span class="badge <?php echo ticket_status_badge((string) $ticket['status']); ?> text-uppercase"><?php echo sanitize_output($ticketStatusLabel !== '' ? $ticketStatusLabel : ($ticket['status'] ?? '')); ?></span>
                     </div>
                     <div class="card-body">
                         <form id="ticket-status-form" class="row g-3" data-ticket-form="status">
@@ -91,7 +92,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <div class="col-12">
                                 <label class="form-label" for="assigned_to">Assegnato a</label>
                                 <select class="form-select" id="assigned_to" name="assigned_to">
-                                    <option value="">Team ticket</option>
+                                    <option value="">Team assistenza</option>
                                     <?php foreach ($agents as $agent): ?>
                                         <?php $label = trim(($agent['cognome'] ?? '') . ' ' . ($agent['nome'] ?? '') . ' · ' . ($agent['username'] ?? '')); ?>
                                         <option value="<?php echo (int) $agent['id']; ?>" <?php echo (int) ($ticket['assigned_to'] ?? 0) === (int) $agent['id'] ? 'selected' : ''; ?>><?php echo sanitize_output($label); ?></option>
@@ -116,10 +117,10 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="card-body">
                         <p class="fw-semibold mb-1"><?php echo sanitize_output($ticket['customer_name'] ?? $ticket['company_name'] ?? 'Cliente non specificato'); ?></p>
                         <?php if (!empty($ticket['customer_email'])): ?>
-                            <p class="mb-1"><i class="fa-solid fa-envelope me-2 text-warning"></i><a href="mailto:<?php echo sanitize_output($ticket['customer_email']); ?>" class="link-light"><?php echo sanitize_output($ticket['customer_email']); ?></a></p>
+                            <p class="mb-1"><i class="fa-solid fa-envelope me-2 text-warning"></i><a href="mailto:<?php echo sanitize_output($ticket['customer_email']); ?>" class="link-secondary fw-semibold"><?php echo sanitize_output($ticket['customer_email']); ?></a></p>
                         <?php endif; ?>
                         <?php if (!empty($ticket['customer_phone'])): ?>
-                            <p class="mb-0"><i class="fa-solid fa-phone me-2 text-warning"></i><a href="tel:<?php echo sanitize_output($ticket['customer_phone']); ?>" class="link-light"><?php echo sanitize_output($ticket['customer_phone']); ?></a></p>
+                            <p class="mb-0"><i class="fa-solid fa-phone me-2 text-warning"></i><a href="tel:<?php echo sanitize_output($ticket['customer_phone']); ?>" class="link-secondary fw-semibold"><?php echo sanitize_output($ticket['customer_phone']); ?></a></p>
                         <?php endif; ?>
                         <hr>
                         <p class="text-muted small mb-0">Creato da <?php echo sanitize_output($creatorLabel); ?></p>
@@ -168,7 +169,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <span class="text-muted small ms-2"><?php echo sanitize_output(date('d/m/Y H:i', strtotime((string) $message['created_at']))); ?></span>
                                     </div>
                                     <div class="text-end small text-uppercase text-muted">
-                                        Stato: <?php echo sanitize_output($message['status_snapshot']); ?>
+                                        Stato: <?php echo sanitize_output(ticket_status_label((string) ($message['status_snapshot'] ?? ''))); ?>
                                     </div>
                                 </header>
                                 <p class="mb-2"><?php echo nl2br(sanitize_output($message['body'])); ?></p>

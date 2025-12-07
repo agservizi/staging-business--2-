@@ -25,6 +25,23 @@ function ticket_status_options(): array
     ];
 }
 
+function ticket_status_label(?string $status): string
+{
+    if ($status === null || $status === '') {
+        return '';
+    }
+
+    $options = ticket_status_options();
+    $key = strtoupper($status);
+
+    if (isset($options[$key])) {
+        return $options[$key];
+    }
+
+    $normalized = str_replace('_', ' ', strtolower($key));
+    return ucwords($normalized);
+}
+
 function ticket_priority_options(): array
 {
     return [
@@ -33,6 +50,23 @@ function ticket_priority_options(): array
         'HIGH' => 'Alta',
         'URGENT' => 'Urgente',
     ];
+}
+
+function ticket_priority_label(?string $priority): string
+{
+    if ($priority === null || $priority === '') {
+        return '';
+    }
+
+    $options = ticket_priority_options();
+    $key = strtoupper($priority);
+
+    if (isset($options[$key])) {
+        return $options[$key];
+    }
+
+    $normalized = str_replace('_', ' ', strtolower($key));
+    return ucwords($normalized);
 }
 
 function ticket_channel_options(): array
@@ -45,6 +79,23 @@ function ticket_channel_options(): array
     ];
 }
 
+function ticket_channel_label(?string $channel): string
+{
+    if ($channel === null || $channel === '') {
+        return '';
+    }
+
+    $options = ticket_channel_options();
+    $key = strtoupper($channel);
+
+    if (isset($options[$key])) {
+        return $options[$key];
+    }
+
+    $normalized = str_replace('_', ' ', strtolower($key));
+    return ucwords($normalized);
+}
+
 function ticket_type_options(): array
 {
     return [
@@ -53,6 +104,23 @@ function ticket_type_options(): array
         'ADMIN' => 'Amministrativo',
         'SALES' => 'Commerciale',
     ];
+}
+
+function ticket_type_label(?string $type): string
+{
+    if ($type === null || $type === '') {
+        return '';
+    }
+
+    $options = ticket_type_options();
+    $key = strtoupper($type);
+
+    if (isset($options[$key])) {
+        return $options[$key];
+    }
+
+    $normalized = str_replace('_', ' ', strtolower($key));
+    return ucwords($normalized);
 }
 
 function ticket_status_badge(string $status): string
