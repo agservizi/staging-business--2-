@@ -128,7 +128,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <p class="text-muted mb-0 small">Vai su “Provvigioni”: timeline mensile, dettagli mese, stato delle OP conteggiate.</p>
                             </div>
                             <div>
-                                <p class="fw-semibold mb-1">Cosa significa stato “in_verifica”?</p>
+                                <p class="fw-semibold mb-1">Cosa significa stato “in verifica”?</p>
                                 <p class="text-muted mb-0 small">La pratica è in revisione admin. Se riaperta, puoi modificarla; quando chiusa passa ad “attivata” o “annullata”. L'etichetta può apparire come “in verifica”.</p>
                             </div>
                         </div>
