@@ -171,18 +171,18 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             $reminderUrl = asset('modules/opportunities/collaborator/reminder.php?id=' . $opportunityId);
                                             $isCancelled = in_array($statusCode, ['annullato', 'annullata', 'cancelled', 'canceled'], true);
                                         ?>
-                                        <div class="btn-group" role="group" aria-label="Azioni opportunity">
-                                            <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output($cloneUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duplica opportunity">
+                                        <div class="op-actions" role="group" aria-label="Azioni opportunity">
+                                            <a class="btn btn-sm btn-outline-primary btn-icon" href="<?php echo sanitize_output($cloneUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duplica opportunity">
                                                 <i class="fa-solid fa-clone"></i>
                                             </a>
                                             <?php if (!$isCancelled): ?>
-                                                <a class="btn btn-sm btn-outline-secondary" href="<?php echo sanitize_output($viewUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Dettagli opportunity">
+                                                <a class="btn btn-sm btn-outline-secondary btn-icon" href="<?php echo sanitize_output($viewUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Dettagli opportunity">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
-                                                <a class="btn btn-sm btn-outline-success" href="<?php echo sanitize_output($noteUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Aggiungi nota">
+                                                <a class="btn btn-sm btn-outline-success btn-icon" href="<?php echo sanitize_output($noteUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Aggiungi nota">
                                                     <i class="fa-solid fa-note-sticky"></i>
                                                 </a>
-                                                <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output($reminderUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Invia sollecito">
+                                                <a class="btn btn-sm btn-outline-warning btn-icon" href="<?php echo sanitize_output($reminderUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Invia sollecito">
                                                     <i class="fa-solid fa-bell"></i>
                                                 </a>
                                             <?php endif; ?>

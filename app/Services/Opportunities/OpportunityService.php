@@ -798,7 +798,7 @@ final class OpportunityService
         $stmt = $this->pdo->prepare(
                 'SELECT o.*, s.label AS status_label, s.color AS status_color,
                     u.nome AS collaborator_name, u.cognome AS collaborator_surname, u.email AS collaborator_email,
-                    m.nome AS manager_name, m.cognome AS manager_surname
+                    m.nome AS manager_name, m.cognome AS manager_surname, m.email AS manager_email
              FROM opportunities o
              LEFT JOIN opportunity_statuses s ON s.code = o.status_code
              LEFT JOIN users u ON u.id = o.collaborator_id
@@ -865,6 +865,54 @@ final class OpportunityService
         if ($stmt->rowCount() === 0) {
             throw new RuntimeException('Impossibile aggiornare i codici.');
         }
+    }
+
+    public function appendCollaboratorNote(int $opportunityId, int $collaboratorId, string $note, ?string $authorName = null): string
+    {
+        $note = trim($note);
+        if ($opportunityId <= 0 || $collaboratorId <= 0) {
+            throw new RuntimeException('Opportunity non valida.');
+        }
+        if ($note === '') {
+            throw new RuntimeException('Inserisci una nota valida.');
+        }
+        if (mb_strlen($note) > 2000) {
+            throw new RuntimeException('La nota non può superare i 2000 caratteri.');
+        }
+
+        $stmt = $this->pdo->prepare('SELECT collaborator_id, additional_notes FROM opportunities WHERE id = :id LIMIT 1');
+        $stmt->execute([':id' => $opportunityId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            throw new RuntimeException('Opportunity non trovata.');
+        }
+        if ((int) ($row['collaborator_id'] ?? 0) !== $collaboratorId) {
+            throw new RuntimeException('Non puoi modificare questa opportunity.');
+        }
+
+        $timestamp = (new DateTimeImmutable('now'))->format('d/m/Y H:i');
+        $authorLabel = trim((string) $authorName) !== '' ? trim((string) $authorName) : 'Collaboratore';
+        $entry = sprintf('[%s] %s%s%s', $timestamp, $authorLabel, PHP_EOL, $note);
+        $existing = trim((string) ($row['additional_notes'] ?? ''));
+        $separator = PHP_EOL . PHP_EOL . '--------' . PHP_EOL . PHP_EOL;
+        $updatedNotes = $existing !== '' ? $entry . $separator . $existing : $entry;
+
+        $updateStmt = $this->pdo->prepare(
+            'UPDATE opportunities
+             SET additional_notes = :notes, updated_at = NOW()
+             WHERE id = :id AND collaborator_id = :collaborator LIMIT 1'
+        );
+        $updateStmt->execute([
+            ':notes' => $updatedNotes,
+            ':id' => $opportunityId,
+            ':collaborator' => $collaboratorId,
+        ]);
+
+        if ($updateStmt->rowCount() === 0) {
+            throw new RuntimeException('Impossibile aggiornare le note.');
+        }
+
+        return $updatedNotes;
     }
 
     /**

@@ -163,6 +163,26 @@
     background: #fff;
 }
 
+.op-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.btn-icon {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon i {
+    font-size: 0.85rem;
+}
+
 body.promo-preview-open {
     overflow: hidden;
 }
