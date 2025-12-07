@@ -112,6 +112,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         <?php endif; ?>
 
+        <?php if ($opportunities): ?>
+            <div class="alert alert-secondary mb-4" role="alert">
+                Hai <?php echo sanitize_output(number_format($totalOpportunities)); ?> opportunity attive. Consulta l'elenco completo e applica filtri dalla vista dedicata: <a class="fw-semibold" href="<?php echo sanitize_output($advancedFiltersUrl); ?>">apri elenco opportunity</a>.
+            </div>
+        <?php endif; ?>
+
         <div class="card shadow-sm mb-4 border-warning-subtle">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -408,13 +414,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 Le bozze compaiono qui ma non vengono conteggiate finché non invii la opportunity.
                             </p>
                         </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-            <?php if ($opportunities): ?>
-                <div class="col-12">
-                    <div class="alert alert-secondary mb-0" role="alert">
-                        Hai <?php echo sanitize_output(number_format($totalOpportunities)); ?> opportunity attive. Consulta l'elenco completo e applica filtri dalla vista dedicata: <a class="fw-semibold" href="<?php echo sanitize_output($advancedFiltersUrl); ?>">apri elenco opportunity</a>.
                     </div>
                 </div>
             <?php endif; ?>
