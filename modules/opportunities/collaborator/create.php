@@ -472,7 +472,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Numero</label>
-                                <input class="form-control" type="text" name="document_number" required value="<?php echo sanitize_output($formData['document_number'] ?? ''); ?>">
+                                <input
+                                    class="form-control"
+                                    type="text"
+                                    name="document_number"
+                                    required
+                                    pattern="^[A-Za-z0-9]{5,20}$"
+                                    title="Usa 5-20 caratteri alfanumerici, senza spazi o simboli."
+                                    value="<?php echo sanitize_output($formData['document_number'] ?? ''); ?>"
+                                >
+                                <div class="form-text text-muted" id="document-number-help">Solo lettere e numeri, 5-20 caratteri senza spazi. Per carta d'identità: due lettere, cinque numeri, due lettere (es. AA12345BB).</div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="document-issued-by-select">Autorità rilascio</label>
@@ -686,6 +695,8 @@ window.CIEIstatLookupConfig = {
     const uploadEndpoint = "<?php echo sanitize_output(asset('api/opportunities/uploads.php')); ?>";
     const existingUploads = <?php echo json_encode($existingUploadTokens, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
     const taxCodeInput = document.getElementById('customer-tax-code');
+    const documentNumberInput = document.querySelector('input[name="document_number"]');
+    const documentNumberHelp = document.getElementById('document-number-help');
     const taxCodeLookupBtn = document.getElementById('tax-code-lookup');
     const taxCodeLookupSpinner = document.getElementById('tax-code-lookup-spinner');
     const taxCodeLookupLabel = document.getElementById('tax-code-lookup-label');
@@ -728,6 +739,18 @@ window.CIEIstatLookupConfig = {
         Passaporto: 'Ministero Affari Esteri',
         Patente: 'MIT UCO Motorizzazione',
     };
+    const documentNumberRules = {
+        default: {
+            regex: /^[A-Z0-9]{5,20}$/,
+            message: 'Inserisci 5-20 caratteri alfanumerici (senza spazi o simboli).',
+            help: 'Solo lettere e numeri, 5-20 caratteri senza spazi.',
+        },
+        "Carta d'identità": {
+            regex: /^[A-Z]{2}\d{5}[A-Z]{2}$/,
+            message: "Formato carta d'identità: due lettere, cinque numeri, due lettere (es. AA12345BB).",
+            help: "Carta d'identità: due lettere, cinque numeri, due lettere (es. AA12345BB).",
+        },
+    };
     const paymentMethodBollettinoOption = paymentMethodSelect ? paymentMethodSelect.querySelector('option[value="bollettino"]') : null;
     let lastLookupTaxCode = '';
     let pendingPrefillData = null;
@@ -761,6 +784,59 @@ window.CIEIstatLookupConfig = {
                     taxCodeInput.setSelectionRange(selectionStart, selectionEnd);
                 }
             }
+        });
+    }
+
+    const getDocumentNumberRule = () => {
+        const selectedType = documentTypeSelect && documentTypeSelect.value ? documentTypeSelect.value : '';
+        return documentNumberRules[selectedType] || documentNumberRules.default;
+    };
+
+    const setDocumentNumberHelp = () => {
+        if (!documentNumberHelp) {
+            return;
+        }
+        const rule = getDocumentNumberRule();
+        documentNumberHelp.textContent = rule.help;
+    };
+
+    const setDocumentNumberValidity = (value) => {
+        if (!documentNumberInput) {
+            return;
+        }
+        const trimmed = (value || '').trim();
+        const rule = getDocumentNumberRule();
+        if (trimmed === '') {
+            documentNumberInput.setCustomValidity('');
+            return;
+        }
+        documentNumberInput.setCustomValidity(rule.regex.test(trimmed) ? '' : rule.message);
+    };
+
+    if (documentNumberInput) {
+        documentNumberInput.addEventListener('input', () => {
+            const { selectionStart, selectionEnd, value } = documentNumberInput;
+            const normalized = value.toUpperCase().replace(/\s+/g, '');
+            if (value !== normalized) {
+                documentNumberInput.value = normalized;
+                if (selectionStart !== null && selectionEnd !== null) {
+                    documentNumberInput.setSelectionRange(selectionStart, selectionEnd);
+                }
+            }
+            setDocumentNumberValidity(documentNumberInput.value);
+        });
+        documentNumberInput.addEventListener('blur', () => {
+            documentNumberInput.value = documentNumberInput.value.trim().toUpperCase().replace(/\s+/g, '');
+            setDocumentNumberValidity(documentNumberInput.value);
+        });
+        setDocumentNumberHelp();
+        setDocumentNumberValidity(documentNumberInput.value);
+    }
+
+    if (documentTypeSelect) {
+        documentTypeSelect.addEventListener('change', () => {
+            setDocumentNumberHelp();
+            setDocumentNumberValidity(documentNumberInput ? documentNumberInput.value : '');
         });
     }
 
