@@ -115,6 +115,17 @@ final class PromotionLibraryService
         return $relative;
     }
 
+    public function folderExists(string $relativePath): bool
+    {
+        $relative = $this->normalizeRelativePath($relativePath);
+        if ($relative === '') {
+            return true;
+        }
+
+        $absolute = $this->absolutePath($relative);
+        return is_dir($absolute);
+    }
+
     /**
      * @param array{name?:string,type?:string,tmp_name?:string,error?:int,size?:int} $file
      * @return array{name:string,relative_path:string,public_url:string,size:int}

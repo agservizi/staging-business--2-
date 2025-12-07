@@ -11,6 +11,10 @@ $library = new PromotionLibraryService();
 $csrfToken = csrf_token();
 $currentPath = isset($_GET['path']) ? (string) $_GET['path'] : '';
 $errors = [];
+$defaultLibraryPath = $library->normalizeInputPath(PromotionLibraryService::DEFAULT_ROOT_FOLDER);
+if ($currentPath === '' && $library->folderExists($defaultLibraryPath)) {
+    $currentPath = $defaultLibraryPath;
+}
 $normalizeUploads = static function (?array $input): array {
     if ($input === null || !isset($input['name'])) {
         return [];
