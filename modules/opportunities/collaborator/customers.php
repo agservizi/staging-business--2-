@@ -11,7 +11,7 @@ $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
 $csrfToken = csrf_token();
 
 $searchQuery = trim((string) ($_GET['q'] ?? ''));
-$perPage = 10;
+$perPage = 20;
 $currentPage = max(1, (int) ($_GET['page'] ?? 1));
 $totalCustomers = $opportunityService->countCollaboratorCustomers($collaboratorId, $searchQuery);
 $totalPages = max(1, (int) ceil($totalCustomers / $perPage));
