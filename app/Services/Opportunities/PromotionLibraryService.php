@@ -7,6 +7,7 @@ use RuntimeException;
 
 final class PromotionLibraryService
 {
+    public const DEFAULT_ROOT_FOLDER = 'Libreria promo';
     private const MAX_FILE_SIZE = 20_971_520; // 20MB
     /**
      * @var array<int,string>
@@ -112,6 +113,23 @@ final class PromotionLibraryService
         }
 
         return $relative;
+    }
+
+    public function ensureFolderExists(string $relativePath): void
+    {
+        $relative = $this->normalizeRelativePath($relativePath);
+        if ($relative === '') {
+            return;
+        }
+
+        $absolute = $this->absolutePath($relative);
+        if (is_dir($absolute)) {
+            return;
+        }
+
+        if (!mkdir($absolute, 0775, true) && !is_dir($absolute)) {
+            throw new RuntimeException('Impossibile creare la cartella richiesta.');
+        }
     }
 
     /**
@@ -236,7 +254,7 @@ final class PromotionLibraryService
     private function buildBreadcrumbs(string $relativePath): array
     {
         $breadcrumbs = [
-            ['label' => 'Libreria promo', 'path' => ''],
+            ['label' => self::DEFAULT_ROOT_FOLDER, 'path' => ''],
         ];
         if ($relativePath === '') {
             return $breadcrumbs;
@@ -249,6 +267,11 @@ final class PromotionLibraryService
                 continue;
             }
             $current = $current === '' ? $part : $current . '/' . $part;
+            if ($part === self::DEFAULT_ROOT_FOLDER && $breadcrumbs[0]['path'] === '') {
+                $breadcrumbs[0]['path'] = $current;
+                continue;
+            }
+
             $breadcrumbs[] = [
                 'label' => $part,
                 'path' => $current,
