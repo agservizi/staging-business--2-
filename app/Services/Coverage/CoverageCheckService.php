@@ -65,6 +65,7 @@ final class CoverageCheckService
                 $message = 'Nessuna ricetta Selenium definita per questo gestore. Usa la sessione aperta per operare manualmente.';
             } else {
                 [$stepsLog, $extracted] = $this->runActions($driver, $provider['actions'], $request);
+                $extracted = $this->postProcessSummary((string) ($provider['key'] ?? ''), $extracted);
                 if ($this->hasStepErrors($stepsLog)) {
                     $status = 'partial';
                     $message = 'Alcuni passi non sono stati completati. Verifica manualmente il risultato.';
@@ -269,6 +270,84 @@ final class CoverageCheckService
         }
 
         return trim(implode(' | ', $chunks));
+    }
+
+    /**
+     * @param array<string,string> $summary
+     * @return array<string,string>
+     */
+    private function postProcessSummary(string $providerKey, array $summary): array
+    {
+        if ($summary === [] || $providerKey === '') {
+            return $summary;
+        }
+
+        return match ($providerKey) {
+            'fastweb_consumer' => $this->refineFastwebConsumerSummary($summary),
+            default => $summary,
+        };
+    }
+
+    /**
+     * @param array<string,string> $summary
+     * @return array<string,string>
+     */
+    private function refineFastwebConsumerSummary(array $summary): array
+    {
+        $copertura = $summary['copertura'] ?? '';
+        if ($copertura !== '') {
+            $summary['copertura'] = $this->shortenFastwebMessage($copertura);
+            unset($summary['pagina_fastweb']);
+
+            return $summary;
+        }
+
+        if (isset($summary['pagina_fastweb'])) {
+            $summary['pagina_fastweb'] = $this->shortenFastwebMessage($summary['pagina_fastweb']);
+        }
+
+        return $summary;
+    }
+
+    private function shortenFastwebMessage(string $text): string
+    {
+        $normalized = trim((string) preg_replace('/\s+/', ' ', $text));
+        if ($normalized === '') {
+            return '';
+        }
+
+        $excerpt = $this->fastwebSentenceExcerpt($normalized);
+        if ($excerpt === '') {
+            $excerpt = $normalized;
+        }
+
+        if (mb_strlen($excerpt, 'UTF-8') > 220) {
+            $excerpt = rtrim(mb_substr($excerpt, 0, 220, 'UTF-8')) . '...';
+        }
+
+        return $excerpt;
+    }
+
+    private function fastwebSentenceExcerpt(string $text): string
+    {
+        $sentences = preg_split('/(?<=[.!?])\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if ($sentences === []) {
+            return '';
+        }
+
+        $parts = [];
+        foreach ($sentences as $sentence) {
+            $parts[] = $sentence;
+            if (preg_match('/€|euro/i', $sentence)) {
+                break;
+            }
+
+            if (count($parts) >= 2) {
+                break;
+            }
+        }
+
+        return trim(implode(' ', $parts));
     }
 
     private function buildCoverageMessage(bool $positive, string $rawText): string
