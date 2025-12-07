@@ -139,13 +139,14 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
                         <button class="btn topbar-btn topbar-btn-icon position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifiche">
                             <i class="fa-solid fa-bell" aria-hidden="true"></i>
                             <?php if ($collaboratorNotificationCount > 0): ?>
-                                <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle" aria-label="<?php echo (int) $collaboratorNotificationCount; ?> notifiche"><?php echo (int) $collaboratorNotificationCount; ?></span>
+                                <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle" id="collab-notifications-count" aria-label="<?php echo (int) $collaboratorNotificationCount; ?> notifiche"><?php echo (int) $collaboratorNotificationCount; ?></span>
                             <?php endif; ?>
                         </button>
                         <div class="dropdown-menu dropdown-menu-end topbar-dropdown" style="min-width: 360px;">
                             <div class="dropdown-header">
                                 <div class="fw-semibold">Notifiche</div>
                                 <p class="text-muted small mb-0">Cambi di stato (admin) e risposte ticket (ultimi 30 giorni).</p>
+                                <button class="btn btn-sm btn-outline-secondary mt-2" type="button" id="collab-notifications-read">Segna come lette</button>
                             </div>
                             <?php if ($collaboratorNotifications): ?>
                                 <?php foreach ($collaboratorNotifications as $notification): ?>
@@ -276,3 +277,27 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
         </div>
     </div>
 </header>
+
+<script>
+(() => {
+    const markReadButton = document.getElementById('collab-notifications-read');
+    const badge = document.getElementById('collab-notifications-count');
+
+    const hideBadge = () => {
+        if (badge) {
+            badge.classList.add('d-none');
+            sessionStorage.setItem('collabNotificationsRead', '1');
+        }
+    };
+
+    if (sessionStorage.getItem('collabNotificationsRead') === '1') {
+        hideBadge();
+    }
+
+    if (markReadButton) {
+        markReadButton.addEventListener('click', () => {
+            hideBadge();
+        });
+    }
+})();
+</script>
