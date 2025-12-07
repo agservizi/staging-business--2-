@@ -217,7 +217,7 @@ final class CoverageProviderRegistry
      */
     public function publicMetadata(): array
     {
-        return array_map(static function (array $provider): array {
+        return array_values(array_map(static function (array $provider): array {
             return [
                 'key' => $provider['key'],
                 'label' => $provider['label'],
@@ -227,7 +227,7 @@ final class CoverageProviderRegistry
                 'notes' => $provider['notes'] ?? null,
                 'fields' => $provider['fields'],
             ];
-        }, self::PROVIDERS);
+        }, self::PROVIDERS));
     }
 
     /**
