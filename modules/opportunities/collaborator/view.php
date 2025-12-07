@@ -41,6 +41,7 @@ if ($statusColor && isset($colorToBootstrap[$statusColor])) {
 
 $noteUrl = asset('modules/opportunities/collaborator/notes.php?id=' . $opportunityId);
 $reminderUrl = asset('modules/opportunities/collaborator/reminder.php?id=' . $opportunityId);
+$ticketUrl = asset('modules/opportunities/collaborator/ticket.php?id=' . $opportunityId);
 $listUrl = asset('modules/opportunities/collaborator/list.php');
 
 require_once __DIR__ . '/../../../includes/header.php';
@@ -64,6 +65,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </a>
                 <a class="btn btn-warning text-white" href="<?php echo sanitize_output($reminderUrl); ?>">
                     <i class="fa-solid fa-bell me-2"></i>Sollecito operativo
+                </a>
+                <a class="btn btn-primary" href="<?php echo sanitize_output($ticketUrl); ?>">
+                    <i class="fa-solid fa-ticket me-2"></i>Apri ticket
                 </a>
             </div>
         </div>

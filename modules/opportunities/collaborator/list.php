@@ -171,11 +171,15 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             $viewUrl = asset('modules/opportunities/collaborator/view.php?id=' . $opportunityId);
                                             $noteUrl = asset('modules/opportunities/collaborator/notes.php?id=' . $opportunityId);
                                             $reminderUrl = asset('modules/opportunities/collaborator/reminder.php?id=' . $opportunityId);
+                                            $ticketUrl = asset('modules/opportunities/collaborator/ticket.php?id=' . $opportunityId);
                                             $isCancelled = in_array($statusCode, ['annullato', 'annullata', 'cancelled', 'canceled'], true);
                                         ?>
                                         <div class="op-actions" role="group" aria-label="Azioni opportunity">
                                             <a class="btn btn-sm btn-outline-primary btn-icon" href="<?php echo sanitize_output($cloneUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duplica opportunity">
                                                 <i class="fa-solid fa-clone"></i>
+                                            </a>
+                                            <a class="btn btn-sm btn-outline-info btn-icon" href="<?php echo sanitize_output($ticketUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Apri ticket di supporto">
+                                                <i class="fa-solid fa-ticket"></i>
                                             </a>
                                             <?php if (!$isCancelled): ?>
                                                 <a class="btn btn-sm btn-outline-secondary btn-icon" href="<?php echo sanitize_output($viewUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Dettagli opportunity">
