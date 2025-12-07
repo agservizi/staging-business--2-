@@ -1472,6 +1472,13 @@ body.login-body {
     border-radius: 999px;
 }
 
+.topbar-btn-icon-compact {
+    --bs-btn-padding-x: 0.5rem;
+    --bs-btn-padding-y: 0.5rem;
+    width: 2.35rem;
+    height: 2.35rem;
+}
+
 .topbar-btn-icon i {
     font-size: 1.05rem;
 }

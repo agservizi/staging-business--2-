@@ -136,7 +136,7 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
             <div class="topbar-actions">
                 <?php if ($role === 'Collaboratore'): ?>
                     <div class="dropdown me-1">
-                        <button class="btn topbar-btn topbar-btn-icon position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifiche">
+                        <button class="btn topbar-btn topbar-btn-icon topbar-btn-icon-compact position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifiche">
                             <i class="fa-solid fa-bell" aria-hidden="true"></i>
                             <?php if ($collaboratorNotificationCount > 0): ?>
                                 <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle" id="collab-notifications-count" aria-label="<?php echo (int) $collaboratorNotificationCount; ?> notifiche"><?php echo (int) $collaboratorNotificationCount; ?></span>
