@@ -44,6 +44,15 @@ $reminderUrl = asset('modules/opportunities/collaborator/reminder.php?id=' . $op
 $ticketUrl = asset('modules/opportunities/collaborator/ticket.php?id=' . $opportunityId);
 $listUrl = asset('modules/opportunities/collaborator/list.php');
 $canEdit = ($opportunity['status_code'] ?? '') === 'in_verifica';
+$metadata = [];
+if (!empty($opportunity['metadata'])) {
+    $decodedMeta = json_decode((string) $opportunity['metadata'], true);
+    if (is_array($decodedMeta)) {
+        $metadata = $decodedMeta;
+    }
+}
+$telefoniaContractType = strtolower((string) ($metadata['telefonia_contract_type'] ?? 'migrazione'));
+$isTelefoniaMigration = ($opportunity['category'] ?? '') === 'telefonia' && $telefoniaContractType === 'migrazione';
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -153,14 +162,26 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <h2 class="h6 text-uppercase text-muted mb-3">Dettagli contrattuali</h2>
                         <div class="row g-3">
                             <?php if (($opportunity['category'] ?? '') === 'telefonia'): ?>
-                                <div class="col-md-6">
-                                    <p class="text-uppercase small text-muted mb-1">Operatore attuale</p>
-                                    <p class="mb-0"><?php echo sanitize_output($opportunity['telefonia_current_operator'] ?? '—'); ?></p>
-                                </div>
-                                <div class="col-md-6">
-                                    <p class="text-uppercase small text-muted mb-1">Numero linea</p>
-                                    <p class="mb-0"><?php echo sanitize_output($opportunity['telefonia_line_number'] ?? '—'); ?></p>
-                                </div>
+                                    <div class="col-md-6">
+                                        <p class="text-uppercase small text-muted mb-1">Tipologia contratto</p>
+                                        <p class="mb-0"><?php echo $telefoniaContractType === 'migrazione' ? 'Migrazione' : 'Nuova attivazione'; ?></p>
+                                    </div>
+                                    <?php if ($isTelefoniaMigration) : ?>
+                                        <div class="col-md-6">
+                                            <p class="text-uppercase small text-muted mb-1">Operatore attuale</p>
+                                            <p class="mb-0"><?php echo sanitize_output($opportunity['telefonia_current_operator'] ?? '—'); ?></p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p class="text-uppercase small text-muted mb-1">Numero linea</p>
+                                            <p class="mb-0"><?php echo sanitize_output($opportunity['telefonia_line_number'] ?? '—'); ?></p>
+                                        </div>
+                                        <?php if (!empty($metadata['migration_code'])) : ?>
+                                            <div class="col-md-6">
+                                                <p class="text-uppercase small text-muted mb-1">Codice migrazione</p>
+                                                <p class="mb-0"><?php echo sanitize_output($metadata['migration_code']); ?></p>
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
                             <?php endif; ?>
                             <?php if (($opportunity['category'] ?? '') === 'luce'): ?>
                                 <div class="col-md-6">
