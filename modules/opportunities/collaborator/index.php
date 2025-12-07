@@ -292,20 +292,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
         <?php if ($opportunities): ?>
             <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-3">
-                <div style="min-width: 260px; max-width: 420px;">
-                    <label class="form-label text-uppercase small text-muted" for="opportunity-quick-search">Ricerca rapida</label>
-                    <input class="form-control" type="search" id="opportunity-quick-search" placeholder="Filtra nella lista corrente">
-                    <div class="form-text text-muted">Il filtro è istantaneo e non ricarica la pagina.</div>
-                </div>
-                <div class="text-muted small text-end">
+                <div class="text-muted small text-end ms-auto">
                     <div>Mostrando <?php echo sanitize_output(number_format($displayStart)); ?> - <?php echo sanitize_output(number_format($displayEnd)); ?> di <?php echo sanitize_output(number_format($totalOpportunities)); ?> opportunity.</div>
                     <div>
                         Suggerimento: usa i <a class="text-decoration-underline" href="<?php echo sanitize_output($advancedFiltersUrl); ?>">filtri avanzati</a> nella vista elenco dedicata.
                     </div>
                 </div>
-            </div>
-            <div class="alert alert-info d-none" id="opportunity-quick-search-empty" role="alert">
-                Nessuna opportunity corrisponde al testo digitato.
             </div>
         <?php endif; ?>
 
@@ -388,17 +380,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </div>
             <?php endif; ?>
             <?php foreach ($opportunities as $opportunity): ?>
-                <?php
-                    $searchIndexParts = [
-                        (string) ($opportunity['code'] ?? ''),
-                        (string) ($opportunity['customer_first_name'] ?? ''),
-                        (string) ($opportunity['customer_last_name'] ?? ''),
-                        (string) ($opportunity['provider_label'] ?? ''),
-                        (string) ($opportunity['status_label'] ?? $opportunity['status_code'] ?? ''),
-                    ];
-                    $searchIndexValue = mb_strtolower(trim(implode(' ', array_filter($searchIndexParts))));
-                ?>
-                <div class="col-12 opportunity-list-entry" data-search-index="<?php echo sanitize_output($searchIndexValue); ?>">
+                <div class="col-12 opportunity-list-entry">
                     <div class="card opportunity-card shadow-sm">
                         <div class="card-body">
                             <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
@@ -496,29 +478,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 document.addEventListener('DOMContentLoaded', function () {
     const remoteDraftEndpoint = "<?php echo sanitize_output(asset('api/opportunities/drafts.php')); ?>";
     const csrfToken = "<?php echo sanitize_output($csrfToken); ?>";
-    const quickSearchInput = document.getElementById('opportunity-quick-search');
-    const listEntries = Array.from(document.querySelectorAll('.opportunity-list-entry'));
-    const emptyAlert = document.getElementById('opportunity-quick-search-empty');
-
-    if (quickSearchInput && listEntries.length) {
-        const applyQuickSearch = () => {
-            const term = quickSearchInput.value.trim().toLowerCase();
-            let visible = 0;
-            listEntries.forEach((entry) => {
-                const haystack = (entry.dataset.searchIndex || '').toLowerCase();
-                const match = term === '' || haystack.includes(term);
-                entry.classList.toggle('d-none', !match);
-                if (match) {
-                    visible += 1;
-                }
-            });
-            if (emptyAlert) {
-                emptyAlert.classList.toggle('d-none', visible !== 0);
-            }
-        };
-        quickSearchInput.addEventListener('input', applyQuickSearch);
-        applyQuickSearch();
-    }
 
     if (window.bootstrap && typeof window.bootstrap.Tooltip === 'function') {
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
