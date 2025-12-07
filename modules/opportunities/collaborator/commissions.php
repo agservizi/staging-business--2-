@@ -41,6 +41,14 @@ foreach ($monthlyOpportunities as $entry) {
     $monthTotal += (float) ($entry['commission_amount'] ?? 0);
 }
 $monthCount = count($monthlyOpportunities);
+$pageParam = max(1, (int) ($_GET['page'] ?? 1));
+$pageSize = 5;
+$totalPages = max(1, (int) ceil($monthCount / $pageSize));
+if ($pageParam > $totalPages) {
+    $pageParam = $totalPages;
+}
+$offset = ($pageParam - 1) * $pageSize;
+$pagedMonthlyOpportunities = array_slice($monthlyOpportunities, $offset, $pageSize);
 $averageCommission = $monthCount > 0 ? $monthTotal / $monthCount : 0.0;
 
 require_once __DIR__ . '/../../../includes/header.php';
@@ -188,7 +196,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($monthlyOpportunities as $opportunity): ?>
+                                        <?php foreach ($pagedMonthlyOpportunities as $opportunity): ?>
                                             <?php
                                                 $commission = (float) ($opportunity['commission_amount'] ?? 0);
                                                 $statusLabel = $opportunity['status_label'] ?? $opportunity['status_code'] ?? '';
@@ -227,6 +235,21 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     </tbody>
                                 </table>
                             </div>
+                            <?php if ($totalPages > 1): ?>
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <div class="text-muted small">Pagina <?php echo $pageParam; ?> di <?php echo $totalPages; ?></div>
+                                    <div class="btn-group" role="group" aria-label="Paginazione">
+                                        <?php $prevPage = max(1, $pageParam - 1); ?>
+                                        <?php $nextPage = min($totalPages, $pageParam + 1); ?>
+                                        <a class="btn btn-outline-secondary btn-sm<?php echo $pageParam <= 1 ? ' disabled' : ''; ?>" href="<?php echo $pageParam <= 1 ? '#' : '?month=' . urlencode($monthParam) . '&page=' . $prevPage; ?>">
+                                            <i class="fa-solid fa-angle-left me-1"></i>Precedente
+                                        </a>
+                                        <a class="btn btn-outline-secondary btn-sm<?php echo $pageParam >= $totalPages ? ' disabled' : ''; ?>" href="<?php echo $pageParam >= $totalPages ? '#' : '?month=' . urlencode($monthParam) . '&page=' . $nextPage; ?>">
+                                            Successiva<i class="fa-solid fa-angle-right ms-1"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         <?php else: ?>
                             <p class="text-muted mb-0">Non ci sono opportunity registrate per il mese selezionato.</p>
                         <?php endif; ?>
