@@ -19,6 +19,7 @@ $catalog = $opportunityService->getProviderCatalog();
 $errors = [];
 $formData = $_POST;
 $hasSubmitted = $_SERVER['REQUEST_METHOD'] === 'POST';
+$telefoniaContractTypeValue = isset($formData['telefonia_contract_type']) ? (string) $formData['telefonia_contract_type'] : 'migrazione';
 $draftStorageKey = 'opportunity_collaborator_draft_' . $collaboratorId;
 $existingUploadTokens = [];
 $existingUploadTokensValue = '';
@@ -104,7 +105,7 @@ if ($isEditingOpportunity) {
     }
     $telefoniaContractTypeValue = isset($formData['telefonia_contract_type'])
         ? (string) $formData['telefonia_contract_type']
-        : (string) ($existingMetadata['telefonia_contract_type'] ?? 'migrazione');
+        : (string) ($existingMetadata['telefonia_contract_type'] ?? $telefoniaContractTypeValue);
     if (!$hasSubmitted) {
         $formData = [
             'category' => $existingOpportunity['category'] ?? '',
@@ -142,7 +143,7 @@ if ($isEditingOpportunity) {
         ];
     }
 }
-$telefoniaContractTypeValue = $formData['telefonia_contract_type'] ?? $telefoniaContractTypeValue;
+
 $telefoniaContractTypeValue = $telefoniaContractTypeValue ?: 'migrazione';
 
 $documentTypePresets = [
@@ -150,7 +151,6 @@ $documentTypePresets = [
     'Passaporto' => 'Ministero Affari Esteri',
     'Patente' => 'MIT UCO Motorizzazione',
 ];
-$telefoniaContractTypeValue = isset($formData['telefonia_contract_type']) ? (string) $formData['telefonia_contract_type'] : 'migrazione';
 $isCloningOpportunity = false;
 $clonedOpportunityMeta = null;
 if (!$hasSubmitted) {
