@@ -86,8 +86,11 @@ final class CoverageProviderRegistry
                 'cap' => ['label' => 'CAP', 'required' => false],
             ],
             'actions' => [
-                ['action' => 'wait_for', 'selector' => '.js-external-popup-open', 'timeout' => 20],
-                ['action' => 'click', 'selector' => '.js-external-popup-open', 'scroll' => true],
+                ['action' => 'wait_for', 'selector' => 'a[href*="check-coverage-super-fibra" i], .js-external-popup-open', 'timeout' => 30],
+                ['action' => 'wait_for', 'selector' => '.cmp-cookie-consent__accept button, button[data-cookie*="accept" i], #cookiebar-accept, #cookiebar button.accept', 'timeout' => 5, 'continue_on_error' => true],
+                ['action' => 'click', 'selector' => '.cmp-cookie-consent__accept button, button[data-cookie*="accept" i], #cookiebar-accept, #cookiebar button.accept', 'continue_on_error' => true],
+                ['action' => 'pause', 'milliseconds' => 500],
+                ['action' => 'click', 'selector' => 'a[href*="check-coverage-super-fibra" i], .js-external-popup-open', 'scroll' => true],
                 ['action' => 'wait_for', 'selector' => '#js-external-popup-placeholder iframe, #js-external-popup-placeholder form', 'timeout' => 30],
                 ['action' => 'pause', 'milliseconds' => 800],
                 ['action' => 'switch_to_frame', 'selector' => '#js-external-popup-placeholder iframe', 'continue_on_error' => true],
