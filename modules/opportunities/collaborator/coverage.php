@@ -359,12 +359,16 @@ document.addEventListener('DOMContentLoaded', () => {
         partial: 'Parziale',
         failed: 'Errore',
         manual: 'Sessione manuale',
+        coverage_found: 'Copertura disponibile',
+        coverage_missing: 'Copertura assente',
     };
     const statusBadges = {
         completed: 'badge bg-success-subtle text-success fw-semibold',
         partial: 'badge bg-warning-subtle text-warning fw-semibold',
         failed: 'badge bg-danger-subtle text-danger fw-semibold',
         manual: 'badge bg-secondary-subtle text-secondary fw-semibold',
+        coverage_found: 'badge bg-success-subtle text-success fw-semibold',
+        coverage_missing: 'badge bg-danger-subtle text-danger fw-semibold',
     };
     const automationLabels = {
         todo: 'Automazione da definire',

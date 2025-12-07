@@ -68,6 +68,14 @@ final class CoverageCheckService
                 if ($this->hasStepErrors($stepsLog)) {
                     $status = 'partial';
                     $message = 'Alcuni passi non sono stati completati. Verifica manualmente il risultato.';
+                } elseif ($status === 'completed') {
+                    $classification = $this->classifyCoverageSummary($extracted);
+                    if ($classification !== null) {
+                        $status = $classification['status'];
+                        $message = $classification['message'];
+                    } elseif ($extracted === []) {
+                        $message = 'Automazione completata, ma il portale non ha restituito dati leggibili.';
+                    }
                 }
             }
 
@@ -180,6 +188,115 @@ final class CoverageCheckService
         }
 
         return $sessionName;
+    }
+
+    /**
+     * @param array<string,string> $summary
+     * @return array{status:string,message:string}|null
+     */
+    private function classifyCoverageSummary(array $summary): ?array
+    {
+        $text = $this->collapseSummaryChunks($summary);
+        if ($text === '') {
+            return null;
+        }
+
+        $normalized = mb_strtolower($text, 'UTF-8');
+        $negativeHints = [
+            'non disponibile',
+            'non coperto',
+            'non raggiunto',
+            'nessuna copertura',
+            'non attivabile',
+            'non possiamo procedere',
+            'non presente',
+            'momentaneamente non',
+            'non possiamo offrirti',
+            'al momento non',
+            'servizio non disponibile',
+        ];
+        foreach ($negativeHints as $hint) {
+            if (str_contains($normalized, $hint)) {
+                return [
+                    'status' => 'coverage_missing',
+                    'message' => $this->buildCoverageMessage(false, $text),
+                ];
+            }
+        }
+
+        $positiveHints = [
+            'copertura disponibile',
+            'copertura attiva',
+            'sei coperto',
+            'risulti coperto',
+            'servizio disponibile',
+            'puoi attivare',
+            'puoi avere',
+            'puoi navigare',
+            'disponibile nella tua zona',
+            'ftth',
+            'fibra disponibile',
+            'rete disponibile',
+            'gpon',
+        ];
+        foreach ($positiveHints as $hint) {
+            if (str_contains($normalized, $hint)) {
+                return [
+                    'status' => 'coverage_found',
+                    'message' => $this->buildCoverageMessage(true, $text),
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string,string> $summary
+     */
+    private function collapseSummaryChunks(array $summary): string
+    {
+        if ($summary === []) {
+            return '';
+        }
+
+        $chunks = [];
+        foreach ($summary as $value) {
+            $chunk = trim((string) $value);
+            if ($chunk !== '') {
+                $chunks[] = $chunk;
+            }
+        }
+
+        return trim(implode(' | ', $chunks));
+    }
+
+    private function buildCoverageMessage(bool $positive, string $rawText): string
+    {
+        $excerpt = $this->excerptText($rawText);
+        if ($excerpt === '') {
+            return $positive
+                ? 'Copertura disponibile secondo il portale.'
+                : 'Il portale segnala che la copertura non è disponibile per questo indirizzo.';
+        }
+
+        return $positive
+            ? sprintf('Copertura disponibile: %s', $excerpt)
+            : sprintf('Copertura non disponibile: %s', $excerpt);
+    }
+
+    private function excerptText(string $text): string
+    {
+        $singleLine = trim(preg_replace('/\s+/', ' ', $text) ?? '');
+        if ($singleLine === '') {
+            return '';
+        }
+
+        if (mb_strlen($singleLine, 'UTF-8') > 200) {
+            $singleLine = rtrim(mb_substr($singleLine, 0, 200, 'UTF-8')) . '...';
+        }
+
+        return $singleLine;
     }
 
     private function resolvedEndpoint(): string
