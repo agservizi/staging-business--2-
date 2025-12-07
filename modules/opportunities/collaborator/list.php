@@ -162,10 +162,31 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <td><?php echo sanitize_output(format_datetime_locale($opportunity['created_at'] ?? null)); ?></td>
                                 <td class="text-end">
                                     <?php if (!empty($opportunity['id'])): ?>
-                                        <?php $cloneUrl = asset('modules/opportunities/collaborator/create.php?clone_id=' . (int) $opportunity['id']); ?>
-                                        <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output($cloneUrl); ?>">
-                                            <i class="fa-solid fa-clone me-1"></i>Duplica
-                                        </a>
+                                        <?php
+                                            $opportunityId = (int) $opportunity['id'];
+                                            $statusCode = strtolower((string) ($opportunity['status_code'] ?? ''));
+                                            $cloneUrl = asset('modules/opportunities/collaborator/create.php?clone_id=' . $opportunityId);
+                                            $viewUrl = asset('modules/opportunities/collaborator/view.php?id=' . $opportunityId);
+                                            $noteUrl = asset('modules/opportunities/collaborator/notes.php?id=' . $opportunityId);
+                                            $reminderUrl = asset('modules/opportunities/collaborator/reminder.php?id=' . $opportunityId);
+                                            $isCancelled = in_array($statusCode, ['annullato', 'annullata', 'cancelled', 'canceled'], true);
+                                        ?>
+                                        <div class="btn-group" role="group" aria-label="Azioni opportunity">
+                                            <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output($cloneUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duplica opportunity">
+                                                <i class="fa-solid fa-clone"></i>
+                                            </a>
+                                            <?php if (!$isCancelled): ?>
+                                                <a class="btn btn-sm btn-outline-secondary" href="<?php echo sanitize_output($viewUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Dettagli opportunity">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </a>
+                                                <a class="btn btn-sm btn-outline-success" href="<?php echo sanitize_output($noteUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Aggiungi nota">
+                                                    <i class="fa-solid fa-note-sticky"></i>
+                                                </a>
+                                                <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output($reminderUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Invia sollecito">
+                                                    <i class="fa-solid fa-bell"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
                                     <?php else: ?>
                                         <span class="text-muted">—</span>
                                     <?php endif; ?>
