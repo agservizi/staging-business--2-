@@ -155,6 +155,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                 <?php
                     $collabDashboardActive = nav_active('modules/opportunities/collaborator/index.php', $currentPath);
                     $collabListActive = nav_active('modules/opportunities/collaborator/list.php', $currentPath);
+                    $collabFilesActive = nav_active('modules/opportunities/collaborator/promotions.php', $currentPath);
                 ?>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center <?php echo $collabDashboardActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/index.php'); ?>" aria-label="Dashboard opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Dashboard opportunity"<?php echo $collabDashboardActive ? ' aria-current="page"' : ''; ?>>
@@ -170,6 +171,14 @@ $appVersion = env('APP_VERSION', '1.0.0');
                             <i class="fa-solid fa-list-check"></i>
                         </span>
                         <span class="nav-label">Elenco OP</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $collabFilesActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/promotions.php'); ?>" aria-label="File promo" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="File promo"<?php echo $collabFilesActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="amber" aria-hidden="true">
+                            <i class="fa-solid fa-folder-open"></i>
+                        </span>
+                        <span class="nav-label">File promo</span>
                     </a>
                 </li>
                 <?php
