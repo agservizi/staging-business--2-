@@ -175,15 +175,6 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
                             <?php else: ?>
                                 <p class="dropdown-item-text text-muted small mb-0 px-3">Nessuna notifica recente.</p>
                             <?php endif; ?>
-                            <div class="dropdown-divider"></div>
-                            <div class="px-3 pb-2 d-grid gap-2">
-                                <a class="btn btn-sm btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/list.php'); ?>">
-                                    <i class="fa-solid fa-table-list me-2"></i>Elenco opportunity
-                                </a>
-                                <a class="btn btn-sm btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/tickets.php'); ?>">
-                                    <i class="fa-solid fa-ticket me-2"></i>Elenco ticket
-                                </a>
-                            </div>
                         </div>
                     </div>
                 <?php endif; ?>
