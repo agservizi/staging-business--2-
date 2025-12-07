@@ -1017,6 +1017,206 @@ final class OpportunityService
         return $this->findById($opportunityId) ?? $payload;
     }
 
+    /**
+     * @param array<string,mixed> $input
+     * @param array<string,mixed> $uploadedFiles
+     * @return array<string,mixed>
+     */
+    public function updateOpportunityByCollaborator(int $opportunityId, int $collaboratorId, array $input, array $uploadedFiles = []): array
+    {
+        if ($opportunityId <= 0 || $collaboratorId <= 0) {
+            throw new RuntimeException('Opportunity non valida.');
+        }
+
+        $existing = $this->findById($opportunityId);
+        if ($existing === null) {
+            throw new RuntimeException('Opportunity non trovata.');
+        }
+        if ((int) ($existing['collaborator_id'] ?? 0) !== $collaboratorId) {
+            throw new RuntimeException('Non puoi modificare questa opportunity.');
+        }
+        if (($existing['status_code'] ?? '') !== 'in_verifica') {
+            throw new RuntimeException('Puoi modificare solo opportunity in verifica.');
+        }
+
+        $category = $this->validateCategory((string) ($input['category'] ?? $existing['category'] ?? ''));
+
+        $providerId = isset($input['provider_id']) ? (int) $input['provider_id'] : 0;
+        if ($providerId <= 0) {
+            throw new RuntimeException('Seleziona un gestore valido.');
+        }
+        $provider = $this->fetchProvider($providerId, $category);
+        if ($provider === null) {
+            throw new RuntimeException('Il gestore selezionato non è disponibile.');
+        }
+
+        $offerId = isset($input['offer_id']) ? (int) $input['offer_id'] : null;
+        $offer = null;
+        if ($offerId) {
+            $offer = $this->fetchOffer($offerId, $providerId);
+            if ($offer === null) {
+                throw new RuntimeException('L\'offerta selezionata non è disponibile.');
+            }
+        }
+
+        $customerFirstName = $this->requireString($input, 'customer_first_name', 'Nome cliente');
+        $customerLastName = $this->requireString($input, 'customer_last_name', 'Cognome cliente');
+        $customerTaxCode = $this->requireString($input, 'customer_tax_code', 'Codice fiscale');
+        $customerPhone = $this->requireString($input, 'customer_phone', 'Telefono');
+        $customerEmail = $this->requireEmail($input, 'customer_email');
+        $documentNumber = $this->requireString($input, 'document_number', 'Numero documento');
+        $documentType = $this->requireString($input, 'document_type', 'Tipologia documento');
+        $documentExpiresAt = $this->requireString($input, 'document_expires_at', 'Scadenza documento');
+
+        if ($category === 'telefonia') {
+            $this->requireString($input, 'telefonia_current_operator', 'Operatore attuale');
+            $this->requireString($input, 'telefonia_line_number', 'Numero linea');
+        }
+
+        if ($category === 'luce') {
+            $this->requireString($input, 'luce_pod', 'Codice POD');
+        }
+
+        if ($category === 'gas') {
+            $this->requireString($input, 'gas_pdr', 'Codice PDR');
+        }
+
+        $rawPaymentMethod = $category === 'telefonia'
+            ? (string) ($input['payment_method'] ?? 'iban')
+            : $this->requireString($input, 'payment_method', 'Metodo di pagamento');
+
+        $paymentMethod = strtolower(trim($rawPaymentMethod));
+        if ($paymentMethod === '') {
+            $paymentMethod = 'iban';
+        }
+
+        $categoryAllowsBollettino = in_array($category, ['luce', 'gas'], true);
+        $telefoniaAllowsBollettino = false;
+        if ($category === 'telefonia') {
+            $providerSlug = strtolower((string) ($provider['slug'] ?? ''));
+            $providerName = strtolower((string) ($provider['name'] ?? ''));
+            $slugAllows = $providerSlug !== '' && str_contains($providerSlug, 'enel') && str_contains($providerSlug, 'fibra');
+            $nameAllows = $providerName !== '' && str_contains($providerName, 'enel') && str_contains($providerName, 'fibra');
+            $telefoniaAllowsBollettino = $slugAllows || $nameAllows;
+        }
+        $bollettinoAllowed = $categoryAllowsBollettino || $telefoniaAllowsBollettino;
+
+        if (!in_array($paymentMethod, ['iban', 'bollettino'], true)) {
+            throw new RuntimeException('Metodo di pagamento non valido.');
+        }
+        if ($paymentMethod === 'bollettino' && !$bollettinoAllowed) {
+            throw new RuntimeException('Il bollettino non è disponibile per il gestore selezionato.');
+        }
+
+        if ($paymentMethod === 'iban') {
+            $iban = $this->requireString($input, 'payment_iban', 'IBAN');
+            $this->assertValidIban($iban);
+        } else {
+            $iban = (string) ($input['payment_iban'] ?? '');
+        }
+
+        $paymentHolderIsCustomer = isset($input['payment_holder_is_customer'])
+            ? (int) $input['payment_holder_is_customer'] === 1
+            : true;
+
+        if ($paymentMethod === 'iban' && !$paymentHolderIsCustomer) {
+            $this->requireString($input, 'payment_holder_first_name', 'Nome intestatario IBAN');
+            $this->requireString($input, 'payment_holder_last_name', 'Cognome intestatario IBAN');
+            $this->requireString($input, 'payment_holder_tax_code', 'Codice fiscale intestatario IBAN');
+        }
+
+        $commissionAmount = $offer['commission'] ?? $provider['default_commission'] ?? null;
+
+        $payload = [
+            'category' => $category,
+            'provider_id' => $providerId,
+            'offer_id' => $offer['id'] ?? null,
+            'provider_label' => $provider['name'],
+            'offer_label' => $offer['name'] ?? null,
+            'commission_amount' => $commissionAmount,
+            'customer_first_name' => $customerFirstName,
+            'customer_last_name' => $customerLastName,
+            'customer_tax_code' => $customerTaxCode,
+            'customer_birth_date' => $this->nullOrString($input['customer_birth_date'] ?? null),
+            'customer_birth_place' => $this->nullOrString($input['customer_birth_place'] ?? null),
+            'customer_phone' => $customerPhone,
+            'customer_email' => $customerEmail,
+            'customer_address' => $this->nullOrString($input['customer_address'] ?? null),
+            'customer_city' => $this->nullOrString($input['customer_city'] ?? null),
+            'customer_postal_code' => $this->nullOrString($input['customer_postal_code'] ?? null),
+            'customer_province' => $this->nullOrString($input['customer_province'] ?? null),
+            'document_type' => $documentType,
+            'document_number' => $documentNumber,
+            'document_issued_by' => $this->nullOrString($input['document_issued_by'] ?? null),
+            'document_issued_at' => $this->nullOrString($input['document_issued_at'] ?? null),
+            'document_expires_at' => $documentExpiresAt,
+            'telefonia_current_operator' => $this->nullOrString($input['telefonia_current_operator'] ?? null),
+            'telefonia_line_number' => $this->nullOrString($input['telefonia_line_number'] ?? null),
+            'luce_pod' => $this->nullOrString($input['luce_pod'] ?? null),
+            'gas_pdr' => $this->nullOrString($input['gas_pdr'] ?? null),
+            'payment_method' => $paymentMethod,
+            'payment_iban' => $iban,
+            'payment_holder_is_customer' => $paymentHolderIsCustomer ? 1 : 0,
+            'payment_holder_first_name' => $paymentHolderIsCustomer ? null : $this->nullOrString($input['payment_holder_first_name'] ?? null),
+            'payment_holder_last_name' => $paymentHolderIsCustomer ? null : $this->nullOrString($input['payment_holder_last_name'] ?? null),
+            'payment_holder_tax_code' => $paymentHolderIsCustomer ? null : $this->nullOrString($input['payment_holder_tax_code'] ?? null),
+            'additional_notes' => $this->nullOrString($input['additional_notes'] ?? null),
+        ];
+
+        $uploadTokens = $this->extractUploadTokens($input);
+        $resolvedUploads = ['files' => [], 'tokens' => []];
+        if ($uploadTokens !== []) {
+            $resolvedUploads = OpportunityUploadStorage::resolveFiles($collaboratorId, $uploadTokens);
+            $missingTokens = array_diff($uploadTokens, $resolvedUploads['tokens'] ?? []);
+            if ($missingTokens !== []) {
+                throw new RuntimeException('Alcuni allegati temporanei sono scaduti. Caricali nuovamente.');
+            }
+        }
+
+        $normalizedFiles = array_merge(
+            $this->normalizeUploadedFiles($uploadedFiles),
+            $resolvedUploads['files'] ?? []
+        );
+
+        $this->pdo->beginTransaction();
+        try {
+            $assignments = [];
+            foreach (array_keys($payload) as $column) {
+                $assignments[] = $column . ' = :' . $column;
+            }
+            $assignments[] = 'updated_at = NOW()';
+            $sql = 'UPDATE opportunities SET ' . implode(', ', $assignments) . ' WHERE id = :id';
+            $stmt = $this->pdo->prepare($sql);
+            foreach ($payload as $column => $value) {
+                $stmt->bindValue(':' . $column, $value);
+            }
+            $stmt->bindValue(':id', $opportunityId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            if ($stmt->rowCount() === 0) {
+                throw new RuntimeException('Nessuna modifica applicata.');
+            }
+
+            if ($normalizedFiles) {
+                $this->persistFiles($opportunityId, $normalizedFiles, $collaboratorId);
+                $resolvedTokens = $resolvedUploads['tokens'] ?? [];
+                if ($resolvedTokens) {
+                    OpportunityUploadStorage::cleanupTokens($collaboratorId, $resolvedTokens);
+                }
+            }
+
+            $this->pdo->commit();
+        } catch (RuntimeException $exception) {
+            $this->pdo->rollBack();
+            throw $exception;
+        } catch (\Throwable $exception) {
+            $this->pdo->rollBack();
+            throw new RuntimeException('Errore durante l\'aggiornamento della opportunity.');
+        }
+
+        return $this->findById($opportunityId) ?? $payload;
+    }
+
     public function findById(int $opportunityId): ?array
     {
         $stmt = $this->pdo->prepare(

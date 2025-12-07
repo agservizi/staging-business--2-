@@ -173,6 +173,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             $reminderUrl = asset('modules/opportunities/collaborator/reminder.php?id=' . $opportunityId);
                                             $ticketUrl = asset('modules/opportunities/collaborator/ticket.php?id=' . $opportunityId);
                                             $isCancelled = in_array($statusCode, ['annullato', 'annullata', 'cancelled', 'canceled'], true);
+                                            $canEdit = $statusCode === 'in_verifica';
                                         ?>
                                         <div class="op-actions" role="group" aria-label="Azioni opportunity">
                                             <a class="btn btn-sm btn-outline-primary btn-icon" href="<?php echo sanitize_output($cloneUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duplica opportunity">
@@ -182,6 +183,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                 <i class="fa-solid fa-ticket"></i>
                                             </a>
                                             <?php if (!$isCancelled): ?>
+                                                <?php if ($canEdit): ?>
+                                                    <a class="btn btn-sm btn-outline-warning btn-icon" href="<?php echo sanitize_output(asset('modules/opportunities/collaborator/create.php?edit_id=' . $opportunityId)); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Modifica dati opportunity">
+                                                        <i class="fa-solid fa-pen"></i>
+                                                    </a>
+                                                <?php endif; ?>
                                                 <a class="btn btn-sm btn-outline-secondary btn-icon" href="<?php echo sanitize_output($viewUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Dettagli opportunity">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>

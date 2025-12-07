@@ -11,7 +11,9 @@ require_role('Collaboratore');
 
 require_once __DIR__ . '/auto-refresh.php';
 
-$pageTitle = 'Nuova Opportunity';
+$editOpportunityId = isset($_GET['edit_id']) ? (int) $_GET['edit_id'] : (isset($_POST['edit_id']) ? (int) $_POST['edit_id'] : 0);
+$isEditingOpportunity = $editOpportunityId > 0;
+$pageTitle = $isEditingOpportunity ? 'Modifica Opportunity' : 'Nuova Opportunity';
 $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
 $catalog = $opportunityService->getProviderCatalog();
 $errors = [];
@@ -80,6 +82,55 @@ if ($missingTempUploads && $hasSubmitted) {
     add_flash('warning', 'Alcuni allegati temporanei sono scaduti e devono essere ricaricati.');
 }
 
+$existingOpportunity = null;
+if ($isEditingOpportunity) {
+    $existingOpportunity = $opportunityService->findById($editOpportunityId);
+    if ($existingOpportunity === null || (int) ($existingOpportunity['collaborator_id'] ?? 0) !== $collaboratorId) {
+        add_flash('warning', 'Opportunity non trovata o non di tua proprietà.');
+        header('Location: list.php');
+        exit;
+    }
+    if (($existingOpportunity['status_code'] ?? '') !== 'in_verifica') {
+        add_flash('warning', 'La opportunity non è modificabile in questo stato.');
+        header('Location: view.php?id=' . $editOpportunityId);
+        exit;
+    }
+    if (!$hasSubmitted) {
+        $formData = [
+            'category' => $existingOpportunity['category'] ?? '',
+            'provider_id' => $existingOpportunity['provider_id'] ?? '',
+            'offer_id' => $existingOpportunity['offer_id'] ?? '',
+            'customer_first_name' => $existingOpportunity['customer_first_name'] ?? '',
+            'customer_last_name' => $existingOpportunity['customer_last_name'] ?? '',
+            'customer_tax_code' => $existingOpportunity['customer_tax_code'] ?? '',
+            'customer_birth_date' => $existingOpportunity['customer_birth_date'] ?? '',
+            'customer_birth_place' => $existingOpportunity['customer_birth_place'] ?? '',
+            'customer_phone' => $existingOpportunity['customer_phone'] ?? '',
+            'customer_email' => $existingOpportunity['customer_email'] ?? '',
+            'customer_address' => $existingOpportunity['customer_address'] ?? '',
+            'customer_city' => $existingOpportunity['customer_city'] ?? '',
+            'customer_postal_code' => $existingOpportunity['customer_postal_code'] ?? '',
+            'customer_province' => $existingOpportunity['customer_province'] ?? '',
+            'document_type' => $existingOpportunity['document_type'] ?? "Carta d'identità",
+            'document_number' => $existingOpportunity['document_number'] ?? '',
+            'document_issued_by' => $existingOpportunity['document_issued_by'] ?? '',
+            'document_issued_at' => $existingOpportunity['document_issued_at'] ?? '',
+            'document_expires_at' => $existingOpportunity['document_expires_at'] ?? '',
+            'telefonia_current_operator' => $existingOpportunity['telefonia_current_operator'] ?? '',
+            'telefonia_line_number' => $existingOpportunity['telefonia_line_number'] ?? '',
+            'luce_pod' => $existingOpportunity['luce_pod'] ?? '',
+            'gas_pdr' => $existingOpportunity['gas_pdr'] ?? '',
+            'payment_method' => $existingOpportunity['payment_method'] ?? 'iban',
+            'payment_iban' => $existingOpportunity['payment_iban'] ?? '',
+            'payment_holder_is_customer' => ($existingOpportunity['payment_holder_is_customer'] ?? 1) ? '1' : '0',
+            'payment_holder_first_name' => $existingOpportunity['payment_holder_first_name'] ?? '',
+            'payment_holder_last_name' => $existingOpportunity['payment_holder_last_name'] ?? '',
+            'payment_holder_tax_code' => $existingOpportunity['payment_holder_tax_code'] ?? '',
+            'additional_notes' => $existingOpportunity['additional_notes'] ?? '',
+        ];
+    }
+}
+
 $documentTypePresets = [
     "Carta d'identità" => 'Comune',
     'Passaporto' => 'Ministero Affari Esteri',
@@ -117,6 +168,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if (isset($_POST['payment_iban'])) {
             $_POST['payment_iban'] = strtoupper(str_replace(' ', '', (string) $_POST['payment_iban']));
+        }
+
+        if ($isEditingOpportunity) {
+            $opportunity = $opportunityService->updateOpportunityByCollaborator($editOpportunityId, $collaboratorId, $_POST, $_FILES['documents'] ?? []);
+            add_flash('success', 'Opportunity aggiornata e rimessa in verifica.');
+            header('Location: view.php?id=' . $editOpportunityId);
+            exit;
         }
 
         $stripeIbanValidation = null;
@@ -163,8 +221,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
             <div>
                 <p class="text-uppercase small fw-semibold text-muted mb-1">Opportunity</p>
-                <h1 class="h4 mb-0">Nuova opportunity</h1>
-                <p class="text-muted mb-0">Registra contratti telefonici, luce e gas per l'approvazione dell'admin.</p>
+                <h1 class="h4 mb-0"><?php echo $isEditingOpportunity ? 'Modifica opportunity' : 'Nuova opportunity'; ?></h1>
+                <p class="text-muted mb-0"><?php echo $isEditingOpportunity ? 'Aggiorna i dati richiesti dall\'admin prima della nuova verifica.' : 'Registra contratti telefonici, luce e gas per l\'approvazione dell\'admin.'; ?></p>
 
             <div class="modal fade" id="customerPrefillModal" tabindex="-1" aria-labelledby="customerPrefillModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -194,7 +252,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
 
             </div>
-            <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/index.php'); ?>">
+            <a class="btn btn-outline-secondary" href="<?php echo $isEditingOpportunity ? asset('modules/opportunities/collaborator/view.php?id=' . $editOpportunityId) : asset('modules/opportunities/collaborator/index.php'); ?>">
                 <i class="fa-solid fa-arrow-left me-2"></i>Torna alla lista
             </a>
         </div>
@@ -254,6 +312,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
         <form class="row g-4" method="post" enctype="multipart/form-data" id="opportunity-form">
             <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
+            <input type="hidden" name="edit_id" value="<?php echo $isEditingOpportunity ? (int) $editOpportunityId : 0; ?>">
             <div class="col-12">
                 <div class="card shadow-sm opportunity-card">
                     <div class="card-body">

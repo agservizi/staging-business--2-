@@ -43,6 +43,7 @@ $noteUrl = asset('modules/opportunities/collaborator/notes.php?id=' . $opportuni
 $reminderUrl = asset('modules/opportunities/collaborator/reminder.php?id=' . $opportunityId);
 $ticketUrl = asset('modules/opportunities/collaborator/ticket.php?id=' . $opportunityId);
 $listUrl = asset('modules/opportunities/collaborator/list.php');
+$canEdit = ($opportunity['status_code'] ?? '') === 'in_verifica';
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -60,6 +61,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <a class="btn btn-outline-secondary" href="<?php echo sanitize_output($listUrl); ?>">
                     <i class="fa-solid fa-arrow-left me-2"></i>Torna alla lista
                 </a>
+                <?php if ($canEdit): ?>
+                    <a class="btn btn-outline-warning" href="<?php echo sanitize_output(asset('modules/opportunities/collaborator/create.php?edit_id=' . $opportunityId)); ?>">
+                        <i class="fa-solid fa-pen me-2"></i>Modifica dati
+                    </a>
+                <?php endif; ?>
                 <a class="btn btn-outline-success" href="<?php echo sanitize_output($noteUrl); ?>">
                     <i class="fa-solid fa-note-sticky me-2"></i>Aggiungi nota
                 </a>
