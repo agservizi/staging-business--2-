@@ -95,7 +95,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <?php foreach ($customers as $customer): ?>
                                     <?php
                                         $fullName = trim(($customer['customer_first_name'] ?? '') . ' ' . ($customer['customer_last_name'] ?? ''));
-                                        $statusLabel = $customer['status_label'] ?? $customer['status_code'] ?? '';
+                                        $rawStatusLabel = $customer['status_label'] ?? $customer['status_code'] ?? '';
+                                        $statusLabel = str_replace('_', ' ', $rawStatusLabel);
                                         $statusClass = 'badge bg-secondary';
                                         $statusColor = $customer['status_color'] ?? '';
                                         $colorToBootstrap = [
