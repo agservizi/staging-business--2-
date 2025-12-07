@@ -476,15 +476,20 @@ final class OpportunityService
         }
 
         $bounds = $this->resolveMonthBounds($monthKey);
-        $stmt = $this->pdo->prepare(
-            'SELECT o.id, o.code, o.provider_label, o.offer_label, o.status_label, o.status_code,
-                    o.status_color, o.commission_amount, o.created_at
-             FROM opportunities o
-             WHERE o.collaborator_id = :user
-               AND o.created_at >= :start
-               AND o.created_at < :end
-             ORDER BY o.created_at DESC'
-        );
+                $stmt = $this->pdo->prepare(
+                        'SELECT o.id, o.code, o.provider_label, o.offer_label,
+                                        COALESCE(s.label, o.status_code) AS status_label,
+                                        o.status_code,
+                                        s.color AS status_color,
+                                        o.commission_amount,
+                                        o.created_at
+                         FROM opportunities o
+                         LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+                         WHERE o.collaborator_id = :user
+                             AND o.created_at >= :start
+                             AND o.created_at < :end
+                         ORDER BY o.created_at DESC'
+                );
         $stmt->execute([
             ':user' => $userId,
             ':start' => $bounds['start'],
