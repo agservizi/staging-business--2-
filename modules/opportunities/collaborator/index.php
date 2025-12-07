@@ -84,11 +84,9 @@ if ($categoryFilter !== '') {
 if ($searchQuery !== '') {
     $filterQueryParams['q'] = $searchQuery;
 }
-$filterQueryString = http_build_query($filterQueryParams);
-$hasActiveFilters = !empty($filterQueryParams);
-$exportUrl = asset('modules/opportunities/collaborator/export.php' . ($filterQueryString !== '' ? ('?' . $filterQueryString) : ''));
 $paginationBaseParams = $filterQueryParams;
 $listBaseUrl = asset('modules/opportunities/collaborator/index.php');
+$advancedFiltersUrl = asset('modules/opportunities/collaborator/list.php');
 $buildPageUrl = static function (int $page) use ($paginationBaseParams, $listBaseUrl): string {
     $query = array_merge($paginationBaseParams, ['page' => $page]);
     return $listBaseUrl . '?' . http_build_query($query);
@@ -109,50 +107,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <i class="fa-solid fa-plus me-2"></i>Nuova OP
             </a>
         </div>
-        <div class="card shadow-sm mb-4">
-            <div class="card-body">
-                <form class="row g-3 align-items-end" method="get">
-                    <div class="col-12 col-md-4 col-xl-3">
-                        <label class="form-label text-uppercase small text-muted">Stato</label>
-                        <select class="form-select" name="status">
-                            <option value="">Tutti gli stati</option>
-                            <?php foreach ($statusOptions as $status): ?>
-                                <?php $code = (string) ($status['code'] ?? ''); ?>
-                                <option value="<?php echo sanitize_output($code); ?>" <?php echo $statusFilter === $code ? 'selected' : ''; ?>>
-                                    <?php echo sanitize_output($status['label'] ?? $code); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-4 col-xl-3">
-                        <label class="form-label text-uppercase small text-muted">Categoria</label>
-                        <select class="form-select" name="category">
-                            <option value="">Tutte le categorie</option>
-                            <?php foreach ($categoryOptions as $key => $label): ?>
-                                <option value="<?php echo sanitize_output($key); ?>" <?php echo $categoryFilter === $key ? 'selected' : ''; ?>><?php echo sanitize_output($label); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-12 col-md-4 col-xl-3">
-                        <label class="form-label text-uppercase small text-muted">Ricerca</label>
-                        <input class="form-control" type="text" name="q" value="<?php echo sanitize_output($searchQuery); ?>" placeholder="Codice, cliente o gestore">
-                    </div>
-                    <div class="col-12 col-xl-3 d-flex flex-wrap gap-2 justify-content-xl-end">
-                        <button class="btn btn-primary" type="submit">
-                            <i class="fa-solid fa-filter me-2"></i>Applica
-                        </button>
-                        <?php if ($hasActiveFilters): ?>
-                            <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/index.php'); ?>">
-                                Reimposta
-                            </a>
-                        <?php endif; ?>
-                        <a class="btn btn-outline-success" href="<?php echo sanitize_output($exportUrl); ?>">
-                            <i class="fa-solid fa-file-arrow-down me-2"></i>Esporta CSV
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
+        
         <div class="card shadow-sm mb-4 border-warning-subtle">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -344,7 +299,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </div>
                 <div class="text-muted small text-end">
                     <div>Mostrando <?php echo sanitize_output(number_format($displayStart)); ?> - <?php echo sanitize_output(number_format($displayEnd)); ?> di <?php echo sanitize_output(number_format($totalOpportunities)); ?> opportunity.</div>
-                    <div>Suggerimento: usa i filtri avanzati per restringere i risultati dal server.</div>
+                    <div>
+                        Suggerimento: usa i <a class="text-decoration-underline" href="<?php echo sanitize_output($advancedFiltersUrl); ?>">filtri avanzati</a> nella vista elenco dedicata.
+                    </div>
                 </div>
             </div>
             <div class="alert alert-info d-none" id="opportunity-quick-search-empty" role="alert">
