@@ -159,6 +159,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                         || nav_active('modules/opportunities/collaborator/customer.php', $currentPath) === 'active'
                         ? 'active'
                         : '';
+                    $collabGuideActive = nav_active('modules/opportunities/collaborator/guide.php', $currentPath);
                     $collabFilesActive = nav_active('modules/opportunities/collaborator/promotions.php', $currentPath);
                     $collabCommissionActive = nav_active('modules/opportunities/collaborator/commissions.php', $currentPath);
                     $collabTicketsActive = nav_active('modules/opportunities/collaborator/tickets.php', $currentPath);
@@ -185,6 +186,14 @@ $appVersion = env('APP_VERSION', '1.0.0');
                             <i class="fa-solid fa-users"></i>
                         </span>
                         <span class="nav-label">Clienti</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $collabGuideActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/guide.php'); ?>" aria-label="Guida" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Guida"<?php echo $collabGuideActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="azure" aria-hidden="true">
+                            <i class="fa-solid fa-circle-question"></i>
+                        </span>
+                        <span class="nav-label">Guida</span>
                     </a>
                 </li>
                 <li class="nav-item">
