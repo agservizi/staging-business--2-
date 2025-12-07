@@ -5,6 +5,8 @@ require_once __DIR__ . '/../bootstrap.php';
 
 require_role('Collaboratore');
 
+require_once __DIR__ . '/auto-refresh.php';
+
 use App\Services\Opportunities\PromotionLibraryService;
 
 $library = new PromotionLibraryService();

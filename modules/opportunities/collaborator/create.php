@@ -8,6 +8,8 @@ use App\Services\Opportunities\OpportunityUploadStorage;
 
 require_role('Collaboratore');
 
+require_once __DIR__ . '/auto-refresh.php';
+
 $pageTitle = 'Nuova Opportunity';
 $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
 $catalog = $opportunityService->getProviderCatalog();

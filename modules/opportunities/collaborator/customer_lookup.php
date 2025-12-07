@@ -5,6 +5,8 @@ require_once __DIR__ . '/../bootstrap.php';
 
 require_role('Collaboratore', 'Admin', 'Manager');
 
+require_once __DIR__ . '/auto-refresh.php';
+
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

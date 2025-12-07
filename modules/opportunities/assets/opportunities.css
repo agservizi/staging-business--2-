@@ -264,3 +264,90 @@ body.promo-preview-open {
         height: 60vh;
     }
 }
+
+.collab-refresh-indicator {
+    display: none;
+    background: #fff7ed;
+    border-bottom: 1px solid rgba(249, 115, 22, 0.2);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    padding: 0.65rem 1.25rem;
+    z-index: 1015;
+}
+
+.collab-refresh-indicator.is-active {
+    display: block;
+    animation: collabRefreshEnter 0.25s ease-out;
+}
+
+.collab-refresh-indicator__content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.collab-refresh-indicator__label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    color: #7c2d12;
+}
+
+.collab-refresh-indicator__title {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+}
+
+.collab-refresh-indicator__subtitle {
+    font-size: 0.9rem;
+    color: #9a3412;
+}
+
+.collab-refresh-indicator__bar {
+    flex: 1 1 220px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(249, 115, 22, 0.25);
+    overflow: hidden;
+    position: relative;
+}
+
+.collab-refresh-indicator__bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0.9) 50%, rgba(249, 115, 22, 0.1) 100%);
+    animation: collabRefreshBar 1.4s ease-in-out infinite;
+}
+
+@keyframes collabRefreshEnter {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes collabRefreshBar {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .collab-refresh-indicator.is-active {
+        animation: none;
+    }
+    .collab-refresh-indicator__bar::after {
+        animation-duration: 3s;
+    }
+}

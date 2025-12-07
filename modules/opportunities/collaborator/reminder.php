@@ -6,6 +6,8 @@ require_once __DIR__ . '/../../../includes/mailer.php';
 
 require_role('Collaboratore');
 
+require_once __DIR__ . '/auto-refresh.php';
+
 $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
 $opportunityId = isset($_REQUEST['id']) ? (int) $_REQUEST['id'] : 0;
 

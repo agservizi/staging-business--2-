@@ -5,6 +5,8 @@ require_once __DIR__ . '/../bootstrap.php';
 
 require_role('Collaboratore');
 
+require_once __DIR__ . '/auto-refresh.php';
+
 $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
 $opportunityId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 

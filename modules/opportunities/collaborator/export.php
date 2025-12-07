@@ -5,6 +5,8 @@ require_once __DIR__ . '/../bootstrap.php';
 
 require_role('Collaboratore');
 
+require_once __DIR__ . '/auto-refresh.php';
+
 $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
 if ($collaboratorId <= 0) {
     http_response_code(403);
