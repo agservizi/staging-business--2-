@@ -867,9 +867,19 @@ final class OpportunityService
         $documentType = $this->requireString($input, 'document_type', 'Tipologia documento');
         $documentExpiresAt = $this->requireString($input, 'document_expires_at', 'Scadenza documento');
 
+        $metadata = [];
+
         if ($category === 'telefonia') {
-            $this->requireString($input, 'telefonia_current_operator', 'Operatore attuale');
-            $this->requireString($input, 'telefonia_line_number', 'Numero linea');
+            $telefoniaContractType = $this->validateTelefoniaContractType((string) ($input['telefonia_contract_type'] ?? 'migrazione'));
+            if ($telefoniaContractType === 'migrazione') {
+                $this->requireString($input, 'telefonia_current_operator', 'Operatore attuale');
+                $this->requireString($input, 'telefonia_line_number', 'Numero linea');
+                $this->requireString($input, 'telefonia_migration_code', 'Codice di migrazione');
+            }
+            $metadata['telefonia_contract_type'] = $telefoniaContractType;
+            if ($telefoniaContractType === 'migrazione') {
+                $metadata['telefonia_migration_code'] = (string) ($input['telefonia_migration_code'] ?? '');
+            }
         }
 
         if ($category === 'luce') {
@@ -955,8 +965,12 @@ final class OpportunityService
             'document_issued_by' => $this->nullOrString($input['document_issued_by'] ?? null),
             'document_issued_at' => $this->nullOrString($input['document_issued_at'] ?? null),
             'document_expires_at' => $documentExpiresAt,
-            'telefonia_current_operator' => $this->nullOrString($input['telefonia_current_operator'] ?? null),
-            'telefonia_line_number' => $this->nullOrString($input['telefonia_line_number'] ?? null),
+            'telefonia_current_operator' => ($category === 'telefonia' && ($metadata['telefonia_contract_type'] ?? '') === 'migrazione')
+                ? $this->requireString($input, 'telefonia_current_operator', 'Operatore attuale')
+                : $this->nullOrString($input['telefonia_current_operator'] ?? null),
+            'telefonia_line_number' => ($category === 'telefonia' && ($metadata['telefonia_contract_type'] ?? '') === 'migrazione')
+                ? $this->requireString($input, 'telefonia_line_number', 'Numero linea')
+                : $this->nullOrString($input['telefonia_line_number'] ?? null),
             'luce_pod' => $this->nullOrString($input['luce_pod'] ?? null),
             'gas_pdr' => $this->nullOrString($input['gas_pdr'] ?? null),
             'payment_method' => $paymentMethod,
@@ -967,6 +981,11 @@ final class OpportunityService
             'payment_holder_tax_code' => $paymentHolderIsCustomer ? null : $this->nullOrString($input['payment_holder_tax_code'] ?? null),
             'additional_notes' => $this->nullOrString($input['additional_notes'] ?? null),
         ];
+
+        $encodedMetadata = $this->encodeMetadata($metadata);
+        if ($encodedMetadata !== null) {
+            $payload['metadata'] = $encodedMetadata;
+        }
 
         $uploadTokens = $this->extractUploadTokens($input);
         $resolvedUploads = ['files' => [], 'tokens' => []];
@@ -1038,6 +1057,8 @@ final class OpportunityService
         if (($existing['status_code'] ?? '') !== 'in_verifica') {
             throw new RuntimeException('Puoi modificare solo opportunity in verifica.');
         }
+        $existingMetadata = $this->decodeMetadata($existing['metadata'] ?? null);
+        $metadata = is_array($existingMetadata) ? $existingMetadata : [];
 
         $category = $this->validateCategory((string) ($input['category'] ?? $existing['category'] ?? ''));
 
@@ -1069,8 +1090,18 @@ final class OpportunityService
         $documentExpiresAt = $this->requireString($input, 'document_expires_at', 'Scadenza documento');
 
         if ($category === 'telefonia') {
-            $this->requireString($input, 'telefonia_current_operator', 'Operatore attuale');
-            $this->requireString($input, 'telefonia_line_number', 'Numero linea');
+            $telefoniaContractType = $this->validateTelefoniaContractType((string) ($input['telefonia_contract_type'] ?? ($metadata['telefonia_contract_type'] ?? 'migrazione')));
+            if ($telefoniaContractType === 'migrazione') {
+                $this->requireString($input, 'telefonia_current_operator', 'Operatore attuale');
+                $this->requireString($input, 'telefonia_line_number', 'Numero linea');
+                $this->requireString($input, 'telefonia_migration_code', 'Codice di migrazione');
+            }
+            $metadata['telefonia_contract_type'] = $telefoniaContractType;
+            if ($telefoniaContractType === 'migrazione') {
+                $metadata['telefonia_migration_code'] = (string) ($input['telefonia_migration_code'] ?? '');
+            } else {
+                unset($metadata['telefonia_migration_code']);
+            }
         }
 
         if ($category === 'luce') {
@@ -1150,8 +1181,12 @@ final class OpportunityService
             'document_issued_by' => $this->nullOrString($input['document_issued_by'] ?? null),
             'document_issued_at' => $this->nullOrString($input['document_issued_at'] ?? null),
             'document_expires_at' => $documentExpiresAt,
-            'telefonia_current_operator' => $this->nullOrString($input['telefonia_current_operator'] ?? null),
-            'telefonia_line_number' => $this->nullOrString($input['telefonia_line_number'] ?? null),
+            'telefonia_current_operator' => ($category === 'telefonia' && ($metadata['telefonia_contract_type'] ?? '') === 'migrazione')
+                ? $this->requireString($input, 'telefonia_current_operator', 'Operatore attuale')
+                : $this->nullOrString($input['telefonia_current_operator'] ?? null),
+            'telefonia_line_number' => ($category === 'telefonia' && ($metadata['telefonia_contract_type'] ?? '') === 'migrazione')
+                ? $this->requireString($input, 'telefonia_line_number', 'Numero linea')
+                : $this->nullOrString($input['telefonia_line_number'] ?? null),
             'luce_pod' => $this->nullOrString($input['luce_pod'] ?? null),
             'gas_pdr' => $this->nullOrString($input['gas_pdr'] ?? null),
             'payment_method' => $paymentMethod,
@@ -1162,6 +1197,11 @@ final class OpportunityService
             'payment_holder_tax_code' => $paymentHolderIsCustomer ? null : $this->nullOrString($input['payment_holder_tax_code'] ?? null),
             'additional_notes' => $this->nullOrString($input['additional_notes'] ?? null),
         ];
+
+        $encodedMetadata = $this->encodeMetadata($metadata);
+        if ($encodedMetadata !== null) {
+            $payload['metadata'] = $encodedMetadata;
+        }
 
         $uploadTokens = $this->extractUploadTokens($input);
         $resolvedUploads = ['files' => [], 'tokens' => []];
@@ -2081,6 +2121,46 @@ final class OpportunityService
         }
 
         return number_format((float) $stringValue, 2, '.', '');
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function decodeMetadata(?string $metadata): array
+    {
+        if ($metadata === null || trim($metadata) === '') {
+            return [];
+        }
+        try {
+            $decoded = json_decode($metadata, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            return [];
+        }
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function encodeMetadata(array $metadata): ?string
+    {
+        if ($metadata === []) {
+            return null;
+        }
+        try {
+            return json_encode($metadata, JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            throw new RuntimeException('Errore nella serializzazione dei metadati.', 0, $exception);
+        }
+    }
+
+    private function validateTelefoniaContractType(string $type): string
+    {
+        $normalized = strtolower(trim($type));
+        $allowed = ['migrazione', 'nuova_attivazione'];
+        if (!in_array($normalized, $allowed, true)) {
+            throw new RuntimeException('Seleziona una tipologia contratto telefonia valida.');
+        }
+
+        return $normalized;
     }
 
     private function requireString(array $input, string $key, string $label): string

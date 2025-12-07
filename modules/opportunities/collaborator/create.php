@@ -95,6 +95,16 @@ if ($isEditingOpportunity) {
         header('Location: view.php?id=' . $editOpportunityId);
         exit;
     }
+    $existingMetadata = [];
+    if (!empty($existingOpportunity['metadata'])) {
+        $decodedMeta = json_decode((string) $existingOpportunity['metadata'], true);
+        if (is_array($decodedMeta)) {
+            $existingMetadata = $decodedMeta;
+        }
+    }
+    $telefoniaContractTypeValue = isset($formData['telefonia_contract_type'])
+        ? (string) $formData['telefonia_contract_type']
+        : (string) ($existingMetadata['telefonia_contract_type'] ?? 'migrazione');
     if (!$hasSubmitted) {
         $formData = [
             'category' => $existingOpportunity['category'] ?? '',
@@ -118,6 +128,8 @@ if ($isEditingOpportunity) {
             'document_expires_at' => $existingOpportunity['document_expires_at'] ?? '',
             'telefonia_current_operator' => $existingOpportunity['telefonia_current_operator'] ?? '',
             'telefonia_line_number' => $existingOpportunity['telefonia_line_number'] ?? '',
+            'telefonia_contract_type' => $telefoniaContractTypeValue,
+            'telefonia_migration_code' => $existingMetadata['telefonia_migration_code'] ?? '',
             'luce_pod' => $existingOpportunity['luce_pod'] ?? '',
             'gas_pdr' => $existingOpportunity['gas_pdr'] ?? '',
             'payment_method' => $existingOpportunity['payment_method'] ?? 'iban',
@@ -130,12 +142,15 @@ if ($isEditingOpportunity) {
         ];
     }
 }
+$telefoniaContractTypeValue = $formData['telefonia_contract_type'] ?? $telefoniaContractTypeValue;
+$telefoniaContractTypeValue = $telefoniaContractTypeValue ?: 'migrazione';
 
 $documentTypePresets = [
     "Carta d'identità" => 'Comune',
     'Passaporto' => 'Ministero Affari Esteri',
     'Patente' => 'MIT UCO Motorizzazione',
 ];
+$telefoniaContractTypeValue = isset($formData['telefonia_contract_type']) ? (string) $formData['telefonia_contract_type'] : 'migrazione';
 $isCloningOpportunity = false;
 $clonedOpportunityMeta = null;
 if (!$hasSubmitted) {
@@ -488,14 +503,27 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <i class="fa-solid fa-circle-exclamation me-1"></i>
                             <span class="warning-text">Compila i campi obbligatori della sezione telefonia.</span>
                         </div>
+                        <div class="row g-3 align-items-end mb-2">
+                            <div class="col-md-4">
+                                <label class="form-label">Tipologia contratto</label>
+                                <select class="form-select" name="telefonia_contract_type" id="telefonia-contract-type">
+                                    <option value="migrazione" <?php echo ($formData['telefonia_contract_type'] ?? 'migrazione') === 'migrazione' ? 'selected' : ''; ?>>Migrazione (con numero e operatore attuale)</option>
+                                    <option value="nuova_attivazione" <?php echo ($formData['telefonia_contract_type'] ?? 'migrazione') === 'nuova_attivazione' ? 'selected' : ''; ?>>Nuova attivazione</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label">Operatore attuale</label>
-                                <input class="form-control" type="text" name="telefonia_current_operator" value="<?php echo sanitize_output($formData['telefonia_current_operator'] ?? ''); ?>">
+                                <input class="form-control" type="text" name="telefonia_current_operator" id="telefonia-current-operator" value="<?php echo sanitize_output($formData['telefonia_current_operator'] ?? ''); ?>">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Numero linea</label>
-                                <input class="form-control" type="text" name="telefonia_line_number" value="<?php echo sanitize_output($formData['telefonia_line_number'] ?? ''); ?>">
+                                <input class="form-control" type="text" name="telefonia_line_number" id="telefonia-line-number" value="<?php echo sanitize_output($formData['telefonia_line_number'] ?? ''); ?>">
+                            </div>
+                            <div class="col-md-4" id="telefonia-migration-code-wrapper">
+                                <label class="form-label">Codice di migrazione</label>
+                                <input class="form-control" type="text" name="telefonia_migration_code" id="telefonia-migration-code" value="<?php echo sanitize_output($formData['telefonia_migration_code'] ?? ''); ?>">
                             </div>
                         </div>
                     </div>
@@ -636,6 +664,11 @@ window.CIEIstatLookupConfig = {
     const providerSelect = document.getElementById('provider-select');
     const offerSelect = document.getElementById('offer-select');
     const telefoniaSection = document.getElementById('telefonia-section');
+    const telefoniaContractTypeSelect = document.getElementById('telefonia-contract-type');
+    const telefoniaCurrentOperatorInput = document.getElementById('telefonia-current-operator');
+    const telefoniaLineNumberInput = document.getElementById('telefonia-line-number');
+    const telefoniaMigrationCodeInput = document.getElementById('telefonia-migration-code');
+    const telefoniaMigrationCodeWrapper = document.getElementById('telefonia-migration-code-wrapper');
     const luceSection = document.getElementById('luce-section');
     const gasSection = document.getElementById('gas-section');
     const paymentMethodSelect = document.getElementById('payment-method-select');
@@ -1467,13 +1500,46 @@ window.CIEIstatLookupConfig = {
         gasSection.hidden = category !== 'gas';
     };
 
+    const syncTelefoniaContractFields = () => {
+        if (!telefoniaContractTypeSelect) {
+            return;
+        }
+        const isTelefonia = categorySelect?.value === 'telefonia';
+        const isMigration = isTelefonia && telefoniaContractTypeSelect.value === 'migrazione';
+        [telefoniaCurrentOperatorInput, telefoniaLineNumberInput, telefoniaMigrationCodeInput].forEach((input) => {
+            if (!input) {
+                return;
+            }
+            const shouldRequire = isMigration;
+            if (shouldRequire) {
+                input.removeAttribute('disabled');
+                input.setAttribute('required', 'required');
+            } else {
+                input.removeAttribute('required');
+            }
+        });
+        if (telefoniaMigrationCodeWrapper) {
+            telefoniaMigrationCodeWrapper.hidden = !isMigration;
+        }
+    };
+
+    const getTelefoniaRequiredFields = () => {
+        const isMigration = telefoniaContractTypeSelect?.value === 'migrazione';
+        if (!isMigration) {
+            return [];
+        }
+        return [
+            { selector: 'input[name="telefonia_current_operator"]', label: 'Operatore attuale' },
+            { selector: 'input[name="telefonia_line_number"]', label: 'Numero linea' },
+            { selector: 'input[name="telefonia_migration_code"]', label: 'Codice di migrazione' },
+        ];
+    };
+
     const sectionValidationConfig = {
         telefonia: {
             section: telefoniaSection,
             warning: document.getElementById('telefonia-section-warning'),
-            fields: [
-                { selector: 'input[name="telefonia_line_number"]', label: 'Numero linea' },
-            ],
+            fields: [],
         },
         luce: {
             section: luceSection,
@@ -1503,7 +1569,8 @@ window.CIEIstatLookupConfig = {
                 config.section.classList.remove('border-danger');
                 return;
             }
-            const missingFields = config.fields.filter(({ selector }) => {
+            const fields = key === 'telefonia' ? getTelefoniaRequiredFields() : config.fields;
+            const missingFields = fields.filter(({ selector }) => {
                 const node = opportunityForm.querySelector(selector);
                 return node ? node.value.trim() === '' : false;
             });
@@ -2007,6 +2074,8 @@ window.CIEIstatLookupConfig = {
             document_expires_at: 'document_expires_at',
             telefonia_current_operator: 'telefonia_current_operator',
             telefonia_line_number: 'telefonia_line_number',
+            telefonia_contract_type: 'telefonia_contract_type',
+            telefonia_migration_code: 'telefonia_migration_code',
             luce_pod: 'luce_pod',
             gas_pdr: 'gas_pdr',
             payment_method: 'payment_method',
@@ -2174,6 +2243,7 @@ window.CIEIstatLookupConfig = {
         refreshProviderOptions();
         refreshOfferOptions();
         toggleCategorySections();
+        syncTelefoniaContractFields();
         evaluateSectionValidation();
         updatePaymentMethodOptions();
         handlePaymentMethodChange();
@@ -2183,12 +2253,17 @@ window.CIEIstatLookupConfig = {
         updatePaymentMethodOptions();
         handlePaymentMethodChange();
     });
+    telefoniaContractTypeSelect?.addEventListener('change', () => {
+        syncTelefoniaContractFields();
+        evaluateSectionValidation();
+    });
     paymentHolderToggle.addEventListener('change', togglePaymentHolderFields);
     paymentMethodSelect.addEventListener('change', handlePaymentMethodChange);
 
     refreshProviderOptions();
     refreshOfferOptions();
     toggleCategorySections();
+    syncTelefoniaContractFields();
     evaluateSectionValidation();
     updatePaymentMethodOptions();
     togglePaymentHolderFields();
