@@ -21,6 +21,12 @@ final class CoverageCheckService
     private string $browser;
     private int $defaultTimeout;
     private bool $captureScreenshot;
+    private string $seleniumUsername;
+    private string $seleniumAccessKey;
+    private string $seleniumOs;
+    private string $seleniumOsVersion;
+    private string $seleniumBuildName;
+    private string $seleniumSessionPrefix;
 
     public function __construct(?CoverageProviderRegistry $registry = null)
     {
@@ -30,6 +36,12 @@ final class CoverageCheckService
         $timeout = (int) env('COVERAGE_SELENIUM_TIMEOUT', 45);
         $this->defaultTimeout = $timeout > 0 ? $timeout : 45;
         $this->captureScreenshot = filter_var(env('COVERAGE_SELENIUM_SCREENSHOT', true), FILTER_VALIDATE_BOOL);
+        $this->seleniumUsername = trim((string) env('COVERAGE_SELENIUM_USERNAME', ''));
+        $this->seleniumAccessKey = trim((string) env('COVERAGE_SELENIUM_ACCESS_KEY', ''));
+        $this->seleniumOs = trim((string) env('COVERAGE_SELENIUM_OS', 'Windows')) ?: 'Windows';
+        $this->seleniumOsVersion = trim((string) env('COVERAGE_SELENIUM_OS_VERSION', '11')) ?: '11';
+        $this->seleniumBuildName = trim((string) env('COVERAGE_SELENIUM_BUILD', 'Coverage Automation')) ?: 'Coverage Automation';
+        $this->seleniumSessionPrefix = trim((string) env('COVERAGE_SELENIUM_SESSION_PREFIX', 'Coverage run')) ?: 'Coverage run';
     }
 
     public function check(CoverageRequest $request): array
@@ -100,7 +112,7 @@ final class CoverageCheckService
         $capabilities = $this->buildCapabilities();
         try {
             return RemoteWebDriver::create(
-                $this->seleniumEndpoint,
+                $this->resolvedEndpoint(),
                 $capabilities,
                 10_000,
                 $this->defaultTimeout * 1000
@@ -112,11 +124,53 @@ final class CoverageCheckService
 
     private function buildCapabilities(): DesiredCapabilities
     {
-        return match ($this->browser) {
+        $capabilities = match ($this->browser) {
             'firefox' => DesiredCapabilities::firefox(),
             'edge' => DesiredCapabilities::microsoftEdge(),
             default => DesiredCapabilities::chrome(),
         };
+
+        if ($this->isBrowserStack()) {
+            $capabilities->setCapability('browserVersion', 'latest');
+            $capabilities->setCapability('bstack:options', [
+                'os' => $this->seleniumOs,
+                'osVersion' => $this->seleniumOsVersion,
+                'projectName' => $this->seleniumBuildName,
+                'buildName' => sprintf('%s %s', $this->seleniumBuildName, (string) env('APP_VERSION', '1.0')),
+                'sessionName' => sprintf('%s %s', $this->seleniumSessionPrefix, date('Y-m-d H:i:s')),
+                'local' => 'false',
+            ]);
+        }
+
+        return $capabilities;
+    }
+
+    private function resolvedEndpoint(): string
+    {
+        if ($this->seleniumUsername === '' || $this->seleniumAccessKey === '') {
+            return $this->seleniumEndpoint;
+        }
+
+        $parsed = parse_url($this->seleniumEndpoint);
+        if ($parsed === false || !isset($parsed['host'])) {
+            return $this->seleniumEndpoint;
+        }
+
+        $scheme = $parsed['scheme'] ?? 'https';
+        $host = $parsed['host'];
+        $port = isset($parsed['port']) ? ':' . $parsed['port'] : '';
+        $path = $parsed['path'] ?? '';
+        $query = isset($parsed['query']) ? '?' . $parsed['query'] : '';
+        $fragment = isset($parsed['fragment']) ? '#' . $parsed['fragment'] : '';
+
+        $credentials = rawurlencode($this->seleniumUsername) . ':' . rawurlencode($this->seleniumAccessKey) . '@';
+
+        return sprintf('%s://%s%s%s%s', $scheme, $credentials . $host . $port, $path, $query, $fragment);
+    }
+
+    private function isBrowserStack(): bool
+    {
+        return str_contains($this->seleniumEndpoint, 'browserstack.com');
     }
 
     /**
