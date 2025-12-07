@@ -207,6 +207,132 @@ final class OpportunityService
         return (int) ($row['total'] ?? 0);
     }
 
+    public function countCollaboratorCustomers(int $userId, string $search = ''): int
+    {
+        if ($userId <= 0) {
+            return 0;
+        }
+
+        $conditions = ['o.collaborator_id = :user', 'o.customer_tax_code <> ""'];
+        $params = [':user' => $userId];
+
+        $search = trim($search);
+        if ($search !== '') {
+            $conditions[] = '(
+                o.customer_tax_code LIKE :search
+                OR o.customer_first_name LIKE :search
+                OR o.customer_last_name LIKE :search
+                OR o.customer_email LIKE :search
+            )';
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        $sql = 'SELECT COUNT(DISTINCT o.customer_tax_code) AS total FROM opportunities o WHERE ' . implode(' AND ', $conditions);
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return (int) ($row['total'] ?? 0);
+    }
+
+    /**
+     * @return array<int,array<string,mixed>>
+     */
+    public function listCollaboratorCustomers(int $userId, string $search = '', int $limit = 20, int $offset = 0): array
+    {
+        if ($userId <= 0) {
+            return [];
+        }
+
+        $conditions = ['o.collaborator_id = :user', 'o.customer_tax_code <> ""'];
+        $params = [':user' => $userId];
+
+        $search = trim($search);
+        if ($search !== '') {
+            $conditions[] = '(
+                o.customer_tax_code LIKE :search
+                OR o.customer_first_name LIKE :search
+                OR o.customer_last_name LIKE :search
+                OR o.customer_email LIKE :search
+            )';
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        $baseWhere = implode(' AND ', $conditions);
+
+        $sql = 'SELECT latest.*
+                FROM opportunities latest
+                INNER JOIN (
+                    SELECT o.customer_tax_code, MAX(o.id) AS last_op_id
+                    FROM opportunities o
+                    WHERE ' . $baseWhere . '
+                    GROUP BY o.customer_tax_code
+                    ORDER BY last_op_id DESC
+                    LIMIT :limit OFFSET :offset
+                ) idx ON idx.last_op_id = latest.id
+                LEFT JOIN opportunity_statuses s ON s.code = latest.status_code
+                ORDER BY latest.id DESC';
+
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', max(0, $offset), PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * @return array<string,mixed>|null
+     */
+    public function findCollaboratorCustomer(int $userId, string $taxCode): ?array
+    {
+        if ($userId <= 0) {
+            return null;
+        }
+
+        $normalized = strtoupper(trim($taxCode));
+        if ($normalized === '') {
+            return null;
+        }
+
+        $stmt = $this->pdo->prepare(
+            'SELECT o.*, s.label AS status_label, s.color AS status_color
+             FROM opportunities o
+             LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+             WHERE o.collaborator_id = :user
+               AND UPPER(o.customer_tax_code) = :tax
+             ORDER BY o.id DESC
+             LIMIT 1'
+        );
+        $stmt->execute([':user' => $userId, ':tax' => $normalized]);
+        $latest = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$latest) {
+            return null;
+        }
+
+        $historyStmt = $this->pdo->prepare(
+            'SELECT o.id, o.code, o.provider_label, o.offer_label, o.category,
+                    COALESCE(s.label, o.status_code) AS status_label,
+                    s.color AS status_color,
+                    o.status_code, o.created_at, o.last_status_change, o.commission_amount
+             FROM opportunities o
+             LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+             WHERE o.collaborator_id = :user AND UPPER(o.customer_tax_code) = :tax
+             ORDER BY o.id DESC'
+        );
+        $historyStmt->execute([':user' => $userId, ':tax' => $normalized]);
+        $opportunities = $historyStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'customer' => $latest,
+            'opportunities' => $opportunities,
+        ];
+    }
+
     /**
      * @return array{0:array<int,string>,1:array<string,mixed>}
      */
