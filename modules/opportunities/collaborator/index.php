@@ -93,8 +93,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     <main class="content-wrapper">
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
             <div>
-                <p class="text-uppercase small fw-semibold text-muted mb-1">Opportunity inviate</p>
-                <h1 class="h4 mb-0">Elenco completo</h1>
+                <p class="text-uppercase small fw-semibold text-muted mb-1">Dashboard collaboratore</p>
+                <h1 class="h4 mb-0">Panoramica opportunity</h1>
             </div>
             <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
                 <i class="fa-solid fa-plus me-2"></i>Nuova OP
