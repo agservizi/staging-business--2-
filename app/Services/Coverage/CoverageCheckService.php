@@ -396,6 +396,18 @@ final class CoverageCheckService
                         }
                         $driver->executeScript($script);
                         break;
+                    case 'switch_to_frame':
+                        if ($selector === '') {
+                            throw new RuntimeException('Selettore mancante per il cambio frame.');
+                        }
+                        $timeout = (int) ($action['timeout'] ?? $this->defaultTimeout);
+                        $this->waitForSelector($driver, $selector, $timeout);
+                        $frameElement = $this->findElement($driver, $selector);
+                        $driver->switchTo()->frame($frameElement);
+                        break;
+                    case 'switch_to_default_content':
+                        $driver->switchTo()->defaultContent();
+                        break;
                     default:
                         $status = 'skipped';
                         $message = 'Azione non supportata.';
@@ -450,6 +462,22 @@ final class CoverageCheckService
     {
         if (array_key_exists('value', $action)) {
             return (string) $action['value'];
+        }
+
+        if (!empty($action['concat_fields']) && is_array($action['concat_fields'])) {
+            $parts = [];
+            foreach ($action['concat_fields'] as $fieldName) {
+                $fieldValue = $request->field((string) $fieldName);
+                if ($fieldValue !== '') {
+                    $parts[] = $fieldValue;
+                }
+            }
+            if ($parts !== []) {
+                $separator = array_key_exists('concat_separator', $action)
+                    ? (string) $action['concat_separator']
+                    : ' ';
+                return trim(implode($separator, $parts));
+            }
         }
 
         if (isset($action['field'])) {
