@@ -513,11 +513,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                         </div>
                         <div class="row g-3">
-                            <div class="col-md-4">
+                            <div class="col-md-4" id="telefonia-current-operator-wrapper">
                                 <label class="form-label">Operatore attuale</label>
                                 <input class="form-control" type="text" name="telefonia_current_operator" id="telefonia-current-operator" value="<?php echo sanitize_output($formData['telefonia_current_operator'] ?? ''); ?>">
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-4" id="telefonia-line-number-wrapper">
                                 <label class="form-label">Numero linea</label>
                                 <input class="form-control" type="text" name="telefonia_line_number" id="telefonia-line-number" value="<?php echo sanitize_output($formData['telefonia_line_number'] ?? ''); ?>">
                             </div>
@@ -668,6 +668,8 @@ window.CIEIstatLookupConfig = {
     const telefoniaCurrentOperatorInput = document.getElementById('telefonia-current-operator');
     const telefoniaLineNumberInput = document.getElementById('telefonia-line-number');
     const telefoniaMigrationCodeInput = document.getElementById('telefonia-migration-code');
+    const telefoniaCurrentOperatorWrapper = document.getElementById('telefonia-current-operator-wrapper');
+    const telefoniaLineNumberWrapper = document.getElementById('telefonia-line-number-wrapper');
     const telefoniaMigrationCodeWrapper = document.getElementById('telefonia-migration-code-wrapper');
     const luceSection = document.getElementById('luce-section');
     const gasSection = document.getElementById('gas-section');
@@ -1518,6 +1520,12 @@ window.CIEIstatLookupConfig = {
                 input.removeAttribute('required');
             }
         });
+        if (telefoniaCurrentOperatorWrapper) {
+            telefoniaCurrentOperatorWrapper.hidden = !isMigration;
+        }
+        if (telefoniaLineNumberWrapper) {
+            telefoniaLineNumberWrapper.hidden = !isMigration;
+        }
         if (telefoniaMigrationCodeWrapper) {
             telefoniaMigrationCodeWrapper.hidden = !isMigration;
         }
