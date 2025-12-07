@@ -228,6 +228,58 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     </div>
                                 <?php endforeach; ?>
                             </div>
+                            <?php if ($opportunities): ?>
+                                <hr class="text-muted">
+                                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                    <div>
+                                        <p class="text-uppercase small text-muted mb-1">Ultime opportunity</p>
+                                        <h3 class="h6 mb-0">Contratti caricati di recente</h3>
+                                    </div>
+                                    <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output($advancedFiltersUrl); ?>">
+                                        <i class="fa-solid fa-table-list me-1"></i>Apri elenco completo
+                                    </a>
+                                </div>
+                                <ul class="list-unstyled mb-0 d-flex flex-column gap-3" aria-label="Elenco sintetico opportunity">
+                                    <?php foreach (array_slice($opportunities, 0, 4) as $recentOp): ?>
+                                        <?php
+                                            $customerName = trim(
+                                                (string) ($recentOp['customer_first_name'] ?? '') . ' ' . (string) ($recentOp['customer_last_name'] ?? '')
+                                            );
+                                            $customerName = $customerName !== '' ? $customerName : 'Cliente non indicato';
+                                            $statusLabel = $recentOp['status_label'] ?? $recentOp['status_code'] ?? '';
+                                            $statusClass = 'badge bg-secondary';
+                                            $statusColor = $recentOp['status_color'] ?? '';
+                                            $colorToBootstrap = [
+                                                'warning' => 'badge bg-warning text-dark',
+                                                'info' => 'badge bg-info text-dark',
+                                                'primary' => 'badge bg-primary',
+                                                'danger' => 'badge bg-danger',
+                                                'success' => 'badge bg-success',
+                                            ];
+                                            if ($statusColor && isset($colorToBootstrap[$statusColor])) {
+                                                $statusClass = $colorToBootstrap[$statusColor];
+                                            }
+                                        ?>
+                                        <li class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                                            <div>
+                                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                    <strong><?php echo sanitize_output($recentOp['code'] ?? ''); ?></strong>
+                                                    <span class="<?php echo $statusClass; ?>">
+                                                        <?php echo sanitize_output($statusLabel); ?>
+                                                    </span>
+                                                </div>
+                                                <div class="text-muted small">
+                                                    Cliente: <?php echo sanitize_output($customerName); ?>
+                                                    <?php if (!empty($recentOp['provider_label'])): ?> · Gestore: <?php echo sanitize_output($recentOp['provider_label']); ?><?php endif; ?>
+                                                </div>
+                                            </div>
+                                            <div class="text-muted small text-lg-end">
+                                                Inviata: <?php echo sanitize_output(format_datetime_locale($recentOp['created_at'] ?? null)); ?>
+                                            </div>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php endif; ?>
                         <?php else: ?>
                             <p class="text-muted mb-0">Non hai ancora opportunity registrate.</p>
                         <?php endif; ?>
