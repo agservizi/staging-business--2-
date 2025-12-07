@@ -22,6 +22,7 @@ $currentPath = $listing['current_path'];
 $breadcrumbs = $listing['breadcrumbs'];
 $directories = $listing['directories'];
 $files = $listing['files'];
+$previewableExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'];
 $hasItems = $directories !== [] || $files !== [];
 $backLink = $currentPath !== '' ? dirname($currentPath) : '';
 if ($backLink === '.' || $backLink === '/') {
@@ -99,18 +100,39 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                         <?php endforeach; ?>
                         <?php foreach ($files as $file): ?>
-                            <?php $fileUrl = asset($file['public_url']); ?>
+                            <?php
+                                $fileUrl = asset($file['public_url']);
+                                $updatedLabel = format_datetime_locale($file['modified_at']);
+                                $metaLabel = sprintf('%s · Aggiornato il %s', $file['size_label'], $updatedLabel);
+                                $extension = strtolower((string) $file['extension']);
+                                $supportsPreview = in_array($extension, $previewableExtensions, true);
+                            ?>
                             <div class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                                 <div class="d-flex align-items-center gap-3">
                                     <span class="text-primary" aria-hidden="true"><i class="fa-solid fa-file-lines fa-lg"></i></span>
                                     <div>
                                         <p class="mb-0 fw-semibold"><?php echo sanitize_output($file['name']); ?></p>
-                                        <div class="text-muted small"><?php echo sanitize_output($file['size_label']); ?> · Aggiornato il <?php echo sanitize_output(format_datetime_locale($file['modified_at'])); ?></div>
+                                        <div class="text-muted small"><?php echo sanitize_output($metaLabel); ?></div>
                                     </div>
                                 </div>
-                                <a class="btn btn-outline-primary btn-sm" href="<?php echo sanitize_output($fileUrl); ?>" target="_blank" rel="noreferrer">
-                                    <i class="fa-solid fa-download me-1"></i>Scarica
-                                </a>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <?php if ($supportsPreview): ?>
+                                        <button
+                                            type="button"
+                                            class="btn btn-outline-primary btn-sm"
+                                            data-preview-trigger
+                                            data-file-name="<?php echo sanitize_output($file['name']); ?>"
+                                            data-file-url="<?php echo sanitize_output($fileUrl); ?>"
+                                            data-file-extension="<?php echo sanitize_output($extension); ?>"
+                                            data-file-meta="<?php echo sanitize_output($metaLabel); ?>"
+                                        >
+                                            <i class="fa-solid fa-eye me-1"></i>Visualizza
+                                        </button>
+                                    <?php endif; ?>
+                                    <a class="btn btn-outline-secondary btn-sm" href="<?php echo sanitize_output($fileUrl); ?>" target="_blank" rel="noreferrer">
+                                        <i class="fa-solid fa-download me-1"></i>Scarica
+                                    </a>
+                                </div>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -119,5 +141,142 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         </div>
     </main>
 </div>
+
+<div class="promo-preview-overlay" data-preview-modal hidden aria-hidden="true">
+    <div class="promo-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="promo-preview-title">
+        <div class="promo-preview-header d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+                <p class="text-uppercase small text-muted mb-1">Anteprima file</p>
+                <h2 class="h5 mb-1" id="promo-preview-title" data-preview-title>Seleziona un file</h2>
+                <p class="text-muted small mb-0" data-preview-meta>La preview si aprirà qui.</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <a class="btn btn-sm btn-primary" href="#" target="_blank" rel="noreferrer" data-preview-open>
+                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Apri in nuova scheda
+                </a>
+                <button type="button" class="btn btn-light btn-sm" data-preview-dismiss>
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+        <div class="promo-preview-body mt-3">
+            <div class="promo-preview-stage" data-preview-stage>
+                <iframe class="promo-preview-frame d-none" data-preview-frame title="Anteprima"></iframe>
+                <img class="promo-preview-image d-none" data-preview-image alt="Anteprima" loading="lazy">
+                <div class="promo-preview-placeholder" data-preview-placeholder>
+                    Seleziona un documento per visualizzarlo senza scaricarlo.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <link rel="stylesheet" href="<?php echo sanitize_output(asset('modules/opportunities/assets/opportunities.css')); ?>">
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.querySelector('[data-preview-modal]');
+    const triggers = document.querySelectorAll('[data-preview-trigger]');
+    if (!modal || triggers.length === 0) {
+        return;
+    }
+
+    const frame = modal.querySelector('[data-preview-frame]');
+    const image = modal.querySelector('[data-preview-image]');
+    const placeholder = modal.querySelector('[data-preview-placeholder]');
+    const title = modal.querySelector('[data-preview-title]');
+    const meta = modal.querySelector('[data-preview-meta]');
+    const openLink = modal.querySelector('[data-preview-open]');
+    const dismissControls = modal.querySelectorAll('[data-preview-dismiss]');
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+    const resetPreview = () => {
+        if (frame) {
+            frame.src = '';
+            frame.classList.add('d-none');
+        }
+        if (image) {
+            image.src = '';
+            image.classList.add('d-none');
+        }
+        if (placeholder) {
+            placeholder.classList.remove('d-none');
+        }
+    };
+
+    const openModal = (fileData) => {
+        if (!modal) {
+            return;
+        }
+        modal.removeAttribute('hidden');
+        modal.classList.add('is-visible');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('promo-preview-open');
+        if (title) {
+            title.textContent = fileData.name || 'Anteprima file';
+        }
+        if (meta) {
+            meta.textContent = fileData.meta || '';
+        }
+        if (openLink) {
+            openLink.href = fileData.url || '#';
+        }
+
+        resetPreview();
+
+        if (!fileData.url) {
+            return;
+        }
+
+        if (image && imageExtensions.includes((fileData.extension || '').toLowerCase())) {
+            image.src = fileData.url;
+            image.alt = fileData.name || 'Documento';
+            image.classList.remove('d-none');
+        } else if (frame) {
+            frame.src = fileData.url;
+            frame.classList.remove('d-none');
+        }
+        if (placeholder) {
+            placeholder.classList.add('d-none');
+        }
+    };
+
+    const closeModal = () => {
+        if (!modal) {
+            return;
+        }
+        modal.classList.remove('is-visible');
+        modal.setAttribute('hidden', 'hidden');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('promo-preview-open');
+        resetPreview();
+    };
+
+    triggers.forEach((trigger) => {
+        trigger.addEventListener('click', () => {
+            openModal({
+                name: trigger.getAttribute('data-file-name') || '',
+                url: trigger.getAttribute('data-file-url') || '',
+                extension: trigger.getAttribute('data-file-extension') || '',
+                meta: trigger.getAttribute('data-file-meta') || '',
+            });
+        });
+    });
+
+    dismissControls.forEach((button) => {
+        button.addEventListener('click', closeModal);
+    });
+
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !modal.hasAttribute('hidden')) {
+            closeModal();
+        }
+    });
+});
+</script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
