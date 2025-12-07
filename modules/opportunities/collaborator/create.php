@@ -2181,10 +2181,11 @@ window.CIEIstatLookupConfig = {
             pendingPrefillData = data.customer || null;
             if (pendingPrefillData) {
                 renderPrefillDetails(pendingPrefillData);
+                applyPrefillData();
                 if (taxCodePrefillModal) {
                     taxCodePrefillModal.show();
                 }
-                showLookupMessage('Dati trovati. Conferma dal riepilogo per applicarli.', 'success');
+                showLookupMessage('Dati trovati e precompilati dal riepilogo.', 'success');
             }
         } catch (error) {
             console.error(error);
