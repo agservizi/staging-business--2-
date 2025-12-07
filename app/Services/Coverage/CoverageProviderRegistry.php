@@ -87,10 +87,15 @@ final class CoverageProviderRegistry
             ],
             'actions' => [
                 ['action' => 'wait_for', 'selector' => 'a[href*="check-coverage-super-fibra" i], .js-external-popup-open, [data-button-text-desk*="copertura fibra" i], #copertura .coverage-fields, .coverage-fields input#pac-input', 'timeout' => 35, 'continue_on_error' => true],
-                ['action' => 'wait_for', 'selector' => '.cmp-cookie-consent__accept button, button[id*="accept" i], button[class*="accept" i], button[name*="accept" i], button[data-cookie*="accept" i], button[data-action*="accept" i], button[data-gtm*="consent" i], button[data-testid*="accept" i], #cookiebar-accept, #cookiebar button.accept, #onetrust-accept-btn-handler', 'timeout' => 5, 'continue_on_error' => true],
+                ['action' => 'wait_for', 'selector' => '.cmp-cookie-consent__accept button, button[id*="accept" i], button[class*="accept" i], button[name*="accept" i], button[data-cookie*="accept" i], button[data-action*="accept" i], button[data-gtm*="consent" i], button[data-testid*="accept" i], #cookiebar-accept, #cookiebar button.accept, #onetrust-accept-btn-handler, #cookieModal, .cookie-modal', 'timeout' => 8, 'continue_on_error' => true],
                 ['action' => 'click', 'selector' => '.cmp-cookie-consent__accept button, button[id*="accept" i], button[class*="accept" i], button[name*="accept" i], button[data-cookie*="accept" i], button[data-action*="accept" i], button[data-gtm*="consent" i], button[data-testid*="accept" i], #cookiebar-accept, #cookiebar button.accept, #onetrust-accept-btn-handler', 'continue_on_error' => true],
                 ['action' => 'click', 'selector' => 'button[id*="reject" i], button[class*="reject" i], button[name*="reject" i], button[data-action*="reject" i], button[data-action*="continue" i], button[data-testid*="reject" i], #cookiebar-continue, #cookiebar button.continue', 'continue_on_error' => true],
-                ['action' => 'execute_script', 'script' => '(function(){var overlays=document.querySelectorAll("#cookiebar,.cmp-cookie-consent,#onetrust-consent-sdk");overlays.forEach(function(el){el.style.display="none";});})();', 'continue_on_error' => true],
+                [
+                    'action' => 'execute_script',
+                    'script' => '(function(){var modal=document.querySelector("#cookieModal, .cookie-modal");if(!modal){return;}var buttons=modal.querySelectorAll("button, a");var target=null;buttons.forEach(function(btn){var text=(btn.innerText||btn.textContent||"").toLowerCase();if(!target&&(text.indexOf("continua")!==-1||text.indexOf("senza")!==-1||text.indexOf("accept")!==-1||text.indexOf("accetta")!==-1)){target=btn;}});if(!target){target=buttons[0];}if(target){try{target.click();}catch(e){}}})();',
+                    'continue_on_error' => true,
+                ],
+                ['action' => 'execute_script', 'script' => '(function(){var overlays=document.querySelectorAll("#cookiebar,.cmp-cookie-consent,#onetrust-consent-sdk,#cookieModal,.cookie-modal");overlays.forEach(function(el){el.style.display="none";el.style.pointerEvents="none";});})();', 'continue_on_error' => true],
                 ['action' => 'pause', 'milliseconds' => 500],
                 [
                     'action' => 'execute_script',
@@ -112,7 +117,7 @@ final class CoverageProviderRegistry
                     'concat_fields' => ['address', 'city', 'cap'],
                     'continue_on_error' => true,
                 ],
-                ['action' => 'switch_to_frame', 'selector' => '#js-external-popup-placeholder iframe', 'continue_on_error' => true],
+                ['action' => 'switch_to_frame', 'selector' => '#js-external-popup-placeholder iframe', 'timeout' => 5, 'continue_on_error' => true],
                 [
                     'action' => 'wait_for',
                     'selector' => 'form input:is([name*="address" i],[placeholder*="indirizzo" i]), .coverage-fields input:is(#pac-input,[placeholder*="indirizzo" i])',
