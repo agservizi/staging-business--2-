@@ -221,7 +221,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
             <div>
                 <p class="text-uppercase small fw-semibold text-muted mb-1">Opportunity</p>
-                <h1 class="h4 mb-0"><?php echo $isEditingOpportunity ? 'Modifica opportunity' : 'Nuova opportunity'; ?></h1>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <h1 class="h4 mb-0"><?php echo $isEditingOpportunity ? 'Modifica opportunity' : 'Nuova opportunity'; ?></h1>
+                    <?php if ($isEditingOpportunity): ?>
+                        <span class="badge bg-warning text-dark">Riaperta per rettifica</span>
+                    <?php endif; ?>
+                </div>
                 <p class="text-muted mb-0"><?php echo $isEditingOpportunity ? 'Aggiorna i dati richiesti dall\'admin prima della nuova verifica.' : 'Registra contratti telefonici, luce e gas per l\'approvazione dell\'admin.'; ?></p>
 
             <div class="modal fade" id="customerPrefillModal" tabindex="-1" aria-labelledby="customerPrefillModalLabel" aria-hidden="true">
@@ -256,6 +261,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <i class="fa-solid fa-arrow-left me-2"></i>Torna alla lista
             </a>
         </div>
+
+        <?php if ($isEditingOpportunity): ?>
+            <div class="alert alert-info d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3" role="status">
+                <div>
+                    <strong>Rettifica richiesta</strong>
+                    <p class="mb-0">Aggiorna i dati segnalati e salva: l'admin riesaminerà la pratica dopo l'invio.</p>
+                </div>
+                <div class="text-muted small">Opportunity #<?php echo (int) $editOpportunityId; ?></div>
+            </div>
+        <?php endif; ?>
 
         <?php if ($errors): ?>
             <div class="alert alert-danger" role="alert">
@@ -294,7 +309,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <div class="alert alert-secondary d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3" role="status">
             <div>
                 <strong>Salvataggio automatico bozza</strong>
-                <p class="mb-1 small" id="draft-status-label">I dati vengono salvati in locale ogni pochi secondi. Puoi chiudere la pagina e riprendere più tardi.</p>
+                <p class="mb-1 small" id="draft-status-label">Ultimo salvataggio: —</p>
                 <p class="mb-0 small text-muted" id="remote-draft-status-label">Bozza cloud non ancora salvata.</p>
             </div>
             <div class="d-flex flex-column flex-md-row gap-2">
@@ -1100,6 +1115,9 @@ window.CIEIstatLookupConfig = {
         clearDraftButton?.setAttribute('aria-disabled', 'true');
     }
 
+    // Stato iniziale visivo del salvataggio
+    updateDraftStatus(buildLastSavedMessage(), 'muted');
+
     const describeRemoteDraftStatus = () => {
         if (!canUseServerDrafts) {
             return 'Bozza cloud non disponibile su questo account.';
@@ -1850,11 +1868,11 @@ window.CIEIstatLookupConfig = {
 
     const debouncedSaveDraft = debounce(() => {
         saveDraft();
-    }, 800);
+    }, 450);
 
     const debouncedRemoteSave = debounce(() => {
         saveRemoteDraft();
-    }, 1600);
+    }, 1200);
 
     const handleFormMutationForDraft = (event) => {
         if (!event) {
