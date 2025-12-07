@@ -107,70 +107,80 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <p class="text-muted mb-4">
                         Compila i campi richiesti, scegli il gestore e lascia che il nodo Selenium apra il sito reale. Al termine riceverai lo stato dell'automazione, eventuali dati estratti e lo screenshot della sessione.
                     </p>
-                    <form class="row g-3" data-coverage-form novalidate>
-                        <div class="col-12 col-xl-4">
-                            <label class="form-label" for="coverageProvider">Gestore</label>
-                            <select class="form-select" id="coverageProvider" name="provider" required data-provider-select>
-                                <option value="">Seleziona gestore…</option>
-                                <?php
-                                    $categoryLabels = [
-                                        'consumer' => 'Consumer (domestico)',
-                                        'business' => 'Business / P. IVA',
-                                    ];
-                                ?>
-                                <?php foreach ($categoryLabels as $categoryKey => $categoryLabel): ?>
-                                    <?php if (!empty($coverageProvidersByCategory[$categoryKey])): ?>
-                                        <optgroup label="<?php echo sanitize_output($categoryLabel); ?>">
-                                            <?php foreach ($coverageProvidersByCategory[$categoryKey] as $providerMeta): ?>
-                                                <option value="<?php echo sanitize_output($providerMeta['key']); ?>">
-                                                    <?php echo sanitize_output($providerMeta['label']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </optgroup>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            </select>
-                            <div class="form-text d-flex justify-content-between align-items-center mt-1 gap-2">
-                                <span data-provider-status class="text-muted">Automazione non selezionata.</span>
-                                <span class="text-muted" data-provider-note></span>
+                    <form data-coverage-form novalidate>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12" data-field-row="address">
+                                <label class="form-label fw-semibold" for="coverageAddress">Ricerca copertura</label>
+                                <div class="input-group input-group-lg shadow-sm" data-search-bar>
+                                    <span class="input-group-text bg-white border-end-0">
+                                        <i class="fa-solid fa-tower-cell text-primary"></i>
+                                    </span>
+                                    <select class="form-select form-select-lg flex-shrink-0 w-auto border-start-0 border-end-0" id="coverageProvider" name="provider" required data-provider-select>
+                                        <option value="">Gestore…</option>
+                                        <?php
+                                            $categoryLabels = [
+                                                'consumer' => 'Consumer (domestico)',
+                                                'business' => 'Business / P. IVA',
+                                            ];
+                                        ?>
+                                        <?php foreach ($categoryLabels as $categoryKey => $categoryLabel): ?>
+                                            <?php if (!empty($coverageProvidersByCategory[$categoryKey])): ?>
+                                                <optgroup label="<?php echo sanitize_output($categoryLabel); ?>">
+                                                    <?php foreach ($coverageProvidersByCategory[$categoryKey] as $providerMeta): ?>
+                                                        <option value="<?php echo sanitize_output($providerMeta['key']); ?>">
+                                                            <?php echo sanitize_output($providerMeta['label']); ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </optgroup>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <input class="form-control form-control-lg border-start-0" type="search" id="coverageAddress" name="address" placeholder="Inserisci indirizzo completo…" data-field-input>
+                                    <button class="btn btn-primary btn-lg" type="submit" data-coverage-submit>
+                                        <span data-label>Verifica copertura</span>
+                                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" data-spinner></span>
+                                    </button>
+                                </div>
+                                <div class="form-text d-flex flex-wrap gap-2 mt-2 align-items-center">
+                                    <span data-provider-status class="text-muted">Automazione non selezionata.</span>
+                                    <a class="small fw-semibold d-none" href="#" target="_blank" rel="noreferrer noopener" data-provider-link>Apri portale</a>
+                                    <span class="text-muted" data-provider-note></span>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-12 col-sm-6 col-xl-4" data-field-row="company">
-                            <label class="form-label" for="coverageCompany">Ragione sociale</label>
-                            <input class="form-control" type="text" id="coverageCompany" name="company" placeholder="Es. AG Servizi" data-field-input>
-                        </div>
-                        <div class="col-12 col-sm-6 col-xl-4" data-field-row="address">
-                            <label class="form-label" for="coverageAddress">Indirizzo</label>
-                            <input class="form-control" type="text" id="coverageAddress" name="address" placeholder="Via, Piazza…" data-field-input>
-                        </div>
-                        <div class="col-6 col-xl-2" data-field-row="civic">
-                            <label class="form-label" for="coverageCivic">Civico</label>
-                            <input class="form-control" type="text" id="coverageCivic" name="civic" placeholder="12" data-field-input>
-                        </div>
-                        <div class="col-6 col-xl-2" data-field-row="cap">
-                            <label class="form-label" for="coverageCap">CAP</label>
-                            <input class="form-control" type="text" id="coverageCap" name="cap" placeholder="20100" data-field-input>
-                        </div>
-                        <div class="col-12 col-sm-6 col-xl-3" data-field-row="city">
-                            <label class="form-label" for="coverageCity">Comune</label>
-                            <input class="form-control" type="text" id="coverageCity" name="city" placeholder="Milano" data-field-input>
-                        </div>
-                        <div class="col-12 col-sm-6 col-xl-3" data-field-row="province">
-                            <label class="form-label" for="coverageProvince">Provincia</label>
-                            <input class="form-control" type="text" id="coverageProvince" name="province" placeholder="MI" data-field-input>
-                        </div>
-                        <div class="col-12 col-xl-6" data-field-row="notes">
-                            <label class="form-label" for="coverageNotes">Note interne</label>
-                            <textarea class="form-control" id="coverageNotes" name="notes" rows="2" placeholder="Es. cliente preferisce FTTH" data-field-input></textarea>
-                        </div>
-                        <div class="col-12 d-flex justify-content-end gap-2">
-                            <button class="btn btn-outline-secondary" type="button" data-coverage-reset>
-                                <i class="fa-solid fa-rotate-left me-2"></i>Reset
+                        <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+                            <p class="text-muted small mb-0">Il nodo Selenium lavora in background: tu inserisci l'indirizzo e la pagina restituisce il link reale con il responso.</p>
+                            <button class="btn btn-link px-0 text-decoration-none" type="button" data-advanced-toggle>
+                                <i class="fa-solid fa-sliders me-2"></i>Parametri aggiuntivi
                             </button>
-                            <button class="btn btn-primary" type="submit" data-coverage-submit>
-                                <span data-label>Avvia Selenium</span>
-                                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" data-spinner></span>
-                            </button>
+                        </div>
+                        <div class="collapse mt-3" data-advanced-fields>
+                            <div class="row g-3">
+                                <div class="col-12 col-sm-6 col-xl-4" data-field-row="company">
+                                    <label class="form-label" for="coverageCompany">Ragione sociale</label>
+                                    <input class="form-control" type="text" id="coverageCompany" name="company" placeholder="Es. AG Servizi" data-field-input>
+                                </div>
+                                <div class="col-6 col-xl-2" data-field-row="civic">
+                                    <label class="form-label" for="coverageCivic">Civico</label>
+                                    <input class="form-control" type="text" id="coverageCivic" name="civic" placeholder="12" data-field-input>
+                                </div>
+                                <div class="col-6 col-xl-2" data-field-row="cap">
+                                    <label class="form-label" for="coverageCap">CAP</label>
+                                    <input class="form-control" type="text" id="coverageCap" name="cap" placeholder="20100" data-field-input>
+                                </div>
+                                <div class="col-12 col-sm-6 col-xl-3" data-field-row="city">
+                                    <label class="form-label" for="coverageCity">Comune</label>
+                                    <input class="form-control" type="text" id="coverageCity" name="city" placeholder="Milano" data-field-input>
+                                </div>
+                                <div class="col-12 col-sm-6 col-xl-3" data-field-row="province">
+                                    <label class="form-label" for="coverageProvince">Provincia</label>
+                                    <input class="form-control" type="text" id="coverageProvince" name="province" placeholder="MI" data-field-input>
+                                </div>
+                                <div class="col-12 col-xl-6" data-field-row="notes">
+                                    <label class="form-label" for="coverageNotes">Note interne</label>
+                                    <textarea class="form-control" id="coverageNotes" name="notes" rows="2" placeholder="Es. cliente preferisce FTTH" data-field-input></textarea>
+                                </div>
+                            </div>
                         </div>
                     </form>
                     <div class="alert alert-warning mt-3 d-none" role="alert" data-coverage-warning></div>
@@ -181,7 +191,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <p class="text-uppercase small text-muted mb-1" data-result-provider>Gestore</p>
                                     <h3 class="h5 mb-0" data-result-status>—</h3>
                                 </div>
-                                <span class="badge bg-secondary-subtle text-secondary fw-semibold" data-result-badge>In attesa</span>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <a class="btn btn-outline-primary btn-sm d-none" href="#" target="_blank" rel="noreferrer noopener" data-result-link>
+                                        <i class="fa-solid fa-up-right-from-square me-1"></i>Apri portale
+                                    </a>
+                                    <span class="badge bg-secondary-subtle text-secondary fw-semibold" data-result-badge>In attesa</span>
+                                </div>
                             </div>
                             <p class="text-muted mb-4" data-result-message>Avvia una verifica per ottenere il responso.</p>
                             <div class="row g-3" data-result-summary></div>
@@ -315,12 +330,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const providerSelect = form.querySelector('[data-provider-select]');
     const providerStatus = form.querySelector('[data-provider-status]');
     const providerNote = form.querySelector('[data-provider-note]');
+    const providerLink = form.querySelector('[data-provider-link]');
     const fieldRows = form.querySelectorAll('[data-field-row]');
     const warningAlert = document.querySelector('[data-coverage-warning]');
-    const resetButton = form.querySelector('[data-coverage-reset]');
     const submitButton = form.querySelector('[data-coverage-submit]');
     const submitLabel = submitButton ? submitButton.querySelector('[data-label]') : null;
     const submitSpinner = submitButton ? submitButton.querySelector('[data-spinner]') : null;
+    const advancedToggle = form.querySelector('[data-advanced-toggle]');
+    const advancedFields = form.querySelector('[data-advanced-fields]');
     const resultCard = document.querySelector('[data-coverage-result]');
     const resultProvider = resultCard ? resultCard.querySelector('[data-result-provider]') : null;
     const resultStatus = resultCard ? resultCard.querySelector('[data-result-status]') : null;
@@ -331,9 +348,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultStepsWrapper = resultCard ? resultCard.querySelector('[data-result-steps-wrapper]') : null;
     const screenshotWrapper = resultCard ? resultCard.querySelector('[data-result-screenshot-wrapper]') : null;
     const screenshotImg = resultCard ? resultCard.querySelector('[data-result-screenshot]') : null;
+    const resultLink = resultCard ? resultCard.querySelector('[data-result-link]') : null;
 
     const endpoint = '<?php echo sanitize_output(asset('api/coverage-check.php')); ?>';
     const csrfToken = '<?php echo sanitize_output($csrfToken); ?>';
+    let advancedManuallyOpened = false;
 
     const statusLabels = {
         completed: 'Completata',
@@ -378,6 +397,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!fieldKey || !input) {
                 return;
             }
+            if (fieldKey === 'address') {
+                row.classList.remove('d-none');
+                if (provider && provider.fields && provider.fields[fieldKey]) {
+                    input.required = !!provider.fields[fieldKey].required;
+                } else {
+                    input.required = false;
+                }
+                return;
+            }
             if (!provider || !provider.fields || !provider.fields[fieldKey]) {
                 row.classList.add('d-none');
                 input.required = false;
@@ -387,6 +415,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 input.required = !!provider.fields[fieldKey].required;
             }
         });
+
+        const hasAdvancedFields = Array.from(fieldRows).some((row) => {
+            const key = row.getAttribute('data-field-row');
+            return key && key !== 'address' && !row.classList.contains('d-none');
+        });
+
+        if (advancedFields) {
+            if (!hasAdvancedFields) {
+                advancedFields.classList.remove('show');
+                advancedFields.classList.add('d-none');
+                advancedManuallyOpened = false;
+            } else {
+                advancedFields.classList.remove('d-none');
+                if (!advancedManuallyOpened) {
+                    advancedFields.classList.add('show');
+                }
+            }
+        }
+
+        if (advancedToggle) {
+            const isOpen = advancedFields ? advancedFields.classList.contains('show') : false;
+            advancedToggle.classList.toggle('d-none', !hasAdvancedFields);
+            advancedToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
     };
 
     const updateProviderMeta = () => {
@@ -399,6 +451,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (providerNote) {
                 providerNote.textContent = '';
             }
+            if (providerLink) {
+                providerLink.classList.add('d-none');
+                providerLink.removeAttribute('href');
+            }
             return;
         }
         const automation = provider.automation_status && automationLabels[provider.automation_status]
@@ -407,6 +463,15 @@ document.addEventListener('DOMContentLoaded', () => {
         providerStatus.textContent = automation;
         if (providerNote) {
             providerNote.textContent = provider.notes ? provider.notes : '';
+        }
+        if (providerLink) {
+            if (provider.url) {
+                providerLink.href = provider.url;
+                providerLink.classList.remove('d-none');
+            } else {
+                providerLink.classList.add('d-none');
+                providerLink.removeAttribute('href');
+            }
         }
     };
 
@@ -433,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
             submitSpinner.classList.toggle('d-none', !isLoading);
         }
         if (submitLabel) {
-            submitLabel.textContent = isLoading ? 'Verifica in corso…' : 'Avvia Selenium';
+            submitLabel.textContent = isLoading ? 'Verifica in corso…' : 'Verifica copertura';
         }
     };
 
@@ -452,6 +517,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (resultSteps) {
             resultSteps.textContent = '';
+        }
+        if (resultLink) {
+            resultLink.classList.add('d-none');
+            resultLink.removeAttribute('href');
         }
     };
 
@@ -516,6 +585,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (resultMessage) {
             resultMessage.textContent = data.message || 'Automazione completata.';
+        }
+
+        if (resultLink) {
+            if (provider.url) {
+                resultLink.href = provider.url;
+                resultLink.classList.remove('d-none');
+            } else {
+                resultLink.classList.add('d-none');
+                resultLink.removeAttribute('href');
+            }
         }
 
         renderSummary(data.summary || {});
@@ -585,15 +664,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    resetButton?.addEventListener('click', () => {
-        form.reset();
-        hideWarning();
-        clearResult();
-        updateFieldVisibility();
-        updateProviderMeta();
+    advancedToggle?.addEventListener('click', () => {
+        if (!advancedFields) {
+            return;
+        }
+        advancedFields.classList.toggle('show');
+        advancedFields.classList.remove('d-none');
+        advancedManuallyOpened = advancedFields.classList.contains('show');
+        advancedToggle.setAttribute('aria-expanded', advancedManuallyOpened ? 'true' : 'false');
     });
 
     providerSelect?.addEventListener('change', () => {
+        advancedManuallyOpened = false;
         updateFieldVisibility();
         updateProviderMeta();
         clearResult();

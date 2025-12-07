@@ -221,6 +221,7 @@ final class CoverageProviderRegistry
             return [
                 'key' => $provider['key'],
                 'label' => $provider['label'],
+                'url' => $provider['url'],
                 'category' => $provider['category'],
                 'automation_status' => $provider['automation_status'],
                 'notes' => $provider['notes'] ?? null,
