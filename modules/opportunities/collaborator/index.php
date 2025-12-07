@@ -59,9 +59,6 @@ if ($currentPage > $totalPages && $totalOpportunities > 0) {
 }
 $offset = ($currentPage - 1) * $perPage;
 $opportunities = $opportunityService->listCollaboratorOpportunities($collaboratorId, $listFilters, $perPage, $offset);
-$displayStart = $totalOpportunities > 0 ? $offset + 1 : 0;
-$displayEnd = $totalOpportunities > 0 ? min($totalOpportunities, $offset + count($opportunities)) : 0;
-$hasPagination = $totalPages > 1;
 $remoteDraft = $opportunityService->getCollaboratorDraft($collaboratorId);
 $remoteDraftData = is_array($remoteDraft['data'] ?? null) ? $remoteDraft['data'] : [];
 $hasRemoteDraft = $remoteDraftData !== [];
@@ -84,13 +81,7 @@ if ($categoryFilter !== '') {
 if ($searchQuery !== '') {
     $filterQueryParams['q'] = $searchQuery;
 }
-$paginationBaseParams = $filterQueryParams;
-$listBaseUrl = asset('modules/opportunities/collaborator/index.php');
 $advancedFiltersUrl = asset('modules/opportunities/collaborator/list.php');
-$buildPageUrl = static function (int $page) use ($paginationBaseParams, $listBaseUrl): string {
-    $query = array_merge($paginationBaseParams, ['page' => $page]);
-    return $listBaseUrl . '?' . http_build_query($query);
-};
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -290,17 +281,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         </div>
 
-        <?php if ($opportunities): ?>
-            <div class="d-flex justify-content-between align-items-end mb-3 flex-wrap gap-3">
-                <div class="text-muted small text-end ms-auto">
-                    <div>Mostrando <?php echo sanitize_output(number_format($displayStart)); ?> - <?php echo sanitize_output(number_format($displayEnd)); ?> di <?php echo sanitize_output(number_format($totalOpportunities)); ?> opportunity.</div>
-                    <div>
-                        Suggerimento: usa i <a class="text-decoration-underline" href="<?php echo sanitize_output($advancedFiltersUrl); ?>">filtri avanzati</a> nella vista elenco dedicata.
-                    </div>
-                </div>
-            </div>
-        <?php endif; ?>
-
         <div class="row g-4">
             <?php if ($hasRemoteDraft): ?>
                 <?php
@@ -379,98 +359,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
             <?php endif; ?>
-            <?php foreach ($opportunities as $opportunity): ?>
-                <div class="col-12 opportunity-list-entry">
-                    <div class="card opportunity-card shadow-sm">
-                        <div class="card-body">
-                            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
-                                <div>
-                                    <p class="text-uppercase small text-muted mb-1 d-flex align-items-center gap-2 flex-wrap">
-                                        <span><?php echo sanitize_output(strtoupper($opportunity['category'] ?? '')); ?></span>
-                                        <span class="opportunity-code"><?php echo sanitize_output($opportunity['code'] ?? ''); ?></span>
-                                    </p>
-                                    <h3 class="h5 mb-1"><?php echo sanitize_output($opportunity['customer_first_name'] . ' ' . $opportunity['customer_last_name']); ?></h3>
-                                    <p class="text-muted mb-0">Gestore: <?php echo sanitize_output($opportunity['provider_label'] ?? ''); ?></p>
-                                </div>
-                                <div class="text-lg-end">
-                                    <?php
-                                $badgeClass = 'bg-secondary';
-                                $statusColor = $opportunity['status_color'] ?? '';
-                                $colorToBootstrap = [
-                                    'warning' => 'bg-warning text-dark',
-                                    'info' => 'bg-info text-dark',
-                                    'primary' => 'bg-primary',
-                                    'danger' => 'bg-danger',
-                                    'success' => 'bg-success',
-                                ];
-                                if ($statusColor && isset($colorToBootstrap[$statusColor])) {
-                                    $badgeClass = $colorToBootstrap[$statusColor];
-                                }
-                                $adminNotes = trim((string) ($opportunity['admin_notes'] ?? ''));
-                                if ($adminNotes !== '') {
-                                    $adminNotes = mb_strimwidth($adminNotes, 0, 160, '…');
-                                }
-                                $lastUpdate = format_datetime_locale($opportunity['last_status_change'] ?? $opportunity['updated_at'] ?? $opportunity['created_at'] ?? null);
-                                $tooltipParts = [];
-                                if ($adminNotes !== '') {
-                                    $tooltipParts[] = 'Note admin: ' . $adminNotes;
-                                }
-                                if ($lastUpdate) {
-                                    $tooltipParts[] = 'Ultimo aggiornamento: ' . $lastUpdate;
-                                }
-                                $badgeTooltip = implode(' • ', $tooltipParts);
-                                ?>
-                                    ?>
-                                    <span class="badge <?php echo $badgeClass; ?> opportunity-status-badge"<?php if ($badgeTooltip !== ''): ?> data-bs-toggle="tooltip" data-bs-placement="top" title="<?php echo sanitize_output($badgeTooltip); ?>"<?php endif; ?>>
-                                        <?php echo sanitize_output($opportunity['status_label'] ?? $opportunity['status_code'] ?? ''); ?>
-                                    </span>
-                                    <p class="text-muted small mb-0 mt-2">
-                                        Inviata il <?php echo sanitize_output(format_datetime_locale($opportunity['created_at'] ?? null)); ?>
-                                    </p>
-                                </div>
-                            </div>
-                            <?php if (!empty($opportunity['id'])): ?>
-                                <?php $cloneUrl = asset('modules/opportunities/collaborator/create.php?clone_id=' . (int) $opportunity['id']); ?>
-                                <div class="d-flex justify-content-end mt-3">
-                                    <a class="btn btn-outline-primary btn-sm" href="<?php echo sanitize_output($cloneUrl); ?>">
-                                        <i class="fa-solid fa-clone me-1"></i>Duplica opportunity
-                                    </a>
-                                </div>
-                            <?php endif; ?>
-                        </div>
+            <?php if ($opportunities): ?>
+                <div class="col-12">
+                    <div class="alert alert-secondary mb-0" role="alert">
+                        Hai <?php echo sanitize_output(number_format($totalOpportunities)); ?> opportunity attive. Consulta l'elenco completo e applica filtri dalla vista dedicata: <a class="fw-semibold" href="<?php echo sanitize_output($advancedFiltersUrl); ?>">apri elenco opportunity</a>.
                     </div>
                 </div>
-            <?php endforeach; ?>
+            <?php endif; ?>
         </div>
-        <?php if ($hasPagination && $opportunities): ?>
-            <?php
-                $window = 5;
-                $startPage = max(1, $currentPage - (int) floor($window / 2));
-                $endPage = min($totalPages, $startPage + $window - 1);
-                if ($endPage - $startPage + 1 < $window) {
-                    $startPage = max(1, $endPage - $window + 1);
-                }
-            ?>
-            <nav aria-label="Paginazione opportunity" class="mt-4">
-                <ul class="pagination justify-content-center flex-wrap gap-2">
-                    <li class="page-item <?php echo $currentPage === 1 ? 'disabled' : ''; ?>">
-                        <a class="page-link" href="<?php echo $currentPage === 1 ? '#' : sanitize_output($buildPageUrl($currentPage - 1)); ?>" tabindex="<?php echo $currentPage === 1 ? '-1' : '0'; ?>">&laquo; Prec.</a>
-                    </li>
-                    <?php for ($page = $startPage; $page <= $endPage; $page += 1): ?>
-                        <li class="page-item <?php echo $page === $currentPage ? 'active' : ''; ?>">
-                            <?php if ($page === $currentPage): ?>
-                                <span class="page-link"><?php echo $page; ?></span>
-                            <?php else: ?>
-                                <a class="page-link" href="<?php echo sanitize_output($buildPageUrl($page)); ?>"><?php echo $page; ?></a>
-                            <?php endif; ?>
-                        </li>
-                    <?php endfor; ?>
-                    <li class="page-item <?php echo $currentPage >= $totalPages ? 'disabled' : ''; ?>">
-                        <a class="page-link" href="<?php echo $currentPage >= $totalPages ? '#' : sanitize_output($buildPageUrl($currentPage + 1)); ?>" tabindex="<?php echo $currentPage >= $totalPages ? '-1' : '0'; ?>">Succ. &raquo;</a>
-                    </li>
-                </ul>
-            </nav>
-        <?php endif; ?>
     </main>
 </div>
 <link rel="stylesheet" href="<?php echo asset('modules/opportunities/assets/opportunities.css'); ?>">
