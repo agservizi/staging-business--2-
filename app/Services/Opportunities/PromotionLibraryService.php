@@ -115,23 +115,6 @@ final class PromotionLibraryService
         return $relative;
     }
 
-    public function ensureFolderExists(string $relativePath): void
-    {
-        $relative = $this->normalizeRelativePath($relativePath);
-        if ($relative === '') {
-            return;
-        }
-
-        $absolute = $this->absolutePath($relative);
-        if (is_dir($absolute)) {
-            return;
-        }
-
-        if (!mkdir($absolute, 0775, true) && !is_dir($absolute)) {
-            throw new RuntimeException('Impossibile creare la cartella richiesta.');
-        }
-    }
-
     /**
      * @param array{name?:string,type?:string,tmp_name?:string,error?:int,size?:int} $file
      * @return array{name:string,relative_path:string,public_url:string,size:int}
