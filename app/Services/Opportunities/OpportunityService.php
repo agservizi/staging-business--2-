@@ -228,8 +228,17 @@ final class OpportunityService
 
         $search = isset($filters['search']) ? trim((string) $filters['search']) : '';
         if ($search !== '') {
-            $conditions[] = '(o.code LIKE :search OR o.customer_first_name LIKE :search OR o.customer_last_name LIKE :search OR o.provider_label LIKE :search)';
-            $params[':search'] = '%' . $search . '%';
+            $conditions[] = '(
+                o.code LIKE :search_code
+                OR o.customer_first_name LIKE :search_first
+                OR o.customer_last_name LIKE :search_last
+                OR o.provider_label LIKE :search_provider
+            )';
+            $likeValue = '%' . $search . '%';
+            $params[':search_code'] = $likeValue;
+            $params[':search_first'] = $likeValue;
+            $params[':search_last'] = $likeValue;
+            $params[':search_provider'] = $likeValue;
         }
 
         return [$conditions, $params];
