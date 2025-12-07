@@ -43,7 +43,7 @@ if ($creatorLabel === '') {
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
 ?>
-<div class="flex-grow-1 d-flex flex-column min-vh-100" data-ticket-id="<?php echo (int) $ticketId; ?>" data-ticket-csrf="<?php echo sanitize_output($csrfToken); ?>" data-ticket-base="<?php echo sanitize_output(asset('modules/ticket')); ?>">
+<div class="flex-grow-1 d-flex flex-column min-vh-100" data-ticket-id="<?php echo (int) $ticketId; ?>" data-ticket-csrf="<?php echo sanitize_output($csrfToken); ?>" data-ticket-base="<?php echo sanitize_output(rtrim(base_url('modules/ticket'), '/')); ?>">
     <?php require_once __DIR__ . '/../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="page-toolbar mb-4 d-flex justify-content-between align-items-start flex-wrap gap-3">
