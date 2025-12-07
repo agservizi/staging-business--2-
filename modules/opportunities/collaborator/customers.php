@@ -129,9 +129,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <span class="<?php echo $statusClass; ?>"><?php echo sanitize_output($statusLabel); ?></span>
                                         </td>
                                         <td class="text-end">
-                                            <a class="btn btn-sm btn-outline-primary" href="<?php echo asset('modules/opportunities/collaborator/customer.php?tax_code=' . urlencode((string) $taxCode)); ?>">
-                                                <i class="fa-solid fa-user me-1"></i>Apri scheda
-                                            </a>
+                                            <?php if ($taxCode !== ''): ?>
+                                                <a class="btn btn-sm btn-outline-primary" href="<?php echo base_url('modules/opportunities/collaborator/customer.php?tax_code=' . urlencode((string) $taxCode)); ?>">
+                                                    <i class="fa-solid fa-user me-1"></i>Apri scheda
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="text-muted small">CF mancante</span>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
