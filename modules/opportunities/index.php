@@ -37,9 +37,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <h1 class="h4 mb-0">Pipeline commerciale</h1>
                 <p class="text-muted mb-0">Monitora le richieste inserite dai collaboratori e applica gli avanzamenti di stato.</p>
             </div>
-            <a class="btn btn-outline-primary" href="<?php echo sanitize_output(asset('modules/opportunities/promotions/index.php')); ?>">
-                <i class="fa-solid fa-folder-open me-2"></i>File manager promo
-            </a>
+            <div class="d-flex gap-2">
+                <a class="btn btn-outline-primary" href="<?php echo sanitize_output(asset('modules/opportunities/promotions/index.php')); ?>">
+                    <i class="fa-solid fa-folder-open me-2"></i>File manager promo
+                </a>
+                <a class="btn btn-primary" href="<?php echo sanitize_output(asset('modules/opportunities/commissions.php')); ?>">
+                    <i class="fa-solid fa-hand-holding-dollar me-2"></i>Provvigioni collaboratori
+                </a>
+            </div>
         </div>
 
 

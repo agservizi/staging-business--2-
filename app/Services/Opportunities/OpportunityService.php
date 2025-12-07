@@ -402,6 +402,201 @@ final class OpportunityService
     }
 
     /**
+     * @return array{months:array<int,array{key:string,label:string,total:float,opportunities:int}>,lifetime_total:float}
+     */
+    public function getCollaboratorCommissionTimeline(int $userId, int $months = 6): array
+    {
+        if ($userId <= 0) {
+            return ['months' => [], 'lifetime_total' => 0.0];
+        }
+
+        $months = max(1, min(24, $months));
+        $currentMonth = new DateTimeImmutable('first day of this month 00:00:00');
+
+        $monthMap = [];
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $month = $currentMonth->modify(sprintf('-%d months', $i));
+            if ($month === false) {
+                continue;
+            }
+            $key = $month->format('Y-m');
+            $monthMap[$key] = [
+                'key' => $key,
+                'label' => $this->formatItalianMonth($month),
+                'total' => 0.0,
+                'opportunities' => 0,
+            ];
+        }
+
+        $oldestMonth = $currentMonth->modify(sprintf('-%d months', $months - 1)) ?: $currentMonth;
+        $stmt = $this->pdo->prepare(
+            'SELECT DATE_FORMAT(created_at, "%Y-%m") AS month_key,
+                    SUM(COALESCE(commission_amount, 0)) AS total_commission,
+                    COUNT(*) AS total_opportunities
+             FROM opportunities
+             WHERE collaborator_id = :user
+               AND created_at >= :fromDate
+             GROUP BY month_key
+             ORDER BY month_key'
+        );
+        $stmt->bindValue(':user', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':fromDate', $oldestMonth->format('Y-m-01 00:00:00'));
+        $stmt->execute();
+
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $key = (string) ($row['month_key'] ?? '');
+            if ($key === '' || !isset($monthMap[$key])) {
+                continue;
+            }
+            $monthMap[$key]['total'] = (float) ($row['total_commission'] ?? 0);
+            $monthMap[$key]['opportunities'] = (int) ($row['total_opportunities'] ?? 0);
+        }
+
+        $lifetimeStmt = $this->pdo->prepare(
+            'SELECT SUM(COALESCE(commission_amount, 0)) AS total
+             FROM opportunities
+             WHERE collaborator_id = :user'
+        );
+        $lifetimeStmt->execute([':user' => $userId]);
+        $lifetimeTotal = (float) ($lifetimeStmt->fetchColumn() ?: 0);
+
+        return [
+            'months' => array_values($monthMap),
+            'lifetime_total' => $lifetimeTotal,
+        ];
+    }
+
+    /**
+     * @return array<int,array<string,mixed>>
+     */
+    public function listCollaboratorMonthlyOpportunities(int $userId, string $monthKey): array
+    {
+        if ($userId <= 0) {
+            return [];
+        }
+
+        $bounds = $this->resolveMonthBounds($monthKey);
+        $stmt = $this->pdo->prepare(
+            'SELECT o.id, o.code, o.provider_label, o.offer_label, o.status_label, o.status_code,
+                    o.status_color, o.commission_amount, o.created_at
+             FROM opportunities o
+             WHERE o.collaborator_id = :user
+               AND o.created_at >= :start
+               AND o.created_at < :end
+             ORDER BY o.created_at DESC'
+        );
+        $stmt->execute([
+            ':user' => $userId,
+            ':start' => $bounds['start'],
+            ':end' => $bounds['end'],
+        ]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * @return array<int,array{key:string,label:string}>
+     */
+    public function getCommissionMonthOptions(?int $collaboratorId = null, int $limit = 12): array
+    {
+        $limit = max(1, min(36, $limit));
+        $sql = 'SELECT DATE_FORMAT(created_at, "%Y-%m") AS month_key
+                FROM opportunities
+                WHERE commission_amount IS NOT NULL';
+        if ($collaboratorId !== null) {
+            $sql .= ' AND collaborator_id = :user';
+        }
+        $sql .= ' GROUP BY month_key ORDER BY month_key DESC LIMIT :limit';
+
+        $stmt = $this->pdo->prepare($sql);
+        if ($collaboratorId !== null) {
+            $stmt->bindValue(':user', $collaboratorId, PDO::PARAM_INT);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $options = [];
+        foreach ($rows as $row) {
+            $key = (string) ($row['month_key'] ?? '');
+            if ($key === '') {
+                continue;
+            }
+            $date = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $key . '-01 00:00:00');
+            $date = $date ?: new DateTimeImmutable('first day of this month 00:00:00');
+            $options[] = [
+                'key' => $key,
+                'label' => $this->formatItalianMonth($date),
+            ];
+        }
+
+        if ($options) {
+            return $options;
+        }
+
+        $fallback = new DateTimeImmutable('first day of this month 00:00:00');
+        return [[
+            'key' => $fallback->format('Y-m'),
+            'label' => $this->formatItalianMonth($fallback),
+        ]];
+    }
+
+    /**
+     * @return array<int,array<string,mixed>>
+     */
+    public function getMonthlyCommissionsByCollaborator(string $monthKey): array
+    {
+        $bounds = $this->resolveMonthBounds($monthKey);
+        $stmt = $this->pdo->prepare(
+            'SELECT o.collaborator_id,
+                    u.nome AS collaborator_name,
+                    u.cognome AS collaborator_surname,
+                    u.email AS collaborator_email,
+                    SUM(COALESCE(o.commission_amount, 0)) AS total_commission,
+                    COUNT(*) AS opportunities
+             FROM opportunities o
+             LEFT JOIN users u ON u.id = o.collaborator_id
+             WHERE o.created_at >= :start
+               AND o.created_at < :end
+             GROUP BY o.collaborator_id, u.nome, u.cognome, u.email
+             ORDER BY total_commission DESC'
+        );
+        $stmt->execute([
+            ':start' => $bounds['start'],
+            ':end' => $bounds['end'],
+        ]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    /**
+     * @return array{start:string,end:string,label:string,key:string}
+     */
+    private function resolveMonthBounds(string $monthKey): array
+    {
+        $monthKey = trim($monthKey);
+        if (!preg_match('/^\d{4}-\d{2}$/', $monthKey)) {
+            $monthDate = new DateTimeImmutable('first day of this month 00:00:00');
+        } else {
+            $monthDate = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $monthKey . '-01 00:00:00');
+            if ($monthDate === false) {
+                $monthDate = new DateTimeImmutable('first day of this month 00:00:00');
+            }
+        }
+
+        $start = $monthDate->format('Y-m-01 00:00:00');
+        $endDate = $monthDate->modify('first day of next month 00:00:00');
+        $end = ($endDate ?: $monthDate)->format('Y-m-01 00:00:00');
+
+        return [
+            'start' => $start,
+            'end' => $end,
+            'label' => $this->formatItalianMonth($monthDate),
+            'key' => $monthDate->format('Y-m'),
+        ];
+    }
+
+    /**
      * @return array<string,mixed>|null
      */
     public function findCustomerByTaxCode(string $taxCode): ?array
