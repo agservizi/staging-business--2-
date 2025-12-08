@@ -30,6 +30,12 @@ if ($role === 'Collaboratore') {
             if ($lastReadValue !== false && $lastReadValue !== null && $lastReadValue !== '') {
                 $collaboratorNotificationsLastRead = strtotime((string) $lastReadValue) ?: null;
             }
+            if (isset($_SESSION['collab_notifications_last_read'])) {
+                $sessionRead = strtotime((string) $_SESSION['collab_notifications_last_read']) ?: null;
+                if ($sessionRead !== null && ($collaboratorNotificationsLastRead === null || $sessionRead > $collaboratorNotificationsLastRead)) {
+                    $collaboratorNotificationsLastRead = $sessionRead;
+                }
+            }
         } catch (Throwable $exception) {
             $collaboratorNotificationsLastRead = null;
         }
@@ -43,6 +49,18 @@ if ($role === 'Collaboratore') {
                 if (is_array($decodedSeen)) {
                     $collaboratorNotificationsLastStatusSeenAt = isset($decodedSeen['last_status_at']) ? strtotime((string) $decodedSeen['last_status_at']) ?: null : null;
                     $collaboratorNotificationsLastTicketSeenId = isset($decodedSeen['last_ticket_message_id']) ? (int) $decodedSeen['last_ticket_message_id'] : 0;
+                }
+            }
+            if (isset($_SESSION['collab_notifications_last_status_at'])) {
+                $sessionStatus = strtotime((string) $_SESSION['collab_notifications_last_status_at']) ?: null;
+                if ($sessionStatus !== null && ($collaboratorNotificationsLastStatusSeenAt === null || $sessionStatus > $collaboratorNotificationsLastStatusSeenAt)) {
+                    $collaboratorNotificationsLastStatusSeenAt = $sessionStatus;
+                }
+            }
+            if (isset($_SESSION['collab_notifications_last_ticket_message_id'])) {
+                $sessionTicketId = (int) $_SESSION['collab_notifications_last_ticket_message_id'];
+                if ($sessionTicketId > $collaboratorNotificationsLastTicketSeenId) {
+                    $collaboratorNotificationsLastTicketSeenId = $sessionTicketId;
                 }
             }
         } catch (Throwable $exception) {

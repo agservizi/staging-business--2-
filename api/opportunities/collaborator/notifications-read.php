@@ -72,6 +72,15 @@ try {
         ]);
     }
 
+    // Session fallback for immediate consistency (in caso di cache db/config)
+    $_SESSION['collab_notifications_last_read'] = $now;
+    if ($lastStatusAt !== null) {
+        $_SESSION['collab_notifications_last_status_at'] = $lastStatusAt;
+    }
+    if ($lastTicketMessageId > 0) {
+        $_SESSION['collab_notifications_last_ticket_message_id'] = $lastTicketMessageId;
+    }
+
     echo json_encode(['success' => true, 'read_at' => $now]);
 } catch (Throwable $exception) {
     http_response_code(500);
