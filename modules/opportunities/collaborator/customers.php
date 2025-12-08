@@ -8,7 +8,6 @@ require_role('Collaboratore');
 require_once __DIR__ . '/auto-refresh.php';
 
 $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
-$csrfToken = csrf_token();
 
 $searchQuery = trim((string) ($_GET['q'] ?? ''));
 $perPage = 20;
@@ -99,6 +98,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         $statusLabel = str_replace('_', ' ', $rawStatusLabel);
                                         $statusClass = 'badge bg-secondary';
                                         $statusColor = $customer['status_color'] ?? '';
+                                        $morositaScore = $customer['morosita_score'] ?? null;
+                                        $morositaUpdated = $customer['morosita_aggiornato_il'] ?? null;
+                                        $morositaMap = [
+                                            'ok' => ['label' => 'Regolare', 'class' => 'badge bg-success'],
+                                            'attenzione' => ['label' => 'Attenzione', 'class' => 'badge bg-warning text-dark'],
+                                            'bloccato' => ['label' => 'Bloccato', 'class' => 'badge bg-danger'],
+                                        ];
+                                        $morosita = $morositaMap[$morositaScore] ?? ['label' => 'Non verificato', 'class' => 'badge bg-secondary'];
                                         $colorToBootstrap = [
                                             'warning' => 'badge bg-warning text-dark',
                                             'info' => 'badge bg-info text-dark',
@@ -127,7 +134,15 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <td>
                                             <div class="fw-semibold"><?php echo sanitize_output($customer['code'] ?? ''); ?></div>
                                             <div class="text-muted small">Aggiornata: <?php echo sanitize_output(format_datetime_locale($customer['updated_at'] ?? $customer['created_at'] ?? null)); ?></div>
-                                            <span class="<?php echo $statusClass; ?>"><?php echo sanitize_output($statusLabel); ?></span>
+                                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                                <span class="<?php echo $statusClass; ?>"><?php echo sanitize_output($statusLabel); ?></span>
+                                                <span class="<?php echo $morosita['class']; ?>">
+                                                    Morosità: <?php echo sanitize_output($morosita['label']); ?>
+                                                </span>
+                                            </div>
+                                            <div class="text-muted small">
+                                                <?php echo $morositaUpdated ? 'Aggiornata: ' . sanitize_output(format_datetime_locale($morositaUpdated)) : 'Mai verificata'; ?>
+                                            </div>
                                         </td>
                                         <td class="text-end">
                                             <?php if ($taxCode !== ''): ?>

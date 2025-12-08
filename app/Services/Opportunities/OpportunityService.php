@@ -272,8 +272,10 @@ final class OpportunityService
 
         $baseWhere = implode(' AND ', $conditions);
 
-        $sql = 'SELECT latest.*
-                FROM opportunities latest
+        $sql = 'SELECT latest.*, s.label AS status_label, s.color AS status_color,
+                   c.id AS customer_id, c.morosita_flag, c.morosita_score, c.morosita_note,
+                   c.morosita_aggiornato_il, c.morosita_fonte
+            FROM opportunities latest
                 INNER JOIN (
                     SELECT o.customer_tax_code, MAX(o.id) AS last_op_id
                     FROM opportunities o
@@ -282,7 +284,8 @@ final class OpportunityService
                     ORDER BY last_op_id DESC
                     LIMIT :limit OFFSET :offset
                 ) idx ON idx.last_op_id = latest.id
-                LEFT JOIN opportunity_statuses s ON s.code = latest.status_code
+            LEFT JOIN opportunity_statuses s ON s.code = latest.status_code
+            LEFT JOIN clienti c ON UPPER(c.cf_piva) = UPPER(latest.customer_tax_code)
                 ORDER BY latest.id DESC';
 
         $stmt = $this->pdo->prepare($sql);
@@ -310,15 +313,18 @@ final class OpportunityService
             return null;
         }
 
-        $stmt = $this->pdo->prepare(
-            'SELECT o.*, s.label AS status_label, s.color AS status_color
-             FROM opportunities o
-             LEFT JOIN opportunity_statuses s ON s.code = o.status_code
-             WHERE o.collaborator_id = :user
-               AND UPPER(o.customer_tax_code) = :tax
-             ORDER BY o.id DESC
-             LIMIT 1'
-        );
+                $stmt = $this->pdo->prepare(
+                        'SELECT o.*, s.label AS status_label, s.color AS status_color,
+                                        c.id AS customer_id, c.morosita_flag, c.morosita_score, c.morosita_note,
+                                        c.morosita_aggiornato_il, c.morosita_fonte
+                         FROM opportunities o
+                         LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+                         LEFT JOIN clienti c ON UPPER(c.cf_piva) = UPPER(o.customer_tax_code)
+                         WHERE o.collaborator_id = :user
+                             AND UPPER(o.customer_tax_code) = :tax
+                         ORDER BY o.id DESC
+                         LIMIT 1'
+                );
         $stmt->execute([':user' => $userId, ':tax' => $normalized]);
         $latest = $stmt->fetch(PDO::FETCH_ASSOC);
 

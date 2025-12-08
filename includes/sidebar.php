@@ -377,6 +377,15 @@ $appVersion = env('APP_VERSION', '1.0.0');
                         <span class="nav-label">Impostazioni</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <?php $morositaActive = nav_active('modules/impostazioni/morosita.php', $currentPath); ?>
+                    <a class="nav-link d-flex align-items-center <?php echo $morositaActive; ?>" href="<?php echo base_url('modules/impostazioni/morosita.php'); ?>" aria-label="Verifica morosità" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Verifica morosità"<?php echo $morositaActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="rose" aria-hidden="true">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </span>
+                        <span class="nav-label">Verifica morosità</span>
+                    </a>
+                </li>
             <?php endif; ?>
             <?php endif; ?>
         </ul>

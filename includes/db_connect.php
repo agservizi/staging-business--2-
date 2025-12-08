@@ -84,3 +84,5 @@ require_once __DIR__ . '/telegrammi_sync_scheduler.php';
 maybe_sync_telegrammi($pdo);
 require_once __DIR__ . '/brt_tracking_scheduler.php';
 maybe_refresh_brt_tracking($pdo);
+require_once __DIR__ . '/morosita_scheduler.php';
+maybe_refresh_morosita($pdo);

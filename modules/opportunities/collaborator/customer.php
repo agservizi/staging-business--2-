@@ -25,6 +25,14 @@ if ($customerData === null) {
 $customer = $customerData['customer'] ?? [];
 $customerOps = $customerData['opportunities'] ?? [];
 $customerName = trim(($customer['customer_first_name'] ?? '') . ' ' . ($customer['customer_last_name'] ?? ''));
+$morositaScore = $customer['morosita_score'] ?? null;
+$morositaUpdated = $customer['morosita_aggiornato_il'] ?? null;
+$morositaMap = [
+    'ok' => ['label' => 'Regolare', 'class' => 'badge bg-success'],
+    'attenzione' => ['label' => 'Attenzione', 'class' => 'badge bg-warning text-dark'],
+    'bloccato' => ['label' => 'Bloccato', 'class' => 'badge bg-danger'],
+];
+$morosita = $morositaMap[$morositaScore] ?? ['label' => 'Non verificato', 'class' => 'badge bg-secondary'];
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -45,6 +53,25 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
                     <i class="fa-solid fa-plus me-2"></i>Nuova OP
                 </a>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <p class="text-uppercase small text-muted mb-1">Controllo morosità</p>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="<?php echo $morosita['class']; ?>">
+                            Morosità: <?php echo sanitize_output($morosita['label']); ?>
+                        </span>
+                        <span class="text-muted small">
+                            <?php echo $morositaUpdated ? 'Aggiornata: ' . sanitize_output(format_datetime_locale($morositaUpdated)) : 'Mai verificata'; ?>
+                        </span>
+                    </div>
+                    <?php if (!empty($customer['morosita_note'])): ?>
+                        <p class="text-muted small mb-0">Nota: <?php echo sanitize_output($customer['morosita_note']); ?></p>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
 
