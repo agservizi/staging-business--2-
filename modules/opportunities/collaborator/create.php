@@ -498,7 +498,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     data-istat-province-target="#customer-province"
                                     data-istat-cap-target="#customer-postal-code"
                                 >
-                                <div class="form-text text-muted">Suggerimenti dal database ISTAT disponibili durante la digitazione.</div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="customer-postal-code">CAP</label>
