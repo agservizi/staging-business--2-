@@ -374,31 +374,23 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <?php endforeach; ?>
                             </div>
                         <?php endif; ?>
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h2 class="h6 text-uppercase text-muted mb-3">Timeline stato</h2>
+                                <?php if ($statusTimeline): ?>
+                                    <ul class="list-unstyled mb-0 d-flex flex-column gap-3">
+                                        <?php foreach ($statusTimeline as $event): ?>
+                                            <li class="d-flex align-items-start gap-2">
+                                                <span class="badge bg-light text-muted border flex-shrink-0"><i class="fa-solid fa-clock me-1"></i><?php echo sanitize_output($event['label']); ?></span>
+                                                <div class="small text-muted"><?php echo sanitize_output(format_datetime_locale($event['timestamp'] ?? null)); ?></div>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                <?php else: ?>
+                                    <p class="text-muted mb-0">Nessuna informazione di timeline disponibile.</p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-            <div class="col-lg-4 d-flex flex-column gap-4">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h2 class="h6 text-uppercase text-muted mb-3">Timeline stato</h2>
-                        <?php if ($statusTimeline): ?>
-                            <ul class="list-unstyled mb-0 d-flex flex-column gap-3">
-                                <?php foreach ($statusTimeline as $event): ?>
-                                    <li class="d-flex align-items-start gap-2">
-                                        <span class="badge bg-light text-muted border flex-shrink-0"><i class="fa-solid fa-clock me-1"></i><?php echo sanitize_output($event['label']); ?></span>
-                                        <div class="small text-muted"><?php echo sanitize_output(format_datetime_locale($event['timestamp'] ?? null)); ?></div>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
-                        <?php else: ?>
-                            <p class="text-muted mb-0">Nessuna informazione di timeline disponibile.</p>
-                        <?php endif; ?>
+                    <div class="col-lg-4 d-flex flex-column gap-4"></div>
                     </div>
-                </div>
-
-            </div>
-        </div>
-    </main>
-</div>
-<link rel="stylesheet" href="<?php echo asset('modules/opportunities/assets/opportunities.css'); ?>">
-<?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
