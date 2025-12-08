@@ -1029,10 +1029,30 @@ final class OpportunityService
         }
 
         if ($category === 'luce') {
+            $metadata['luce_power_kw'] = $this->requireString($input, 'luce_power_kw', 'Potenza (kW)');
+            $metadata['luce_supply_address'] = $this->requireString($input, 'luce_supply_address', 'Indirizzo fornitura');
+            $metadata['luce_supply_city'] = $this->requireString($input, 'luce_supply_city', 'Città fornitura');
+            $metadata['luce_supply_province'] = $this->requireString($input, 'luce_supply_province', 'Provincia fornitura');
+            $metadata['luce_supply_postal_code'] = $this->requireString($input, 'luce_supply_postal_code', 'CAP fornitura');
+            $metadata['luce_market'] = $this->requireString($input, 'luce_market', 'Mercato di provenienza');
+            $metadata['luce_residence'] = isset($input['luce_residence']) && (int) $input['luce_residence'] === 1 ? '1' : '0';
+            $metadata['luce_property_title'] = $this->requireString($input, 'luce_property_title', 'Titolarità immobile');
+            $metadata['luce_causale'] = $this->requireString($input, 'luce_causale', 'Causale');
+            $metadata['luce_consumption_kwh'] = $this->requireString($input, 'luce_consumption_kwh', 'Consumo annuo (kWh)');
             $this->requireString($input, 'luce_pod', 'Codice POD');
         }
 
         if ($category === 'gas') {
+            $metadata['gas_remi'] = $this->requireString($input, 'gas_remi', 'REMI');
+            $metadata['gas_supply_address'] = $this->requireString($input, 'gas_supply_address', 'Indirizzo fornitura');
+            $metadata['gas_supply_city'] = $this->requireString($input, 'gas_supply_city', 'Città fornitura');
+            $metadata['gas_supply_province'] = $this->requireString($input, 'gas_supply_province', 'Provincia fornitura');
+            $metadata['gas_supply_postal_code'] = $this->requireString($input, 'gas_supply_postal_code', 'CAP fornitura');
+            $metadata['gas_usage'] = $this->requireString($input, 'gas_usage', 'Uso');
+            $metadata['gas_portata'] = $this->requireString($input, 'gas_portata', 'Portata');
+            $metadata['gas_property_title'] = $this->requireString($input, 'gas_property_title', 'Titolarità immobile');
+            $metadata['gas_causale'] = $this->requireString($input, 'gas_causale', 'Causale');
+            $metadata['gas_consumption_smc'] = $this->requireString($input, 'gas_consumption_smc', 'Consumo annuo (Smc)');
             $this->requireString($input, 'gas_pdr', 'Codice PDR');
         }
 
@@ -1267,10 +1287,30 @@ final class OpportunityService
         }
 
         if ($category === 'luce') {
+            $metadata['luce_power_kw'] = $this->requireString($input, 'luce_power_kw', 'Potenza (kW)');
+            $metadata['luce_supply_address'] = $this->requireString($input, 'luce_supply_address', 'Indirizzo fornitura');
+            $metadata['luce_supply_city'] = $this->requireString($input, 'luce_supply_city', 'Città fornitura');
+            $metadata['luce_supply_province'] = $this->requireString($input, 'luce_supply_province', 'Provincia fornitura');
+            $metadata['luce_supply_postal_code'] = $this->requireString($input, 'luce_supply_postal_code', 'CAP fornitura');
+            $metadata['luce_market'] = $this->requireString($input, 'luce_market', 'Mercato di provenienza');
+            $metadata['luce_residence'] = isset($input['luce_residence']) && (int) $input['luce_residence'] === 1 ? '1' : '0';
+            $metadata['luce_property_title'] = $this->requireString($input, 'luce_property_title', 'Titolarità immobile');
+            $metadata['luce_causale'] = $this->requireString($input, 'luce_causale', 'Causale');
+            $metadata['luce_consumption_kwh'] = $this->requireString($input, 'luce_consumption_kwh', 'Consumo annuo (kWh)');
             $this->requireString($input, 'luce_pod', 'Codice POD');
         }
 
         if ($category === 'gas') {
+            $metadata['gas_remi'] = $this->requireString($input, 'gas_remi', 'REMI');
+            $metadata['gas_supply_address'] = $this->requireString($input, 'gas_supply_address', 'Indirizzo fornitura');
+            $metadata['gas_supply_city'] = $this->requireString($input, 'gas_supply_city', 'Città fornitura');
+            $metadata['gas_supply_province'] = $this->requireString($input, 'gas_supply_province', 'Provincia fornitura');
+            $metadata['gas_supply_postal_code'] = $this->requireString($input, 'gas_supply_postal_code', 'CAP fornitura');
+            $metadata['gas_usage'] = $this->requireString($input, 'gas_usage', 'Uso');
+            $metadata['gas_portata'] = $this->requireString($input, 'gas_portata', 'Portata');
+            $metadata['gas_property_title'] = $this->requireString($input, 'gas_property_title', 'Titolarità immobile');
+            $metadata['gas_causale'] = $this->requireString($input, 'gas_causale', 'Causale');
+            $metadata['gas_consumption_smc'] = $this->requireString($input, 'gas_consumption_smc', 'Consumo annuo (Smc)');
             $this->requireString($input, 'gas_pdr', 'Codice PDR');
         }
 

@@ -13,6 +13,7 @@ $csrfToken = csrf_token();
 $opportunityService = new OpportunityService($pdo);
 $catalog = $opportunityService->getProviderCatalog();
 $providerOptions = [];
+$providerLabels = [];
 foreach ($catalog as $category => $providers) {
     foreach ($providers as $provider) {
         $providerOptions[] = [
@@ -20,6 +21,7 @@ foreach ($catalog as $category => $providers) {
             'name' => (string) ($provider['name'] ?? ''),
             'category' => (string) $category,
         ];
+        $providerLabels[(int) ($provider['id'] ?? 0)] = strtoupper($category) . ' · ' . (string) ($provider['name'] ?? '');
     }
 }
 
@@ -122,6 +124,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     const noteInput = document.getElementById('note');
     const scoreSelect = document.getElementById('score');
     const providerSelect = document.getElementById('provider_id');
+    const providerLabels = <?php echo json_encode($providerLabels, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
     const pendingCountInput = document.getElementById('pending_count');
     const pendingAmountInput = null; // not exposed, keep default 0
     const overdueCountInput = document.getElementById('overdue_count');
@@ -156,8 +159,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         metricsBox.innerHTML = '';
         if (ok && data && data.metrics) {
             const entries = [
-                ['Score', data.score],
-            ['Gestore (ID)', data.provider_id || '—'],
+            ['Score', data.score],
+            ['Gestore', data.provider_id ? (providerLabels?.[data.provider_id] || `ID ${data.provider_id}`) : '—'],
                 ['Pendenze aperte', data.metrics.pending_count ?? 0],
                 ['Pendenze scadute', data.metrics.overdue_count ?? 0],
                 ['Importo scaduto', (data.metrics.overdue_amount ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })],

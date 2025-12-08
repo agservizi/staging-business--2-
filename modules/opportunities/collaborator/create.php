@@ -132,7 +132,27 @@ if ($isEditingOpportunity) {
             'telefonia_contract_type' => $telefoniaContractTypeValue,
             'telefonia_migration_code' => $existingMetadata['telefonia_migration_code'] ?? '',
             'luce_pod' => $existingOpportunity['luce_pod'] ?? '',
+            'luce_power_kw' => $existingMetadata['luce_power_kw'] ?? '',
+            'luce_supply_address' => $existingMetadata['luce_supply_address'] ?? '',
+            'luce_supply_city' => $existingMetadata['luce_supply_city'] ?? '',
+            'luce_supply_province' => $existingMetadata['luce_supply_province'] ?? '',
+            'luce_supply_postal_code' => $existingMetadata['luce_supply_postal_code'] ?? '',
+            'luce_market' => $existingMetadata['luce_market'] ?? '',
+            'luce_residence' => $existingMetadata['luce_residence'] ?? '',
+            'luce_property_title' => $existingMetadata['luce_property_title'] ?? '',
+            'luce_causale' => $existingMetadata['luce_causale'] ?? '',
+            'luce_consumption_kwh' => $existingMetadata['luce_consumption_kwh'] ?? '',
             'gas_pdr' => $existingOpportunity['gas_pdr'] ?? '',
+            'gas_remi' => $existingMetadata['gas_remi'] ?? '',
+            'gas_supply_address' => $existingMetadata['gas_supply_address'] ?? '',
+            'gas_supply_city' => $existingMetadata['gas_supply_city'] ?? '',
+            'gas_supply_province' => $existingMetadata['gas_supply_province'] ?? '',
+            'gas_supply_postal_code' => $existingMetadata['gas_supply_postal_code'] ?? '',
+            'gas_usage' => $existingMetadata['gas_usage'] ?? '',
+            'gas_portata' => $existingMetadata['gas_portata'] ?? '',
+            'gas_property_title' => $existingMetadata['gas_property_title'] ?? '',
+            'gas_causale' => $existingMetadata['gas_causale'] ?? '',
+            'gas_consumption_smc' => $existingMetadata['gas_consumption_smc'] ?? '',
             'payment_method' => $existingOpportunity['payment_method'] ?? 'iban',
             'payment_iban' => $existingOpportunity['payment_iban'] ?? '',
             'payment_holder_is_customer' => ($existingOpportunity['payment_holder_is_customer'] ?? 1) ? '1' : '0',
@@ -601,7 +621,58 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label">Codice POD</label>
-                                <input class="form-control" type="text" name="luce_pod" value="<?php echo sanitize_output($formData['luce_pod'] ?? ''); ?>">
+                                <input class="form-control" type="text" name="luce_pod" value="<?php echo sanitize_output($formData['luce_pod'] ?? ''); ?>" placeholder="IT001E...">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Potenza (kW)</label>
+                                <input class="form-control" type="number" step="0.1" min="0" name="luce_power_kw" value="<?php echo sanitize_output($formData['luce_power_kw'] ?? ''); ?>" placeholder="es. 3.0">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Mercato di provenienza</label>
+                                <select class="form-select" name="luce_market">
+                                    <option value="">Seleziona</option>
+                                    <option value="maggior_tutela" <?php echo (($formData['luce_market'] ?? '') === 'maggior_tutela') ? 'selected' : ''; ?>>Maggior Tutela</option>
+                                    <option value="mercato_libero" <?php echo (($formData['luce_market'] ?? '') === 'mercato_libero') ? 'selected' : ''; ?>>Mercato Libero</option>
+                                    <option value="tutele_graduali" <?php echo (($formData['luce_market'] ?? '') === 'tutele_graduali') ? 'selected' : ''; ?>>Servizio Tutele Graduali</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label class="form-label">Indirizzo di fornitura</label>
+                                <input class="form-control" type="text" name="luce_supply_address" value="<?php echo sanitize_output($formData['luce_supply_address'] ?? ''); ?>" placeholder="Via/Piazza e civico">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Città</label>
+                                <input class="form-control" type="text" name="luce_supply_city" value="<?php echo sanitize_output($formData['luce_supply_city'] ?? ''); ?>" placeholder="Comune">
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Prov.</label>
+                                <input class="form-control" type="text" name="luce_supply_province" maxlength="5" value="<?php echo sanitize_output($formData['luce_supply_province'] ?? ''); ?>" placeholder="MI">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">CAP</label>
+                                <input class="form-control" type="text" name="luce_supply_postal_code" value="<?php echo sanitize_output($formData['luce_supply_postal_code'] ?? ''); ?>" placeholder="20100">
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-1 align-items-center">
+                            <div class="col-md-3">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" value="1" id="luce_residence" name="luce_residence" <?php echo (($formData['luce_residence'] ?? '') === '1') ? 'checked' : ''; ?>>
+                                    <label class="form-check-label" for="luce_residence">Abitazione di residenza</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Tipo titolarità immobile</label>
+                                <input class="form-control" type="text" name="luce_property_title" value="<?php echo sanitize_output($formData['luce_property_title'] ?? ''); ?>" placeholder="Proprietario / Inquilino">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Causale</label>
+                                <input class="form-control" type="text" name="luce_causale" value="<?php echo sanitize_output($formData['luce_causale'] ?? ''); ?>" placeholder="Subentro / Voltura / Nuova">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Consumo annuo (kWh)</label>
+                                <input class="form-control" type="number" step="1" min="0" name="luce_consumption_kwh" value="<?php echo sanitize_output($formData['luce_consumption_kwh'] ?? ''); ?>" placeholder="es. 2700">
                             </div>
                         </div>
                     </div>
@@ -619,7 +690,51 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label">Codice PDR</label>
-                                <input class="form-control" type="text" name="gas_pdr" value="<?php echo sanitize_output($formData['gas_pdr'] ?? ''); ?>">
+                                <input class="form-control" type="text" name="gas_pdr" value="<?php echo sanitize_output($formData['gas_pdr'] ?? ''); ?>" placeholder="IT001G...">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">REMI</label>
+                                <input class="form-control" type="text" name="gas_remi" value="<?php echo sanitize_output($formData['gas_remi'] ?? ''); ?>" placeholder="Codice REMI">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Uso</label>
+                                <input class="form-control" type="text" name="gas_usage" placeholder="Es. Cottura cibi / ACS / Riscaldamento" value="<?php echo sanitize_output($formData['gas_usage'] ?? ''); ?>">
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label class="form-label">Indirizzo di fornitura</label>
+                                <input class="form-control" type="text" name="gas_supply_address" value="<?php echo sanitize_output($formData['gas_supply_address'] ?? ''); ?>" placeholder="Via/Piazza e civico">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Città</label>
+                                <input class="form-control" type="text" name="gas_supply_city" value="<?php echo sanitize_output($formData['gas_supply_city'] ?? ''); ?>" placeholder="Comune">
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">Prov.</label>
+                                <input class="form-control" type="text" name="gas_supply_province" maxlength="5" value="<?php echo sanitize_output($formData['gas_supply_province'] ?? ''); ?>" placeholder="MI">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">CAP</label>
+                                <input class="form-control" type="text" name="gas_supply_postal_code" value="<?php echo sanitize_output($formData['gas_supply_postal_code'] ?? ''); ?>" placeholder="20100">
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-3">
+                                <label class="form-label">Portata</label>
+                                <input class="form-control" type="text" name="gas_portata" value="<?php echo sanitize_output($formData['gas_portata'] ?? ''); ?>" placeholder="es. 6 mc/h">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Tipo titolarità immobile</label>
+                                <input class="form-control" type="text" name="gas_property_title" value="<?php echo sanitize_output($formData['gas_property_title'] ?? ''); ?>" placeholder="Proprietario / Inquilino">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Causale</label>
+                                <input class="form-control" type="text" name="gas_causale" value="<?php echo sanitize_output($formData['gas_causale'] ?? ''); ?>" placeholder="Subentro / Voltura / Nuova">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Consumo annuo (Smc)</label>
+                                <input class="form-control" type="number" step="1" min="0" name="gas_consumption_smc" value="<?php echo sanitize_output($formData['gas_consumption_smc'] ?? ''); ?>" placeholder="es. 900">
                             </div>
                         </div>
                     </div>
@@ -1682,6 +1797,15 @@ window.CIEIstatLookupConfig = {
             warning: document.getElementById('luce-section-warning'),
             fields: [
                 { selector: 'input[name="luce_pod"]', label: 'Codice POD' },
+                { selector: 'input[name="luce_power_kw"]', label: 'Potenza (kW)' },
+                { selector: 'input[name="luce_supply_address"]', label: 'Indirizzo fornitura' },
+                { selector: 'input[name="luce_supply_city"]', label: 'Città fornitura' },
+                { selector: 'input[name="luce_supply_province"]', label: 'Provincia fornitura' },
+                { selector: 'input[name="luce_supply_postal_code"]', label: 'CAP fornitura' },
+                { selector: 'select[name="luce_market"]', label: 'Mercato di provenienza' },
+                { selector: 'input[name="luce_property_title"]', label: 'Titolarità immobile' },
+                { selector: 'input[name="luce_causale"]', label: 'Causale' },
+                { selector: 'input[name="luce_consumption_kwh"]', label: 'Consumo annuo (kWh)' },
             ],
         },
         gas: {
@@ -1689,6 +1813,16 @@ window.CIEIstatLookupConfig = {
             warning: document.getElementById('gas-section-warning'),
             fields: [
                 { selector: 'input[name="gas_pdr"]', label: 'Codice PDR' },
+                { selector: 'input[name="gas_remi"]', label: 'REMI' },
+                { selector: 'input[name="gas_supply_address"]', label: 'Indirizzo fornitura' },
+                { selector: 'input[name="gas_supply_city"]', label: 'Città fornitura' },
+                { selector: 'input[name="gas_supply_province"]', label: 'Provincia fornitura' },
+                { selector: 'input[name="gas_supply_postal_code"]', label: 'CAP fornitura' },
+                { selector: 'input[name="gas_usage"]', label: 'Uso' },
+                { selector: 'input[name="gas_portata"]', label: 'Portata' },
+                { selector: 'input[name="gas_property_title"]', label: 'Titolarità immobile' },
+                { selector: 'input[name="gas_causale"]', label: 'Causale' },
+                { selector: 'input[name="gas_consumption_smc"]', label: 'Consumo annuo (Smc)' },
             ],
         },
     };
