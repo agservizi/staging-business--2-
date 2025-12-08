@@ -482,24 +482,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <label class="form-label">Email</label>
                                 <input class="form-control" type="email" name="customer_email" required value="<?php echo sanitize_output($formData['customer_email'] ?? ''); ?>">
                             </div>
-                            <div class="col-12">
-                                <label class="form-label" for="address-search">Cerca indirizzo</label>
-                                <div class="position-relative">
-                                    <input
-                                        class="form-control"
-                                        type="text"
-                                        id="address-search"
-                                        placeholder="Cerca indirizzo…"
-                                        autocomplete="off"
-                                    >
-                                    <div
-                                        id="address-suggestions"
-                                        class="list-group position-absolute w-100 d-none shadow-sm"
-                                        style="z-index: 1051; max-height: 260px; overflow: auto; top: 100%; left: 0;"
-                                    ></div>
-                                </div>
-                                <div class="form-text text-muted" id="address-search-feedback">Digita almeno 3 caratteri per cercare negli open data ANNCSU.</div>
-                            </div>
                             <div class="col-md-8">
                                 <label class="form-label">Indirizzo completo</label>
                                 <input class="form-control" type="text" name="customer_address" id="customer-address" value="<?php echo sanitize_output($formData['customer_address'] ?? ''); ?>">
@@ -835,7 +817,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 </div>
 <?php
 $istatDatasetUrl = asset('customer-portal/assets/data/comuni.json');
-$anncsuApiUrl = getenv('ANNCSU_API_URL') ?: '';
 ?>
 <link rel="stylesheet" href="<?php echo asset('modules/opportunities/assets/opportunities.css'); ?>">
 <script>
@@ -850,7 +831,6 @@ window.CIEIstatLookupConfig = {
 <script>
     const catalog = <?php echo json_encode($catalog, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
     const csrfToken = '<?php echo sanitize_output($csrfToken); ?>';
-    const anncsuApiUrl = '<?php echo sanitize_output($anncsuApiUrl); ?>';
     const opportunityForm = document.getElementById('opportunity-form');
     const hasSubmitted = <?php echo $hasSubmitted ? 'true' : 'false'; ?>;
     const isCloning = <?php echo $isCloningOpportunity ? 'true' : 'false'; ?>;
@@ -894,12 +874,8 @@ window.CIEIstatLookupConfig = {
     const customerCityInput = document.getElementById('customer-city');
     const customerProvinceInput = document.getElementById('customer-province');
     const customerPostalCodeInput = document.getElementById('customer-postal-code');
-    const addressSearchInput = document.getElementById('address-search');
-    const addressSuggestions = document.getElementById('address-suggestions');
-    const addressSearchFeedback = document.getElementById('address-search-feedback');
     const capLookupFeedback = document.getElementById('cap-lookup-feedback');
     const defaultCapFeedbackMessage = 'Inserisci il CAP per validarlo automaticamente.';
-    const defaultAddressFeedbackMessage = 'Digita almeno 3 caratteri per cercare negli open data ANNCSU.';
     const clearDraftButton = document.getElementById('clear-draft-button');
     const draftStatusLabel = document.getElementById('draft-status-label');
     const remoteDraftStatusLabel = document.getElementById('remote-draft-status-label');
@@ -945,8 +921,6 @@ window.CIEIstatLookupConfig = {
     let lastLookupTaxCode = '';
     let pendingPrefillData = null;
     let capLookupRequestId = 0;
-    let addressSearchAbortController = null;
-    let lastAddressQuery = '';
     let lastDraftSavedAt = null;
     let remoteDraftAvailable = false;
     let remoteDraftPayload = null;
@@ -1104,148 +1078,6 @@ window.CIEIstatLookupConfig = {
         capLookupFeedback.classList.remove('text-muted', 'text-success', 'text-warning', 'text-danger');
         capLookupFeedback.classList.add(classMap[state] || 'text-muted');
         capLookupFeedback.textContent = message;
-    };
-
-    const setAddressSearchFeedback = (message, state = 'muted') => {
-        if (!addressSearchFeedback) {
-            return;
-        }
-        const classMap = {
-            muted: 'text-muted',
-            success: 'text-success',
-            warning: 'text-warning',
-            danger: 'text-danger',
-        };
-        addressSearchFeedback.classList.remove('text-muted', 'text-success', 'text-warning', 'text-danger');
-        addressSearchFeedback.classList.add(classMap[state] || 'text-muted');
-        addressSearchFeedback.textContent = message;
-    };
-
-    const hideAddressSuggestions = () => {
-        if (addressSuggestions) {
-            addressSuggestions.classList.add('d-none');
-        }
-    };
-
-    const showAddressSuggestions = () => {
-        if (addressSuggestions && addressSuggestions.children.length > 0) {
-            addressSuggestions.classList.remove('d-none');
-        }
-    };
-
-    const applyAddressSuggestion = (suggestion) => {
-        if (!suggestion) {
-            return;
-        }
-        const fullStreet = [suggestion.street, suggestion.street_number].filter(Boolean).join(' ').trim();
-        if (addressSearchInput && fullStreet) {
-            addressSearchInput.value = fullStreet;
-        }
-        if (fullStreet) {
-            updateInputValue(customerAddressInput, fullStreet);
-        }
-        if (suggestion.city) {
-            updateInputValue(customerCityInput, suggestion.city);
-        }
-        if (suggestion.province) {
-            updateInputValue(customerProvinceInput, suggestion.province);
-        }
-        if (suggestion.cap) {
-            updateInputValue(customerPostalCodeInput, suggestion.cap);
-        }
-        hideAddressSuggestions();
-    };
-
-    const normalizeAnncsuResults = (payload) => {
-        const items = Array.isArray(payload) ? payload : (payload?.results || []);
-        return items
-            .map((item) => ({
-                street: item.street ?? item.denominazione ?? item.toponimo ?? '',
-                street_number: item.street_number ?? item.civico ?? item.civici ?? '',
-                city: item.city ?? item.comune ?? item.citta ?? '',
-                province: item.province ?? item.sigla_provincia ?? item.provincia ?? '',
-                cap: item.cap ?? item.zip ?? item.cap_citta ?? '',
-            }))
-            .filter((item) => item.street && item.city);
-    };
-
-    const renderAddressSuggestions = (items) => {
-        if (!addressSuggestions) {
-            return;
-        }
-        addressSuggestions.innerHTML = '';
-        if (!items || items.length === 0) {
-            hideAddressSuggestions();
-            return;
-        }
-        const fragment = document.createDocumentFragment();
-        items.forEach((item) => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'list-group-item list-group-item-action';
-            const mainLabel = [item.street, item.street_number].filter(Boolean).join(' ').trim();
-            const secondaryLabel = [item.cap, item.city, item.province].filter(Boolean).join(' · ');
-            button.innerHTML = `<div class="fw-semibold">${escapeHtml(mainLabel)}</div><div class="small text-muted">${escapeHtml(secondaryLabel)}</div>`;
-            button.addEventListener('click', () => applyAddressSuggestion(item));
-            fragment.appendChild(button);
-        });
-        addressSuggestions.appendChild(fragment);
-        showAddressSuggestions();
-    };
-
-    const performAnncsuSearch = async (query) => {
-        if (!addressSearchInput) {
-            return;
-        }
-        const normalized = (query || '').trim();
-        if (!anncsuApiUrl) {
-            setAddressSearchFeedback('Configura un endpoint ANNCSU open-data per attivare i suggerimenti.', 'warning');
-            hideAddressSuggestions();
-            return;
-        }
-        if (normalized.length < 3) {
-            hideAddressSuggestions();
-            setAddressSearchFeedback(defaultAddressFeedbackMessage, 'muted');
-            return;
-        }
-        if (addressSearchAbortController) {
-            addressSearchAbortController.abort();
-        }
-        addressSearchAbortController = new AbortController();
-        const { signal } = addressSearchAbortController;
-        const timeoutId = window.setTimeout(() => addressSearchAbortController.abort(), 8000);
-        setAddressSearchFeedback('Cerco indirizzi…', 'muted');
-        try {
-            const response = await fetch(`${anncsuApiUrl}${encodeURIComponent(normalized)}`, {
-                method: 'GET',
-                signal,
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-            window.clearTimeout(timeoutId);
-            if (!response.ok) {
-                throw new Error('Richiesta non riuscita');
-            }
-            const payload = await response.json();
-            const results = normalizeAnncsuResults(payload).slice(0, 10);
-            if (!results.length) {
-                setAddressSearchFeedback('Nessun indirizzo trovato.', 'warning');
-                hideAddressSuggestions();
-                return;
-            }
-            renderAddressSuggestions(results);
-            setAddressSearchFeedback('Seleziona un indirizzo dai suggerimenti.', 'muted');
-        } catch (error) {
-            window.clearTimeout(timeoutId);
-            if (signal.aborted) {
-                setAddressSearchFeedback('Ricerca annullata o scaduta.', 'warning');
-            } else {
-                setAddressSearchFeedback('Errore nel recupero dei suggerimenti.', 'danger');
-            }
-            hideAddressSuggestions();
-        }
     };
 
     const updateDraftStatus = (message, tone = 'muted') => {
@@ -2696,32 +2528,6 @@ window.CIEIstatLookupConfig = {
             taxCodePrefillModal.hide();
         }
     });
-
-    const debouncedAnncsuSearch = debounce((value) => {
-        const normalized = (value || '').trim();
-        if (normalized === lastAddressQuery.trim()) {
-            return;
-        }
-        lastAddressQuery = normalized;
-        performAnncsuSearch(normalized);
-    }, 300);
-
-    if (addressSearchInput) {
-        setAddressSearchFeedback(anncsuApiUrl ? defaultAddressFeedbackMessage : 'Configura un endpoint ANNCSU open-data per attivare i suggerimenti.', anncsuApiUrl ? 'muted' : 'warning');
-        addressSearchInput.addEventListener('input', (event) => {
-            debouncedAnncsuSearch(event.target.value || '');
-        });
-        addressSearchInput.addEventListener('focus', () => {
-            if (addressSuggestions && addressSuggestions.children.length > 0) {
-                showAddressSuggestions();
-            }
-        });
-        addressSearchInput.addEventListener('blur', () => {
-            window.setTimeout(() => hideAddressSuggestions(), 120);
-        });
-    } else if (addressSearchFeedback) {
-        setAddressSearchFeedback('Campo di ricerca indirizzo non disponibile in questa pagina.', 'warning');
-    }
 
     dropzoneArea.addEventListener('click', () => documentsInput.click());
     dropzoneArea.addEventListener('dragover', (event) => {
