@@ -24,7 +24,7 @@ if ($role === 'Collaboratore') {
 
     if ($collaboratorId > 0 && isset($pdo) && $pdo instanceof PDO) {
         try {
-            $lastReadStmt = $pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :key LIMIT 1');
+            $lastReadStmt = $pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :key ORDER BY updated_at DESC, id DESC LIMIT 1');
             $lastReadStmt->execute([':key' => $lastReadKey]);
             $lastReadValue = $lastReadStmt->fetchColumn();
             if ($lastReadValue !== false && $lastReadValue !== null && $lastReadValue !== '') {
@@ -35,7 +35,7 @@ if ($role === 'Collaboratore') {
         }
 
         try {
-            $lastSeenStmt = $pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :key LIMIT 1');
+            $lastSeenStmt = $pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :key ORDER BY updated_at DESC, id DESC LIMIT 1');
             $lastSeenStmt->execute([':key' => $lastSeenKey]);
             $lastSeenValue = $lastSeenStmt->fetchColumn();
             if ($lastSeenValue) {
