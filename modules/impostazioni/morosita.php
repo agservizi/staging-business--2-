@@ -72,8 +72,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         </div>
                         <div class="form-text">Se lasci vuoto, i dati vengono calcolati automaticamente. Se compili, usiamo questi valori per il punteggio.</div>
                     </div>
-                    <div class="col-12 d-flex gap-2">
+                    <div class="col-12 d-flex gap-2 flex-wrap">
                         <button type="submit" class="btn btn-primary" id="submit-btn">
+                            <i class="fa-solid fa-shield-halved me-2"></i>Verifica ora
+                        </button>
+                        <button type="button" class="btn btn-outline-success" id="save-btn">
                             <i class="fa-solid fa-floppy-disk me-2"></i>Salva stato
                         </button>
                         <button type="reset" class="btn btn-outline-secondary" id="reset-btn">Reset</button>
@@ -99,16 +102,25 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     const overdueAmountInput = document.getElementById('overdue_amount');
     const maxOverdueDaysInput = document.getElementById('max_overdue_days');
     const submitBtn = document.getElementById('submit-btn');
+    const saveBtn = document.getElementById('save-btn');
     const resultBox = document.getElementById('morosita-result');
     const alertBox = document.getElementById('morosita-alert');
     const metricsBox = document.getElementById('morosita-metrics');
     const csrfToken = <?php echo json_encode($csrfToken, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
 
-    function setLoading(isLoading) {
-        submitBtn.disabled = isLoading;
-        submitBtn.innerHTML = isLoading
-            ? '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Salvataggio...'
-            : '<i class="fa-solid fa-floppy-disk me-2"></i>Salva stato';
+    function setLoading(isLoading, mode) {
+        if (submitBtn) {
+            submitBtn.disabled = isLoading;
+            submitBtn.innerHTML = isLoading
+                ? '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Verifica...'
+                : '<i class="fa-solid fa-shield-halved me-2"></i>Verifica ora';
+        }
+        if (saveBtn) {
+            saveBtn.disabled = isLoading;
+            saveBtn.innerHTML = isLoading && mode === 'save'
+                ? '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Salvataggio...'
+                : '<i class="fa-solid fa-floppy-disk me-2"></i>Salva stato';
+        }
     }
 
     function renderResult(ok, message, data) {
@@ -140,24 +152,25 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         }
     }
 
-    form.addEventListener('submit', async () => {
+    async function submitMorosita(mode = 'verify') {
         const tax = taxInput.value.trim();
         const note = noteInput.value.trim();
-        const metrics = {
+        if (!tax) {
+            alert('Inserisci un codice fiscale o una P.IVA');
+            return;
+        }
+        const forceAuto = mode === 'verify';
+        const metrics = forceAuto ? null : {
             pending_count: pendingCountInput ? Number(pendingCountInput.value || 0) : 0,
             pending_amount: 0,
             overdue_count: overdueCountInput ? Number(overdueCountInput.value || 0) : 0,
             overdue_amount: overdueAmountInput ? Number(overdueAmountInput.value || 0) : 0,
             max_overdue_days: maxOverdueDaysInput ? Number(maxOverdueDaysInput.value || 0) : 0,
         };
-        if (!tax) {
-            alert('Inserisci un codice fiscale o una P.IVA');
-            return;
-        }
 
-        setLoading(true);
+        setLoading(true, mode);
         try {
-            const score = scoreSelect ? scoreSelect.value.trim() : '';
+            const score = forceAuto ? '' : (scoreSelect ? scoreSelect.value.trim() : '');
             const response = await fetch('<?php echo base_url('api/customers/morosita-check.php'); ?>', {
                 method: 'POST',
                 headers: {
@@ -177,8 +190,17 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             console.error(error);
             renderResult(false, 'Impossibile completare la verifica.', null);
         } finally {
-            setLoading(false);
+            setLoading(false, mode);
         }
+    }
+
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        submitMorosita('verify');
+    });
+
+    saveBtn?.addEventListener('click', () => {
+        submitMorosita('save');
     });
 
     document.getElementById('reset-btn').addEventListener('click', () => {
