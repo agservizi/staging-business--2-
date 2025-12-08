@@ -136,22 +136,28 @@ if ($role === 'Collaboratore') {
                 return $bTime <=> $aTime;
             });
             $collaboratorNotifications = array_slice($collaboratorNotifications, 0, 10);
-            $lastStatusCutoff = $collaboratorNotificationsLastStatusSeenAt ?? $collaboratorNotificationsLastRead;
+            $lastStatusCutoff = $collaboratorNotificationsLastStatusSeenAt ?? $collaboratorNotificationsLastRead ?? 0;
             $lastTicketCutoffTime = $collaboratorNotificationsLastRead;
-            $collaboratorNotificationCount = count(array_filter($collaboratorNotifications, static function (array $item) use ($collaboratorNotificationsLastTicketSeenId, $lastStatusCutoff, $lastTicketCutoffTime): bool {
-                $timestamp = strtotime((string) ($item['timestamp'] ?? '')) ?: 0;
-                if (($item['type'] ?? '') === 'ticket') {
-                    $id = isset($item['id']) ? (int) $item['id'] : 0;
-                    if ($id > $collaboratorNotificationsLastTicketSeenId) {
-                        return true;
+            $latestStatusTs = $collaboratorNotificationsLatestStatusInBatch ? strtotime((string) $collaboratorNotificationsLatestStatusInBatch) : 0;
+
+            if (($latestStatusTs <= $lastStatusCutoff) && ($collaboratorNotificationsLatestTicketIdInBatch <= $collaboratorNotificationsLastTicketSeenId)) {
+                $collaboratorNotificationCount = 0;
+            } else {
+                $collaboratorNotificationCount = count(array_filter($collaboratorNotifications, static function (array $item) use ($collaboratorNotificationsLastTicketSeenId, $lastStatusCutoff, $lastTicketCutoffTime): bool {
+                    $timestamp = strtotime((string) ($item['timestamp'] ?? '')) ?: 0;
+                    if (($item['type'] ?? '') === 'ticket') {
+                        $id = isset($item['id']) ? (int) $item['id'] : 0;
+                        if ($id > $collaboratorNotificationsLastTicketSeenId) {
+                            return true;
+                        }
+                        return $lastTicketCutoffTime !== null ? $timestamp > $lastTicketCutoffTime : false;
                     }
-                    return $lastTicketCutoffTime !== null ? $timestamp > $lastTicketCutoffTime : false;
-                }
-                if ($lastStatusCutoff === null) {
-                    return $timestamp > 0;
-                }
-                return $timestamp > $lastStatusCutoff;
-            }));
+                    if ($lastStatusCutoff === null) {
+                        return $timestamp > 0;
+                    }
+                    return $timestamp > $lastStatusCutoff;
+                }));
+            }
         }
     }
 }
