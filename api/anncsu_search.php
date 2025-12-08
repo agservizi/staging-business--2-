@@ -1,6 +1,11 @@
 <?php
 declare(strict_types=1);
 
+// Public endpoint: disable session auth redirects
+if (!defined('BYPASS_AUTH')) {
+    define('BYPASS_AUTH', true);
+}
+
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 
