@@ -185,6 +185,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_POST['payment_iban'] = strtoupper(str_replace(' ', '', (string) $_POST['payment_iban']));
         }
 
+        $taxCode = isset($_POST['customer_tax_code']) ? strtoupper(trim((string) $_POST['customer_tax_code'])) : '';
+        if (!$isEditingOpportunity && $taxCode !== '') {
+            $morositaStmt = $pdo->prepare('SELECT morosita_score, morosita_note, morosita_aggiornato_il FROM clienti WHERE UPPER(cf_piva) = :cf LIMIT 1');
+            $morositaStmt->execute([':cf' => $taxCode]);
+            $morositaRow = $morositaStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            if ($morositaRow && strtolower((string) ($morositaRow['morosita_score'] ?? '')) === 'bloccato') {
+                $note = trim((string) ($morositaRow['morosita_note'] ?? ''));
+                $updated = $morositaRow['morosita_aggiornato_il'] ?? null;
+                $message = 'Cliente bloccato per morosita. Non puoi inserire nuove opportunity.';
+                if ($note !== '') {
+                    $message .= ' Nota: ' . $note;
+                }
+                if ($updated) {
+                    $message .= ' Ultimo controllo: ' . format_datetime_locale($updated) . '.';
+                }
+                throw new RuntimeException($message);
+            }
+        }
+
         $stripeIbanValidation = null;
         $paymentMethod = $_POST['payment_method'] ?? 'iban';
         $paymentIban = $_POST['payment_iban'] ?? '';
@@ -249,6 +268,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                         <div class="modal-body">
                             <p class="text-muted">Conferma per compilare automaticamente il modulo con i dati salvati in precedenza.</p>
+                            <div class="alert alert-danger d-none" role="alert" id="customer-prefill-block"></div>
                             <div class="table-responsive border rounded-3">
                                 <table class="table table-sm mb-0">
                                     <tbody id="customer-prefill-details">
@@ -703,6 +723,7 @@ window.CIEIstatLookupConfig = {
     const taxCodeLookupFeedback = document.getElementById('tax-code-lookup-feedback');
     const taxCodePrefillDetails = document.getElementById('customer-prefill-details');
     const taxCodePrefillApply = document.getElementById('customer-prefill-apply');
+    const taxCodePrefillBlock = document.getElementById('customer-prefill-block');
     const taxCodePrefillModalEl = document.getElementById('customerPrefillModal');
     const taxCodePrefillModal = window.bootstrap && taxCodePrefillModalEl ? new bootstrap.Modal(taxCodePrefillModalEl) : null;
     const customerCityInput = document.getElementById('customer-city');
@@ -2134,6 +2155,27 @@ window.CIEIstatLookupConfig = {
         taxCodePrefillDetails.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="2" class="text-muted">Nessun dettaglio disponibile.</td></tr>';
     };
 
+    const setPrefillBlock = (message) => {
+        if (!taxCodePrefillBlock) {
+            return;
+        }
+        if (message && message.trim() !== '') {
+            taxCodePrefillBlock.textContent = message;
+            taxCodePrefillBlock.classList.remove('d-none');
+            if (taxCodePrefillApply) {
+                taxCodePrefillApply.classList.add('disabled');
+                taxCodePrefillApply.setAttribute('aria-disabled', 'true');
+            }
+        } else {
+            taxCodePrefillBlock.textContent = '';
+            taxCodePrefillBlock.classList.add('d-none');
+            if (taxCodePrefillApply) {
+                taxCodePrefillApply.classList.remove('disabled');
+                taxCodePrefillApply.removeAttribute('aria-disabled');
+            }
+        }
+    };
+
     const applyPrefillData = () => {
         if (!pendingPrefillData) {
             return;
@@ -2255,6 +2297,26 @@ window.CIEIstatLookupConfig = {
                 return;
             }
             pendingPrefillData = data.customer || null;
+            const morositaScore = (pendingPrefillData?.morosita_score || '').toLowerCase();
+            const morositaNote = pendingPrefillData?.morosita_note || '';
+            const morositaUpdated = pendingPrefillData?.morosita_aggiornato_il || '';
+            if (morositaScore === 'bloccato') {
+                renderPrefillDetails(pendingPrefillData);
+                const parts = ['Cliente bloccato per morosita.'];
+                if (morositaNote) {
+                    parts.push('Nota: ' + morositaNote);
+                }
+                if (morositaUpdated) {
+                    parts.push('Ultimo controllo: ' + morositaUpdated);
+                }
+                setPrefillBlock(parts.join(' '));
+                showLookupMessage('Cliente bloccato per morosita: contatta l\'admin.', 'danger');
+                if (taxCodePrefillModal) {
+                    taxCodePrefillModal.show();
+                }
+                return;
+            }
+            setPrefillBlock('');
             if (pendingPrefillData) {
                 renderPrefillDetails(pendingPrefillData);
                 applyPrefillData();

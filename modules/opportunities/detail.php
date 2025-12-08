@@ -31,6 +31,15 @@ $statusOptions = $opportunityService->getStatusOptions();
 $files = $opportunityService->listFiles($opportunityId);
 $errors = [];
 $csrfToken = csrf_token();
+$morositaScore = $opportunity['morosita_score'] ?? null;
+$morositaUpdated = $opportunity['morosita_aggiornato_il'] ?? null;
+$morositaNote = $opportunity['morosita_note'] ?? null;
+$morositaMap = [
+    'ok' => ['label' => 'Regolare', 'class' => 'badge bg-success'],
+    'attenzione' => ['label' => 'Attenzione', 'class' => 'badge bg-warning text-dark'],
+    'bloccato' => ['label' => 'Bloccato', 'class' => 'badge bg-danger'],
+];
+$morosita = $morositaMap[$morositaScore] ?? ['label' => 'Non verificato', 'class' => 'badge bg-secondary'];
 $selectedStatusCode = (string) ($opportunity['status_code'] ?? '');
 $metadata = [];
 if (!empty($opportunity['metadata'])) {
@@ -166,6 +175,88 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 ?>
                                 <span class="<?php echo $badgeClass; ?>"><?php echo sanitize_output($opportunity['status_label'] ?? $opportunity['status_code'] ?? ''); ?></span>
                                 <p class="text-muted small mb-0 mt-2">Ultimo aggiornamento <?php echo sanitize_output(format_datetime_locale($opportunity['last_status_change'] ?? $opportunity['created_at'] ?? null)); ?></p>
+                                <div class="mt-3">
+                                    <p class="text-uppercase small text-muted mb-1">Morosità cliente</p>
+                                    <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
+                                        <span class="js-morosita-badge <?php echo $morosita['class']; ?>" data-tax="<?php echo sanitize_output($opportunity['customer_tax_code'] ?? ''); ?>">
+                                            <?php echo sanitize_output($morosita['label']); ?>
+                                        </span>
+                                        <?php if (!empty($opportunity['customer_tax_code'])): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary js-morosita-check" data-tax="<?php echo sanitize_output($opportunity['customer_tax_code']); ?>">
+                                                <i class="fa-solid fa-shield-halved me-1"></i>Verifica ora
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="text-muted small js-morosita-updated" data-tax="<?php echo sanitize_output($opportunity['customer_tax_code'] ?? ''); ?>">
+                                        <?php echo $morositaUpdated ? 'Aggiornata: ' . sanitize_output(format_datetime_locale($morositaUpdated)) : 'Mai verificata'; ?>
+                                    </div>
+                                    <?php if ($morositaNote): ?>
+                                        <div class="text-muted small">Nota: <?php echo sanitize_output($morositaNote); ?></div>
+                                    <?php endif; ?>
+                                    <script>
+                                    (function() {
+                                        const buttons = document.querySelectorAll('.js-morosita-check');
+                                        if (!buttons.length) return;
+
+                                        const csrfToken = <?php echo json_encode($csrfToken, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+                                        const badgeClasses = {
+                                            ok: 'js-morosita-badge badge bg-success',
+                                            attenzione: 'js-morosita-badge badge bg-warning text-dark',
+                                            bloccato: 'js-morosita-badge badge bg-danger',
+                                            default: 'js-morosita-badge badge bg-secondary'
+                                        };
+
+                                        buttons.forEach((button) => {
+                                            button.addEventListener('click', async () => {
+                                                const tax = button.getAttribute('data-tax');
+                                                if (!tax) return;
+
+                                                button.disabled = true;
+                                                const originalText = button.innerHTML;
+                                                button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Verifica...';
+
+                                                try {
+                                                    const response = await fetch('<?php echo base_url('api/customers/morosita-check.php'); ?>', {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            'X-CSRF-TOKEN': csrfToken
+                                                        },
+                                                        body: JSON.stringify({ tax_code: tax })
+                                                    });
+
+                                                    const data = await response.json();
+                                                    if (!response.ok) {
+                                                        const message = data?.error || 'Errore durante la verifica.';
+                                                        alert(message);
+                                                        return;
+                                                    }
+
+                                                    const score = data?.score || 'ok';
+                                                    const badge = document.querySelector('.js-morosita-badge[data-tax="' + tax + '"]');
+                                                    const updated = document.querySelector('.js-morosita-updated[data-tax="' + tax + '"]');
+
+                                                    if (badge) {
+                                                        badge.className = badgeClasses[score] || badgeClasses.default;
+                                                        const labelMap = { ok: 'Regolare', attenzione: 'Attenzione', bloccato: 'Bloccato' };
+                                                        badge.textContent = labelMap[score] || 'Non verificato';
+                                                    }
+
+                                                    if (updated) {
+                                                        updated.textContent = 'Aggiornata: ' + new Date().toLocaleString();
+                                                    }
+                                                } catch (error) {
+                                                    console.error(error);
+                                                    alert('Impossibile completare la verifica.');
+                                                } finally {
+                                                    button.disabled = false;
+                                                    button.innerHTML = originalText;
+                                                }
+                                            });
+                                        });
+                                    })();
+                                    </script>
+                                </div>
                             </div>
                         </div>
                         <hr>

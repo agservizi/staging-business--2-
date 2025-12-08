@@ -780,18 +780,20 @@ final class OpportunityService
         }
 
         $stmt = $this->pdo->prepare(
-            'SELECT customer_first_name, customer_last_name, customer_tax_code,
-                    customer_birth_date, customer_birth_place,
-                    customer_phone, customer_email,
-                    customer_address, customer_city, customer_postal_code, customer_province,
-                    document_type, document_number, document_issued_by, document_issued_at, document_expires_at,
-                    telefonia_current_operator, telefonia_line_number,
-                    luce_pod, gas_pdr,
-                    payment_method, payment_iban, payment_holder_is_customer,
-                    payment_holder_first_name, payment_holder_last_name, payment_holder_tax_code
-             FROM opportunities
-             WHERE UPPER(customer_tax_code) = :taxCode
-             ORDER BY id DESC
+            'SELECT o.customer_first_name, o.customer_last_name, o.customer_tax_code,
+                o.customer_birth_date, o.customer_birth_place,
+                o.customer_phone, o.customer_email,
+                o.customer_address, o.customer_city, o.customer_postal_code, o.customer_province,
+                o.document_type, o.document_number, o.document_issued_by, o.document_issued_at, o.document_expires_at,
+                o.telefonia_current_operator, o.telefonia_line_number,
+                o.luce_pod, o.gas_pdr,
+                o.payment_method, o.payment_iban, o.payment_holder_is_customer,
+                o.payment_holder_first_name, o.payment_holder_last_name, o.payment_holder_tax_code,
+                c.morosita_score, c.morosita_note, c.morosita_aggiornato_il
+             FROM opportunities o
+             LEFT JOIN clienti c ON UPPER(c.cf_piva) = UPPER(o.customer_tax_code)
+             WHERE UPPER(o.customer_tax_code) = :taxCode
+             ORDER BY o.id DESC
              LIMIT 1'
         );
         $stmt->execute([':taxCode' => $normalized]);
@@ -1438,11 +1440,14 @@ final class OpportunityService
         $stmt = $this->pdo->prepare(
                 'SELECT o.*, s.label AS status_label, s.color AS status_color,
                     u.nome AS collaborator_name, u.cognome AS collaborator_surname, u.email AS collaborator_email,
-                    m.nome AS manager_name, m.cognome AS manager_surname, m.email AS manager_email
+                    m.nome AS manager_name, m.cognome AS manager_surname, m.email AS manager_email,
+                    c.id AS customer_id, c.morosita_flag, c.morosita_score, c.morosita_note,
+                    c.morosita_aggiornato_il, c.morosita_fonte
              FROM opportunities o
              LEFT JOIN opportunity_statuses s ON s.code = o.status_code
              LEFT JOIN users u ON u.id = o.collaborator_id
              LEFT JOIN users m ON m.id = o.managed_by
+             LEFT JOIN clienti c ON UPPER(c.cf_piva) = UPPER(o.customer_tax_code)
              WHERE o.id = :id
              LIMIT 1'
         );
