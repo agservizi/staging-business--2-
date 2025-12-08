@@ -65,7 +65,7 @@ $openTickets = $statusCounts['OPEN'] + $statusCounts['IN_PROGRESS'];
 $waitingTickets = $statusCounts['WAITING_CLIENT'] + $statusCounts['WAITING_PARTNER'];
 $resolvedTickets = $statusCounts['RESOLVED'] + $statusCounts['CLOSED'];
 
-$ticketCreateHint = 'Apri un ticket dal dettaglio della opportunity per contattare il team di supporto.';
+$ticketCreateHint = 'Apri un ticket per assistenza su opportunity, problemi tecnici al portale o richieste informative.';
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -77,11 +77,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             <div>
                 <p class="text-uppercase small fw-semibold text-muted mb-1">Supporto</p>
                 <h1 class="h4 mb-0">Ticket e richieste</h1>
-                <p class="text-muted mb-0">Monitora le assistenze aperte e lo stato delle comunicazioni con l'ufficio.</p>
+                <p class="text-muted mb-0">Apri ticket su opportunity, problemi tecnici al portale o richieste di informazioni.</p>
             </div>
-            <a class="btn btn-outline-primary" href="<?php echo asset('modules/opportunities/collaborator/list.php'); ?>">
-                <i class="fa-solid fa-table-list me-2"></i>Elenco opportunity
-            </a>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/ticket-general.php'); ?>">
+                    <i class="fa-solid fa-circle-plus me-2"></i>Nuovo ticket
+                </a>
+                <a class="btn btn-outline-primary" href="<?php echo asset('modules/opportunities/collaborator/list.php'); ?>">
+                    <i class="fa-solid fa-table-list me-2"></i>Elenco opportunity
+                </a>
+            </div>
         </div>
 
         <div class="row g-3 mb-4">
@@ -174,6 +179,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <tr>
                                     <td colspan="6" class="text-center py-5 text-muted">
                                         Nessun ticket trovato. <?php echo sanitize_output($ticketCreateHint); ?>
+                                        <div class="mt-3">
+                                            <a class="btn btn-sm btn-primary" href="<?php echo asset('modules/opportunities/collaborator/ticket-general.php'); ?>">
+                                                <i class="fa-solid fa-circle-plus me-2"></i>Apri ticket
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endif; ?>
