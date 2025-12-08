@@ -74,7 +74,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </div>
                     <div class="col-12 d-flex gap-2">
                         <button type="submit" class="btn btn-primary" id="submit-btn">
-                            <i class="fa-solid fa-shield-halved me-2"></i>Verifica ora
+                            <i class="fa-solid fa-floppy-disk me-2"></i>Salva stato
                         </button>
                         <button type="reset" class="btn btn-outline-secondary" id="reset-btn">Reset</button>
                     </div>
@@ -107,8 +107,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     function setLoading(isLoading) {
         submitBtn.disabled = isLoading;
         submitBtn.innerHTML = isLoading
-            ? '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Verifica...'
-            : '<i class="fa-solid fa-shield-halved me-2"></i>Verifica ora';
+            ? '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Salvataggio...'
+            : '<i class="fa-solid fa-floppy-disk me-2"></i>Salva stato';
     }
 
     function renderResult(ok, message, data) {
