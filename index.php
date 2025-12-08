@@ -165,6 +165,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                         <div class="d-grid">
                             <button type="submit" class="btn btn-warning fw-semibold">Entra in Coresuite Business</button>
                         </div>
+                        <div class="d-grid mt-3">
+                            <a class="btn btn-outline-warning" href="<?php echo base_url('modules/opportunities/collaborator/register.php'); ?>">Sei un nuovo collaboratore? Registrati</a>
+                        </div>
                     </form>
                     <div class="login-meta mt-5">
                         Accesso riservato al personale autorizzato. Ogni attività viene registrata per motivi di sicurezza e compliance.
