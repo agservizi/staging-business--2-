@@ -974,6 +974,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <button class="nav-link" data-section-target="appearance" type="button">Aspetto / Backup</button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" data-section-target="privacy" type="button">Privacy / Cookie</button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="movements" type="button">Descrizioni</button>
             </li>
             <li class="nav-item" role="presentation">
@@ -1173,6 +1176,111 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <button class="btn btn-warning" type="submit"><i class="fa-solid fa-save me-2"></i>Salva tema</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12" data-section="privacy">
+                <div class="card ag-card" id="cs-consent-card">
+                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <h5 class="card-title mb-0">Privacy e cookie</h5>
+                            <p class="text-muted mb-0">Stato CMP e log eventi lato client (max 50 per sessione).</p>
+                        </div>
+                        <script>
+                            (function() {
+                                const card = document.getElementById('cs-consent-card');
+                                if (!card || !window.CSConsent) return;
+
+                                const stateEl = card.querySelector('[data-cs-state]');
+                                const updatedEl = card.querySelector('[data-cs-updated]');
+                                const logEl = card.querySelector('[data-cs-log]');
+                                const toggleDebug = card.querySelector('[data-cs-toggle-debug]');
+
+                                const formatTs = (ts) => {
+                                    if (!ts) return 'Mai';
+                                    const d = new Date(ts);
+                                    if (Number.isNaN(d.getTime())) return '—';
+                                    return d.toLocaleString();
+                                };
+
+                                const renderState = () => {
+                                    const s = window.CSConsent.state || {};
+                                    const rows = [
+                                        { key: 'Necessari', val: true },
+                                        { key: 'Preferenze', val: !!s.preferences },
+                                        { key: 'Statistici', val: !!s.statistics },
+                                        { key: 'Marketing', val: !!s.marketing },
+                                    ];
+                                    stateEl.innerHTML = rows.map(r => `
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span>${r.key}</span>
+                                            <span class="badge ${r.val ? 'bg-success' : 'bg-secondary'}">${r.val ? 'Attivo' : 'Disattivo'}</span>
+                                        </div>
+                                    `).join('');
+                                    updatedEl.textContent = formatTs(s.updatedAt);
+                                };
+
+                                const renderLog = () => {
+                                    const entries = (window.CSConsent.getLog && window.CSConsent.getLog()) || [];
+                                    if (!entries.length) {
+                                        logEl.innerHTML = '<div class="text-muted">Nessun evento registrato in questa sessione.</div>';
+                                        return;
+                                    }
+                                    logEl.innerHTML = entries.slice().reverse().map((entry) => {
+                                        const time = formatTs(entry.ts);
+                                        const payload = JSON.stringify(entry.args);
+                                        return `<div class="mb-2"><div class="small text-muted">${time}</div><code class="small d-block">${payload}</code></div>`;
+                                    }).join('');
+                                };
+
+                                const toggle = (event) => {
+                                    event.preventDefault();
+                                    const next = !window.CSConsent.debug;
+                                    window.CSConsent.debug = next;
+                                    if (window.CSConsent.setDebug) window.CSConsent.setDebug(next);
+                                    try { localStorage.setItem('cs-consent-debug', next ? '1' : '0'); } catch (e) {}
+                                    toggleDebug.textContent = next ? 'Debug attivo' : 'Debug';
+                                };
+
+                                if (toggleDebug) toggleDebug.addEventListener('click', toggle);
+
+                                window.CSConsent.onChange(() => {
+                                    renderState();
+                                    renderLog();
+                                });
+
+                                renderState();
+                                renderLog();
+                            })();
+                        </script>
+                        <a href="#" class="small" data-cs-toggle-debug>Debug</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="border rounded-3 p-3 bg-light h-100">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted text-uppercase small fw-semibold">Consenso</span>
+                                        <span class="badge bg-secondary" data-cs-updated>—</span>
+                                    </div>
+                                    <div class="d-grid gap-2" data-cs-state>
+                                        <div class="placeholder-glow">
+                                            <span class="placeholder col-6"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="border rounded-3 p-3 bg-light h-100 d-flex flex-column">
+                                    <div class="small text-muted mb-2">Ultimi eventi. Necessita pagina con CMP caricato.</div>
+                                    <div class="flex-grow-1 overflow-auto" style="max-height: 260px;" data-cs-log>
+                                        <div class="placeholder-glow">
+                                            <span class="placeholder col-8"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
