@@ -36,7 +36,11 @@ $q = trim($_GET['q'] ?? '');
 $q = mb_substr($q, 0, 120);
 $minLength = 2;
 $limit = 15;
-$dbPath = getenv('ANNCSU_DB_PATH') ?: __DIR__ . '/../storage/tmp/anncsu.sqlite';
+$dbPath = trim(getenv('ANNCSU_DB_PATH') ?: '');
+if ($dbPath === '') {
+    $dbPath = __DIR__ . '/../storage/tmp/anncsu.sqlite';
+}
+$debug = filter_var(getenv('APP_DEBUG') ?: false, FILTER_VALIDATE_BOOL);
 
 $response = [
     'query' => $q,
@@ -59,6 +63,16 @@ if ($q === '' || mb_strlen($q) < $minLength) {
 }
 
 if (!is_readable($dbPath)) {
+    $details = [
+        'path' => $dbPath,
+        'exists' => file_exists($dbPath),
+        'realpath' => file_exists($dbPath) ? realpath($dbPath) : null,
+        'readable' => false,
+    ];
+    error_log('ANNCSU DB non leggibile: ' . json_encode($details));
+    if ($debug) {
+        $response['debug'] = $details;
+    }
     $response['error'] = 'Indice ANNCSU non disponibile. Contatta l\'admin.';
     $respond(503, $response);
     return;
