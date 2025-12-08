@@ -13,6 +13,20 @@
     version: 1,
   };
 
+  const LOG_LIMIT = 50;
+  const logs = [];
+  let debug = false;
+
+  const log = (...args) => {
+    const entry = { ts: Date.now(), args };
+    logs.push(entry);
+    if (logs.length > LOG_LIMIT) logs.shift();
+    if (debug) {
+      // eslint-disable-next-line no-console
+      console.info('[CSConsent]', ...args);
+    }
+  };
+
   const safeParse = (raw) => {
     if (!raw) return null;
     try {
@@ -39,6 +53,7 @@
   const dispatchChange = (state) => {
     const event = new CustomEvent('cs-consent-changed', { detail: state });
     window.dispatchEvent(event);
+    log('dispatchChange', state);
   };
 
   const loadState = () => {
@@ -57,10 +72,12 @@
   };
 
   const state = loadState();
+  log('loadState', state);
 
   const saveState = (next) => {
     const merged = { ...DEFAULT_STATE, ...next, updatedAt: Date.now() };
     window.CSConsent.state = merged;
+    log('saveState', merged);
     persist(merged);
     dispatchChange(merged);
     processDeferredScripts();
@@ -85,6 +102,7 @@
       clone.text = script.text;
       script.setAttribute('data-cs-processed', '1');
       script.parentNode.insertBefore(clone, script.nextSibling);
+      log('script-activated', { category, src: clone.src || 'inline' });
     });
   };
 
@@ -157,6 +175,12 @@
   window.CSConsent = {
     state,
     hasConsent,
+    getLog: () => [...logs],
+    setDebug: (value) => {
+      debug = !!value;
+      window.CSConsent.debug = debug;
+      log('debug', debug);
+    },
     onChange: (cb) => {
       if (typeof cb === 'function') {
         window.addEventListener('cs-consent-changed', (e) => cb(e.detail));
@@ -178,6 +202,17 @@
     },
   };
 
+  try {
+    const storedDebug = localStorage.getItem('cs-consent-debug');
+    debug = storedDebug === '1';
+  } catch (e) {
+    /* ignore */
+  }
+  if (window.CSConsent && window.CSConsent.debug === true) {
+    debug = true;
+  }
+  window.CSConsent.debug = debug;
+
   // If no prior decision, show banner
   if (!state.updatedAt) {
     if (document.readyState === 'loading') {
@@ -193,4 +228,6 @@
       processDeferredScripts();
     }
   }
+
+  log('init-complete', state);
 })();
