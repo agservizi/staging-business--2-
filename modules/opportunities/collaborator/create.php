@@ -620,8 +620,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <label class="form-label">Codice POD</label>
-                                <input class="form-control" type="text" name="luce_pod" value="<?php echo sanitize_output($formData['luce_pod'] ?? ''); ?>" placeholder="IT001E...">
+                                <label class="form-label">Codice POD <span class="text-danger">*</span></label>
+                                <input class="form-control" type="text" name="luce_pod" value="<?php echo sanitize_output($formData['luce_pod'] ?? ''); ?>" placeholder="IT001E..." required>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Potenza (kW)</label>
@@ -689,8 +689,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <label class="form-label">Codice PDR</label>
-                                <input class="form-control" type="text" name="gas_pdr" value="<?php echo sanitize_output($formData['gas_pdr'] ?? ''); ?>" placeholder="IT001G...">
+                                <label class="form-label">Codice PDR <span class="text-danger">*</span></label>
+                                <input class="form-control" type="text" name="gas_pdr" value="<?php echo sanitize_output($formData['gas_pdr'] ?? ''); ?>" placeholder="IT001G..." required>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">REMI</label>
@@ -1745,6 +1745,28 @@ window.CIEIstatLookupConfig = {
         gasSection.hidden = category !== 'gas';
     };
 
+    const syncEnergyRequiredFields = () => {
+        const category = categorySelect.value;
+        const podInput = opportunityForm.querySelector('input[name="luce_pod"]');
+        const pdrInput = opportunityForm.querySelector('input[name="gas_pdr"]');
+
+        if (podInput) {
+            if (category === 'luce') {
+                podInput.setAttribute('required', 'required');
+            } else {
+                podInput.removeAttribute('required');
+            }
+        }
+
+        if (pdrInput) {
+            if (category === 'gas') {
+                pdrInput.setAttribute('required', 'required');
+            } else {
+                pdrInput.removeAttribute('required');
+            }
+        }
+    };
+
     const syncTelefoniaContractFields = () => {
         if (!telefoniaContractTypeSelect) {
             return;
@@ -2538,6 +2560,7 @@ window.CIEIstatLookupConfig = {
         refreshProviderOptions();
         refreshOfferOptions();
         toggleCategorySections();
+        syncEnergyRequiredFields();
         evaluateSectionValidation();
         updatePaymentMethodOptions();
         handlePaymentMethodChange();
@@ -2556,6 +2579,7 @@ window.CIEIstatLookupConfig = {
         refreshOfferOptions();
         toggleCategorySections();
         syncTelefoniaContractFields();
+        syncEnergyRequiredFields();
         evaluateSectionValidation();
         updatePaymentMethodOptions();
         handlePaymentMethodChange();
@@ -2575,6 +2599,7 @@ window.CIEIstatLookupConfig = {
     refreshProviderOptions();
     refreshOfferOptions();
     toggleCategorySections();
+    syncEnergyRequiredFields();
     syncTelefoniaContractFields();
     evaluateSectionValidation();
     updatePaymentMethodOptions();
