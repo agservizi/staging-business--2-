@@ -4,11 +4,24 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/db_connect.php';
 require_once __DIR__ . '/../../includes/helpers.php';
+use App\Services\Opportunities\OpportunityService;
 
 require_role('Admin', 'Manager');
 
 $pageTitle = 'Verifica morosità';
 $csrfToken = csrf_token();
+$opportunityService = new OpportunityService($pdo);
+$catalog = $opportunityService->getProviderCatalog();
+$providerOptions = [];
+foreach ($catalog as $category => $providers) {
+    foreach ($providers as $provider) {
+        $providerOptions[] = [
+            'id' => (int) ($provider['id'] ?? 0),
+            'name' => (string) ($provider['name'] ?? ''),
+            'category' => (string) $category,
+        ];
+    }
+}
 
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
@@ -39,6 +52,18 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="col-md-6 col-lg-4">
                         <label class="form-label text-uppercase small text-muted">Note (opzionale)</label>
                         <input type="text" class="form-control" name="note" id="note" maxlength="180" placeholder="Nota per il log">
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label class="form-label text-uppercase small text-muted">Gestore (opzionale)</label>
+                        <select class="form-select" name="provider_id" id="provider_id">
+                            <option value="">Tutti</option>
+                            <?php foreach ($providerOptions as $provider): ?>
+                                <option value="<?php echo (int) $provider['id']; ?>">
+                                    <?php echo sanitize_output(strtoupper($provider['category']) . ' · ' . $provider['name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">Seleziona il gestore per salvare/forzare la morosità su quel provider.</div>
                     </div>
                     <div class="col-md-6 col-lg-4">
                         <label class="form-label text-uppercase small text-muted">Imposta esito (opzionale)</label>
@@ -96,6 +121,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     const taxInput = document.getElementById('tax_code');
     const noteInput = document.getElementById('note');
     const scoreSelect = document.getElementById('score');
+    const providerSelect = document.getElementById('provider_id');
     const pendingCountInput = document.getElementById('pending_count');
     const pendingAmountInput = null; // not exposed, keep default 0
     const overdueCountInput = document.getElementById('overdue_count');
@@ -131,6 +157,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         if (ok && data && data.metrics) {
             const entries = [
                 ['Score', data.score],
+            ['Gestore (ID)', data.provider_id || '—'],
                 ['Pendenze aperte', data.metrics.pending_count ?? 0],
                 ['Pendenze scadute', data.metrics.overdue_count ?? 0],
                 ['Importo scaduto', (data.metrics.overdue_amount ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })],
@@ -155,6 +182,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     async function submitMorosita(mode = 'verify') {
         const tax = taxInput.value.trim();
         const note = noteInput.value.trim();
+        const providerId = providerSelect ? Number(providerSelect.value || 0) : 0;
         if (!tax) {
             alert('Inserisci un codice fiscale o una P.IVA');
             return;
@@ -177,7 +205,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken
                 },
-                body: JSON.stringify({ tax_code: tax, note, score: score || null, metrics })
+                body: JSON.stringify({ tax_code: tax, note, score: score || null, metrics, provider_id: providerId || null })
             });
             const data = await response.json();
             if (!response.ok) {
