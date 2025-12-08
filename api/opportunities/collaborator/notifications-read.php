@@ -114,6 +114,7 @@ try {
     if ($lastTicketMessageId > 0) {
         $_SESSION['collab_notifications_last_ticket_message_id'] = $lastTicketMessageId;
     }
+    $_SESSION['collab_notifications_force_hide'] = true;
 
     echo json_encode(['success' => true, 'read_at' => $now]);
 } catch (Throwable $exception) {

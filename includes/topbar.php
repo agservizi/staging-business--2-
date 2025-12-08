@@ -140,8 +140,10 @@ if ($role === 'Collaboratore') {
             $lastTicketCutoffTime = $collaboratorNotificationsLastRead;
             $latestStatusTs = $collaboratorNotificationsLatestStatusInBatch ? strtotime((string) $collaboratorNotificationsLatestStatusInBatch) : 0;
 
-            if (($latestStatusTs <= $lastStatusCutoff) && ($collaboratorNotificationsLatestTicketIdInBatch <= $collaboratorNotificationsLastTicketSeenId)) {
+            $forceHide = isset($_SESSION['collab_notifications_force_hide']) && $_SESSION['collab_notifications_force_hide'] === true;
+            if ($forceHide || (($latestStatusTs <= $lastStatusCutoff) && ($collaboratorNotificationsLatestTicketIdInBatch <= $collaboratorNotificationsLastTicketSeenId))) {
                 $collaboratorNotificationCount = 0;
+                unset($_SESSION['collab_notifications_force_hide']);
             } else {
                 $collaboratorNotificationCount = count(array_filter($collaboratorNotifications, static function (array $item) use ($collaboratorNotificationsLastTicketSeenId, $lastStatusCutoff, $lastTicketCutoffTime): bool {
                     $timestamp = strtotime((string) ($item['timestamp'] ?? '')) ?: 0;
