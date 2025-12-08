@@ -54,15 +54,26 @@ if ($requestedScore !== null && !in_array($requestedScore, $allowedScores, true)
 
 $note = isset($payload['note']) ? trim((string) $payload['note']) : null;
 $source = isset($payload['fonte']) ? trim((string) $payload['fonte']) : '';
+$manualMetrics = null;
+if (isset($payload['metrics']) && is_array($payload['metrics'])) {
+    $manualMetrics = [
+        'pending_count' => $payload['metrics']['pending_count'] ?? null,
+        'pending_amount' => $payload['metrics']['pending_amount'] ?? null,
+        'overdue_count' => $payload['metrics']['overdue_count'] ?? null,
+        'overdue_amount' => $payload['metrics']['overdue_amount'] ?? null,
+        'max_overdue_days' => $payload['metrics']['max_overdue_days'] ?? null,
+    ];
+}
 
 try {
     $service = new MorositaService($pdo);
     $result = $service->evaluateAndPersistByTaxCode(
         $taxCode,
         $userId,
-        $requestedScore !== null ? 'override-manuale' : 'verifica-manuale',
+        $requestedScore !== null ? 'override-manuale' : ($source !== '' ? $source : 'verifica-manuale'),
         $requestedScore,
-        $note
+        $note,
+        $manualMetrics
     );
 
     echo json_encode([

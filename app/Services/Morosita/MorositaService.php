@@ -19,7 +19,7 @@ final class MorositaService
      *
      * @return array{customer_id:int,tax_code:string,score:string,flag:int,note:string|null,fonte:string,metrics:array<string,int|float|null>}
      */
-    public function evaluateAndPersistByTaxCode(string $taxCode, ?int $userId = null, string $fonte = 'verifica-manuale', ?string $forcedScore = null, ?string $noteOverride = null): array
+    public function evaluateAndPersistByTaxCode(string $taxCode, ?int $userId = null, string $fonte = 'verifica-manuale', ?string $forcedScore = null, ?string $noteOverride = null, ?array $manualMetrics = null): array
     {
         $normalized = $this->normalizeTaxCode($taxCode);
         if ($normalized === '') {
@@ -31,10 +31,15 @@ final class MorositaService
             throw new RuntimeException('Cliente non trovato o non creato.');
         }
 
+        $metrics = null;
+        if (is_array($manualMetrics)) {
+            $metrics = $this->sanitizeMetrics($manualMetrics);
+        }
+
         if ($forcedScore !== null) {
             $score = $this->validateScore($forcedScore);
             $note = $noteOverride !== null && $noteOverride !== '' ? $noteOverride : 'Override manuale';
-            return $this->persistResult($customerId, $normalized, $score, $fonte, $note, $userId, [
+            return $this->persistResult($customerId, $normalized, $score, $fonte, $note, $userId, $metrics ?? [
                 'pending_count' => null,
                 'overdue_count' => null,
                 'overdue_amount' => null,
@@ -42,7 +47,9 @@ final class MorositaService
             ]);
         }
 
-        $metrics = $this->calculateMetrics($customerId);
+        if ($metrics === null) {
+            $metrics = $this->calculateMetrics($customerId);
+        }
         $score = $this->calculateScoreFromMetrics($metrics);
         $note = $this->buildNoteFromMetrics($metrics, $score);
 
@@ -175,6 +182,21 @@ final class MorositaService
         }
 
         return implode(' · ', $parts);
+    }
+
+    /**
+     * @param array<string,int|float|string|null> $metrics
+     * @return array{pending_count:int,pending_amount:float,overdue_count:int,overdue_amount:float,max_overdue_days:int}
+     */
+    private function sanitizeMetrics(array $metrics): array
+    {
+        return [
+            'pending_count' => (int) ($metrics['pending_count'] ?? 0),
+            'pending_amount' => (float) ($metrics['pending_amount'] ?? 0),
+            'overdue_count' => (int) ($metrics['overdue_count'] ?? 0),
+            'overdue_amount' => (float) ($metrics['overdue_amount'] ?? 0),
+            'max_overdue_days' => (int) ($metrics['max_overdue_days'] ?? 0),
+        ];
     }
 
     private function persistResult(int $customerId, string $taxCode, string $score, string $fonte, ?string $note, ?int $userId, array $metrics): array

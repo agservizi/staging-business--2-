@@ -50,6 +50,28 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         </select>
                         <div class="form-text">Seleziona solo per forzare l'esito; altrimenti lascia vuoto.</div>
                     </div>
+                    <div class="col-12">
+                        <p class="text-uppercase small text-muted mb-1">Metriche manuali (opzionali)</p>
+                        <div class="row g-3">
+                            <div class="col-md-3 col-lg-2">
+                                <label class="form-label small text-muted">Pendenze aperte</label>
+                                <input type="number" min="0" step="1" class="form-control" id="pending_count" placeholder="0">
+                            </div>
+                            <div class="col-md-3 col-lg-2">
+                                <label class="form-label small text-muted">Pendenze scadute</label>
+                                <input type="number" min="0" step="1" class="form-control" id="overdue_count" placeholder="0">
+                            </div>
+                            <div class="col-md-3 col-lg-2">
+                                <label class="form-label small text-muted">Importo scaduto (€)</label>
+                                <input type="number" min="0" step="0.01" class="form-control" id="overdue_amount" placeholder="0,00">
+                            </div>
+                            <div class="col-md-3 col-lg-2">
+                                <label class="form-label small text-muted">Ritardo max (giorni)</label>
+                                <input type="number" min="0" step="1" class="form-control" id="max_overdue_days" placeholder="0">
+                            </div>
+                        </div>
+                        <div class="form-text">Se lasci vuoto, i dati vengono calcolati automaticamente. Se compili, usiamo questi valori per il punteggio.</div>
+                    </div>
                     <div class="col-12 d-flex gap-2">
                         <button type="submit" class="btn btn-primary" id="submit-btn">
                             <i class="fa-solid fa-shield-halved me-2"></i>Verifica ora
@@ -71,6 +93,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     const taxInput = document.getElementById('tax_code');
     const noteInput = document.getElementById('note');
     const scoreSelect = document.getElementById('score');
+    const pendingCountInput = document.getElementById('pending_count');
+    const pendingAmountInput = null; // not exposed, keep default 0
+    const overdueCountInput = document.getElementById('overdue_count');
+    const overdueAmountInput = document.getElementById('overdue_amount');
+    const maxOverdueDaysInput = document.getElementById('max_overdue_days');
     const submitBtn = document.getElementById('submit-btn');
     const resultBox = document.getElementById('morosita-result');
     const alertBox = document.getElementById('morosita-alert');
@@ -116,6 +143,13 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     form.addEventListener('submit', async () => {
         const tax = taxInput.value.trim();
         const note = noteInput.value.trim();
+        const metrics = {
+            pending_count: pendingCountInput ? Number(pendingCountInput.value || 0) : 0,
+            pending_amount: 0,
+            overdue_count: overdueCountInput ? Number(overdueCountInput.value || 0) : 0,
+            overdue_amount: overdueAmountInput ? Number(overdueAmountInput.value || 0) : 0,
+            max_overdue_days: maxOverdueDaysInput ? Number(maxOverdueDaysInput.value || 0) : 0,
+        };
         if (!tax) {
             alert('Inserisci un codice fiscale o una P.IVA');
             return;
@@ -130,7 +164,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken
                 },
-                body: JSON.stringify({ tax_code: tax, note, score: score || null })
+                body: JSON.stringify({ tax_code: tax, note, score: score || null, metrics })
             });
             const data = await response.json();
             if (!response.ok) {
