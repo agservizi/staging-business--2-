@@ -130,7 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                 <div class="auth-panel-inner">
                     <div class="mb-4 text-center text-md-start">
                         <h2 class="h4 fw-semibold mb-2">Accedi al tuo workspace</h2>
-                        <p class="login-meta mb-0">Hai bisogno di assistenza? <a class="link-warning text-decoration-none" href="forgot_password.php">Recupera l'accesso</a>.</p>
+                        <p class="login-meta mb-1">Hai bisogno di assistenza? <a class="link-warning text-decoration-none" href="forgot_password.php">Recupera l'accesso</a>.</p>
+                        <p class="login-meta mb-0">Sei un nuovo collaboratore? <a class="link-warning text-decoration-none" href="<?php echo base_url('modules/opportunities/collaborator/register.php'); ?>">Registrati qui</a>.</p>
                     </div>
                     <?php if ($errors): ?>
                         <div class="alert alert-danger border-0 shadow-sm mb-4" role="alert">
