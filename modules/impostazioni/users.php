@@ -14,6 +14,9 @@ $roleLabels = [
     'Manager' => 'Manager',
     'Operatore' => 'Operatore',
     'Patronato' => 'Operatore Patronato',
+    'Operatore Patronato' => 'Operatore Patronato',
+    'Operatore_Patronato' => 'Operatore Patronato',
+    'patronato' => 'Operatore Patronato',
     'Cliente' => 'Cliente',
     'Collaboratore' => 'Collaboratore',
 ];
