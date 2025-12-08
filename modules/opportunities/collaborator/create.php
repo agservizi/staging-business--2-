@@ -690,7 +690,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label">Codice PDR <span class="text-danger">*</span></label>
-                                <input class="form-control" type="text" name="gas_pdr" value="<?php echo sanitize_output($formData['gas_pdr'] ?? ''); ?>" placeholder="IT001G..." required>
+                                <input class="form-control" type="text" name="gas_pdr" value="<?php echo sanitize_output($formData['gas_pdr'] ?? ''); ?>" placeholder="0035" required>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">REMI</label>
