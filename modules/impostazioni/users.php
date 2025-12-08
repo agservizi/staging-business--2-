@@ -510,7 +510,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <td><?php echo sanitize_output(format_user_display_name($user['username'], $user['email'], $user['nome'], $user['cognome'])); ?></td>
                                         <td><?php echo sanitize_output($user['username']); ?></td>
                                         <td><?php echo sanitize_output($user['email']); ?></td>
-                                        <td><span class="badge ag-badge"><?php echo sanitize_output($roleLabels[$user['ruolo']] ?? $user['ruolo']); ?></span></td>
+                                        <?php $roleKey = $user['ruolo']; ?>
+                                        <td><span class="badge ag-badge"><?php echo sanitize_output($roleLabels[$roleKey] ?? $roleLabels[ucfirst(strtolower((string) $roleKey))] ?? $roleKey); ?></span></td>
                                         <td><?php echo $user['last_login_at'] ? sanitize_output(date('d/m/Y H:i', strtotime($user['last_login_at']))) : '—'; ?></td>
                                         <td><?php echo sanitize_output(format_datetime($user['created_at'])); ?></td>
                                         <td class="text-end">
