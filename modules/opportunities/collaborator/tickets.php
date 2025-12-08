@@ -155,6 +155,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 Reset
                             </a>
                         <?php endif; ?>
+                        <a class="btn btn-success w-100" href="<?php echo asset('modules/opportunities/collaborator/ticket-general.php'); ?>">
+                            <i class="fa-solid fa-circle-plus me-2"></i>Nuovo ticket
+                        </a>
                     </div>
                 </form>
             </div>
