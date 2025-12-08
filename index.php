@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/db_connect.php';
 require_once __DIR__ . '/includes/helpers.php';
 
 $auditLogger = new SecurityAuditLogger($pdo);
+$cookiebotId = env('COOKIEBOT_ID');
 
 if (!isset($_SESSION['user_id'])) {
     attempt_remembered_login($pdo, $auditLogger);
@@ -104,6 +105,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Coresuite Business - Login</title>
+    <?php if ($cookiebotId): ?>
+        <script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-cbid="<?php echo sanitize_output($cookiebotId); ?>" data-blockingmode="auto" type="text/javascript"></script>
+    <?php endif; ?>
     <link href="<?php echo asset('assets/vendor/bootstrap/css/bootstrap.min.css'); ?>" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" referrerpolicy="no-referrer" />
     <link href="<?php echo asset('assets/css/custom.css'); ?>" rel="stylesheet">
