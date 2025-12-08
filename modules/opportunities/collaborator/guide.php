@@ -32,21 +32,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="card-body">
                         <h2 class="h6 text-uppercase text-muted mb-3">Percorso rapido</h2>
                         <ol class="list-group list-group-numbered mb-4">
-                            <li class="list-group-item">
-                                <strong>Prepara i dati cliente</strong> · CF, documento, contatti, indirizzo.
-                            </li>
-                            <li class="list-group-item">
-                                <strong>Seleziona categoria e gestore</strong> · Telefonia/Luce/Gas, offerta disponibile.
-                            </li>
-                            <li class="list-group-item">
-                                <strong>Compila pagamento</strong> · IBAN (validazione Stripe) o bollettino se previsto.
-                            </li>
-                            <li class="list-group-item">
-                                <strong>Allega documenti</strong> · Carta identità, modulo, eventuali allegati gestore.
-                            </li>
-                            <li class="list-group-item">
-                                <strong>Invia</strong> · Salva e invia; segui stato in “Elenco OP”.
-                            </li>
+                            <li class="list-group-item"><strong>Cerca/recupera cliente</strong> · Inserisci CF e usa “Recupera”.</li>
+                            <li class="list-group-item"><strong>Compila dati anagrafici</strong> · Nome, contatti, indirizzo, documento.</li>
+                            <li class="list-group-item"><strong>Scegli categoria/gestore</strong> · Telefonia, Luce, Gas, offerta.</li>
+                            <li class="list-group-item"><strong>Pagamento</strong> · IBAN (validazione automatica) o bollettino.</li>
+                            <li class="list-group-item"><strong>Allega documenti</strong> · Documento, moduli gestore, altri allegati.</li>
+                            <li class="list-group-item"><strong>Invia</strong> · Salva, controlla stato in “Elenco OP”.</li>
                         </ol>
 
                         <h2 class="h6 text-uppercase text-muted mb-3">Flussi principali</h2>
@@ -60,12 +51,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <div id="flowCreate" class="accordion-collapse collapse show" aria-labelledby="flowCreateHeading" data-bs-parent="#guideFlows">
                                     <div class="accordion-body">
                                         <ul class="mb-0">
-                                            <li>Usa “Nuova OP” o duplica da elenco (icona copia).</li>
-                                            <li>Ricerca cliente via codice fiscale per autocompilare dati e pagamento.</li>
-                                            <li>Telefonia: scegli tipologia contratto (Migrazione vs Nuova attivazione); migrazione richiede operatore, numero, codice migrazione.</li>
-                                            <li>Luce/Gas: inserisci POD/PDR.</li>
-                                            <li>Pagamento IBAN: valida via Stripe (badge verde in dettaglio se riuscita).</li>
-                                            <li>Carica allegati richiesti dal gestore; verifica requisiti dimensione/formato.</li>
+                                            <li>Apri “Nuova OP” o duplica da elenco.</li>
+                                            <li>Recupera cliente tramite CF per precompilare dati e pagamento.</li>
+                                            <li>Telefonia: scegli “Migrazione” o “Nuova attivazione”; per migrazione servono operatore, numero, codice migrazione.</li>
+                                            <li>Luce/Gas: inserisci POD/PDR e dati fornitura.</li>
+                                            <li>Pagamento: inserisci IBAN (validazione automatica) o bollettino.</li>
+                                            <li>Allegati: carica documento identità e moduli richiesti dal gestore.</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -95,9 +86,25 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <div id="flowFiles" class="accordion-collapse collapse" aria-labelledby="flowFilesHeading" data-bs-parent="#guideFlows">
                                     <div class="accordion-body">
                                         <ul class="mb-0">
-                                            <li>Allega documenti al momento dell'invio oppure successivamente dalla scheda OP.</li>
-                                            <li>Usa “Note” per comunicazioni interne e “Sollecito” per richiamare l'attenzione.</li>
-                                            <li>I file restano collegati e visibili ad admin/manager.</li>
+                                            <li>Allega subito o dalla scheda OP; formati accettati: PDF/JPG/PNG.</li>
+                                            <li>Usa “Note” per commenti interni; “Sollecito” per richiamare l'attenzione.</li>
+                                            <li>I file restano collegati e visibili a admin/manager.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="flowDraftHeading">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flowDraft" aria-expanded="false" aria-controls="flowDraft">
+                                        Bozze e duplicazioni
+                                    </button>
+                                </h2>
+                                <div id="flowDraft" class="accordion-collapse collapse" aria-labelledby="flowDraftHeading" data-bs-parent="#guideFlows">
+                                    <div class="accordion-body">
+                                        <ul class="mb-0">
+                                            <li>Il salvataggio bozza è automatico: riaprendo la pagina trovi i dati.</li>
+                                            <li>Puoi duplicare un'OP dall'elenco per creare una nuova pratica simile.</li>
+                                            <li>Pulisci i campi sensibili (documento, pagamento) prima di inviare.</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -113,7 +120,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <div class="d-flex flex-column gap-3">
                             <div>
                                 <p class="fw-semibold mb-1">Perché non vedo IBAN validato?</p>
-                                <p class="text-muted mb-0 small">La validazione IBAN avviene automaticamente in salvataggio quando compili il campo IBAN e i dati intestatario. In dettaglio comparirà il badge “Validato” con banca/cifre se l'esito Stripe è positivo.</p>
+                                <p class="text-muted mb-0 small">La validazione IBAN avviene in salvataggio se hai compilato IBAN e intestatario. In dettaglio OP compare badge “Validato” con banca/cifre se esito positivo.</p>
                             </div>
                             <div>
                                 <p class="fw-semibold mb-1">Quando servono operatore e numero?</p>
@@ -121,15 +128,19 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div>
                                 <p class="fw-semibold mb-1">Posso recuperare un cliente esistente?</p>
-                                <p class="text-muted mb-0 small">Sì, inserisci CF e usa “Recupera”: la scheda cliente si autocompila (dati, documento, pagamento).</p>
+                                <p class="text-muted mb-0 small">Sì: inserisci CF e premi “Recupera” per autocompilare dati, documento e pagamento.</p>
                             </div>
                             <div>
                                 <p class="fw-semibold mb-1">Come vedo le mie provvigioni?</p>
-                                <p class="text-muted mb-0 small">Vai su “Provvigioni”: timeline mensile, dettagli mese, stato delle OP conteggiate.</p>
+                                <p class="text-muted mb-0 small">Sezione “Provvigioni”: timeline mensile, dettagli mese, stato delle OP conteggiate.</p>
                             </div>
                             <div>
                                 <p class="fw-semibold mb-1">Cosa significa stato “in verifica”?</p>
-                                <p class="text-muted mb-0 small">La pratica è in revisione admin. Se riaperta, puoi modificarla; quando chiusa passa ad “attivata” o “annullata”. L'etichetta può apparire come “in verifica”.</p>
+                                <p class="text-muted mb-0 small">La pratica è in revisione admin. Se riaperta puoi modificarla; a chiusura diventa “attivata” o “annullata”.</p>
+                            </div>
+                            <div>
+                                <p class="fw-semibold mb-1">Mancano allegati o campi obbligatori?</p>
+                                <p class="text-muted mb-0 small">Controlla gli alert rossi nel form. Senza documento e dati pagamento il salvataggio può fallire.</p>
                             </div>
                         </div>
                     </div>
@@ -139,11 +150,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="card-body">
                         <h2 class="h6 text-uppercase text-muted mb-3">Suggerimenti operativi</h2>
                         <ul class="mb-0">
-                            <li>Compila tutti i campi obbligatori prima di caricare i file.</li>
-                            <li>Uniforma i nomi file: cliente-cf-documento.pdf.</li>
-                            <li>Usa la rubrica “Clienti” per riaprire rapidamente schede e storico.</li>
-                            <li>Controlla la sezione Promemoria per solleciti automatici.</li>
-                            <li>Per dubbi su POD/PDR o codici migrazione, verifica il documento bolletta cliente.</li>
+                            <li>Completa i campi obbligatori prima di caricare file per evitare errori.</li>
+                            <li>Nomina i file in modo uniforme: cliente-cf-documento.pdf.</li>
+                            <li>Usa la rubrica “Clienti” per recuperare storico e allegati.</li>
+                            <li>Verifica Promemoria e Solleciti per seguire le attività pendenti.</li>
+                            <li>Per POD/PDR o codice migrazione, usa i dati presenti in bolletta.</li>
                         </ul>
                     </div>
                 </div>
