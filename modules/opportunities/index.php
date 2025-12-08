@@ -42,6 +42,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <a class="btn btn-outline-primary" href="<?php echo sanitize_output(asset('modules/opportunities/promotions/index.php')); ?>">
                     <i class="fa-solid fa-folder-open me-2"></i>File manager promo
                 </a>
+                <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(asset('modules/impostazioni/morosita.php')); ?>">
+                    <i class="fa-solid fa-shield-halved me-2"></i>Verifica morosità
+                </a>
                 <a class="btn btn-primary" href="<?php echo sanitize_output(asset('modules/opportunities/commissions.php')); ?>">
                     <i class="fa-solid fa-hand-holding-dollar me-2"></i>Provvigioni collaboratori
                 </a>

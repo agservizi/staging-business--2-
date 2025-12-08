@@ -6,7 +6,6 @@ require_once __DIR__ . '/../../includes/db_connect.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 
 require_role('Admin', 'Manager');
-require_capability('settings.manage');
 
 $pageTitle = 'Verifica morosità';
 $csrfToken = csrf_token();
@@ -19,9 +18,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <main class="content-wrapper">
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
             <div>
-                <p class="text-uppercase small fw-semibold text-muted mb-1">Impostazioni</p>
-                <h1 class="h4 mb-0">Verifica morosità cliente</h1>
-                <p class="text-muted mb-0">Esegui un controllo manuale su un cliente tramite codice fiscale o partita IVA.</p>
+                <p class="text-uppercase small fw-semibold text-muted mb-1">Morosità</p>
+                <h1 class="h4 mb-0">Verifica e imposta stato</h1>
+                <p class="text-muted mb-0">Esegui un controllo manuale su un cliente tramite codice fiscale o partita IVA e, se serve, imposta l'esito.</p>
             </div>
         </div>
 
@@ -35,6 +34,16 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="col-md-6 col-lg-4">
                         <label class="form-label text-uppercase small text-muted">Note (opzionale)</label>
                         <input type="text" class="form-control" name="note" id="note" maxlength="180" placeholder="Nota per il log">
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label class="form-label text-uppercase small text-muted">Imposta esito (opzionale)</label>
+                        <select class="form-select" name="score" id="score">
+                            <option value="">Calcolo automatico</option>
+                            <option value="ok">Regolare</option>
+                            <option value="attenzione">Attenzione</option>
+                            <option value="bloccato">Bloccato</option>
+                        </select>
+                        <div class="form-text">Seleziona solo per forzare l'esito; altrimenti lascia vuoto.</div>
                     </div>
                     <div class="col-12 d-flex gap-2">
                         <button type="submit" class="btn btn-primary" id="submit-btn">
@@ -56,6 +65,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     const form = document.getElementById('morosita-form');
     const taxInput = document.getElementById('tax_code');
     const noteInput = document.getElementById('note');
+    const scoreSelect = document.getElementById('score');
     const submitBtn = document.getElementById('submit-btn');
     const resultBox = document.getElementById('morosita-result');
     const alertBox = document.getElementById('morosita-alert');
@@ -108,13 +118,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
         setLoading(true);
         try {
+            const score = scoreSelect ? scoreSelect.value.trim() : '';
             const response = await fetch('<?php echo base_url('api/customers/morosita-check.php'); ?>', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken
                 },
-                body: JSON.stringify({ tax_code: tax, note })
+                body: JSON.stringify({ tax_code: tax, note, score: score || null })
             });
             const data = await response.json();
             if (!response.ok) {
