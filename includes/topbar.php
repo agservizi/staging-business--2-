@@ -64,6 +64,32 @@ if ($role === 'Collaboratore') {
                     $collaboratorNotificationsLastTicketSeenId = $sessionTicketId;
                 }
             }
+
+            // Cookie fallback in case DB/session sync lags
+            if (isset($_COOKIE['collab_notifications_seen'])) {
+                $cookieRaw = (string) $_COOKIE['collab_notifications_seen'];
+                $cookieDecoded = json_decode(base64_decode($cookieRaw, true) ?: '', true);
+                if (is_array($cookieDecoded)) {
+                    if (isset($cookieDecoded['last_status_at'])) {
+                        $cookieStatus = strtotime((string) $cookieDecoded['last_status_at']) ?: null;
+                        if ($cookieStatus !== null && ($collaboratorNotificationsLastStatusSeenAt === null || $cookieStatus > $collaboratorNotificationsLastStatusSeenAt)) {
+                            $collaboratorNotificationsLastStatusSeenAt = $cookieStatus;
+                        }
+                    }
+                    if (isset($cookieDecoded['last_ticket_message_id'])) {
+                        $cookieTicketId = (int) $cookieDecoded['last_ticket_message_id'];
+                        if ($cookieTicketId > $collaboratorNotificationsLastTicketSeenId) {
+                            $collaboratorNotificationsLastTicketSeenId = $cookieTicketId;
+                        }
+                    }
+                    if (isset($cookieDecoded['last_read_at'])) {
+                        $cookieRead = strtotime((string) $cookieDecoded['last_read_at']) ?: null;
+                        if ($cookieRead !== null && ($collaboratorNotificationsLastRead === null || $cookieRead > $collaboratorNotificationsLastRead)) {
+                            $collaboratorNotificationsLastRead = $cookieRead;
+                        }
+                    }
+                }
+            }
         } catch (Throwable $exception) {
             $collaboratorNotificationsLastStatusSeenAt = null;
             $collaboratorNotificationsLastTicketSeenId = 0;
@@ -379,6 +405,20 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
     const endpoint = '<?php echo sanitize_output(asset('api/opportunities/collaborator/notifications-read.php')); ?>';
     const meta = window.collabNotificationsMeta || {};
 
+    const persistSeenCookie = () => {
+        const payload = {
+            last_status_at: meta.latestStatusInBatch || Math.floor(Date.now() / 1000),
+            last_ticket_message_id: meta.latestTicketIdInBatch || 0,
+            last_read_at: Math.floor(Date.now() / 1000),
+        };
+        try {
+            const encoded = btoa(JSON.stringify(payload));
+            document.cookie = `collab_notifications_seen=${encoded}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
+        } catch (e) {
+            // ignore cookie failures
+        }
+    };
+
     const hideBadge = () => {
         if (badge) {
             badge.classList.add('d-none');
@@ -408,6 +448,7 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
             try {
                 localStorage.setItem('collab_notifications_hidden', '1');
             } catch (e) {}
+            persistSeenCookie();
             hideBadge();
         } catch (error) {
             console.warn('Impossibile segnare le notifiche come lette', error);
