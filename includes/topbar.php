@@ -388,7 +388,7 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
                 credentials: 'same-origin',
                 body: JSON.stringify({
                     action: 'mark_read',
-                    last_status_at: meta.latestStatusInBatch || null,
+                    last_status_at: meta.latestStatusInBatch || Math.floor(Date.now() / 1000),
                     last_ticket_message_id: meta.latestTicketIdInBatch || 0,
                 }),
             });

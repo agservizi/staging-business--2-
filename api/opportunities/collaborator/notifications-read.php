@@ -44,16 +44,13 @@ if (!is_array($payload) || ($payload['action'] ?? '') !== 'mark_read') {
 $lastReadKey = 'collab_notifications_last_read_' . $collaboratorId;
 $lastSeenKey = 'collab_notifications_seen_' . $collaboratorId;
 $now = date('Y-m-d H:i:s');
-$lastStatusAt = isset($payload['last_status_at']) && $payload['last_status_at'] ? date('Y-m-d H:i:s', (int) $payload['last_status_at']) : null;
+$lastStatusAt = isset($payload['last_status_at']) && $payload['last_status_at'] ? date('Y-m-d H:i:s', (int) $payload['last_status_at']) : $now;
 $lastTicketMessageId = isset($payload['last_ticket_message_id']) ? (int) $payload['last_ticket_message_id'] : 0;
 
-$seenPayload = [];
-if ($lastStatusAt !== null) {
-    $seenPayload['last_status_at'] = $lastStatusAt;
-}
-if ($lastTicketMessageId > 0) {
-    $seenPayload['last_ticket_message_id'] = $lastTicketMessageId;
-}
+$seenPayload = [
+    'last_status_at' => $lastStatusAt,
+    'last_ticket_message_id' => $lastTicketMessageId,
+];
 
 try {
     $stmt = $pdo->prepare('INSERT INTO configurazioni (chiave, valore) VALUES (:key, :value)
