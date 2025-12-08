@@ -87,6 +87,8 @@
   color: #fff;
   box-shadow: 0 12px 28px rgba(var(--ag-accent-rgb, 11, 47, 107), 0.28);
   border: 1px solid rgba(var(--ag-accent-rgb, 11, 47, 107), 0.22);
+  outline: 1.5px solid rgba(255, 255, 255, 0.9);
+  outline-offset: -3px;
 }
 
 #cs-consent-banner .btn-secondary {
