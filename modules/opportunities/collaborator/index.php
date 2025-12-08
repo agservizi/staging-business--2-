@@ -141,7 +141,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <li class="d-flex flex-column flex-lg-row gap-2 justify-content-between">
                                 <div>
                                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                                        <strong class="text-body"><?php echo sanitize_output($reminder['code'] ?? ''); ?></strong>
+                                        <?php
+                                            $viewUrl = asset('modules/opportunities/collaborator/view.php?id=' . (int) ($reminder['id'] ?? 0));
+                                        ?>
+                                        <a class="fw-semibold text-body" href="<?php echo sanitize_output($viewUrl); ?>" aria-label="Apri opportunity <?php echo sanitize_output($reminder['code'] ?? ''); ?>">
+                                            <?php echo sanitize_output($reminder['code'] ?? ''); ?>
+                                        </a>
                                         <?php if (!empty($reminder['status_label'])): ?>
                                             <span class="badge bg-light text-muted border">Stato: <?php echo sanitize_output($reminder['status_label']); ?></span>
                                         <?php endif; ?>

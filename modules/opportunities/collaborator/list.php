@@ -27,6 +27,14 @@ if ($categoryFilter !== '' && !isset($categoryOptions[$categoryFilter])) {
 }
 
 $searchFilter = trim((string) ($_GET['search'] ?? ''));
+$sort = trim((string) ($_GET['sort'] ?? 'created_desc'));
+$allowedSort = ['created_desc', 'created_asc', 'status', 'code_desc', 'code_asc'];
+if (!in_array($sort, $allowedSort, true)) {
+    $sort = 'created_desc';
+}
+
+$perPage = 20;
+$currentPage = max(1, (int) ($_GET['page'] ?? 1));
 
 $listFilters = [];
 if ($statusFilter !== '') {
@@ -39,7 +47,17 @@ if ($searchFilter !== '') {
     $listFilters['search'] = $searchFilter;
 }
 
-$opportunities = $opportunityService->listCollaboratorOpportunities($collaboratorId, $listFilters);
+$totalOpportunities = $opportunityService->countCollaboratorOpportunities($collaboratorId, $listFilters);
+$totalPages = $totalOpportunities > 0 ? (int) ceil($totalOpportunities / $perPage) : 1;
+if ($totalPages <= 0) {
+    $totalPages = 1;
+}
+if ($currentPage > $totalPages && $totalOpportunities > 0) {
+    $currentPage = $totalPages;
+}
+$offset = ($currentPage - 1) * $perPage;
+
+$opportunities = $opportunityService->listCollaboratorOpportunities($collaboratorId, $listFilters, $perPage, $offset, $sort);
 $hasResults = !empty($opportunities);
 
 require_once __DIR__ . '/../../../includes/header.php';
@@ -94,7 +112,17 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <label class="form-label text-uppercase small text-muted">Ricerca</label>
                         <input class="form-control" type="search" name="search" placeholder="Codice, cliente o gestore" value="<?php echo sanitize_output($searchFilter); ?>">
                     </div>
-                    <div class="col-md-2 d-flex gap-2">
+                    <div class="col-md-2">
+                        <label class="form-label text-uppercase small text-muted">Ordina per</label>
+                        <select class="form-select" name="sort">
+                            <option value="created_desc" <?php echo $sort === 'created_desc' ? 'selected' : ''; ?>>Data invio (nuove)</option>
+                            <option value="created_asc" <?php echo $sort === 'created_asc' ? 'selected' : ''; ?>>Data invio (vecchie)</option>
+                            <option value="status" <?php echo $sort === 'status' ? 'selected' : ''; ?>>Stato</option>
+                            <option value="code_desc" <?php echo $sort === 'code_desc' ? 'selected' : ''; ?>>Codice (Z-A)</option>
+                            <option value="code_asc" <?php echo $sort === 'code_asc' ? 'selected' : ''; ?>>Codice (A-Z)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex gap-2 align-items-end">
                         <button class="btn btn-primary w-100" type="submit">
                             <i class="fa-solid fa-filter me-2"></i>Filtra
                         </button>
@@ -176,26 +204,26 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             $canEdit = $statusCode === 'in_verifica';
                                         ?>
                                         <div class="op-actions" role="group" aria-label="Azioni opportunity">
-                                            <a class="btn btn-sm btn-outline-primary btn-icon" href="<?php echo sanitize_output($cloneUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duplica opportunity">
-                                                <i class="fa-solid fa-clone"></i>
+                                            <a class="btn btn-sm btn-outline-primary btn-icon" href="<?php echo sanitize_output($cloneUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duplica opportunity" aria-label="Duplica opportunity">
+                                                <i class="fa-solid fa-clone" aria-hidden="true"></i>
                                             </a>
-                                            <a class="btn btn-sm btn-outline-info btn-icon" href="<?php echo sanitize_output($ticketUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Apri ticket di supporto">
-                                                <i class="fa-solid fa-ticket"></i>
+                                            <a class="btn btn-sm btn-outline-info btn-icon" href="<?php echo sanitize_output($ticketUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Apri ticket di supporto" aria-label="Apri ticket di supporto">
+                                                <i class="fa-solid fa-ticket" aria-hidden="true"></i>
                                             </a>
                                             <?php if (!$isCancelled): ?>
                                                 <?php if ($canEdit): ?>
-                                                    <a class="btn btn-sm btn-outline-warning btn-icon" href="<?php echo sanitize_output(asset('modules/opportunities/collaborator/create.php?edit_id=' . $opportunityId)); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Modifica dati opportunity">
-                                                        <i class="fa-solid fa-pen"></i>
+                                                    <a class="btn btn-sm btn-outline-warning btn-icon" href="<?php echo sanitize_output(asset('modules/opportunities/collaborator/create.php?edit_id=' . $opportunityId)); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Modifica dati opportunity" aria-label="Modifica dati opportunity">
+                                                        <i class="fa-solid fa-pen" aria-hidden="true"></i>
                                                     </a>
                                                 <?php endif; ?>
-                                                <a class="btn btn-sm btn-outline-secondary btn-icon" href="<?php echo sanitize_output($viewUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Dettagli opportunity">
-                                                    <i class="fa-solid fa-eye"></i>
+                                                <a class="btn btn-sm btn-outline-secondary btn-icon" href="<?php echo sanitize_output($viewUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Dettagli opportunity" aria-label="Dettagli opportunity">
+                                                    <i class="fa-solid fa-eye" aria-hidden="true"></i>
                                                 </a>
-                                                <a class="btn btn-sm btn-outline-success btn-icon" href="<?php echo sanitize_output($noteUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Aggiungi nota">
-                                                    <i class="fa-solid fa-note-sticky"></i>
+                                                <a class="btn btn-sm btn-outline-success btn-icon" href="<?php echo sanitize_output($noteUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Aggiungi nota" aria-label="Aggiungi nota">
+                                                    <i class="fa-solid fa-note-sticky" aria-hidden="true"></i>
                                                 </a>
-                                                <a class="btn btn-sm btn-outline-warning btn-icon" href="<?php echo sanitize_output($reminderUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Invia sollecito">
-                                                    <i class="fa-solid fa-bell"></i>
+                                                <a class="btn btn-sm btn-outline-warning btn-icon" href="<?php echo sanitize_output($reminderUrl); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Invia sollecito" aria-label="Invia sollecito">
+                                                    <i class="fa-solid fa-bell" aria-hidden="true"></i>
                                                 </a>
                                             <?php endif; ?>
                                         </div>
@@ -210,6 +238,43 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </div>
             </div>
         </div>
+
+        <?php if ($totalPages > 1): ?>
+            <?php
+                $queryParams = [];
+                if ($statusFilter !== '') {
+                    $queryParams['status'] = $statusFilter;
+                }
+                if ($categoryFilter !== '') {
+                    $queryParams['category'] = $categoryFilter;
+                }
+                if ($searchFilter !== '') {
+                    $queryParams['search'] = $searchFilter;
+                }
+                if ($sort !== '') {
+                    $queryParams['sort'] = $sort;
+                }
+                $buildPageUrl = static function (int $page) use ($queryParams): string {
+                    $params = array_merge($queryParams, ['page' => $page]);
+                    return asset('modules/opportunities/collaborator/list.php?' . http_build_query($params));
+                };
+            ?>
+            <nav class="mt-3" aria-label="Paginazione elenco opportunity">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item <?php echo $currentPage <= 1 ? 'disabled' : ''; ?>">
+                        <a class="page-link" href="<?php echo $currentPage > 1 ? sanitize_output($buildPageUrl($currentPage - 1)) : '#'; ?>" aria-label="Precedente">&laquo;</a>
+                    </li>
+                    <?php for ($page = 1; $page <= $totalPages; $page++): ?>
+                        <li class="page-item <?php echo $page === $currentPage ? 'active' : ''; ?>">
+                            <a class="page-link" href="<?php echo sanitize_output($buildPageUrl($page)); ?>"><?php echo $page; ?></a>
+                        </li>
+                    <?php endfor; ?>
+                    <li class="page-item <?php echo $currentPage >= $totalPages ? 'disabled' : ''; ?>">
+                        <a class="page-link" href="<?php echo $currentPage < $totalPages ? sanitize_output($buildPageUrl($currentPage + 1)) : '#'; ?>" aria-label="Successiva">&raquo;</a>
+                    </li>
+                </ul>
+            </nav>
+        <?php endif; ?>
     </main>
 </div>
 <link rel="stylesheet" href="<?php echo asset('modules/opportunities/assets/opportunities.css'); ?>">

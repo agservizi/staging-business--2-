@@ -6,6 +6,7 @@ require_once __DIR__ . '/../bootstrap.php';
 require_role('Collaboratore');
 
 require_once __DIR__ . '/auto-refresh.php';
+require_once __DIR__ . '/../../../includes/ticket_functions.php';
 
 $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
 $opportunityId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
@@ -56,6 +57,50 @@ $isTelefoniaMigration = ($opportunity['category'] ?? '') === 'telefonia' && $tel
 $stripeIbanValidated = (($opportunity['payment_method'] ?? '') === 'iban') && !empty($metadata['payment_iban_stripe_pm_id'] ?? '');
 $stripeIbanBank = (string) ($metadata['payment_iban_stripe_bank_code'] ?? '');
 $stripeIbanLast4 = (string) ($metadata['payment_iban_stripe_last4'] ?? '');
+
+$statusTimeline = [];
+$createdAt = $opportunity['created_at'] ?? null;
+if ($createdAt) {
+    $statusTimeline[] = [
+        'label' => 'Creata',
+        'timestamp' => $createdAt,
+    ];
+}
+$lastStatusChange = $opportunity['last_status_change'] ?? null;
+if ($lastStatusChange && $lastStatusChange !== $createdAt) {
+    $statusTimeline[] = [
+        'label' => 'Ultimo cambio stato',
+        'timestamp' => $lastStatusChange,
+    ];
+}
+if (($opportunity['updated_at'] ?? null) && $opportunity['updated_at'] !== $lastStatusChange && $opportunity['updated_at'] !== $createdAt) {
+    $statusTimeline[] = [
+        'label' => 'Ultima modifica',
+        'timestamp' => $opportunity['updated_at'],
+    ];
+}
+
+$ticketSummaries = [];
+if (!empty($opportunity['code'])) {
+    try {
+        $tagPattern = '%"opportunity_code:' . $opportunity['code'] . '"%';
+        $ticketStmt = $pdo->prepare(
+            'SELECT id, codice, subject, status, updated_at, last_message_at
+             FROM tickets
+             WHERE created_by = :creator
+               AND tags LIKE :tag
+             ORDER BY updated_at DESC
+             LIMIT 3'
+        );
+        $ticketStmt->execute([
+            ':creator' => $collaboratorId,
+            ':tag' => $tagPattern,
+        ]);
+        $ticketSummaries = $ticketStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $exception) {
+        $ticketSummaries = [];
+    }
+}
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -301,6 +346,54 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <p class="mb-1">Collaboratore: <?php echo sanitize_output(trim(($opportunity['collaborator_name'] ?? '') . ' ' . ($opportunity['collaborator_surname'] ?? '')) ?: 'Non indicato'); ?></p>
                         <p class="mb-1">Manager assegnato: <?php echo sanitize_output(trim(($opportunity['manager_name'] ?? '') . ' ' . ($opportunity['manager_surname'] ?? '')) ?: 'In attesa'); ?></p>
                         <p class="text-muted small mb-0">Inviata il <?php echo sanitize_output(format_datetime_locale($opportunity['created_at'] ?? null)); ?></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 d-flex flex-column gap-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h2 class="h6 text-uppercase text-muted mb-3">Timeline stato</h2>
+                        <?php if ($statusTimeline): ?>
+                            <ul class="list-unstyled mb-0 d-flex flex-column gap-3">
+                                <?php foreach ($statusTimeline as $event): ?>
+                                    <li class="d-flex align-items-start gap-2">
+                                        <span class="badge bg-light text-muted border flex-shrink-0"><i class="fa-solid fa-clock me-1"></i><?php echo sanitize_output($event['label']); ?></span>
+                                        <div class="small text-muted"><?php echo sanitize_output(format_datetime_locale($event['timestamp'] ?? null)); ?></div>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php else: ?>
+                            <p class="text-muted mb-0">Nessuna informazione di timeline disponibile.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h2 class="h6 text-uppercase text-muted mb-0">Ticket collegati</h2>
+                            <span class="badge bg-secondary"><?php echo count($ticketSummaries); ?></span>
+                        </div>
+                        <?php if (!$ticketSummaries): ?>
+                            <p class="text-muted mb-0">Nessun ticket aperto su questa opportunity.</p>
+                        <?php else: ?>
+                            <div class="d-flex flex-column gap-3">
+                                <?php foreach ($ticketSummaries as $ticket): ?>
+                                    <?php
+                                        $statusBadge = ticket_status_badge((string) ($ticket['status'] ?? 'OPEN'));
+                                        $ticketLink = asset('modules/opportunities/collaborator/ticket-view.php?id=' . (int) ($ticket['id'] ?? 0));
+                                    ?>
+                                    <div class="border rounded-3 p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <a class="fw-semibold" href="<?php echo sanitize_output($ticketLink); ?>">Ticket #<?php echo sanitize_output($ticket['codice'] ?? $ticket['id'] ?? ''); ?></a>
+                                            <span class="badge <?php echo $statusBadge; ?> text-uppercase"><?php echo sanitize_output($ticket['status'] ?? 'OPEN'); ?></span>
+                                        </div>
+                                        <div class="text-muted small mb-1"><?php echo sanitize_output($ticket['subject'] ?? ''); ?></div>
+                                        <div class="text-muted small">Aggiornato il <?php echo sanitize_output(format_datetime_locale($ticket['last_message_at'] ?? $ticket['updated_at'] ?? null)); ?></div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

@@ -166,7 +166,7 @@ final class OpportunityService
     /**
      * @return array<int,array<string,mixed>>
      */
-    public function listCollaboratorOpportunities(int $userId, array $filters = [], ?int $limit = null, int $offset = 0): array
+    public function listCollaboratorOpportunities(int $userId, array $filters = [], ?int $limit = null, int $offset = 0, string $sort = 'created_desc'): array
     {
         [$conditions, $params] = $this->buildCollaboratorListConditions($userId, $filters);
 
@@ -176,12 +176,24 @@ final class OpportunityService
             $limitClause = ' LIMIT :limit OFFSET :offset';
         }
 
+        $orderBy = 'o.created_at DESC';
+        $sortMap = [
+            'created_desc' => 'o.created_at DESC',
+            'created_asc' => 'o.created_at ASC',
+            'status' => 'o.status_code ASC, o.created_at DESC',
+            'code_desc' => 'o.code DESC',
+            'code_asc' => 'o.code ASC',
+        ];
+        if (isset($sortMap[$sort])) {
+            $orderBy = $sortMap[$sort];
+        }
+
         $stmt = $this->pdo->prepare(
             'SELECT o.*, s.label AS status_label, s.color AS status_color
              FROM opportunities o
              LEFT JOIN opportunity_statuses s ON s.code = o.status_code
              WHERE ' . $whereClause . '
-             ORDER BY o.created_at DESC' . $limitClause
+             ORDER BY ' . $orderBy . $limitClause
         );
         foreach ($params as $key => $value) {
             $paramType = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;

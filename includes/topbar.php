@@ -9,13 +9,47 @@ $documentsLoadFailed = false;
 $collaboratorNotifications = [];
 $collaboratorNotificationCount = 0;
 $collaboratorNotificationsError = false;
+$collaboratorNotificationsLastRead = null;
+$collaboratorNotificationsLastStatusSeenAt = null;
+$collaboratorNotificationsLastTicketSeenId = 0;
+$collaboratorNotificationsLatestStatusInBatch = null;
+$collaboratorNotificationsLatestTicketIdInBatch = 0;
 
 if ($role === 'Collaboratore') {
     $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
     $lookbackDays = 30;
     $maxPerSource = 6;
+    $lastReadKey = 'collab_notifications_last_read_' . $collaboratorId;
+    $lastSeenKey = 'collab_notifications_seen_' . $collaboratorId;
 
     if ($collaboratorId > 0 && isset($pdo) && $pdo instanceof PDO) {
+        try {
+            $lastReadStmt = $pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :key LIMIT 1');
+            $lastReadStmt->execute([':key' => $lastReadKey]);
+            $lastReadValue = $lastReadStmt->fetchColumn();
+            if ($lastReadValue !== false && $lastReadValue !== null && $lastReadValue !== '') {
+                $collaboratorNotificationsLastRead = strtotime((string) $lastReadValue) ?: null;
+            }
+        } catch (Throwable $exception) {
+            $collaboratorNotificationsLastRead = null;
+        }
+
+        try {
+            $lastSeenStmt = $pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :key LIMIT 1');
+            $lastSeenStmt->execute([':key' => $lastSeenKey]);
+            $lastSeenValue = $lastSeenStmt->fetchColumn();
+            if ($lastSeenValue) {
+                $decodedSeen = json_decode((string) $lastSeenValue, true);
+                if (is_array($decodedSeen)) {
+                    $collaboratorNotificationsLastStatusSeenAt = isset($decodedSeen['last_status_at']) ? strtotime((string) $decodedSeen['last_status_at']) ?: null : null;
+                    $collaboratorNotificationsLastTicketSeenId = isset($decodedSeen['last_ticket_message_id']) ? (int) $decodedSeen['last_ticket_message_id'] : 0;
+                }
+            }
+        } catch (Throwable $exception) {
+            $collaboratorNotificationsLastStatusSeenAt = null;
+            $collaboratorNotificationsLastTicketSeenId = 0;
+        }
+
         try {
             $statusSql = 'SELECT o.id, o.code, o.status_code, COALESCE(s.label, o.status_code) AS status_label, o.last_status_change
                 FROM opportunities o
@@ -28,6 +62,9 @@ if ($role === 'Collaboratore') {
             $statusStmt = $pdo->prepare($statusSql);
             $statusStmt->execute([':collaborator' => $collaboratorId]);
             while ($row = $statusStmt->fetch(PDO::FETCH_ASSOC)) {
+                $collaboratorNotificationsLatestStatusInBatch = $collaboratorNotificationsLatestStatusInBatch === null
+                    ? ($row['last_status_change'] ?? null)
+                    : max($collaboratorNotificationsLatestStatusInBatch, ($row['last_status_change'] ?? null));
                 $collaboratorNotifications[] = [
                     'type' => 'status',
                     'title' => sprintf('Opportunity %s', sanitize_output($row['code'] ?? '')), // short label first
@@ -56,8 +93,13 @@ if ($role === 'Collaboratore') {
             $ticketStmt = $pdo->prepare($ticketSql);
             $ticketStmt->execute([':collaborator' => $collaboratorId]);
             while ($row = $ticketStmt->fetch(PDO::FETCH_ASSOC)) {
+                                $ticketId = (int) ($row['id'] ?? 0);
+                                if ($ticketId > $collaboratorNotificationsLatestTicketIdInBatch) {
+                                    $collaboratorNotificationsLatestTicketIdInBatch = $ticketId;
+                                }
                 $collaboratorNotifications[] = [
                     'type' => 'ticket',
+                    'id' => $ticketId,
                     'title' => sprintf('Ticket #%s', sanitize_output($row['codice'] ?? $row['ticket_id'] ?? '')), // show code fallback
                     'subtitle' => sprintf('Risposta admin: %s', sanitize_output($row['subject'] ?? 'Aggiornamento ticket')),
                     'timestamp' => $row['created_at'] ?? null,
@@ -74,8 +116,15 @@ if ($role === 'Collaboratore') {
                 $bTime = strtotime((string) ($b['timestamp'] ?? '')) ?: 0;
                 return $bTime <=> $aTime;
             });
-            $collaboratorNotificationCount = count($collaboratorNotifications);
             $collaboratorNotifications = array_slice($collaboratorNotifications, 0, 10);
+            $collaboratorNotificationCount = count(array_filter($collaboratorNotifications, static function (array $item) use ($collaboratorNotificationsLastStatusSeenAt, $collaboratorNotificationsLastTicketSeenId): bool {
+                $timestamp = strtotime((string) ($item['timestamp'] ?? '')) ?: 0;
+                if (($item['type'] ?? '') === 'ticket') {
+                    $id = isset($item['id']) ? (int) $item['id'] : 0;
+                    return $id > $collaboratorNotificationsLastTicketSeenId;
+                }
+                return $collaboratorNotificationsLastStatusSeenAt === null ? $timestamp > 0 : $timestamp > $collaboratorNotificationsLastStatusSeenAt;
+            }));
         }
     }
 }
@@ -136,7 +185,7 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
             <div class="topbar-actions">
                 <?php if ($role === 'Collaboratore'): ?>
                     <div class="dropdown me-1">
-                        <button class="btn topbar-btn topbar-btn-icon topbar-btn-icon-compact position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifiche">
+                        <button class="btn topbar-btn topbar-btn-icon topbar-btn-icon-compact position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifiche" id="collab-notifications-toggle">
                             <i class="fa-solid fa-bell" aria-hidden="true"></i>
                             <?php if ($collaboratorNotificationCount > 0): ?>
                                 <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle" id="collab-notifications-count" aria-label="<?php echo (int) $collaboratorNotificationCount; ?> notifiche"><?php echo (int) $collaboratorNotificationCount; ?></span>
@@ -148,6 +197,14 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
                                 <p class="text-muted small mb-0">Cambi di stato (admin) e risposte ticket (ultimi 30 giorni).</p>
                                 <button class="btn btn-sm btn-outline-secondary mt-2" type="button" id="collab-notifications-read">Segna come lette</button>
                             </div>
+                                                    <script>
+                                                    window.collabNotificationsMeta = {
+                                                        lastStatusSeenAt: <?php echo $collaboratorNotificationsLastStatusSeenAt !== null ? (int) $collaboratorNotificationsLastStatusSeenAt : 'null'; ?>,
+                                                        lastTicketSeenId: <?php echo (int) $collaboratorNotificationsLastTicketSeenId; ?>,
+                                                        latestStatusInBatch: <?php echo $collaboratorNotificationsLatestStatusInBatch ? (int) strtotime($collaboratorNotificationsLatestStatusInBatch) : 'null'; ?>,
+                                                        latestTicketIdInBatch: <?php echo (int) $collaboratorNotificationsLatestTicketIdInBatch; ?>
+                                                    };
+                                                    </script>
                             <?php if ($collaboratorNotifications): ?>
                                 <?php foreach ($collaboratorNotifications as $notification): ?>
                                     <?php
@@ -282,21 +339,45 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
 (() => {
     const markReadButton = document.getElementById('collab-notifications-read');
     const badge = document.getElementById('collab-notifications-count');
+    const csrf = '<?php echo sanitize_output(csrf_token()); ?>';
+    const endpoint = '<?php echo sanitize_output(asset('api/opportunities/collaborator/notifications-read.php')); ?>';
+    const meta = window.collabNotificationsMeta || {};
 
     const hideBadge = () => {
         if (badge) {
             badge.classList.add('d-none');
-            sessionStorage.setItem('collabNotificationsRead', '1');
         }
     };
 
-    if (sessionStorage.getItem('collabNotificationsRead') === '1') {
-        hideBadge();
-    }
+    const markAsRead = async () => {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrf,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    action: 'mark_read',
+                    last_status_at: meta.latestStatusInBatch || null,
+                    last_ticket_message_id: meta.latestTicketIdInBatch || 0,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Errore di rete');
+            }
+            hideBadge();
+        } catch (error) {
+            console.warn('Impossibile segnare le notifiche come lette', error);
+        }
+    };
 
     if (markReadButton) {
         markReadButton.addEventListener('click', () => {
             hideBadge();
+            markAsRead();
         });
     }
 })();
