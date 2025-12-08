@@ -14,6 +14,7 @@ $collaboratorNotificationsLastStatusSeenAt = null;
 $collaboratorNotificationsLastTicketSeenId = 0;
 $collaboratorNotificationsLatestStatusInBatch = null;
 $collaboratorNotificationsLatestTicketIdInBatch = 0;
+    $forceHideCookie = isset($_COOKIE['collab_notifications_hidden']) && $_COOKIE['collab_notifications_hidden'] === '1';
 
 if ($role === 'Collaboratore') {
     $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
@@ -167,9 +168,15 @@ if ($role === 'Collaboratore') {
             $latestStatusTs = $collaboratorNotificationsLatestStatusInBatch ? strtotime((string) $collaboratorNotificationsLatestStatusInBatch) : 0;
 
             $forceHide = isset($_SESSION['collab_notifications_force_hide']) && $_SESSION['collab_notifications_force_hide'] === true;
+            if ($forceHideCookie) {
+                $forceHide = true;
+            }
             if ($forceHide || (($latestStatusTs <= $lastStatusCutoff) && ($collaboratorNotificationsLatestTicketIdInBatch <= $collaboratorNotificationsLastTicketSeenId))) {
                 $collaboratorNotificationCount = 0;
                 unset($_SESSION['collab_notifications_force_hide']);
+                if ($forceHideCookie) {
+                    setcookie('collab_notifications_hidden', '', time() - 3600, '/', '', false, true);
+                }
             } else {
                 $collaboratorNotificationCount = count(array_filter($collaboratorNotifications, static function (array $item) use ($collaboratorNotificationsLastTicketSeenId, $lastStatusCutoff, $lastTicketCutoffTime): bool {
                     $timestamp = strtotime((string) ($item['timestamp'] ?? '')) ?: 0;
@@ -250,7 +257,7 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
                             <i class="fa-solid fa-bell" aria-hidden="true"></i>
                             <?php if ($collaboratorNotificationCount > 0): ?>
                                 <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle" id="collab-notifications-count" aria-label="<?php echo (int) $collaboratorNotificationCount; ?> notifiche"><?php echo (int) $collaboratorNotificationCount; ?></span>
-                                <script>try { localStorage.removeItem('collab_notifications_hidden'); } catch (e) {}</script>
+                                <script>try { localStorage.removeItem('collab_notifications_hidden'); document.cookie = 'collab_notifications_hidden=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax'; } catch (e) {}</script>
                             <?php endif; ?>
                         </button>
                         <div class="dropdown-menu dropdown-menu-end topbar-dropdown" style="min-width: 360px;">
@@ -447,6 +454,7 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
             // Persist hide flag client-side to avoid badge flicker on next load
             try {
                 localStorage.setItem('collab_notifications_hidden', '1');
+                document.cookie = 'collab_notifications_hidden=1; path=/; max-age=' + (60 * 60 * 24 * 7) + '; samesite=lax';
             } catch (e) {}
             persistSeenCookie();
             hideBadge();
