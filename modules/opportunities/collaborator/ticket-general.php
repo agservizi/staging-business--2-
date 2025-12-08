@@ -16,6 +16,22 @@ if ($collaboratorId <= 0) {
     exit;
 }
 
+// Recupera le opportunity del collaboratore per selezione assistenza
+$opportunities = [];
+$opportunitiesStmt = $pdo->prepare(
+    'SELECT id, code, customer_first_name, customer_last_name, customer_email, customer_phone
+     FROM opportunities
+     WHERE collaborator_id = :cid
+     ORDER BY updated_at DESC
+     LIMIT 200'
+);
+$opportunitiesStmt->execute([':cid' => $collaboratorId]);
+$opportunities = $opportunitiesStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+$opportunitiesMap = [];
+foreach ($opportunities as $op) {
+    $opportunitiesMap[(int) ($op['id'] ?? 0)] = $op;
+}
+
 $csrfToken = csrf_token();
 $priorityOptions = ticket_priority_options();
 $typeOptions = [
@@ -33,6 +49,7 @@ if ($authorNameDefault === '') {
 }
 
 $errors = [];
+$selectedOpportunityId = isset($_POST['opportunity_id']) ? (int) $_POST['opportunity_id'] : 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_valid_csrf();
@@ -47,6 +64,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $customerName = trim((string) ($_POST['customer_name'] ?? $authorNameDefault));
     $customerEmail = trim((string) ($_POST['customer_email'] ?? ''));
     $customerPhone = trim((string) ($_POST['customer_phone'] ?? ''));
+
+    $selectedOpportunityId = isset($_POST['opportunity_id']) ? (int) $_POST['opportunity_id'] : 0;
+    $selectedOpportunity = $selectedOpportunityId > 0 && isset($opportunitiesMap[$selectedOpportunityId])
+        ? $opportunitiesMap[$selectedOpportunityId]
+        : null;
+
+    if ($type === 'SUPPORT' && $selectedOpportunityId > 0 && $selectedOpportunity) {
+        // Precompila dati cliente se presenti nell'opportunity
+        $customerNameFromOp = trim(sprintf('%s %s', (string) ($selectedOpportunity['customer_first_name'] ?? ''), (string) ($selectedOpportunity['customer_last_name'] ?? '')));
+        if ($customerName === '' && $customerNameFromOp !== '') {
+            $customerName = $customerNameFromOp;
+        }
+        if ($customerEmail === '' && !empty($selectedOpportunity['customer_email'])) {
+            $customerEmail = (string) $selectedOpportunity['customer_email'];
+        }
+        if ($customerPhone === '' && !empty($selectedOpportunity['customer_phone'])) {
+            $customerPhone = (string) $selectedOpportunity['customer_phone'];
+        }
+    }
 
     if ($subject === '') {
         $errors[] = 'Inserisci un oggetto per il ticket.';
@@ -65,15 +101,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->beginTransaction();
 
             $code = ticket_generate_code();
-            $tags = json_encode(
-                [
-                    'collaborator',
-                    'collaborator_id:' . $collaboratorId,
-                    'channel:portal',
-                    'type:' . strtolower($type),
-                ],
-                JSON_UNESCAPED_UNICODE
-            );
+            $tagsArray = [
+                'collaborator',
+                'collaborator_id:' . $collaboratorId,
+                'channel:portal',
+                'type:' . strtolower($type),
+            ];
+            if ($type === 'SUPPORT' && $selectedOpportunityId > 0 && $selectedOpportunity) {
+                $tagsArray[] = 'opportunity';
+                $tagsArray[] = 'opportunity_id:' . $selectedOpportunityId;
+                if (!empty($selectedOpportunity['code'])) {
+                    $tagsArray[] = 'opportunity_code:' . (string) $selectedOpportunity['code'];
+                }
+            }
+            $tags = json_encode($tagsArray, JSON_UNESCAPED_UNICODE);
 
             $insertTicket = $pdo->prepare(
                 'INSERT INTO tickets (
@@ -160,6 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $customerName = $authorNameDefault;
     $customerEmail = '';
     $customerPhone = '';
+    $selectedOpportunity = null;
 }
 
 require_once __DIR__ . '/../../../includes/header.php';
@@ -217,6 +259,29 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </div>
 
                 <div class="row g-3 mb-4">
+                    <div class="col-md-6" id="opportunity-wrapper">
+                        <label class="form-label text-uppercase small text-muted" for="opportunity_id">Opportunity (solo per supporto)</label>
+                        <select class="form-select" id="opportunity_id" name="opportunity_id">
+                            <option value="">Seleziona</option>
+                            <?php foreach ($opportunities as $op): ?>
+                                <?php
+                                    $opId = (int) ($op['id'] ?? 0);
+                                    $selectedAttr = $selectedOpportunityId === $opId ? 'selected' : '';
+                                    $customerLabel = trim(($op['customer_first_name'] ?? '') . ' ' . ($op['customer_last_name'] ?? ''));
+                                ?>
+                                <option
+                                    value="<?php echo $opId; ?>"
+                                    <?php echo $selectedAttr; ?>
+                                    data-customer-name="<?php echo sanitize_output($customerLabel); ?>"
+                                    data-customer-email="<?php echo sanitize_output($op['customer_email'] ?? ''); ?>"
+                                    data-customer-phone="<?php echo sanitize_output($op['customer_phone'] ?? ''); ?>"
+                                >
+                                    <?php echo sanitize_output(($op['code'] ?? 'OP') . ' · ' . ($customerLabel !== '' ? $customerLabel : 'Cliente non indicato')); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text text-muted">Obbligatorio solo per richieste "Supporto opportunity / cliente".</div>
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label text-uppercase small text-muted" for="customer_name">Nome e cognome / Azienda</label>
                         <input class="form-control" type="text" id="customer_name" name="customer_name" value="<?php echo sanitize_output($customerName); ?>" required>
@@ -255,4 +320,44 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     </main>
 </div>
 <link rel="stylesheet" href="<?php echo asset('modules/opportunities/assets/opportunities.css'); ?>">
+<script>
+    (function() {
+        const typeSelect = document.getElementById('type');
+        const opportunityWrapper = document.getElementById('opportunity-wrapper');
+        const opportunitySelect = document.getElementById('opportunity_id');
+        const customerNameInput = document.getElementById('customer_name');
+        const customerEmailInput = document.getElementById('customer_email');
+        const customerPhoneInput = document.getElementById('customer_phone');
+
+        const toggleOpportunityVisibility = () => {
+            if (!typeSelect || !opportunityWrapper) return;
+            const isSupport = typeSelect.value === 'SUPPORT';
+            opportunityWrapper.classList.toggle('d-none', !isSupport);
+        };
+
+        const applyOpportunityData = () => {
+            if (!opportunitySelect) return;
+            const selected = opportunitySelect.options[opportunitySelect.selectedIndex];
+            if (!selected) return;
+            const name = selected.getAttribute('data-customer-name') || '';
+            const email = selected.getAttribute('data-customer-email') || '';
+            const phone = selected.getAttribute('data-customer-phone') || '';
+            if (name && customerNameInput && !customerNameInput.value.trim()) {
+                customerNameInput.value = name;
+            }
+            if (email && customerEmailInput && !customerEmailInput.value.trim()) {
+                customerEmailInput.value = email;
+            }
+            if (phone && customerPhoneInput && !customerPhoneInput.value.trim()) {
+                customerPhoneInput.value = phone;
+            }
+        };
+
+        typeSelect?.addEventListener('change', toggleOpportunityVisibility);
+        opportunitySelect?.addEventListener('change', applyOpportunityData);
+
+        toggleOpportunityVisibility();
+        applyOpportunityData();
+    })();
+</script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
