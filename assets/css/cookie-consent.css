@@ -1,0 +1,95 @@
+#cs-consent-banner {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1055;
+  background: #0c1c2c;
+  color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  max-width: 960px;
+  width: calc(100% - 32px);
+  padding: 18px 20px;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#cs-consent-banner .cs-consent-inner {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 14px;
+  align-items: center;
+}
+
+#cs-consent-banner h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+#cs-consent-banner p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #dbe7ff;
+}
+
+#cs-consent-banner .cs-consent-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 6px 12px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+#cs-consent-banner label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+
+#cs-consent-banner input[type="checkbox"] {
+  accent-color: #ffb703;
+}
+
+#cs-consent-banner .cs-consent-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+#cs-consent-banner button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+#cs-consent-banner button:active {
+  transform: translateY(1px);
+}
+
+#cs-consent-banner .btn-primary {
+  background: linear-gradient(135deg, #ffb703, #ff8f00);
+  color: #0c1c2c;
+  box-shadow: 0 6px 20px rgba(255, 183, 3, 0.35);
+}
+
+#cs-consent-banner .btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+  #cs-consent-banner .cs-consent-inner {
+    grid-template-columns: 1fr;
+  }
+  #cs-consent-banner {
+    bottom: 10px;
+  }
+}
