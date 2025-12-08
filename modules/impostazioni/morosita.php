@@ -22,6 +22,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <h1 class="h4 mb-0">Verifica e imposta stato</h1>
                 <p class="text-muted mb-0">Esegui un controllo manuale su un cliente tramite codice fiscale o partita IVA e, se serve, imposta l'esito.</p>
             </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a class="btn btn-outline-secondary" href="<?php echo base_url('modules/opportunities/index.php'); ?>">
+                    <i class="fa-solid fa-arrow-left me-2"></i>Torna alle Opportunity
+                </a>
+            </div>
         </div>
 
         <div class="card shadow-sm mb-4">
