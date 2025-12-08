@@ -167,9 +167,27 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <div class="alert alert-warning" role="alert"><?php echo sanitize_output($message); ?></div>
         <?php endforeach; ?>
 
-        <div class="row g-4">
-            <div class="col-12">
-                <div class="card shadow-sm">
+        <ul class="nav nav-pills flex-wrap gap-2 mb-4" id="op-settings-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-workflow-tab" data-bs-toggle="pill" data-bs-target="#tab-workflow" type="button" role="tab" aria-controls="tab-workflow" aria-selected="true">
+                    <i class="fa-solid fa-diagram-project me-2"></i>Workflow e stati
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-providers-tab" data-bs-toggle="pill" data-bs-target="#tab-providers" type="button" role="tab" aria-controls="tab-providers" aria-selected="false">
+                    <i class="fa-solid fa-building me-2"></i>Gestori e offerte
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-overview-tab" data-bs-toggle="pill" data-bs-target="#tab-overview" type="button" role="tab" aria-controls="tab-overview" aria-selected="false">
+                    <i class="fa-solid fa-table-list me-2"></i>Panoramica offerte
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tab-workflow" role="tabpanel" aria-labelledby="tab-workflow-tab">
+                <div class="card shadow-sm mb-4">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
                             <div>
@@ -268,12 +286,12 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </div>
             </div>
 
-            <div class="col-12">
-                <div class="card shadow-sm">
+            <div class="tab-pane fade" id="tab-providers" role="tabpanel" aria-labelledby="tab-providers-tab">
+                <div class="card shadow-sm mb-4">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
                             <div>
-                                <h2 class="h5 mb-1">Gestori</h2>
+                                <h2 class="h5 mb-1">Gestori e offerte</h2>
                                 <p class="text-muted mb-0">Definisci i fornitori disponibili e le provvigioni di riferimento.</p>
                             </div>
                         </div>
@@ -436,8 +454,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </div>
             </div>
 
-            <div class="col-12">
-                <div class="card shadow-sm">
+            <div class="tab-pane fade" id="tab-overview" role="tabpanel" aria-labelledby="tab-overview-tab">
+                <div class="card shadow-sm mb-4">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
                             <div>
