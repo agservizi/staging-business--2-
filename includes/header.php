@@ -2,6 +2,7 @@
 if (!isset($pageTitle)) {
     $pageTitle = 'Coresuite Business';
 }
+$cookiebotId = env('COOKIEBOT_ID');
 $csrfToken = csrf_token();
 $flashMessages = get_flashes();
 $themePdo = null;
@@ -47,6 +48,9 @@ if (isset($pdo) && $pdo instanceof PDO && current_user_can('Admin', 'Operatore',
     <meta name="csrf-token" content="<?php echo $csrfToken; ?>">
     <meta name="theme-color" content="<?php echo sanitize_output($themeAccent); ?>">
     <title><?php echo sanitize_output($pageTitle); ?> | Coresuite Business</title>
+    <?php if ($cookiebotId): ?>
+        <script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-cbid="<?php echo sanitize_output($cookiebotId); ?>" data-blockingmode="auto" type="text/javascript"></script>
+    <?php endif; ?>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' ry='3' fill='%230b2f6b'/%3E%3Ctext x='8' y='11' font-family='Arial' font-size='7' font-weight='bold' text-anchor='middle' fill='white'%3ECB%3C/text%3E%3C/svg%3E">
     <link href="<?php echo asset('assets/vendor/bootstrap/css/bootstrap.min.css'); ?>" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" referrerpolicy="no-referrer" />
