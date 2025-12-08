@@ -44,8 +44,45 @@ if (!is_array($payload) || ($payload['action'] ?? '') !== 'mark_read') {
 $lastReadKey = 'collab_notifications_last_read_' . $collaboratorId;
 $lastSeenKey = 'collab_notifications_seen_' . $collaboratorId;
 $now = date('Y-m-d H:i:s');
-$lastStatusAt = isset($payload['last_status_at']) && $payload['last_status_at'] ? date('Y-m-d H:i:s', (int) $payload['last_status_at']) : $now;
+$lastStatusAt = isset($payload['last_status_at']) && $payload['last_status_at'] ? date('Y-m-d H:i:s', (int) $payload['last_status_at']) : null;
 $lastTicketMessageId = isset($payload['last_ticket_message_id']) ? (int) $payload['last_ticket_message_id'] : 0;
+
+// Se non arriva un timestamp, usa l'ultimo cambio stato reale (fallback: adesso)
+if ($lastStatusAt === null) {
+    $statusFallback = null;
+    try {
+        $stmt = $pdo->prepare('SELECT MAX(last_status_change) AS last_status_change FROM opportunities WHERE collaborator_id = :collaborator AND last_status_change IS NOT NULL');
+        $stmt->execute([':collaborator' => $collaboratorId]);
+        $statusFallback = $stmt->fetchColumn();
+    } catch (Throwable $exception) {
+        $statusFallback = null;
+    }
+    $lastStatusAt = $statusFallback ?: $now;
+}
+
+// Se non arriva l'ultimo ticket, calcola il max id dei messaggi visibili al collaboratore
+if ($lastTicketMessageId <= 0) {
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT MAX(tm.id) AS last_id
+             FROM ticket_messages tm
+             INNER JOIN tickets t ON tm.ticket_id = t.id
+             LEFT JOIN users u ON tm.author_id = u.id
+             WHERE t.created_by = :collaborator
+               AND tm.is_internal = 0
+               AND tm.visibility = 'customer'
+               AND (tm.author_id IS NULL OR tm.author_id <> :collaborator)
+               AND (u.ruolo IS NULL OR u.ruolo <> 'Collaboratore')"
+        );
+        $stmt->execute([':collaborator' => $collaboratorId]);
+        $lastId = (int) $stmt->fetchColumn();
+        if ($lastId > 0) {
+            $lastTicketMessageId = $lastId;
+        }
+    } catch (Throwable $exception) {
+        // ignore
+    }
+}
 
 $seenPayload = [
     'last_status_at' => $lastStatusAt,
