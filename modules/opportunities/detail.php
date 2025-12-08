@@ -182,7 +182,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             <?php echo sanitize_output($morosita['label']); ?>
                                         </span>
                                         <?php if (!empty($opportunity['customer_tax_code'])): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary js-morosita-check" data-tax="<?php echo sanitize_output($opportunity['customer_tax_code']); ?>">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary js-morosita-check" data-tax="<?php echo sanitize_output($opportunity['customer_tax_code']); ?>" data-opportunity="<?php echo (int) ($opportunity['id'] ?? 0); ?>" data-provider="<?php echo (int) ($opportunity['provider_id'] ?? 0); ?>">
                                                 <i class="fa-solid fa-shield-halved me-1"></i>Verifica ora
                                             </button>
                                         <?php endif; ?>
@@ -216,13 +216,15 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                 button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Verifica...';
 
                                                 try {
+                                                    const providerId = Number(button.getAttribute('data-provider') || 0) || null;
+                                                    const opportunityId = Number(button.getAttribute('data-opportunity') || 0) || null;
                                                     const response = await fetch('<?php echo base_url('api/customers/morosita-check.php'); ?>', {
                                                         method: 'POST',
                                                         headers: {
                                                             'Content-Type': 'application/json',
                                                             'X-CSRF-TOKEN': csrfToken
                                                         },
-                                                        body: JSON.stringify({ tax_code: tax })
+                                                        body: JSON.stringify({ tax_code: tax, provider_id: providerId, opportunity_id: opportunityId })
                                                     });
 
                                                     const data = await response.json();
@@ -244,6 +246,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
                                                     if (updated) {
                                                         updated.textContent = 'Aggiornata: ' + new Date().toLocaleString();
+                                                    }
+
+                                                    if (score === 'bloccato') {
+                                                        // stato OP aggiornato server-side: ricarica per mostrare "annullato"
+                                                        window.location.reload();
                                                     }
                                                 } catch (error) {
                                                     console.error(error);

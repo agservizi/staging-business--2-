@@ -19,7 +19,7 @@ final class MorositaService
      *
      * @return array{customer_id:int,tax_code:string,score:string,flag:int,note:string|null,fonte:string,metrics:array<string,int|float|null>}
      */
-    public function evaluateAndPersistByTaxCode(string $taxCode, ?int $userId = null, string $fonte = 'verifica-manuale', ?string $forcedScore = null, ?string $noteOverride = null, ?array $manualMetrics = null): array
+    public function evaluateAndPersistByTaxCode(string $taxCode, ?int $userId = null, string $fonte = 'verifica-manuale', ?string $forcedScore = null, ?string $noteOverride = null, ?array $manualMetrics = null, ?int $providerId = null): array
     {
         $normalized = $this->normalizeTaxCode($taxCode);
         if ($normalized === '') {
@@ -39,12 +39,17 @@ final class MorositaService
         if ($forcedScore !== null) {
             $score = $this->validateScore($forcedScore);
             $note = $noteOverride !== null && $noteOverride !== '' ? $noteOverride : 'Override manuale';
-            return $this->persistResult($customerId, $normalized, $score, $fonte, $note, $userId, $metrics ?? [
+            $result = $this->persistResult($customerId, $normalized, $score, $fonte, $note, $userId, $metrics ?? [
                 'pending_count' => null,
                 'overdue_count' => null,
                 'overdue_amount' => null,
                 'max_overdue_days' => null,
             ]);
+            if ($providerId !== null) {
+                $this->persistProviderResult($customerId, $providerId, $score, $note, $fonte);
+            }
+
+            return $result;
         }
 
         if ($metrics === null) {
@@ -53,7 +58,12 @@ final class MorositaService
         $score = $this->calculateScoreFromMetrics($metrics);
         $note = $this->buildNoteFromMetrics($metrics, $score);
 
-        return $this->persistResult($customerId, $normalized, $score, $fonte, $note, $userId, $metrics);
+        $result = $this->persistResult($customerId, $normalized, $score, $fonte, $note, $userId, $metrics);
+        if ($providerId !== null) {
+            $this->persistProviderResult($customerId, $providerId, $score, $note, $fonte);
+        }
+
+        return $result;
     }
 
     /**
@@ -241,6 +251,21 @@ final class MorositaService
             'fonte' => $fonte,
             'metrics' => $metrics,
         ];
+    }
+
+    private function persistProviderResult(int $customerId, int $providerId, string $score, ?string $note, string $fonte): void
+    {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO customer_morosita_providers (customer_id, provider_id, esito, note, fonte, updated_at)
+             VALUES (:customer, :provider, :esito, :note, :fonte, CURRENT_TIMESTAMP)
+             ON DUPLICATE KEY UPDATE esito = VALUES(esito), note = VALUES(note), fonte = VALUES(fonte), updated_at = CURRENT_TIMESTAMP'
+        );
+        $stmt->bindValue(':customer', $customerId, PDO::PARAM_INT);
+        $stmt->bindValue(':provider', $providerId, PDO::PARAM_INT);
+        $stmt->bindValue(':esito', $score, PDO::PARAM_STR);
+        $stmt->bindValue(':note', $note, $note === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmt->bindValue(':fonte', $fonte, PDO::PARAM_STR);
+        $stmt->execute();
     }
 
     private function validateScore(string $score): string

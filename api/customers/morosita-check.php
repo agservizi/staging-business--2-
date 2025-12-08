@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../includes/db_connect.php';
 
 use App\Services\Morosita\MorositaService;
+use App\Services\Opportunities\OpportunityService;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -54,6 +55,8 @@ if ($requestedScore !== null && !in_array($requestedScore, $allowedScores, true)
 
 $note = isset($payload['note']) ? trim((string) $payload['note']) : null;
 $source = isset($payload['fonte']) ? trim((string) $payload['fonte']) : '';
+$providerId = isset($payload['provider_id']) ? (int) $payload['provider_id'] : null;
+$opportunityId = isset($payload['opportunity_id']) ? (int) $payload['opportunity_id'] : null;
 $manualMetrics = null;
 if (isset($payload['metrics']) && is_array($payload['metrics'])) {
     $manualMetrics = [
@@ -73,8 +76,19 @@ try {
         $requestedScore !== null ? 'override-manuale' : ($source !== '' ? $source : 'verifica-manuale'),
         $requestedScore,
         $note,
-        $manualMetrics
+        $manualMetrics,
+        $providerId
     );
+
+    if ($opportunityId !== null && $requestedScore === 'bloccato') {
+        $opportunityService = new OpportunityService($pdo);
+        try {
+            $opportunityService->updateStatus($opportunityId, 'annullato', $userId, 'Morosità bloccata');
+        } catch (Throwable $e) {
+            // non bloccare la risposta; loggare se serve
+            error_log('Failed to annul opportunity after morosita block: ' . $e->getMessage());
+        }
+    }
 
     echo json_encode([
         'status' => 'ok',
@@ -85,6 +99,7 @@ try {
         'note' => $result['note'],
         'metrics' => $result['metrics'],
         'updated_at' => date('c'),
+        'provider_id' => $providerId,
     ]);
 } catch (Throwable $exception) {
     error_log('Morosita check failed: ' . $exception->getMessage());

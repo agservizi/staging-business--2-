@@ -186,14 +186,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $taxCode = isset($_POST['customer_tax_code']) ? strtoupper(trim((string) $_POST['customer_tax_code'])) : '';
+        $providerId = isset($_POST['provider_id']) ? (int) $_POST['provider_id'] : 0;
         if (!$isEditingOpportunity && $taxCode !== '') {
-            $morositaStmt = $pdo->prepare('SELECT morosita_score, morosita_note, morosita_aggiornato_il FROM clienti WHERE UPPER(cf_piva) = :cf LIMIT 1');
-            $morositaStmt->execute([':cf' => $taxCode]);
-            $morositaRow = $morositaStmt->fetch(PDO::FETCH_ASSOC) ?: null;
-            if ($morositaRow && strtolower((string) ($morositaRow['morosita_score'] ?? '')) === 'bloccato') {
-                $note = trim((string) ($morositaRow['morosita_note'] ?? ''));
-                $updated = $morositaRow['morosita_aggiornato_il'] ?? null;
-                $message = 'Cliente bloccato per morosita. Non puoi inserire nuove opportunity.';
+            $providerMorositaRow = null;
+            if ($providerId > 0) {
+                $providerMorositaStmt = $pdo->prepare(
+                    'SELECT p.esito, p.note, p.updated_at
+                     FROM customer_morosita_providers p
+                     INNER JOIN clienti c ON c.id = p.customer_id
+                     WHERE p.provider_id = :provider AND UPPER(c.cf_piva) = :cf
+                     LIMIT 1'
+                );
+                $providerMorositaStmt->execute([':provider' => $providerId, ':cf' => $taxCode]);
+                $providerMorositaRow = $providerMorositaStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            }
+
+            if ($providerMorositaRow && strtolower((string) ($providerMorositaRow['esito'] ?? '')) === 'bloccato') {
+                $note = trim((string) ($providerMorositaRow['note'] ?? ''));
+                $updated = $providerMorositaRow['updated_at'] ?? null;
+                $message = 'Cliente bloccato per morosita su questo gestore. Non puoi inserire nuove opportunity.';
                 if ($note !== '') {
                     $message .= ' Nota: ' . $note;
                 }
@@ -201,6 +212,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $message .= ' Ultimo controllo: ' . format_datetime_locale($updated) . '.';
                 }
                 throw new RuntimeException($message);
+            }
+
+            if ($providerMorositaRow === null) { // Fallback legacy check when no provider-specific record exists
+                $morositaStmt = $pdo->prepare('SELECT morosita_score, morosita_note, morosita_aggiornato_il FROM clienti WHERE UPPER(cf_piva) = :cf LIMIT 1');
+                $morositaStmt->execute([':cf' => $taxCode]);
+                $morositaRow = $morositaStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+                if ($morositaRow && strtolower((string) ($morositaRow['morosita_score'] ?? '')) === 'bloccato') {
+                    $note = trim((string) ($morositaRow['morosita_note'] ?? ''));
+                    $updated = $morositaRow['morosita_aggiornato_il'] ?? null;
+                    $message = 'Cliente bloccato per morosita. Non puoi inserire nuove opportunity.';
+                    if ($note !== '') {
+                        $message .= ' Nota: ' . $note;
+                    }
+                    if ($updated) {
+                        $message .= ' Ultimo controllo: ' . format_datetime_locale($updated) . '.';
+                    }
+                    throw new RuntimeException($message);
+                }
             }
         }
 
