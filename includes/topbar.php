@@ -224,6 +224,7 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
                             <i class="fa-solid fa-bell" aria-hidden="true"></i>
                             <?php if ($collaboratorNotificationCount > 0): ?>
                                 <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle" id="collab-notifications-count" aria-label="<?php echo (int) $collaboratorNotificationCount; ?> notifiche"><?php echo (int) $collaboratorNotificationCount; ?></span>
+                                <script>try { localStorage.removeItem('collab_notifications_hidden'); } catch (e) {}</script>
                             <?php endif; ?>
                         </button>
                         <div class="dropdown-menu dropdown-menu-end topbar-dropdown" style="min-width: 360px;">
@@ -403,11 +404,22 @@ if ($canSeeDocumentActions && isset($pdo) && $pdo instanceof PDO) {
             if (!response.ok) {
                 throw new Error('Errore di rete');
             }
+            // Persist hide flag client-side to avoid badge flicker on next load
+            try {
+                localStorage.setItem('collab_notifications_hidden', '1');
+            } catch (e) {}
             hideBadge();
         } catch (error) {
             console.warn('Impossibile segnare le notifiche come lette', error);
         }
     };
+
+    // On page load, if localStorage says hidden, hide immediately (best-effort)
+    try {
+        if (localStorage.getItem('collab_notifications_hidden') === '1') {
+            hideBadge();
+        }
+    } catch (e) {}
 
     if (markReadButton) {
         markReadButton.addEventListener('click', () => {
