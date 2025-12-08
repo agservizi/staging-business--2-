@@ -117,13 +117,21 @@ if ($role === 'Collaboratore') {
                 return $bTime <=> $aTime;
             });
             $collaboratorNotifications = array_slice($collaboratorNotifications, 0, 10);
-            $collaboratorNotificationCount = count(array_filter($collaboratorNotifications, static function (array $item) use ($collaboratorNotificationsLastStatusSeenAt, $collaboratorNotificationsLastTicketSeenId): bool {
+            $lastStatusCutoff = $collaboratorNotificationsLastStatusSeenAt ?? $collaboratorNotificationsLastRead;
+            $lastTicketCutoffTime = $collaboratorNotificationsLastRead;
+            $collaboratorNotificationCount = count(array_filter($collaboratorNotifications, static function (array $item) use ($collaboratorNotificationsLastTicketSeenId, $lastStatusCutoff, $lastTicketCutoffTime): bool {
                 $timestamp = strtotime((string) ($item['timestamp'] ?? '')) ?: 0;
                 if (($item['type'] ?? '') === 'ticket') {
                     $id = isset($item['id']) ? (int) $item['id'] : 0;
-                    return $id > $collaboratorNotificationsLastTicketSeenId;
+                    if ($id > $collaboratorNotificationsLastTicketSeenId) {
+                        return true;
+                    }
+                    return $lastTicketCutoffTime !== null ? $timestamp > $lastTicketCutoffTime : false;
                 }
-                return $collaboratorNotificationsLastStatusSeenAt === null ? $timestamp > 0 : $timestamp > $collaboratorNotificationsLastStatusSeenAt;
+                if ($lastStatusCutoff === null) {
+                    return $timestamp > 0;
+                }
+                return $timestamp > $lastStatusCutoff;
             }));
         }
     }
