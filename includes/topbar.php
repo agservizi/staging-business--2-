@@ -174,9 +174,6 @@ if ($role === 'Collaboratore') {
             if ($forceHide || (($latestStatusTs <= $lastStatusCutoff) && ($collaboratorNotificationsLatestTicketIdInBatch <= $collaboratorNotificationsLastTicketSeenId))) {
                 $collaboratorNotificationCount = 0;
                 unset($_SESSION['collab_notifications_force_hide']);
-                if ($forceHideCookie) {
-                    setcookie('collab_notifications_hidden', '', time() - 3600, '/', '', false, true);
-                }
             } else {
                 $collaboratorNotificationCount = count(array_filter($collaboratorNotifications, static function (array $item) use ($collaboratorNotificationsLastTicketSeenId, $lastStatusCutoff, $lastTicketCutoffTime): bool {
                     $timestamp = strtotime((string) ($item['timestamp'] ?? '')) ?: 0;
