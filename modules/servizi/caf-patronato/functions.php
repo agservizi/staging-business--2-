@@ -1239,6 +1239,19 @@ function caf_patronato_sync_legacy_pratica(PDO $pdo, array $payload, int $cafPra
         if ($operatorSource !== '' && $operatorSource !== 'operators' && $operatorSource !== 'utenti_caf_patronato') {
             $operatorId = null;
         }
+
+        // Verifica che l'id esista davvero in utenti_caf_patronato, altrimenti annulla per evitare FK error
+        if ($operatorId !== null) {
+            $checkStmt = $pdo->prepare('SELECT id FROM utenti_caf_patronato WHERE id = :id');
+            if ($checkStmt) {
+                $checkStmt->execute([':id' => $operatorId]);
+                if ($checkStmt->fetchColumn() === false) {
+                    $operatorId = null;
+                }
+            } else {
+                $operatorId = null;
+            }
+        }
     }
 
     $adminId = $userId > 0 ? $userId : null;
