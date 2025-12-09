@@ -324,7 +324,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException('Impossibile creare la cartella per gli allegati.');
                 }
 
-                caf_patronato_get_encryption_key();
+                try {
+                    caf_patronato_get_encryption_key();
+                } catch (Throwable $encryptionException) {
+                    throw new RuntimeException('Chiave di cifratura mancante: imposta CAF_PATRONATO_ENCRYPTION_KEY.', 0, $encryptionException);
+                }
 
                 $attachmentStmt = $pdo->prepare('INSERT INTO caf_patronato_allegati (
                         pratica_id,
@@ -461,8 +465,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->rollBack();
             }
             $cleanupGeneratedTempFiles();
-            error_log('CAF/Patronato create failed: ' . $exception->getMessage());
-            $errors[] = 'Si è verificato un errore durante il salvataggio della pratica. Riprova.';
+
+            // Log dettagliato per diagnosi rapida
+            $context = [
+                'message' => $exception->getMessage(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+                'code' => $exception->getCode(),
+                'tipo_pratica' => $data['tipo_pratica'] ?? null,
+                'stato' => $data['stato'] ?? null,
+                'cliente_id' => $data['cliente_id'] ?? null,
+                'send_notification' => $data['send_notification'] ?? null,
+            ];
+            error_log('CAF/Patronato create failed: ' . json_encode($context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+
+            $message = $exception->getMessage();
+            if (stripos($message, 'Chiave di cifratura mancante') !== false) {
+                $errors[] = 'Configurazione mancante: imposta CAF_PATRONATO_ENCRYPTION_KEY (chiave AES-256 da 32 byte, hex o base64).';
+            } else {
+                $errors[] = 'Si è verificato un errore durante il salvataggio della pratica. Riprova.';
+            }
         }
     }
 }
