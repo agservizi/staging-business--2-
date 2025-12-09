@@ -1233,6 +1233,12 @@ function caf_patronato_sync_legacy_pratica(PDO $pdo, array $payload, int $cafPra
     if (is_array($operator)) {
         $operatorId = isset($operator['id']) ? (int) $operator['id'] : null;
         $operatorEmail = isset($operator['email']) ? trim((string) $operator['email']) : null;
+
+        // Se l'operatore proviene dal fallback utenti (source = users), non esiste la FK in utenti_caf_patronato: non impostiamo id_utente_caf_patronato
+        $operatorSource = isset($operator['source']) ? strtolower((string) $operator['source']) : '';
+        if ($operatorSource !== '' && $operatorSource !== 'operators' && $operatorSource !== 'utenti_caf_patronato') {
+            $operatorId = null;
+        }
     }
 
     $adminId = $userId > 0 ? $userId : null;
