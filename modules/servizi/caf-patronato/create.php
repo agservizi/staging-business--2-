@@ -138,7 +138,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!array_key_exists($selectedType, $typeOptions)) {
         $selectedType = $defaultTypeKey;
     }
-    $data['tipo_pratica'] = $selectedType;
+    // Normalizza il valore da salvare rispettando l'ENUM della tabella (CAF | Patronato)
+    $data['tipo_pratica'] = $selectedType === 'PATRONATO' ? 'Patronato' : 'CAF';
     $data['nominativo'] = trim($data['nominativo']);
     $data['codice_fiscale'] = strtoupper($data['codice_fiscale']);
     $data['telefono'] = trim($data['telefono']);
