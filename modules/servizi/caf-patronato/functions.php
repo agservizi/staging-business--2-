@@ -43,8 +43,8 @@ function caf_patronato_primary_operator(?PDO $connection = null, bool $logOnMiss
 
     $row = null;
     try {
-        $stmt = $pdoInstance->prepare('SELECT id, user_id, nome, cognome, email, ruolo FROM utenti_caf_patronato WHERE ruolo = :ruolo AND attivo = 1 AND email IS NOT NULL AND email <> "" ORDER BY updated_at DESC, id DESC LIMIT 1');
-        $stmt->execute([':ruolo' => 'Patronato']);
+        $stmt = $pdoInstance->prepare('SELECT id, user_id, nome, cognome, email, ruolo FROM utenti_caf_patronato WHERE UPPER(ruolo) = :ruolo AND attivo = 1 AND email IS NOT NULL AND email <> "" ORDER BY updated_at DESC, id DESC LIMIT 1');
+        $stmt->execute([':ruolo' => 'PATRONATO']);
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     } catch (Throwable $exception) {
         error_log('CAF/Patronato: lettura operatore fallita - ' . $exception->getMessage());
@@ -84,8 +84,8 @@ function caf_patronato_primary_operator(?PDO $connection = null, bool $logOnMiss
 function caf_patronato_fallback_operator_from_users(PDO $pdo, bool $logOnMissing = true): ?array
 {
     try {
-        $stmt = $pdo->prepare('SELECT id, nome, cognome, email, ruolo FROM users WHERE ruolo = :ruolo AND email IS NOT NULL AND email <> "" ORDER BY updated_at DESC, id DESC LIMIT 1');
-        $stmt->execute([':ruolo' => 'Patronato']);
+        $stmt = $pdo->prepare('SELECT id, nome, cognome, email, ruolo FROM users WHERE UPPER(ruolo) = :ruolo AND email IS NOT NULL AND email <> "" ORDER BY updated_at DESC, id DESC LIMIT 1');
+        $stmt->execute([':ruolo' => 'PATRONATO']);
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     } catch (Throwable $exception) {
         if ($logOnMissing) {
