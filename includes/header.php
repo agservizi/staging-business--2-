@@ -39,6 +39,23 @@ if (isset($pdo) && $pdo instanceof PDO && current_user_can('Admin', 'Operatore',
         error_log('Pickup report feed bootstrap failed: ' . $exception->getMessage());
     }
 }
+
+if (!headers_sent()) {
+    header('X-Frame-Options: SAMEORIGIN');
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Strict-Transport-Security: max-age=63072000; includeSubDomains; preload');
+    $csp = [
+        "default-src 'self' data: blob: https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com",
+        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com",
+        "img-src 'self' data: blob: https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com",
+        "font-src 'self' data: https://cdnjs.cloudflare.com",
+        "connect-src 'self' https://cdn.datatables.net https://unpkg.com",
+        "frame-ancestors 'self'"
+    ];
+    header('Content-Security-Policy-Report-Only: ' . implode('; ', $csp));
+}
 ?>
 <!DOCTYPE html>
 <html lang="it" data-bs-theme="light" data-ui-theme="<?php echo sanitize_output($activeTheme); ?>">
