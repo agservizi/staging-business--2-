@@ -125,13 +125,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             <div class="card-body">
                 <form class="toolbar-search" method="get" role="search">
                     <div class="input-group flex-wrap flex-xl-nowrap">
-                        <select class="form-select" name="stato" id="stato" aria-label="Filtra per stato">
+                        <select class="form-select me-2 mb-2" name="stato" id="stato" aria-label="Filtra per stato">
                             <option value="">Stato: tutti</option>
                             <?php foreach ($statuses as $status): ?>
                                 <option value="<?php echo sanitize_output($status); ?>" <?php echo $filterStatus === $status ? 'selected' : ''; ?>><?php echo sanitize_output($status); ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <select class="form-select" name="responsabile" id="responsabile" aria-label="Filtra per responsabile">
+                        <select class="form-select me-2 mb-2" name="responsabile" id="responsabile" aria-label="Filtra per responsabile">
                             <option value="">Responsabile: tutti</option>
                             <?php foreach ($owners as $owner): ?>
                                 <?php
@@ -144,7 +144,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <option value="<?php echo sanitize_output($owner); ?>" <?php echo $filterOwner === $owner ? 'selected' : ''; ?>><?php echo sanitize_output($ownerLabel); ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <select class="form-select" name="cliente_id" id="cliente_id" aria-label="Filtra per cliente">
+                        <select class="form-select me-2 mb-2" name="cliente_id" id="cliente_id" aria-label="Filtra per cliente">
                             <option value="">Cliente: tutti</option>
                             <?php foreach ($clients as $client): ?>
                                 <?php
@@ -158,11 +158,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <option value="<?php echo (int) $client['id']; ?>" <?php echo $filterClientId === (int) $client['id'] ? 'selected' : ''; ?>><?php echo sanitize_output($label); ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <input class="form-control" type="search" id="q" name="q" value="<?php echo sanitize_output($filterSearch); ?>" placeholder="Cerca titolo, luogo o cliente">
-                        <input class="form-control" type="date" id="dal" name="dal" value="<?php echo sanitize_output($filterFrom); ?>" aria-label="Dal">
-                        <input class="form-control" type="date" id="al" name="al" value="<?php echo sanitize_output($filterTo); ?>" aria-label="Al">
-                        <button class="btn btn-warning" type="submit" title="Applica filtri"><i class="fa-solid fa-filter"></i></button>
-                        <a class="btn btn-outline-warning" href="index.php" title="Reimposta filtri"><i class="fa-solid fa-rotate-left"></i></a>
+                        <input class="form-control me-2 mb-2" type="search" id="q" name="q" value="<?php echo sanitize_output($filterSearch); ?>" placeholder="Cerca titolo, luogo o cliente">
+                        <input class="form-control me-2 mb-2" type="date" id="dal" name="dal" value="<?php echo sanitize_output($filterFrom); ?>" aria-label="Dal">
+                        <input class="form-control me-2 mb-2" type="date" id="al" name="al" value="<?php echo sanitize_output($filterTo); ?>" aria-label="Al">
+                        <button class="btn btn-warning mb-2" type="submit" title="Applica filtri"><i class="fa-solid fa-filter"></i></button>
+                        <a class="btn btn-outline-warning mb-2" href="index.php" title="Reimposta filtri"><i class="fa-solid fa-rotate-left"></i></a>
                     </div>
                 </form>
             </div>
