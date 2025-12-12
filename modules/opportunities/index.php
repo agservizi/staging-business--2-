@@ -155,14 +155,21 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                             <input type="hidden" name="form_action" value="reopen_for_correction">
                                             <input type="hidden" name="reopen_note" value="Richiesta rettifica dall'elenco amministrazione">
-                                            <button class="btn btn-sm btn-outline-secondary js-reopen-opportunity" type="button" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Riapri per rettifica" data-opportunity-code="<?php echo sanitize_output($opportunity['code'] ?? ''); ?>">
+                                            <button class="btn btn-sm btn-outline-secondary js-reopen-opportunity" type="button" title="Riapri per rettifica" aria-label="Riapri per rettifica" data-opportunity-code="<?php echo sanitize_output($opportunity['code'] ?? ''); ?>">
                                                 <i class="fa-solid fa-rotate-left"></i>
                                             </button>
                                         </form>
                                     <?php endif; ?>
-                                    <a class="btn btn-sm btn-outline-primary" href="<?php echo asset('modules/opportunities/detail.php?id=' . (int) $opportunity['id']); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Gestisci opportunity">
-                                        <i class="fa-solid fa-eye me-1"></i>Gestisci
+                                    <a class="btn btn-sm btn-outline-primary" href="<?php echo asset('modules/opportunities/detail.php?id=' . (int) $opportunity['id']); ?>" title="Gestisci" aria-label="Gestisci">
+                                        <i class="fa-solid fa-eye"></i>
                                     </a>
+                                    <form class="d-inline" method="post" action="<?php echo asset('modules/opportunities/detail.php?id=' . (int) $opportunity['id']); ?>" onsubmit="return confirm('Eliminare definitivamente questa opportunity?');">
+                                        <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                                        <input type="hidden" name="form_action" value="delete_opportunity">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit" title="Elimina" aria-label="Elimina">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

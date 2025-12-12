@@ -1498,6 +1498,20 @@ final class OpportunityService
         return $row ?: null;
     }
 
+    public function deleteOpportunity(int $opportunityId): void
+    {
+        if ($opportunityId <= 0) {
+            throw new RuntimeException('Opportunity non valida.');
+        }
+
+        $stmt = $this->pdo->prepare('DELETE FROM opportunities WHERE id = :id LIMIT 1');
+        $stmt->execute([':id' => $opportunityId]);
+
+        if ($stmt->rowCount() === 0) {
+            throw new RuntimeException('Opportunity non trovata.');
+        }
+    }
+
     /**
      * @param array<string,mixed> $files
      */
