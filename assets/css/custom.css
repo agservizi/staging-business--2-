@@ -1329,8 +1329,12 @@ body.login-body {
     letter-spacing: 0.18em;
 }
 
+.sidebar {
+    scrollbar-width: none;
+}
+
 .sidebar::-webkit-scrollbar {
-    width: 8px;
+    display: none;
 }
 
 .sidebar::-webkit-scrollbar-thumb {
