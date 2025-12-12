@@ -2620,6 +2620,27 @@ a.link-warning:hover {
     flex: 1 1 auto;
 }
 
+.toolbar-search .input-group>*.form-select,
+.toolbar-search .input-group>*.form-control,
+.toolbar-search .input-group>*.btn {
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.toolbar-search .input-group>*.form-select:last-child,
+.toolbar-search .input-group>*.form-control:last-child,
+.toolbar-search .input-group>*.btn:last-child {
+    margin-right: 0;
+}
+
+.toolbar-search .form-select.form-select-sm.w-auto {
+    min-width: 140px;
+}
+
+.toolbar-search .form-control {
+    min-width: 220px;
+}
+
 
 .toolbar-search .input-group .form-control {
     background-color: #ffffff;
