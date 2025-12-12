@@ -42,6 +42,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 			<a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Elenco movimenti</a>
 			<div class="d-flex gap-2">
 				<?php if ($puoModificare): ?>
+					<a class="btn btn-success" href="create.php"><i class="fa-solid fa-plus"></i> Nuova entrata/uscita</a>
 					<a class="btn btn-warning text-dark" href="edit.php?id=<?php echo $id; ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
 				<?php endif; ?>
 				<?php if ($puoEliminare): ?>
