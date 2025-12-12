@@ -1,4 +1,6 @@
 <?php
+use App\Services\Opportunities\OpportunityService;
+
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/db_connect.php';
 require_once __DIR__ . '/includes/helpers.php';
@@ -69,6 +71,14 @@ $recentShipments = [];
 $topFinanceClients = [];
 $dueSoonMovements = [];
 $scheduledCampaigns = [];
+$opportunityCollaboratorSummary = [
+    'monthKey' => date('Y-m'),
+    'monthLabel' => format_month_label(new DateTimeImmutable('first day of this month')),
+    'totalOpportunities' => 0,
+    'totalCommission' => 0.0,
+    'collaboratorsCount' => 0,
+    'entries' => [],
+];
 
 try {
     $stats['totalClients'] = (int) $pdo->query('SELECT COUNT(*) FROM clienti')->fetchColumn();
@@ -287,6 +297,32 @@ try {
         $stats['campaignsScheduled'] = (int) $pdo->query("SELECT COUNT(*) FROM email_campaigns WHERE status IN ('draft','scheduled')")->fetchColumn();
     } catch (PDOException $campaignStatException) {
         error_log('Dashboard campaign stat failed: ' . $campaignStatException->getMessage());
+    }
+
+    try {
+        $opportunityService = new OpportunityService($pdo);
+        $monthOptions = $opportunityService->getCommissionMonthOptions(null, 1);
+        $selectedMonthKey = $monthOptions[0]['key'] ?? date('Y-m');
+        $selectedMonthLabel = $monthOptions[0]['label'] ?? format_month_label(new DateTimeImmutable($selectedMonthKey . '-01'));
+        $opportunityRows = $opportunityService->getMonthlyCommissionsByCollaborator($selectedMonthKey);
+
+        $totalOpp = 0;
+        $totalCommission = 0.0;
+        foreach ($opportunityRows as $row) {
+            $totalOpp += (int) ($row['opportunities'] ?? 0);
+            $totalCommission += (float) ($row['total_commission'] ?? 0);
+        }
+
+        $opportunityCollaboratorSummary = [
+            'monthKey' => $selectedMonthKey,
+            'monthLabel' => $selectedMonthLabel,
+            'totalOpportunities' => $totalOpp,
+            'totalCommission' => $totalCommission,
+            'collaboratorsCount' => count($opportunityRows),
+            'entries' => array_slice($opportunityRows, 0, 5),
+        ];
+    } catch (Throwable $opportunitySummaryException) {
+        error_log('Dashboard opportunity summary failed: ' . $opportunitySummaryException->getMessage());
     }
 
     try {
@@ -519,6 +555,85 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 <div class="summary-value" data-dashboard-stat="anprInProgress" data-format="number"><?php echo number_format($stats['anprInProgress']); ?></div>
                                 <small class="text-muted">In lavorazione</small>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <div class="col-12 col-xl-6">
+                    <div class="card ag-card h-100">
+                        <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div>
+                                <h5 class="card-title mb-0">Opportunity collaboratori</h5>
+                                <small class="text-muted">Periodo <?php echo sanitize_output($opportunityCollaboratorSummary['monthLabel']); ?></small>
+                            </div>
+                            <a class="btn btn-sm btn-outline-warning" href="modules/opportunities/index.php">Pipeline</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3 text-center text-md-start">
+                                <div class="col-12 col-md-4">
+                                    <p class="text-uppercase small text-muted mb-1">Opportunity</p>
+                                    <div class="h3 mb-0 fw-semibold"><?php echo number_format($opportunityCollaboratorSummary['totalOpportunities']); ?></div>
+                                    <small class="text-muted">Totale registrate</small>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <p class="text-uppercase small text-muted mb-1">Provvigioni</p>
+                                    <div class="h3 mb-0 fw-semibold"><?php echo sanitize_output(format_currency($opportunityCollaboratorSummary['totalCommission'])); ?></div>
+                                    <small class="text-muted">Valore stimato</small>
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <p class="text-uppercase small text-muted mb-1">Collaboratori</p>
+                                    <div class="h3 mb-0 fw-semibold"><?php echo number_format($opportunityCollaboratorSummary['collaboratorsCount']); ?></div>
+                                    <small class="text-muted">Attivi nel periodo</small>
+                                </div>
+                            </div>
+                            <p class="text-muted small mb-0 mt-3">Dati riferiti alle opportunity inserite dai collaboratori nel mese indicato.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-xl-6">
+                    <div class="card ag-card h-100">
+                        <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div>
+                                <h5 class="card-title mb-0">Top collaboratori</h5>
+                                <small class="text-muted">Opportunity e provvigioni (<?php echo sanitize_output($opportunityCollaboratorSummary['monthLabel']); ?>)</small>
+                            </div>
+                            <a class="btn btn-sm btn-outline-warning" href="modules/opportunities/commissions.php">Dettaglio</a>
+                        </div>
+                        <div class="card-body p-0">
+                            <?php if (!empty($opportunityCollaboratorSummary['entries'])): ?>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Collaboratore</th>
+                                                <th class="text-center">Opportunity</th>
+                                                <th class="text-end">Provvigioni</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($opportunityCollaboratorSummary['entries'] as $entry): ?>
+                                                <?php
+                                                    $count = (int) ($entry['opportunities'] ?? 0);
+                                                    $total = (float) ($entry['total_commission'] ?? 0.0);
+                                                    $fullName = trim(sprintf('%s %s', (string) ($entry['collaborator_name'] ?? ''), (string) ($entry['collaborator_surname'] ?? '')));
+                                                    if ($fullName === '') {
+                                                        $fullName = 'Collaboratore #' . (int) ($entry['collaborator_id'] ?? 0);
+                                                    }
+                                                ?>
+                                                <tr>
+                                                    <td class="fw-semibold"><?php echo sanitize_output($fullName); ?></td>
+                                                    <td class="text-center fw-semibold"><?php echo number_format($count); ?></td>
+                                                    <td class="text-end fw-semibold"><?php echo sanitize_output(format_currency($total)); ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php else: ?>
+                                <div class="p-4 text-muted">Nessuna opportunity registrata nel periodo selezionato.</div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
