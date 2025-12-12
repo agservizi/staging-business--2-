@@ -852,12 +852,23 @@ $extraScripts = ($extraScripts ?? []);
 $extraScripts[] = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 $extraScripts[] = asset('modules/servizi/brt/js/pudo-map.js');
 $extraScripts[] = asset('modules/servizi/brt/js/recipients.js');
+$extraScripts[] = asset('assets/js/cie-istat-lookup.js');
 $extraScripts[] = asset('modules/servizi/brt/js/cap-lookup.js');
 $extraScripts[] = asset('modules/servizi/brt/js/customs.js');
+
+$istatDatasetUrl = asset('customer-portal/assets/data/comuni.json');
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
+<script>
+window.CIEIstatLookupConfig = Object.assign({}, window.CIEIstatLookupConfig, {
+    datasetUrl: '<?php echo sanitize_output($istatDatasetUrl); ?>',
+    fallbackUrl: 'https://raw.githubusercontent.com/matteocontrini/comuni-json/master/comuni.json',
+    maxResults: 12,
+    minChars: 2
+});
+</script>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
