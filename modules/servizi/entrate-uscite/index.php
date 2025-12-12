@@ -92,26 +92,30 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 		</div>
 
 		<div class="card ag-card mb-4">
-			<div class="card-header bg-transparent border-0">
-				<h2 class="h5 mb-0">Filtri</h2>
-			</div>
 			<div class="card-body">
-				<form class="toolbar-search" method="get" role="search">
-					<div class="input-group flex-wrap flex-xl-nowrap">
+				<form class="row g-3 align-items-end" method="get" role="search">
+					<div class="col-lg-3 col-md-4">
+						<label class="form-label" for="stato">Stato</label>
 						<select class="form-select" id="stato" name="stato" aria-label="Filtra per stato">
-							<option value="">Stato: tutti</option>
+							<option value="">Tutti</option>
 							<?php foreach ($stati as $stato): ?>
 								<option value="<?php echo sanitize_output($stato); ?>" <?php echo $filters['stato'] === $stato ? 'selected' : ''; ?>><?php echo sanitize_output($stato); ?></option>
 							<?php endforeach; ?>
 						</select>
+					</div>
+					<div class="col-lg-3 col-md-4">
+						<label class="form-label" for="tipo_movimento">Tipo movimento</label>
 						<select class="form-select" id="tipo_movimento" name="tipo_movimento" aria-label="Filtra per tipo movimento">
-							<option value="">Tipo: entrate e uscite</option>
+							<option value="">Entrate e uscite</option>
 							<?php foreach ($tipiMovimento as $tipo): ?>
 								<option value="<?php echo sanitize_output($tipo); ?>" <?php echo $filters['tipo_movimento'] === $tipo ? 'selected' : ''; ?>><?php echo sanitize_output($tipo); ?></option>
 							<?php endforeach; ?>
 						</select>
+					</div>
+					<div class="col-lg-4 col-md-6">
+						<label class="form-label" for="cliente_id">Cliente</label>
 						<select class="form-select" id="cliente_id" name="cliente_id" aria-label="Filtra per cliente">
-							<option value="">Cliente: tutti</option>
+							<option value="">Tutti</option>
 							<option value="none" <?php echo $filters['cliente_id'] === 'none' ? 'selected' : ''; ?>>Solo movimenti interni</option>
 							<?php foreach ($clients as $client): ?>
 								<?php
@@ -124,9 +128,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 								<option value="<?php echo (int) $client['id']; ?>" <?php echo $filters['cliente_id'] === (int) $client['id'] ? 'selected' : ''; ?>><?php echo sanitize_output($clientLabel); ?></option>
 							<?php endforeach; ?>
 						</select>
-						<input class="form-control" id="search" type="search" name="search" value="<?php echo sanitize_output($filters['search']); ?>" placeholder="Cerca descrizione o riferimento">
-						<button class="btn btn-warning" type="submit" title="Applica filtri"><i class="fa-solid fa-filter"></i></button>
-						<a class="btn btn-outline-warning" href="index.php" title="Reimposta filtri"><i class="fa-solid fa-rotate-left"></i></a>
+					</div>
+					<div class="col-lg-5 col-md-6">
+						<label class="form-label" for="search">Ricerca</label>
+						<input class="form-control" id="search" type="search" name="search" value="<?php echo sanitize_output($filters['search']); ?>" placeholder="Descrizione o riferimento">
+					</div>
+					<div class="col-lg-3 col-md-6 d-flex gap-2">
+						<button class="btn btn-primary" type="submit" title="Applica filtri"><i class="fa-solid fa-magnifying-glass me-2"></i>Cerca</button>
+						<a class="btn btn-outline-secondary" href="index.php" title="Reimposta filtri"><i class="fa-solid fa-rotate-left me-2"></i>Reimposta</a>
 					</div>
 				</form>
 			</div>
