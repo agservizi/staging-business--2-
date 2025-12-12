@@ -1205,7 +1205,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                             <div class="col-md-6">
                                 <div class="border rounded-3 p-3 bg-light h-100 d-flex flex-column">
-                                    <div class="small text-muted mb-2">Ultimi eventi. Necessita pagina con CMP caricato.</div>
+                                    <div class="small text-muted mb-2" data-cs-log-status>Ultimi eventi CMP (max 50). Se vuoto, apri una pagina con il banner cookie e ricarica.</div>
                                     <div class="flex-grow-1 overflow-auto" style="max-height: 260px;" data-cs-log>
                                         <div class="placeholder-glow">
                                             <span class="placeholder col-8"></span>
@@ -3082,6 +3082,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const updatedEl = card.querySelector('[data-cs-updated]');
         const logEl = card.querySelector('[data-cs-log]');
         const toggleDebug = card.querySelector('[data-cs-toggle-debug]');
+        const logStatus = card.querySelector('[data-cs-log-status]');
+
+        const setStatus = (text) => {
+            if (logStatus) {
+                logStatus.textContent = text;
+            }
+        };
 
         const formatTs = (ts) => {
             if (!ts) return 'Mai';
@@ -3110,9 +3117,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const renderLog = () => {
             const entries = (window.CSConsent && window.CSConsent.getLog && window.CSConsent.getLog()) || [];
             if (!entries.length) {
+                setStatus('Nessun evento in questa sessione. Apri una pagina con il banner cookie e ricarica.');
                 logEl.innerHTML = '<div class="text-muted">Nessun evento registrato in questa sessione.</div>';
                 return;
             }
+            setStatus('Ultimi eventi CMP (max 50).');
             logEl.innerHTML = entries.slice().reverse().map((entry) => {
                 const time = formatTs(entry.ts);
                 const payload = JSON.stringify(entry.args);
@@ -3132,6 +3141,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const hydrate = () => {
             if (!window.CSConsent) return false;
+            setStatus('Ultimi eventi CMP (max 50).');
             renderState();
             renderLog();
             if (toggleDebug) toggleDebug.addEventListener('click', toggle);
@@ -3150,6 +3160,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     clearInterval(timer);
                     if (!window.CSConsent) {
                         logEl.innerHTML = '<div class="text-danger">CMP non disponibile su questa pagina.</div>';
+                        setStatus('CMP non disponibile qui. Apri una pagina con il banner attivo e torna su questa scheda.');
                     }
                 }
             }, 150);
