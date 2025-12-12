@@ -1041,6 +1041,9 @@ body.login-body {
     display: flex;
     flex-direction: column;
     line-height: 1.05;
+    max-width: 100%;
+    overflow: hidden;
+    transition: opacity 0.25s ease, transform 0.25s ease, max-width 0.25s ease;
 }
 
 .sidebar-brand-title {
@@ -1208,6 +1211,8 @@ body.login-body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 100%;
+    transition: opacity 0.25s ease, transform 0.25s ease, max-width 0.25s ease;
 }
 
 .sidebar-logo i {
@@ -1237,7 +1242,7 @@ body.login-body {
     align-items: center;
     justify-content: center;
     margin-left: auto;
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, opacity 0.25s ease;
 }
 
 .sidebar .nav-caret i {
@@ -1252,7 +1257,10 @@ body.login-body {
 .sidebar.collapsed .nav-label,
 .sidebar.collapsed .nav-caret,
 .sidebar.collapsed .nav-link-toggle::after {
-    display: none !important;
+    opacity: 0;
+    transform: translateX(-8px);
+    max-width: 0;
+    pointer-events: none;
 }
 
 .sidebar.collapsed .nav-link {
@@ -1276,7 +1284,10 @@ body.login-body {
 .sidebar.collapsed.hover-expand .nav-label,
 .sidebar.collapsed.hover-expand .nav-caret,
 .sidebar.collapsed.hover-expand .nav-link-toggle::after {
-    display: inline-flex !important;
+    opacity: 1;
+    transform: translateX(0);
+    max-width: 100%;
+    pointer-events: auto;
 }
 
 .sidebar.collapsed.hover-expand .nav-link {

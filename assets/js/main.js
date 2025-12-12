@@ -253,8 +253,18 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.classList.toggle('collapsed', shouldCollapse);
         localStorage.setItem('csSidebar', shouldCollapse ? 'collapsed' : 'expanded');
         sidebarToggle?.setAttribute('aria-expanded', String(!shouldCollapse));
-        if (sidebar.classList.contains('collapsed')) {
-            closeSidebarSubmenus();
+        if (shouldCollapse && !mobileBreakpoint.matches) {
+            const onTransitionEnd = (event) => {
+                if (event.propertyName === 'width') {
+                    closeSidebarSubmenus();
+                    sidebar.removeEventListener('transitionend', onTransitionEnd);
+                }
+            };
+            sidebar.addEventListener('transitionend', onTransitionEnd);
+            window.setTimeout(() => {
+                sidebar.removeEventListener('transitionend', onTransitionEnd);
+                closeSidebarSubmenus();
+            }, 400);
         }
         updateSidebarToggleIcon();
         initializeTooltips();
