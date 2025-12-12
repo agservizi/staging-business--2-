@@ -161,10 +161,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             add_flash('danger', 'Seleziona un file da caricare.');
         } else {
             $file = $_FILES['nuova_versione'];
-            $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            $allowed = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'rar', 'jpg', 'jpeg', 'png'];
-            if (!in_array($extension, $allowed, true)) {
-                add_flash('danger', 'Formato non supportato per la versione.');
+            $maxBytes = (int) env('DOCUMENT_UPLOAD_MAX_BYTES', 10 * 1024 * 1024);
+            $allowedExt = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'rar', 'jpg', 'jpeg', 'png'];
+            $allowedMime = [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/zip',
+                'application/vnd.rar',
+                'image/jpeg',
+                'image/png',
+            ];
+            $validation = validate_uploaded_file($file, $allowedMime, $allowedExt, $maxBytes);
+            if (!$validation['ok']) {
+                add_flash('danger', $validation['error'] ?? 'Caricamento non valido.');
             } else {
                 $pdo->beginTransaction();
                 try {
@@ -177,10 +189,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         mkdir($uploadDir, 0775, true);
                     }
 
-                    $safeName = sanitize_filename($file['name']);
+                    $safeName = $validation['safe_name'];
                     $versionName = sprintf('v%d_%s', $versionNumber, $safeName);
                     $destination = $uploadDir . '/' . $versionName;
-                    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+                    if (!move_uploaded_file($validation['tmp_path'], $destination)) {
                         throw new RuntimeException('Salvataggio file non riuscito.');
                     }
 
@@ -191,8 +203,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ':versione' => $versionNumber,
                         ':file_name' => $safeName,
                         ':file_path' => 'assets/uploads/documenti/' . $documentId . '/' . $versionName,
-                        ':mime_type' => mime_content_type($destination) ?: 'application/octet-stream',
-                        ':file_size' => filesize($destination),
+                        ':mime_type' => $validation['mime'] ?? (mime_content_type($destination) ?: 'application/octet-stream'),
+                        ':file_size' => $validation['size'] ?? filesize($destination),
                         ':uploaded_by' => $_SESSION['user_id'],
                     ]);
 

@@ -130,10 +130,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$errors) {
         $file = $_FILES['documento'];
-        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowed = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'rar', 'jpg', 'jpeg', 'png'];
-        if (!in_array($extension, $allowed, true)) {
-            $errors[] = 'Formato non supportato. Carica PDF, Office, immagini o archivi.';
+        $maxBytes = (int) env('DOCUMENT_UPLOAD_MAX_BYTES', 10 * 1024 * 1024); // 10MB default
+        $allowedExt = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'rar', 'jpg', 'jpeg', 'png'];
+        $allowedMime = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/zip',
+            'application/vnd.rar',
+            'image/jpeg',
+            'image/png',
+        ];
+        $validation = validate_uploaded_file($file, $allowedMime, $allowedExt, $maxBytes);
+        if (!$validation['ok']) {
+            $errors[] = $validation['error'] ?? 'Caricamento non valido.';
         }
     }
 
@@ -173,10 +185,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Impossibile creare la cartella di destinazione.');
             }
 
-            $safeName = sanitize_filename($file['name']);
+            $safeName = $validation['safe_name'];
             $versionName = sprintf('v1_%s', $safeName);
             $destination = $uploadDir . '/' . $versionName;
-            if (!move_uploaded_file($file['tmp_name'], $destination)) {
+            if (!move_uploaded_file($validation['tmp_path'], $destination)) {
                 throw new RuntimeException('Impossibile salvare il file caricato.');
             }
 
@@ -187,8 +199,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':versione' => 1,
                 ':file_name' => $safeName,
                 ':file_path' => 'assets/uploads/documenti/' . $documentId . '/' . $versionName,
-                ':mime_type' => mime_content_type($destination) ?: 'application/octet-stream',
-                ':file_size' => filesize($destination),
+                ':mime_type' => $validation['mime'] ?? (mime_content_type($destination) ?: 'application/octet-stream'),
+                ':file_size' => $validation['size'] ?? filesize($destination),
                 ':uploaded_by' => $_SESSION['user_id'],
             ]);
 

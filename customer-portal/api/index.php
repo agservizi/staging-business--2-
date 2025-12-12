@@ -22,12 +22,22 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('X-XSS-Protection: 1; mode=block');
 
-// CORS per sviluppo (rimuovere in produzione)
-if (env('APP_DEBUG', false)) {
+// CORS: whitelist origins; fallback to debug wildcard only in APP_DEBUG
+$originList = env('PORTAL_CORS_ALLOWED_ORIGINS', '');
+$allowedOrigins = array_values(array_filter(array_map('trim', explode(',', $originList))));
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$isAllowed = $origin !== '' && in_array($origin, $allowedOrigins, true);
+
+if ($isAllowed) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Vary: Origin');
+    header('Access-Control-Allow-Credentials: true');
+} elseif (env('APP_DEBUG', false)) {
     header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
 }
+
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-CSRF-Token');
 
 // Gestisci preflight OPTIONS
 if ($requestMethod === 'OPTIONS') {

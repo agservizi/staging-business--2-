@@ -45,6 +45,7 @@ if (!headers_sent()) {
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('Strict-Transport-Security: max-age=63072000; includeSubDomains; preload');
+    $cspReportEndpoint = base_url('api/csp-report.php');
     $csp = [
         "default-src 'self' data: blob: https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com",
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com",
@@ -52,9 +53,10 @@ if (!headers_sent()) {
         "img-src 'self' data: blob: https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com",
         "font-src 'self' data: https://cdnjs.cloudflare.com",
         "connect-src 'self' https://cdn.datatables.net https://unpkg.com",
-        "frame-ancestors 'self'"
+        "frame-ancestors 'self'",
+        "report-uri {$cspReportEndpoint}"
     ];
-    header('Content-Security-Policy-Report-Only: ' . implode('; ', $csp));
+    header('Content-Security-Policy: ' . implode('; ', $csp));
 }
 ?>
 <!DOCTYPE html>

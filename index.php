@@ -20,6 +20,9 @@ $csrfToken = csrf_token();
 
 $maxAttempts = 5;
 $lockSeconds = 300;
+$rateLimitWindowMinutes = 15;
+$ipRateLimit = 15;
+$userRateLimit = 10;
 $lockedUntil = $_SESSION['login_locked_until'] ?? 0;
 
 $errors = [];
@@ -48,6 +51,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
     $rememberRequested = $remember;
     $ipAddress = request_ip();
     $userAgent = request_user_agent();
+    $windowStart = (new DateTimeImmutable('-' . $rateLimitWindowMinutes . ' minutes'))->format('Y-m-d H:i:s');
+
+    // Simple rate limiting on failed logins by IP and username over a sliding window
+    if ($ipAddress) {
+        $ipAttemptsStmt = $pdo->prepare('SELECT COUNT(*) FROM login_audit WHERE ip_address = :ip AND success = 0 AND created_at >= :window_start');
+        $ipAttemptsStmt->execute([':ip' => $ipAddress, ':window_start' => $windowStart]);
+        $recentIpFailures = (int) $ipAttemptsStmt->fetchColumn();
+        if ($recentIpFailures >= $ipRateLimit) {
+            $errors[] = 'Troppe richieste da questo indirizzo. Riprova tra qualche minuto.';
+            $auditLogger->logLoginAttempt(null, $username, false, $ipAddress, $userAgent, 'rate_limited_ip');
+        }
+    }
+    if ($errors === [] && $username !== '') {
+        $userAttemptsStmt = $pdo->prepare('SELECT COUNT(*) FROM login_audit WHERE username = :username AND success = 0 AND created_at >= :window_start');
+        $userAttemptsStmt->execute([':username' => $username, ':window_start' => $windowStart]);
+        $recentUserFailures = (int) $userAttemptsStmt->fetchColumn();
+        if ($recentUserFailures >= $userRateLimit) {
+            $errors[] = 'Troppe richieste per questo account. Riprova tra qualche minuto.';
+            $auditLogger->logLoginAttempt(null, $username, false, $ipAddress, $userAgent, 'rate_limited_user');
+        }
+    }
 
     if ($username === '' || $password === '') {
         $errors[] = 'Inserisci username e password.';

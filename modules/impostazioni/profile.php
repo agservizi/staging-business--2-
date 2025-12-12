@@ -1,4 +1,6 @@
 <?php
+use App\Security\SecurityAuditLogger;
+
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/db_connect.php';
 require_once __DIR__ . '/../../includes/helpers.php';
@@ -153,6 +155,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':azione' => 'Aggiornamento password',
                     ':dettagli' => 'Password modificata',
                 ]);
+
+                $auditLogger = new SecurityAuditLogger($pdo);
+                $auditLogger->logSecurityEvent(
+                    $userId,
+                    $_SESSION['username'] ?? 'unknown',
+                    'password_change',
+                    request_ip(),
+                    request_user_agent(),
+                    ['path' => 'profile'],
+                    true
+                );
 
                 add_flash('success', 'Password aggiornata correttamente.');
                 header('Location: profile.php');

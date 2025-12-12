@@ -670,6 +670,95 @@ function sanitize_filename(string $filename): string
     return $clean ?: bin2hex(random_bytes(8));
 }
 
+/**
+ * Emit minimal CORS headers for a whitelist of origins.
+ *
+ * @param array<int,string> $allowedOrigins Full origin strings (e.g. https://example.com)
+ * @param array<int,string> $methods Allowed HTTP methods
+ * @param array<int,string> $headers Allowed request headers
+ * @param int $maxAge Seconds to cache the preflight
+ * @param bool $allowCredentials Whether to allow credentials
+ * @return bool True if origin was allowed
+ */
+function allow_cors(array $allowedOrigins, array $methods = ['GET'], array $headers = ['Content-Type'], int $maxAge = 86400, bool $allowCredentials = false): bool
+{
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $allowed = $origin !== '' && in_array($origin, $allowedOrigins, true);
+
+    if ($allowed) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Vary: Origin');
+        if ($allowCredentials) {
+            header('Access-Control-Allow-Credentials: true');
+        }
+    }
+
+    header('Access-Control-Allow-Methods: ' . implode(', ', $methods));
+    header('Access-Control-Allow-Headers: ' . implode(', ', $headers));
+    header('Access-Control-Max-Age: ' . $maxAge);
+
+    return $allowed;
+}
+
+/**
+ * Validate an uploaded file against size, extension, and MIME whitelist.
+ *
+ * @param array $file Upload entry from $_FILES
+ * @param array<int,string> $allowedMime Whitelisted MIME types
+ * @param array<int,string> $allowedExtensions Whitelisted lowercase extensions (without dot)
+ * @param int $maxBytes Maximum allowed size in bytes
+ * @return array{ok:bool,error?:string,safe_name?:string,mime?:string,size?:int,tmp_path?:string}
+ */
+function validate_uploaded_file(array $file, array $allowedMime, array $allowedExtensions, int $maxBytes): array
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        return ['ok' => false, 'error' => 'Caricamento non riuscito.'];
+    }
+
+    $tmpPath = $file['tmp_name'] ?? '';
+    if ($tmpPath === '' || !is_uploaded_file($tmpPath)) {
+        return ['ok' => false, 'error' => 'File non valido.'];
+    }
+
+    $size = (int) ($file['size'] ?? 0);
+    if ($size <= 0) {
+        return ['ok' => false, 'error' => 'File vuoto.'];
+    }
+
+    if ($size > $maxBytes) {
+        $maxMb = round($maxBytes / 1048576, 1);
+        return ['ok' => false, 'error' => 'File troppo grande (max ' . $maxMb . ' MB).'];
+    }
+
+    $ext = strtolower((string) pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+    if ($ext === '' || !in_array($ext, $allowedExtensions, true)) {
+        return ['ok' => false, 'error' => 'Estensione non ammessa.'];
+    }
+
+    $detected = 'application/octet-stream';
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        if ($finfo) {
+            $detected = finfo_file($finfo, $tmpPath) ?: $detected;
+            finfo_close($finfo);
+        }
+    } elseif (function_exists('mime_content_type')) {
+        $detected = mime_content_type($tmpPath) ?: $detected;
+    }
+
+    if (!in_array($detected, $allowedMime, true)) {
+        return ['ok' => false, 'error' => 'Tipo di file non permesso.'];
+    }
+
+    return [
+        'ok' => true,
+        'safe_name' => sanitize_filename((string) $file['name']),
+        'mime' => $detected,
+        'size' => $size,
+        'tmp_path' => $tmpPath,
+    ];
+}
+
 function current_user_can(string ...$roles): bool
 {
     if (!isset($_SESSION['role'])) {

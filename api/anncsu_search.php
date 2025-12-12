@@ -9,20 +9,16 @@ if (!defined('BYPASS_AUTH')) {
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowedOrigins = [
-    'https://coresuite.it',
-    'https://business.coresuite.it',
-];
-
-if ($origin !== '' && in_array($origin, $allowedOrigins, true)) {
-    header('Access-Control-Allow-Origin: ' . $origin);
-    header('Vary: Origin');
+$originList = env('CORS_ALLOWED_ORIGINS', '');
+$allowedOrigins = array_values(array_filter(array_map('trim', explode(',', $originList))));
+if ($allowedOrigins === []) {
+    $allowedOrigins = [
+        'https://coresuite.it',
+        'https://business.coresuite.it',
+    ];
 }
+allow_cors($allowedOrigins, ['GET', 'OPTIONS'], ['Content-Type', 'Authorization', 'X-Requested-With']);
 
-header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-header('Access-Control-Max-Age: 86400');
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');

@@ -10,7 +10,12 @@
   "scripts": {
     "test": "echo \"No JS tests yet\" && exit 0",
     "lint": "eslint \"assets/js/**/*.js\" \"tools/**/*.js\"",
-    "deploy:staging": "node tools/deploy-staging.js sftp-staging.json"
+    "lint:fix": "eslint --fix \"assets/js/**/*.js\" \"tools/**/*.js\"",
+    "format": "prettier --write \"**/*.{js,json,css,md}\"",
+    "build:js": "node tools/build-js.js",
+    "build": "npm run build:js",
+    "deploy:staging": "node tools/deploy-staging.js sftp-staging.json",
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
@@ -29,7 +34,11 @@
     "eslint": "^9.12.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.30.0",
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "esbuild": "^0.24.0",
+    "fast-glob": "^3.3.2",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.10"
   },
   "dependencies": {
     "handsontable": "^16.2.0",
@@ -38,5 +47,9 @@
   },
   "overrides": {
     "ssh2": "^1.14.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": "eslint --fix",
+    "*.{js,json,css,md}": "prettier --write"
   }
 }

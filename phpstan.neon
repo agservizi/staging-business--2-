@@ -1,0 +1,28 @@
+includes:
+    - vendor/phpstan/phpstan/conf/bleedingEdge.neon
+
+parameters:
+    level: 6
+    paths:
+        - app
+        - includes
+    tmpDir: storage/tmp/phpstan
+    checkGenericClassInNonGenericObjectType: false
+    checkMissingIterableValueType: false
+    ignoreErrors:
+        - '#Call to an undefined function env\(#'
+        - '#Call to an undefined function csrf_token\(#'
+        - '#Call to an undefined function base_url\(#'
+        - '#Call to an undefined function asset\(#'
+        - '#Call to an undefined function current_user_can\(#'
+        - '#Call to an undefined function current_user_has_capability\(#'
+        - '#Call to an undefined function request_ip\(#'
+        - '#Call to an undefined function request_user_agent\(#'
+        - '#Function [a-zA-Z0-9_\\\\]+\(\) should return [^,]+ but return statement is missing#'
+    bootstrapFiles:
+        - bootstrap/autoload.php
+    excludePaths:
+        analyse:
+            - vendor
+            - storage
+            - bootstrap

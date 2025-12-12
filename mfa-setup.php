@@ -144,6 +144,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':azione' => 'Abilitazione MFA',
                 ':dettagli' => json_encode(['issuer' => 'Coresuite Business', 'mode' => 'login_enroll'], JSON_UNESCAPED_UNICODE),
             ]);
+            $auditLogger->logSecurityEvent(
+                $userId,
+                $loginUser['username'] ?? 'unknown',
+                'mfa_enabled',
+                $setup['ip'] ?? request_ip(),
+                $setup['user_agent'] ?? request_user_agent(),
+                ['mode' => 'enroll'],
+                true
+            );
             complete_user_login($pdo, $auditLogger, $loginUser, $setup['ip'] ?? request_ip(), $setup['user_agent'] ?? request_user_agent(), $rememberLogin, 'mfa_enroll');
             unset($_SESSION['mfa_setup']);
             redirect_by_role($loginUser['ruolo']);
@@ -157,6 +166,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':azione' => 'Abilitazione MFA',
             ':dettagli' => json_encode(['issuer' => 'Coresuite Business', 'mode' => 'manage'], JSON_UNESCAPED_UNICODE),
         ]);
+
+        $auditLogger = new SecurityAuditLogger($pdo);
+        $auditLogger->logSecurityEvent(
+            $userId,
+            $sessionUser['username'] ?? 'unknown',
+            'mfa_enabled',
+            $setup['ip'] ?? request_ip(),
+            $setup['user_agent'] ?? request_user_agent(),
+            ['mode' => 'manage'],
+            true
+        );
 
         $_SESSION['mfa_verified_at'] = time();
         unset($_SESSION['mfa_failed_attempts']);
