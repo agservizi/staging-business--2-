@@ -46,11 +46,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 					<a class="btn btn-warning text-dark" href="edit.php?id=<?php echo $id; ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
 				<?php endif; ?>
 				<?php if ($puoEliminare): ?>
-					<form method="post" action="delete.php" onsubmit="return confirm('Eliminare definitivamente questo movimento?');">
-						<input type="hidden" name="id" value="<?php echo $id; ?>">
-						<input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-						<button class="btn btn-outline-danger" type="submit"><i class="fa-solid fa-trash"></i> Elimina</button>
-					</form>
+					<button class="btn btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteMovementModal">
+						<i class="fa-solid fa-trash"></i> Elimina
+					</button>
 				<?php endif; ?>
 			</div>
 		</div>
@@ -150,4 +148,30 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 		</div>
 	</main>
 </div>
+
+<?php if ($puoEliminare): ?>
+	<div class="modal fade" id="deleteMovementModal" tabindex="-1" aria-labelledby="deleteMovementModalLabel" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="deleteMovementModalLabel">Elimina movimento</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+				</div>
+				<div class="modal-body">
+					Confermi l'eliminazione definitiva di questo movimento? L'azione non è reversibile.
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+					<form method="post" action="delete.php" class="d-inline">
+						<input type="hidden" name="id" value="<?php echo $id; ?>">
+						<input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+						<button class="btn btn-danger" type="submit">
+							<i class="fa-solid fa-trash"></i> Elimina definitivamente
+						</button>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+<?php endif; ?>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
