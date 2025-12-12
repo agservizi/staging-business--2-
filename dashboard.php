@@ -79,6 +79,8 @@ $opportunityCollaboratorSummary = [
     'collaboratorsCount' => 0,
     'entries' => [],
 ];
+$opportunitySummaryCachePath = __DIR__ . '/storage/tmp/opportunity_collab_summary.json';
+$opportunitySummaryTtl = 300; // seconds
 
 try {
     $stats['totalClients'] = (int) $pdo->query('SELECT COUNT(*) FROM clienti')->fetchColumn();
@@ -300,27 +302,43 @@ try {
     }
 
     try {
-        $opportunityService = new OpportunityService($pdo);
-        $monthOptions = $opportunityService->getCommissionMonthOptions(null, 1);
-        $selectedMonthKey = $monthOptions[0]['key'] ?? date('Y-m');
-        $selectedMonthLabel = $monthOptions[0]['label'] ?? format_month_label(new DateTimeImmutable($selectedMonthKey . '-01'));
-        $opportunityRows = $opportunityService->getMonthlyCommissionsByCollaborator($selectedMonthKey);
-
-        $totalOpp = 0;
-        $totalCommission = 0.0;
-        foreach ($opportunityRows as $row) {
-            $totalOpp += (int) ($row['opportunities'] ?? 0);
-            $totalCommission += (float) ($row['total_commission'] ?? 0);
+        $cacheLoaded = false;
+        if (is_file($opportunitySummaryCachePath) && (time() - (int) filemtime($opportunitySummaryCachePath)) < $opportunitySummaryTtl) {
+            $cached = json_decode((string) file_get_contents($opportunitySummaryCachePath), true);
+            if (is_array($cached)) {
+                $opportunityCollaboratorSummary = array_merge($opportunityCollaboratorSummary, $cached);
+                $cacheLoaded = true;
+            }
         }
 
-        $opportunityCollaboratorSummary = [
-            'monthKey' => $selectedMonthKey,
-            'monthLabel' => $selectedMonthLabel,
-            'totalOpportunities' => $totalOpp,
-            'totalCommission' => $totalCommission,
-            'collaboratorsCount' => count($opportunityRows),
-            'entries' => array_slice($opportunityRows, 0, 5),
-        ];
+        if (!$cacheLoaded) {
+            $opportunityService = new OpportunityService($pdo);
+            $monthOptions = $opportunityService->getCommissionMonthOptions(null, 1);
+            $selectedMonthKey = $monthOptions[0]['key'] ?? date('Y-m');
+            $selectedMonthLabel = $monthOptions[0]['label'] ?? format_month_label(new DateTimeImmutable($selectedMonthKey . '-01'));
+            $opportunityRows = $opportunityService->getMonthlyCommissionsByCollaborator($selectedMonthKey);
+
+            $totalOpp = 0;
+            $totalCommission = 0.0;
+            foreach ($opportunityRows as $row) {
+                $totalOpp += (int) ($row['opportunities'] ?? 0);
+                $totalCommission += (float) ($row['total_commission'] ?? 0);
+            }
+
+            $opportunityCollaboratorSummary = [
+                'monthKey' => $selectedMonthKey,
+                'monthLabel' => $selectedMonthLabel,
+                'totalOpportunities' => $totalOpp,
+                'totalCommission' => $totalCommission,
+                'collaboratorsCount' => count($opportunityRows),
+                'entries' => array_slice($opportunityRows, 0, 5),
+            ];
+
+            if (!is_dir(dirname($opportunitySummaryCachePath))) {
+                @mkdir(dirname($opportunitySummaryCachePath), 0775, true);
+            }
+            @file_put_contents($opportunitySummaryCachePath, json_encode($opportunityCollaboratorSummary, JSON_THROW_ON_ERROR));
+        }
     } catch (Throwable $opportunitySummaryException) {
         error_log('Dashboard opportunity summary failed: ' . $opportunitySummaryException->getMessage());
     }
