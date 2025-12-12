@@ -69,6 +69,9 @@ $recentShipments = [];
 $topFinanceClients = [];
 $dueSoonMovements = [];
 $scheduledCampaigns = [];
+$serviceBreakdown = [];
+$serviceBreakdownTop = [];
+$serviceBreakdownTotal = 0;
 
 try {
     $stats['totalClients'] = (int) $pdo->query('SELECT COUNT(*) FROM clienti')->fetchColumn();
