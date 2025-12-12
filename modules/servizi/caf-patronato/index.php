@@ -198,7 +198,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                     <div class="col-12 col-md-3 col-xl-2">
                         <label class="form-label" for="filter-categoria">Categoria</label>
-                        <select class="form-select form-select-sm w-auto mb-2" id="filter-categoria" name="categoria">
+                        <select class="form-select mb-2" id="filter-categoria" name="categoria">
                             <option value="">Tutte</option>
                             <option value="CAF">CAF</option>
                             <option value="PATRONATO">Patronato</option>
@@ -206,20 +206,20 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                     <div class="col-12 col-md-3 col-xl-2">
                         <label class="form-label" for="filter-stato">Stato</label>
-                        <select class="form-select form-select-sm w-auto mb-2" id="filter-stato" name="stato">
+                        <select class="form-select mb-2" id="filter-stato" name="stato">
                             <option value="">Tutti</option>
                         </select>
                     </div>
                     <div class="col-12 col-md-3 col-xl-2">
                         <label class="form-label" for="filter-tipo">Tipologia</label>
-                        <select class="form-select form-select-sm w-auto mb-2" id="filter-tipo" name="tipo_pratica">
+                        <select class="form-select mb-2" id="filter-tipo" name="tipo_pratica">
                             <option value="">Tutte</option>
                         </select>
                     </div>
                     <?php if ($canManageServices): ?>
                         <div class="col-12 col-md-3 col-xl-2">
                             <label class="form-label" for="filter-operatore">Operatore</label>
-                            <select class="form-select form-select-sm w-auto mb-2" id="filter-operatore" name="operatore">
+                            <select class="form-select mb-2" id="filter-operatore" name="operatore">
                                 <option value="">Tutti</option>
                             </select>
                         </div>
@@ -234,7 +234,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                     <div class="col-12 col-md-3 col-xl-2">
                         <label class="form-label" for="filter-assegnata">Assegnazione</label>
-                        <select class="form-select form-select-sm w-auto mb-2" id="filter-assegnata" name="assegnata">
+                        <select class="form-select mb-2" id="filter-assegnata" name="assegnata">
                             <option value="">Tutte</option>
                             <option value="1">Solo assegnate</option>
                             <option value="0">Solo non assegnate</option>
@@ -242,7 +242,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                     <div class="col-12 col-md-3 col-xl-2">
                         <label class="form-label" for="filter-order">Ordina per</label>
-                        <select class="form-select form-select-sm w-auto mb-2" id="filter-order" name="order">
+                        <select class="form-select mb-2" id="filter-order" name="order">
                             <option value="recenti">Ultimi aggiornamenti</option>
                             <option value="scadenza">Scadenza</option>
                             <option value="stato">Stato</option>
@@ -251,7 +251,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                     <div class="col-12 col-md-3 col-xl-2">
                         <label class="form-label" for="filter-per-page">Risultati</label>
-                        <select class="form-select form-select-sm w-auto mb-2" id="filter-per-page" name="per_page">
+                        <select class="form-select mb-2" id="filter-per-page" name="per_page">
                             <option value="10"<?php echo $defaultPerPage === 10 ? ' selected' : ''; ?>>10</option>
                             <option value="15"<?php echo $defaultPerPage === 15 ? ' selected' : ''; ?>>15</option>
                             <option value="25">25</option>
@@ -259,8 +259,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </select>
                     </div>
                     <div class="col-12 col-md-3 col-xl-2 d-flex gap-2 flex-wrap">
-                        <button class="btn btn-warning text-dark flex-grow-1 mb-2" type="submit"><i class="fa-solid fa-sliders me-2"></i>Applica</button>
-                        <button class="btn btn-outline-warning flex-shrink-0 mb-2" type="button" id="clear-filters" title="Reimposta filtri">
+                        <button class="btn btn-primary flex-grow-1 mb-2" type="submit"><i class="fa-solid fa-sliders me-2"></i>Applica</button>
+                        <button class="btn btn-outline-secondary flex-shrink-0 mb-2" type="button" id="clear-filters" title="Reimposta filtri">
                             <i class="fa-solid fa-rotate-left"></i>
                         </button>
                     </div>
