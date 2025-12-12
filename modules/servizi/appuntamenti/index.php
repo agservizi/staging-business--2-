@@ -125,13 +125,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             <div class="card-body">
                 <form class="toolbar-search" method="get" role="search">
                     <div class="input-group flex-wrap flex-xl-nowrap">
-                        <select class="form-select me-2 mb-2" name="stato" id="stato" aria-label="Filtra per stato">
+                        <select class="form-select form-select-sm w-auto me-2 mb-2" name="stato" id="stato" aria-label="Filtra per stato">
                             <option value="">Stato: tutti</option>
                             <?php foreach ($statuses as $status): ?>
                                 <option value="<?php echo sanitize_output($status); ?>" <?php echo $filterStatus === $status ? 'selected' : ''; ?>><?php echo sanitize_output($status); ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <select class="form-select me-2 mb-2" name="responsabile" id="responsabile" aria-label="Filtra per responsabile">
+                        <select class="form-select form-select-sm w-auto me-2 mb-2" name="responsabile" id="responsabile" aria-label="Filtra per responsabile">
                             <option value="">Responsabile: tutti</option>
                             <?php foreach ($owners as $owner): ?>
                                 <?php
@@ -144,7 +144,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <option value="<?php echo sanitize_output($owner); ?>" <?php echo $filterOwner === $owner ? 'selected' : ''; ?>><?php echo sanitize_output($ownerLabel); ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <select class="form-select me-2 mb-2" name="cliente_id" id="cliente_id" aria-label="Filtra per cliente">
+                        <select class="form-select form-select-sm w-auto me-2 mb-2" name="cliente_id" id="cliente_id" aria-label="Filtra per cliente">
                             <option value="">Cliente: tutti</option>
                             <?php foreach ($clients as $client): ?>
                                 <?php
