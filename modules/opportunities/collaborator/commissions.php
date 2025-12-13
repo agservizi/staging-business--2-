@@ -63,9 +63,17 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <h1 class="h4 mb-0">Andamento mensile</h1>
                 <p class="text-muted mb-0">Controlla quanto vale ogni mese in base alle opportunity inserite.</p>
             </div>
-            <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
-                <i class="fa-solid fa-plus me-2"></i>Nuova OP
-            </a>
+            <div class="d-flex align-items-center gap-2">
+                <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/promotions.php'); ?>">
+                    <i class="fa-solid fa-folder-open me-2"></i>File manager
+                </a>
+                <a class="btn btn-outline-secondary d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;" href="<?php echo asset('modules/opportunities/collaborator/commissions-info.php'); ?>" aria-label="Tabella provvigioni">
+                    <i class="fa-solid fa-info"></i>
+                </a>
+                <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
+                    <i class="fa-solid fa-plus me-2"></i>Nuova OP
+                </a>
+            </div>
         </div>
 
         <form class="card shadow-sm mb-4" method="get">
