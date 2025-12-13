@@ -161,6 +161,19 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
                 <div class="card shadow-sm">
                     <div class="card-body">
+                        <h2 class="h6 text-uppercase text-muted mb-3">Storni: cosa sapere</h2>
+                        <ul class="mb-0">
+                            <li>Tempistiche: tutti i gestori prevedono possibili storni tra 3 e 6 mesi.</li>
+                            <li>Mancato pagamento prima fattura: storno 100% della OP.</li>
+                            <li>Uscita prima di 3 mesi: il gestore può riconoscere un gettone ridotto; prima di 6 mesi può riconoscere un gettone maggiore.</li>
+                            <li>Beneficiario ≠ IBAN: se intestatari diversi e non dichiarati, il contratto può essere stornato. Indica sempre il reale intestatario.</li>
+                            <li>Trattativa: chiarisci vincoli e possibili penali/uscite per proteggere il compenso.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-body">
                         <h2 class="h6 text-uppercase text-muted mb-3">Supporto</h2>
                         <p class="mb-2">Se hai problemi:</p>
                         <ul class="mb-3">
