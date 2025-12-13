@@ -44,14 +44,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <h1 class="h4 mb-0">Provvigioni per collaboratore</h1>
                 <p class="text-muted mb-0">Analizza i valori stimati caricati dai collaboratori su base mensile.</p>
             </div>
-            <div class="d-flex align-items-center gap-2">
-                <a class="btn btn-outline-secondary d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;" href="<?php echo asset('modules/opportunities/commissions-info.php'); ?>" aria-label="Tabella provvigioni">
-                    <i class="fa-solid fa-info"></i>
-                </a>
-                <a class="btn btn-outline-primary" href="<?php echo asset('modules/opportunities/index.php'); ?>">
-                    <i class="fa-solid fa-arrow-left me-2"></i>Torna alla pipeline
-                </a>
-            </div>
+            <a class="btn btn-outline-primary" href="<?php echo asset('modules/opportunities/index.php'); ?>">
+                <i class="fa-solid fa-arrow-left me-2"></i>Torna alla pipeline
+            </a>
         </div>
 
         <form class="card shadow-sm mb-4" method="get">
