@@ -515,13 +515,21 @@ require_once __DIR__ . '/includes/sidebar.php';
                 }
                 .opportunity-progress {
                     display: flex;
-                    height: 18px;
+                    height: 14px;
                     border-radius: 999px;
                     overflow: hidden;
                     background: rgba(0, 0, 0, 0.05);
                     border: 1px solid rgba(0, 0, 0, 0.05);
-                    padding: 0 8px;
+                    padding: 0 6px;
                     box-sizing: border-box;
+                }
+                .opportunity-progress-labels {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 11px;
+                    color: #6c757d;
+                    margin-bottom: 4px;
+                    padding: 0 2px;
                 }
                 .opportunity-progress .segment {
                     display: block;
@@ -695,6 +703,10 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="row g-4 align-items-start">
                         <div class="col-12 col-xl-5">
                             <p class="text-uppercase small text-muted mb-2">Avanzamento pipeline</p>
+                            <div class="opportunity-progress-labels" aria-hidden="true">
+                                <span>0%</span>
+                                <span>100%</span>
+                            </div>
                             <div class="opportunity-progress mb-2" aria-label="Avanzamento opportunity">
                                 <span class="segment bg-info text-dark" data-progress="active" style="width: <?php echo $activePercent; ?>%" title="In lavorazione: <?php echo $activePercent; ?>%">
                                     <span><?php echo $activePercent; ?>%</span>
