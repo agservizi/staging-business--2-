@@ -685,23 +685,23 @@ require_once __DIR__ . '/includes/sidebar.php';
                 </div>
             </div>
 
-            <div class="card ag-card mb-4" data-opportunities-widget>
-                <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <div>
-                        <h5 class="card-title mb-0">Opportunity pipeline</h5>
-                        <small class="text-muted">Monitoraggio rapido delle pratiche commerciali</small>
-                    </div>
-                    <a class="btn btn-sm btn-outline-warning" href="modules/opportunities/index.php">Apri pipeline</a>
-                </div>
-                <div class="card-body">
-                    <?php
-                        $totalOps = max(1, (int) ($opportunityWidget['totals']['total'] ?? 0));
-                        $activePercent = round(((int) ($opportunityWidget['totals']['active'] ?? 0)) / $totalOps * 100);
-                        $wonPercent = round(((int) ($opportunityWidget['totals']['won'] ?? 0)) / $totalOps * 100);
-                        $lostPercent = round(((int) ($opportunityWidget['totals']['lost'] ?? 0)) / $totalOps * 100);
-                    ?>
-                    <div class="row g-4 align-items-start">
-                        <div class="col-12 col-xl-5">
+            <div class="row g-4 mb-4" data-opportunities-widget>
+                <div class="col-12 col-xl-5">
+                    <div class="card ag-card h-100">
+                        <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div>
+                                <h5 class="card-title mb-0">Opportunity pipeline</h5>
+                                <small class="text-muted">Avanzamento e KPI</small>
+                            </div>
+                            <a class="btn btn-sm btn-outline-warning" href="modules/opportunities/index.php">Apri</a>
+                        </div>
+                        <div class="card-body">
+                            <?php
+                                $totalOps = max(1, (int) ($opportunityWidget['totals']['total'] ?? 0));
+                                $activePercent = round(((int) ($opportunityWidget['totals']['active'] ?? 0)) / $totalOps * 100);
+                                $wonPercent = round(((int) ($opportunityWidget['totals']['won'] ?? 0)) / $totalOps * 100);
+                                $lostPercent = round(((int) ($opportunityWidget['totals']['lost'] ?? 0)) / $totalOps * 100);
+                            ?>
                             <p class="text-uppercase small text-muted mb-2">Avanzamento pipeline</p>
                             <div class="opportunity-progress-labels" aria-hidden="true">
                                 <span>0%</span>
@@ -763,7 +763,18 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-xl-7">
+                    </div>
+                </div>
+                <div class="col-12 col-xl-7">
+                    <div class="card ag-card h-100">
+                        <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div>
+                                <h5 class="card-title mb-0">Opportunity pipeline</h5>
+                                <small class="text-muted">Stati e ultime attività</small>
+                            </div>
+                            <a class="btn btn-sm btn-outline-warning" href="modules/opportunities/index.php">Apri</a>
+                        </div>
+                        <div class="card-body">
                             <div class="opportunity-chart-wrap mb-3">
                                 <canvas id="opportunityStatusChart" class="chart-canvas service-chart-canvas" height="320"></canvas>
                             </div>
