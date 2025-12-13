@@ -369,10 +369,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const retryButton = document.getElementById('dashboardRetry');
         const ticketsBody = document.getElementById('dashboardTicketsBody');
         const remindersList = document.getElementById('dashboardReminders');
+        const opportunityWidget = document.querySelector('[data-opportunities-widget]');
+        const opportunityStatusList = document.getElementById('opportunityStatusList');
+        const opportunityLatestList = document.getElementById('opportunityLatestList');
+        const opportunityTotals = {
+            total: document.querySelector('[data-opportunity-total="total"]'),
+            active: document.querySelector('[data-opportunity-total="active"]'),
+            won: document.querySelector('[data-opportunity-total="won"]'),
+            lost: document.querySelector('[data-opportunity-total="lost"]')
+        };
         const statElements = Array.from(document.querySelectorAll('[data-dashboard-stat]'));
         const numberFormatter = new Intl.NumberFormat('it-IT');
         const currencyFormatter = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
-        const hasDynamicWidgets = statElements.length > 0 || ticketsBody || remindersList;
+        const hasDynamicWidgets = statElements.length > 0 || ticketsBody || remindersList || opportunityWidget;
         if (!hasDynamicWidgets) {
             return;
         }
@@ -442,6 +451,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 return value;
             }
             return parsed.toLocaleDateString('it-IT');
+        };
+
+        const formatDateTime = (value) => {
+            if (!value) {
+                return '—';
+            }
+            const parsed = new Date(value);
+            if (Number.isNaN(parsed.getTime())) {
+                return value;
+            }
+            return parsed.toLocaleString('it-IT');
         };
 
         const renderTickets = (tickets = []) => {
@@ -554,6 +574,118 @@ document.addEventListener('DOMContentLoaded', () => {
             remindersList.appendChild(fragment);
         };
 
+        const renderOpportunityWidget = (data = {}) => {
+            if (!opportunityWidget) {
+                return;
+            }
+
+            const statusColorMap = {
+                warning: 'bg-warning text-dark',
+                info: 'bg-info text-dark',
+                primary: 'bg-primary',
+                danger: 'bg-danger',
+                success: 'bg-success'
+            };
+
+            const totals = data.totals || {};
+            Object.entries(opportunityTotals).forEach(([key, element]) => {
+                if (!element) {
+                    return;
+                }
+                const value = totals[key] ?? 0;
+                element.textContent = formatValue(value, 'number');
+            });
+
+            if (opportunityStatusList) {
+                const statuses = Array.isArray(data.statusBreakdown) ? data.statusBreakdown : [];
+                if (!statuses.length) {
+                    opportunityStatusList.innerHTML = '<span class="text-muted small">Nessuna opportunity registrata.</span>';
+                } else {
+                    const fragment = document.createDocumentFragment();
+                    statuses.forEach((status) => {
+                        const pill = document.createElement('span');
+                        const colorClass = statusColorMap[status?.color] || 'bg-secondary';
+                        pill.className = `opportunity-status-pill ${colorClass}`;
+
+                        const label = document.createElement('span');
+                        label.className = 'fw-semibold';
+                        label.textContent = status?.label || status?.code || '—';
+
+                        const count = document.createElement('span');
+                        count.className = 'count';
+                        count.textContent = formatValue(status?.total ?? 0, 'number');
+
+                        pill.appendChild(label);
+                        pill.appendChild(count);
+                        fragment.appendChild(pill);
+                    });
+                    opportunityStatusList.innerHTML = '';
+                    opportunityStatusList.appendChild(fragment);
+                }
+            }
+
+            if (opportunityLatestList) {
+                const latest = Array.isArray(data.latest) ? data.latest : [];
+                if (!latest.length) {
+                    opportunityLatestList.innerHTML = '<div class="list-group-item px-0 text-muted">Nessuna opportunity recente.</div>';
+                } else {
+                    const fragment = document.createDocumentFragment();
+                    latest.forEach((item) => {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'list-group-item px-0';
+
+                        const row = document.createElement('div');
+                        row.className = 'd-flex align-items-start justify-content-between gap-3';
+
+                        const left = document.createElement('div');
+                        const codeLine = document.createElement('div');
+                        const code = item?.code || (item?.id ? `OP-${item.id}` : 'Opportunity');
+                        codeLine.className = 'fw-semibold';
+                        codeLine.textContent = `#${code}`;
+
+                        const meta = document.createElement('small');
+                        meta.className = 'text-muted';
+                        const providerLabel = item?.providerLabel || 'Gestore non indicato';
+                        const customerName = item?.customerName || 'Cliente non indicato';
+                        meta.textContent = `${providerLabel} · ${customerName}`;
+
+                        const dateLine = document.createElement('div');
+                        dateLine.className = 'text-muted small';
+                        dateLine.textContent = formatDateTime(item?.referenceDate);
+
+                        left.appendChild(codeLine);
+                        left.appendChild(meta);
+                        left.appendChild(dateLine);
+
+                        const right = document.createElement('div');
+                        right.className = 'text-end';
+
+                        const badge = document.createElement('span');
+                        const colorClass = statusColorMap[item?.statusColor] || 'bg-secondary';
+                        badge.className = `badge ${colorClass} text-uppercase`;
+                        badge.textContent = item?.statusLabel || item?.statusCode || '—';
+
+                        right.appendChild(badge);
+
+                        if (item?.id !== undefined && item?.id !== null) {
+                            const link = document.createElement('a');
+                            link.className = 'btn btn-sm btn-outline-warning mt-2';
+                            link.href = `modules/opportunities/detail.php?id=${item.id}`;
+                            link.textContent = 'Apri';
+                            right.appendChild(link);
+                        }
+
+                        row.appendChild(left);
+                        row.appendChild(right);
+                        wrapper.appendChild(row);
+                        fragment.appendChild(wrapper);
+                    });
+                    opportunityLatestList.innerHTML = '';
+                    opportunityLatestList.appendChild(fragment);
+                }
+            }
+        };
+
         const getChartInstance = (canvas) => {
             const chartLib = window.Chart;
             if (!canvas || !chartLib) {
@@ -604,6 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
             applyStats(payload.stats);
             renderTickets(payload.tickets);
             renderReminders(payload.reminders);
+            renderOpportunityWidget(payload.opportunities);
             updateCharts(payload.charts);
             lastSuccess = Date.now();
             clearStatus();

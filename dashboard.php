@@ -72,6 +72,16 @@ $scheduledCampaigns = [];
 $serviceBreakdown = [];
 $serviceBreakdownTop = [];
 $serviceBreakdownTotal = 0;
+$opportunityWidget = [
+    'totals' => [
+        'total' => 0,
+        'active' => 0,
+        'won' => 0,
+        'lost' => 0,
+    ],
+    'status_breakdown' => [],
+    'latest' => [],
+];
 
 try {
     $stats['totalClients'] = (int) $pdo->query('SELECT COUNT(*) FROM clienti')->fetchColumn();
@@ -341,6 +351,51 @@ try {
             'url' => base_url('modules/servizi/entrate-uscite/view.php?id=' . $pendingMovimento['id']),
         ];
     }
+
+    $statusStmt = $pdo->query(
+        "SELECT o.status_code, s.label, s.color, s.ordering, COUNT(*) AS total
+         FROM opportunities o
+         LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+         GROUP BY o.status_code, s.label, s.color, s.ordering
+         ORDER BY s.ordering, s.label"
+    );
+    if ($statusStmt) {
+        while ($row = $statusStmt->fetch(PDO::FETCH_ASSOC)) {
+            $count = (int) ($row['total'] ?? 0);
+            $code = (string) ($row['status_code'] ?? '');
+            $opportunityWidget['status_breakdown'][] = [
+                'code' => $code,
+                'label' => (string) ($row['label'] ?? $code),
+                'color' => (string) ($row['color'] ?? 'secondary'),
+                'total' => $count,
+            ];
+            $opportunityWidget['totals']['total'] += $count;
+            if ($code === 'attivato') {
+                $opportunityWidget['totals']['won'] += $count;
+            }
+            if ($code === 'annullato') {
+                $opportunityWidget['totals']['lost'] += $count;
+            }
+        }
+    }
+    $opportunityWidget['totals']['active'] = max(0, $opportunityWidget['totals']['total'] - $opportunityWidget['totals']['won'] - $opportunityWidget['totals']['lost']);
+
+    $latestOpStmt = $pdo->query(
+        "SELECT o.id, o.code, o.category, o.status_code,
+                COALESCE(s.label, o.status_code) AS status_label,
+                s.color AS status_color,
+                o.provider_label,
+                o.customer_first_name,
+                o.customer_last_name,
+                COALESCE(o.last_status_change, o.updated_at, o.created_at) AS reference_date
+         FROM opportunities o
+         LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+         ORDER BY reference_date DESC
+         LIMIT 5"
+    );
+    if ($latestOpStmt) {
+        $opportunityWidget['latest'] = $latestOpStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
 } catch (PDOException $e) {
     error_log('Dashboard query failed: ' . $e->getMessage());
 }
@@ -401,6 +456,43 @@ require_once __DIR__ . '/includes/sidebar.php';
                 .service-breakdown-item:last-child {
                     border-bottom: none;
                     padding-bottom: 0;
+                }
+                .opportunity-status-list {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.5rem;
+                }
+                .opportunity-status-pill {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.5rem 0.75rem;
+                    border-radius: 999px;
+                    border: 1px solid rgba(0, 0, 0, 0.06);
+                    background: rgba(0, 0, 0, 0.02);
+                }
+                .opportunity-status-pill .count {
+                    padding: 0.15rem 0.55rem;
+                    border-radius: 999px;
+                    background: rgba(255, 255, 255, 0.8);
+                    font-weight: 600;
+                }
+                .opportunity-totals {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.75rem;
+                }
+                .opportunity-total-box {
+                    flex: 1 1 160px;
+                    min-width: 160px;
+                    padding: 0.85rem 1rem;
+                    border-radius: 0.75rem;
+                    border: 1px solid rgba(0, 0, 0, 0.06);
+                    background: #f8f9fb;
+                }
+                .opportunity-total-box .value {
+                    font-weight: 700;
+                    font-size: 1.35rem;
                 }
                 @media (max-width: 991.98px) {
                     .services-card-body {
@@ -521,6 +613,113 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 <p class="summary-label mb-1">Pratiche ANPR</p>
                                 <div class="summary-value" data-dashboard-stat="anprInProgress" data-format="number"><?php echo number_format($stats['anprInProgress']); ?></div>
                                 <small class="text-muted">In lavorazione</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card ag-card mb-4" data-opportunities-widget>
+                <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                        <h5 class="card-title mb-0">Opportunity pipeline</h5>
+                        <small class="text-muted">Monitoraggio rapido delle pratiche commerciali</small>
+                    </div>
+                    <a class="btn btn-sm btn-outline-warning" href="modules/opportunities/index.php">Apri pipeline</a>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4 align-items-start">
+                        <div class="col-12 col-xl-5">
+                            <p class="text-uppercase small text-muted mb-2">Stato</p>
+                            <div class="opportunity-status-list" id="opportunityStatusList">
+                                <?php if ($opportunityWidget['status_breakdown']): ?>
+                                    <?php foreach ($opportunityWidget['status_breakdown'] as $status): ?>
+                                        <?php
+                                            $colorToBootstrap = [
+                                                'warning' => 'bg-warning text-dark',
+                                                'info' => 'bg-info text-dark',
+                                                'primary' => 'bg-primary',
+                                                'danger' => 'bg-danger',
+                                                'success' => 'bg-success',
+                                            ];
+                                            $pillClass = $colorToBootstrap[$status['color']] ?? 'bg-secondary';
+                                        ?>
+                                        <span class="opportunity-status-pill <?php echo $pillClass; ?>">
+                                            <span class="fw-semibold"><?php echo sanitize_output($status['label']); ?></span>
+                                            <span class="count"><?php echo number_format((int) $status['total']); ?></span>
+                                        </span>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <span class="text-muted small">Nessuna opportunity registrata.</span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="opportunity-totals mt-3">
+                                <div class="opportunity-total-box">
+                                    <p class="text-uppercase small text-muted mb-1">Totali</p>
+                                    <div class="value" data-opportunity-total="total"><?php echo number_format($opportunityWidget['totals']['total']); ?></div>
+                                    <small class="text-muted">Complessive</small>
+                                </div>
+                                <div class="opportunity-total-box">
+                                    <p class="text-uppercase small text-muted mb-1">In lavorazione</p>
+                                    <div class="value" data-opportunity-total="active"><?php echo number_format($opportunityWidget['totals']['active']); ?></div>
+                                    <small class="text-muted">Da completare</small>
+                                </div>
+                                <div class="opportunity-total-box">
+                                    <p class="text-uppercase small text-muted mb-1">Attivate</p>
+                                    <div class="value" data-opportunity-total="won"><?php echo number_format($opportunityWidget['totals']['won']); ?></div>
+                                    <small class="text-muted">Completate</small>
+                                </div>
+                                <div class="opportunity-total-box">
+                                    <p class="text-uppercase small text-muted mb-1">Annullate</p>
+                                    <div class="value" data-opportunity-total="lost"><?php echo number_format($opportunityWidget['totals']['lost']); ?></div>
+                                    <small class="text-muted">Respinte/annullate</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-xl-7">
+                            <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+                                <div>
+                                    <p class="text-uppercase small text-muted mb-1">Ultime opportunity</p>
+                                    <h6 class="mb-0">Aggiornamenti recenti</h6>
+                                </div>
+                                <span class="badge ag-badge text-uppercase">Ultime <?php echo number_format(count($opportunityWidget['latest'])); ?></span>
+                            </div>
+                            <div class="list-group list-group-flush" id="opportunityLatestList">
+                                <?php if ($opportunityWidget['latest']): ?>
+                                    <?php foreach ($opportunityWidget['latest'] as $opportunityItem): ?>
+                                        <?php
+                                            $statusColorMap = [
+                                                'warning' => 'bg-warning text-dark',
+                                                'info' => 'bg-info text-dark',
+                                                'primary' => 'bg-primary',
+                                                'danger' => 'bg-danger',
+                                                'success' => 'bg-success',
+                                            ];
+                                            $badgeClass = $statusColorMap[$opportunityItem['status_color'] ?? ''] ?? 'bg-secondary';
+                                            $customerName = trim(($opportunityItem['customer_first_name'] ?? '') . ' ' . ($opportunityItem['customer_last_name'] ?? '')) ?: 'Cliente non indicato';
+                                            $providerLabel = $opportunityItem['provider_label'] ?? 'Gestore non indicato';
+                                            $codeLabel = $opportunityItem['code'] ?? ('OP-' . ($opportunityItem['id'] ?? '')); 
+                                            $referenceDate = $opportunityItem['reference_date'] ?? null;
+                                        ?>
+                                        <div class="list-group-item px-0">
+                                            <div class="d-flex align-items-start justify-content-between gap-3">
+                                                <div>
+                                                    <div class="fw-semibold">#<?php echo sanitize_output($codeLabel); ?></div>
+                                                    <small class="text-muted"><?php echo sanitize_output($providerLabel); ?> · <?php echo sanitize_output($customerName); ?></small>
+                                                    <div class="text-muted small"><?php echo $referenceDate ? sanitize_output(format_datetime_locale($referenceDate)) : 'Data non disponibile'; ?></div>
+                                                </div>
+                                                <div class="text-end">
+                                                    <span class="badge <?php echo $badgeClass; ?> text-uppercase"><?php echo sanitize_output($opportunityItem['status_label'] ?? $opportunityItem['status_code'] ?? ''); ?></span>
+                                                    <div>
+                                                        <a class="btn btn-sm btn-outline-warning mt-2" href="modules/opportunities/detail.php?id=<?php echo (int) ($opportunityItem['id'] ?? 0); ?>">Apri</a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <div class="list-group-item px-0 text-muted">Nessuna opportunity recente.</div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
