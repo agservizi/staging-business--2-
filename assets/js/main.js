@@ -372,6 +372,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const opportunityWidget = document.querySelector('[data-opportunities-widget]');
         const opportunityStatusList = document.getElementById('opportunityStatusList');
         const opportunityLatestList = document.getElementById('opportunityLatestList');
+        const opportunityTodoList = document.getElementById('opportunityTodoList');
+        const opportunityTabBadge = document.getElementById('opportunityTabBadge');
+        const opportunityTabButtons = Array.from(document.querySelectorAll('[data-opportunity-tab]'));
+        const opportunityProgress = opportunityWidget?.querySelector('.opportunity-progress');
+        const opportunityStatusChartCanvas = document.getElementById('opportunityStatusChart');
         const opportunityTotals = {
             total: document.querySelector('[data-opportunity-total="total"]'),
             active: document.querySelector('[data-opportunity-total="active"]'),
@@ -574,6 +579,78 @@ document.addEventListener('DOMContentLoaded', () => {
             remindersList.appendChild(fragment);
         };
 
+        const renderOpportunityList = (target, items = [], emptyText) => {
+            if (!target) {
+                return;
+            }
+            if (!Array.isArray(items) || items.length === 0) {
+                target.innerHTML = `<div class="list-group-item px-0 text-muted">${emptyText}</div>`;
+                return;
+            }
+
+            const statusColorMap = {
+                warning: 'bg-warning text-dark',
+                info: 'bg-info text-dark',
+                primary: 'bg-primary',
+                danger: 'bg-danger',
+                success: 'bg-success'
+            };
+
+            const fragment = document.createDocumentFragment();
+            items.forEach((item) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'list-group-item px-0';
+
+                const row = document.createElement('div');
+                row.className = 'd-flex align-items-start justify-content-between gap-3';
+
+                const left = document.createElement('div');
+                const codeLine = document.createElement('div');
+                const code = item?.code || (item?.id ? `OP-${item.id}` : 'Opportunity');
+                codeLine.className = 'fw-semibold';
+                codeLine.textContent = `#${code}`;
+
+                const meta = document.createElement('small');
+                meta.className = 'text-muted';
+                const providerLabel = item?.providerLabel || 'Gestore non indicato';
+                const customerName = item?.customerName || 'Cliente non indicato';
+                meta.textContent = `${providerLabel} · ${customerName}`;
+
+                const dateLine = document.createElement('div');
+                dateLine.className = 'text-muted small';
+                dateLine.textContent = formatDateTime(item?.referenceDate);
+
+                left.appendChild(codeLine);
+                left.appendChild(meta);
+                left.appendChild(dateLine);
+
+                const right = document.createElement('div');
+                right.className = 'text-end';
+
+                const badge = document.createElement('span');
+                const colorClass = statusColorMap[item?.statusColor] || 'bg-secondary';
+                badge.className = `badge ${colorClass} text-uppercase`;
+                badge.textContent = item?.statusLabel || item?.statusCode || '—';
+                right.appendChild(badge);
+
+                if (item?.id !== undefined && item?.id !== null) {
+                    const link = document.createElement('a');
+                    link.className = 'btn btn-sm btn-outline-warning mt-2';
+                    link.href = `modules/opportunities/detail.php?id=${item.id}`;
+                    link.textContent = 'Apri';
+                    right.appendChild(link);
+                }
+
+                row.appendChild(left);
+                row.appendChild(right);
+                wrapper.appendChild(row);
+                fragment.appendChild(wrapper);
+            });
+
+            target.innerHTML = '';
+            target.appendChild(fragment);
+        };
+
         const renderOpportunityWidget = (data = {}) => {
             if (!opportunityWidget) {
                 return;
@@ -586,6 +663,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 danger: 'bg-danger',
                 success: 'bg-success'
             };
+            const statusColorPalette = {
+                warning: '#f6c23e',
+                info: '#0dcaf0',
+                primary: '#0d6efd',
+                danger: '#dc3545',
+                success: '#198754',
+                secondary: '#6c757d'
+            };
 
             const totals = data.totals || {};
             Object.entries(opportunityTotals).forEach(([key, element]) => {
@@ -595,6 +680,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 const value = totals[key] ?? 0;
                 element.textContent = formatValue(value, 'number');
             });
+
+            const totalCount = Math.max(1, Number(totals.total) || 0);
+            const progressValues = {
+                active: Math.round(((Number(totals.active) || 0) / totalCount) * 100),
+                won: Math.round(((Number(totals.won) || 0) / totalCount) * 100),
+                lost: Math.round(((Number(totals.lost) || 0) / totalCount) * 100)
+            };
+            if (opportunityProgress) {
+                opportunityProgress.querySelectorAll('[data-progress]').forEach((segment) => {
+                    const key = segment.getAttribute('data-progress');
+                    if (!key || !(key in progressValues)) {
+                        return;
+                    }
+                    const value = progressValues[key];
+                    segment.style.width = `${value}%`;
+                    const label = segment.querySelector('span');
+                    if (label) {
+                        label.textContent = `${value}%`;
+                    }
+                    segment.title = `${key === 'won' ? 'Attivate' : key === 'lost' ? 'Annullate' : 'In lavorazione'}: ${value}%`;
+                });
+            }
 
             if (opportunityStatusList) {
                 const statuses = Array.isArray(data.statusBreakdown) ? data.statusBreakdown : [];
@@ -624,64 +731,76 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            if (opportunityLatestList) {
-                const latest = Array.isArray(data.latest) ? data.latest : [];
-                if (!latest.length) {
-                    opportunityLatestList.innerHTML = '<div class="list-group-item px-0 text-muted">Nessuna opportunity recente.</div>';
-                } else {
-                    const fragment = document.createDocumentFragment();
-                    latest.forEach((item) => {
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'list-group-item px-0';
+            renderOpportunityList(opportunityLatestList, data.latest, 'Nessuna opportunity recente.');
+            renderOpportunityList(opportunityTodoList, data.todo, 'Nessuna opportunity aperta da lavorare.');
 
-                        const row = document.createElement('div');
-                        row.className = 'd-flex align-items-start justify-content-between gap-3';
+            const updateTabBadge = (activeTab) => {
+                if (!opportunityTabBadge) return;
+                const source = activeTab === 'todo' ? (Array.isArray(data.todo) ? data.todo : []) : (Array.isArray(data.latest) ? data.latest : []);
+                const label = activeTab === 'todo' ? 'Da fare' : 'Ultime';
+                opportunityTabBadge.textContent = `${label} ${source.length}`;
+            };
 
-                        const left = document.createElement('div');
-                        const codeLine = document.createElement('div');
-                        const code = item?.code || (item?.id ? `OP-${item.id}` : 'Opportunity');
-                        codeLine.className = 'fw-semibold';
-                        codeLine.textContent = `#${code}`;
+            const setOpportunityTab = (tabKey) => {
+                const showLatest = tabKey !== 'todo';
+                if (opportunityLatestList) {
+                    opportunityLatestList.classList.toggle('d-none', !showLatest);
+                }
+                if (opportunityTodoList) {
+                    opportunityTodoList.classList.toggle('d-none', showLatest);
+                }
+                opportunityTabButtons.forEach((button) => {
+                    const key = button.getAttribute('data-opportunity-tab');
+                    button.classList.toggle('active', key === tabKey);
+                });
+                updateTabBadge(tabKey);
+            };
 
-                        const meta = document.createElement('small');
-                        meta.className = 'text-muted';
-                        const providerLabel = item?.providerLabel || 'Gestore non indicato';
-                        const customerName = item?.customerName || 'Cliente non indicato';
-                        meta.textContent = `${providerLabel} · ${customerName}`;
-
-                        const dateLine = document.createElement('div');
-                        dateLine.className = 'text-muted small';
-                        dateLine.textContent = formatDateTime(item?.referenceDate);
-
-                        left.appendChild(codeLine);
-                        left.appendChild(meta);
-                        left.appendChild(dateLine);
-
-                        const right = document.createElement('div');
-                        right.className = 'text-end';
-
-                        const badge = document.createElement('span');
-                        const colorClass = statusColorMap[item?.statusColor] || 'bg-secondary';
-                        badge.className = `badge ${colorClass} text-uppercase`;
-                        badge.textContent = item?.statusLabel || item?.statusCode || '—';
-
-                        right.appendChild(badge);
-
-                        if (item?.id !== undefined && item?.id !== null) {
-                            const link = document.createElement('a');
-                            link.className = 'btn btn-sm btn-outline-warning mt-2';
-                            link.href = `modules/opportunities/detail.php?id=${item.id}`;
-                            link.textContent = 'Apri';
-                            right.appendChild(link);
-                        }
-
-                        row.appendChild(left);
-                        row.appendChild(right);
-                        wrapper.appendChild(row);
-                        fragment.appendChild(wrapper);
+            if (opportunityTabButtons.length) {
+                opportunityTabButtons.forEach((button) => {
+                    if (button.dataset.tabBound) {
+                        return;
+                    }
+                    button.dataset.tabBound = 'true';
+                    button.addEventListener('click', () => {
+                        const key = button.getAttribute('data-opportunity-tab') || 'latest';
+                        setOpportunityTab(key);
                     });
-                    opportunityLatestList.innerHTML = '';
-                    opportunityLatestList.appendChild(fragment);
+                });
+            }
+            setOpportunityTab('latest');
+
+            if (opportunityStatusChartCanvas && window.Chart) {
+                const chartStore = window.CSCharts || (window.CSCharts = {});
+                const labels = Array.isArray(data.statusBreakdown) ? data.statusBreakdown.map((s) => s?.label || s?.code || 'Stato') : [];
+                const values = Array.isArray(data.statusBreakdown) ? data.statusBreakdown.map((s) => Number(s?.total) || 0) : [];
+                const colors = Array.isArray(data.statusBreakdown) ? data.statusBreakdown.map((s) => statusColorPalette[s?.color] || statusColorPalette.secondary) : [];
+
+                if (chartStore.opportunityStatus) {
+                    chartStore.opportunityStatus.data.labels = labels;
+                    if (chartStore.opportunityStatus.data.datasets[0]) {
+                        chartStore.opportunityStatus.data.datasets[0].data = values;
+                        chartStore.opportunityStatus.data.datasets[0].backgroundColor = colors;
+                    }
+                    chartStore.opportunityStatus.update('none');
+                } else {
+                    chartStore.opportunityStatus = new window.Chart(opportunityStatusChartCanvas, {
+                        type: 'doughnut',
+                        data: {
+                            labels,
+                            datasets: [{
+                                data: values,
+                                backgroundColor: colors,
+                                borderColor: '#ffffff',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            plugins: {
+                                legend: { position: 'bottom' }
+                            }
+                        }
+                    });
                 }
             }
         };

@@ -53,6 +53,7 @@ $response = [
         ],
         'statusBreakdown' => [],
         'latest' => [],
+        'todo' => [],
     ],
 ];
 
@@ -318,6 +319,37 @@ try {
                 'referenceDate' => $row['reference_date'] ?? null,
             ];
         }, $opLatestStmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
+    }
+
+    $opTodoStmt = $pdo->query(
+        "SELECT o.id, o.code, o.category, o.status_code,
+                COALESCE(s.label, o.status_code) AS status_label,
+                s.color AS status_color,
+                o.provider_label,
+                o.customer_first_name,
+                o.customer_last_name,
+                COALESCE(o.last_status_change, o.updated_at, o.created_at) AS reference_date
+         FROM opportunities o
+         LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+         WHERE o.status_code NOT IN ('attivato','annullato')
+         ORDER BY reference_date ASC
+         LIMIT 5"
+    );
+
+    if ($opTodoStmt) {
+        $response['opportunities']['todo'] = array_map(static function (array $row): array {
+            return [
+                'id' => isset($row['id']) ? (int) $row['id'] : null,
+                'code' => $row['code'] ?? null,
+                'statusCode' => $row['status_code'] ?? null,
+                'statusLabel' => $row['status_label'] ?? null,
+                'statusColor' => $row['status_color'] ?? null,
+                'providerLabel' => $row['provider_label'] ?? null,
+                'customerName' => trim((string) ($row['customer_first_name'] ?? '') . ' ' . (string) ($row['customer_last_name'] ?? '')) ?: null,
+                'category' => $row['category'] ?? null,
+                'referenceDate' => $row['reference_date'] ?? null,
+            ];
+        }, $opTodoStmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
     }
 
     $response['reminders'] = $reminders;
