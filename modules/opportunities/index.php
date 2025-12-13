@@ -176,11 +176,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             </button>
                                         </form>
                                     <?php endif; ?>
-                                    <form class="d-inline" method="post" action="<?php echo asset('modules/opportunities/index.php'); ?>" onsubmit="return confirm('Eliminare definitivamente questa opportunity?');">
+                                    <form class="d-inline" method="post" action="<?php echo asset('modules/opportunities/index.php'); ?>">
                                         <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                         <input type="hidden" name="form_action" value="delete_opportunity">
                                         <input type="hidden" name="opportunity_id" value="<?php echo (int) $opportunity['id']; ?>">
-                                        <button class="btn btn-sm btn-outline-danger" type="submit" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Elimina">
+                                        <button class="btn btn-sm btn-outline-danger js-delete-opportunity" type="button" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Elimina" data-opportunity-code="<?php echo sanitize_output($opportunity['code'] ?? ''); ?>">
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
                                     </form>
@@ -214,6 +214,23 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </div>
     </div>
 </div>
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Elimina opportunity</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">Confermi di eliminare definitivamente l'opportunity <span class="fw-semibold" id="deleteOpportunityCode"></span>? Questa azione non può essere annullata.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteSubmit">Elimina</button>
+            </div>
+        </div>
+    </div>
+</div>
 <link rel="stylesheet" href="<?php echo asset('modules/opportunities/assets/opportunities.css'); ?>">
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -221,34 +238,61 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalElement = document.getElementById('reopenConfirmModal');
     const codeTarget = document.getElementById('reopenOpportunityCode');
     const confirmButton = document.getElementById('confirmReopenSubmit');
+    let pendingDeleteForm = null;
+    const deleteModalElement = document.getElementById('deleteConfirmModal');
+    const deleteCodeTarget = document.getElementById('deleteOpportunityCode');
+    const deleteConfirmButton = document.getElementById('confirmDeleteSubmit');
 
-    if (!modalElement || !confirmButton) {
-        return;
+    if (modalElement && confirmButton) {
+        const bootstrapModal = new bootstrap.Modal(modalElement);
+
+        document.querySelectorAll('.js-reopen-opportunity').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                pendingReopenForm = btn.closest('form');
+                if (!pendingReopenForm) {
+                    return;
+                }
+                const code = btn.getAttribute('data-opportunity-code') || '';
+                if (codeTarget) {
+                    codeTarget.textContent = code ? '#' + code : '';
+                }
+                bootstrapModal.show();
+            });
+        });
+
+        confirmButton.addEventListener('click', function () {
+            if (pendingReopenForm) {
+                pendingReopenForm.submit();
+                pendingReopenForm = null;
+            }
+            bootstrapModal.hide();
+        });
     }
 
-    const bootstrapModal = new bootstrap.Modal(modalElement);
-
-    document.querySelectorAll('.js-reopen-opportunity').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            pendingReopenForm = btn.closest('form');
-            if (!pendingReopenForm) {
-                return;
-            }
-            const code = btn.getAttribute('data-opportunity-code') || '';
-            if (codeTarget) {
-                codeTarget.textContent = code ? '#' + code : '';
-            }
-            bootstrapModal.show();
+    if (deleteModalElement && deleteConfirmButton) {
+        const deleteModal = new bootstrap.Modal(deleteModalElement);
+        document.querySelectorAll('.js-delete-opportunity').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                pendingDeleteForm = btn.closest('form');
+                if (!pendingDeleteForm) {
+                    return;
+                }
+                const code = btn.getAttribute('data-opportunity-code') || '';
+                if (deleteCodeTarget) {
+                    deleteCodeTarget.textContent = code ? '#' + code : '';
+                }
+                deleteModal.show();
+            });
         });
-    });
 
-    confirmButton.addEventListener('click', function () {
-        if (pendingReopenForm) {
-            pendingReopenForm.submit();
-            pendingReopenForm = null;
-        }
-        bootstrapModal.hide();
-    });
+        deleteConfirmButton.addEventListener('click', function () {
+            if (pendingDeleteForm) {
+                pendingDeleteForm.submit();
+                pendingDeleteForm = null;
+            }
+            deleteModal.hide();
+        });
+    }
 });
 </script>
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
