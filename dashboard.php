@@ -751,7 +751,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                         </div>
                         <div class="col-12 col-xl-7">
                             <div class="opportunity-chart-wrap mb-3">
-                                <canvas id="opportunityStatusChart" height="320"></canvas>
+                                <canvas id="opportunityStatusChart" class="chart-canvas service-chart-canvas" height="320"></canvas>
                             </div>
                             <div class="opportunity-tabs d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                                 <ul class="nav nav-pills gap-2" id="opportunityTabNav" role="tablist">
