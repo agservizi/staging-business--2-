@@ -708,7 +708,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 <span>100%</span>
                             </div>
                             <div class="opportunity-progress mb-2" aria-label="Avanzamento opportunity">
-                                <span class="segment bg-info text-dark" data-progress="active" style="width: <?php echo $activePercent; ?>%" title="In lavorazione: <?php echo $activePercent; ?>%">
+                                <span class="segment bg-primary text-white" data-progress="active" style="width: <?php echo $activePercent; ?>%" title="In lavorazione: <?php echo $activePercent; ?>%">
                                     <span><?php echo $activePercent; ?>%</span>
                                 </span>
                                 <span class="segment bg-success text-white" data-progress="won" style="width: <?php echo $wonPercent; ?>%" title="Attivate: <?php echo $wonPercent; ?>%">
@@ -724,7 +724,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                         <?php
                                             $colorToBootstrap = [
                                                 'warning' => 'bg-warning text-dark',
-                                                'info' => 'bg-info text-dark',
+                                                'info' => 'bg-primary text-white',
                                                 'primary' => 'bg-primary',
                                                 'danger' => 'bg-danger',
                                                 'success' => 'bg-success',
@@ -795,7 +795,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                         <?php
                                             $statusColorMap = [
                                                 'warning' => 'bg-warning text-dark',
-                                                'info' => 'bg-info text-dark',
+                                                'info' => 'bg-primary text-white',
                                                 'primary' => 'bg-primary',
                                                 'danger' => 'bg-danger',
                                                 'success' => 'bg-success',
@@ -832,7 +832,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                         <?php
                                             $statusColorMap = [
                                                 'warning' => 'bg-warning text-dark',
-                                                'info' => 'bg-info text-dark',
+                                                'info' => 'bg-primary text-white',
                                                 'primary' => 'bg-primary',
                                                 'danger' => 'bg-danger',
                                                 'success' => 'bg-success',

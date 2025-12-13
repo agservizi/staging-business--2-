@@ -658,14 +658,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const statusColorMap = {
                 warning: 'bg-warning text-dark',
-                info: 'bg-info text-dark',
+                info: 'bg-primary text-white',
                 primary: 'bg-primary',
                 danger: 'bg-danger',
                 success: 'bg-success'
             };
             const statusColorPalette = {
                 warning: '#f6c23e',
-                info: '#0dcaf0',
+                info: '#0b2f6b',
                 primary: '#0d6efd',
                 danger: '#dc3545',
                 success: '#198754',
