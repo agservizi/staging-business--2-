@@ -625,7 +625,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 left.appendChild(dateLine);
 
                 const right = document.createElement('div');
-                right.className = 'text-end';
+                right.className = 'text-end opportunity-list-actions';
 
                 const badge = document.createElement('span');
                 const colorClass = statusColorMap[item?.statusColor] || 'bg-secondary';
@@ -635,7 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (item?.id !== undefined && item?.id !== null) {
                     const link = document.createElement('a');
-                    link.className = 'btn btn-sm btn-outline-warning mt-2';
+                    link.className = 'btn btn-sm btn-outline-warning';
                     link.href = `modules/opportunities/detail.php?id=${item.id}`;
                     link.textContent = 'Apri';
                     right.appendChild(link);

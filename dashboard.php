@@ -575,6 +575,12 @@ require_once __DIR__ . '/includes/sidebar.php';
                     align-items: center;
                     margin-bottom: 0.5rem;
                 }
+                .opportunity-list-actions {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-end;
+                    gap: 0.6rem;
+                }
                 .opportunity-tabs .nav-link {
                     border: none;
                     background: transparent;
@@ -858,10 +864,10 @@ require_once __DIR__ . '/includes/sidebar.php';
                                                                     <small class="text-muted"><?php echo sanitize_output($providerLabel); ?> · <?php echo sanitize_output($customerName); ?></small>
                                                                     <div class="text-muted small"><?php echo $referenceDate ? sanitize_output(format_datetime_locale($referenceDate)) : 'Data non disponibile'; ?></div>
                                                                 </div>
-                                                                <div class="text-end">
+                                                                <div class="text-end opportunity-list-actions">
                                                                     <span class="badge <?php echo $badgeClass; ?> text-uppercase"><?php echo sanitize_output($opportunityItem['status_label'] ?? $opportunityItem['status_code'] ?? ''); ?></span>
                                                                     <div>
-                                                                        <a class="btn btn-sm btn-outline-warning mt-2" href="modules/opportunities/detail.php?id=<?php echo (int) ($opportunityItem['id'] ?? 0); ?>">Apri</a>
+                                                                        <a class="btn btn-sm btn-outline-warning" href="modules/opportunities/detail.php?id=<?php echo (int) ($opportunityItem['id'] ?? 0); ?>">Apri</a>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -901,10 +907,10 @@ require_once __DIR__ . '/includes/sidebar.php';
                                                                     <small class="text-muted"><?php echo sanitize_output($providerLabel); ?> · <?php echo sanitize_output($customerName); ?></small>
                                                                     <div class="text-muted small"><?php echo $referenceDate ? sanitize_output(format_datetime_locale($referenceDate)) : 'Data non disponibile'; ?></div>
                                                                 </div>
-                                                                <div class="text-end">
+                                                                <div class="text-end opportunity-list-actions">
                                                                     <span class="badge <?php echo $badgeClass; ?> text-uppercase"><?php echo sanitize_output($opportunityItem['status_label'] ?? $opportunityItem['status_code'] ?? ''); ?></span>
                                                                     <div>
-                                                                        <a class="btn btn-sm btn-outline-warning mt-2" href="modules/opportunities/detail.php?id=<?php echo (int) ($opportunityItem['id'] ?? 0); ?>">Apri</a>
+                                                                        <a class="btn btn-sm btn-outline-warning" href="modules/opportunities/detail.php?id=<?php echo (int) ($opportunityItem['id'] ?? 0); ?>">Apri</a>
                                                                     </div>
                                                                 </div>
                                                             </div>
