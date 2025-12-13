@@ -520,7 +520,6 @@ require_once __DIR__ . '/includes/sidebar.php';
                     overflow: hidden;
                     background: rgba(0, 0, 0, 0.05);
                     border: 1px solid rgba(0, 0, 0, 0.05);
-                    padding: 0 6px;
                     box-sizing: border-box;
                 }
                 .opportunity-progress-labels {

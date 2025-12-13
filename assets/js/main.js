@@ -713,6 +713,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     segment.title = `${key === 'won' ? 'Attivate' : key === 'lost' ? 'Annullate' : 'In lavorazione'}: ${value}%`;
                 });
+                const totalWidth = progressValues.active + progressValues.won + progressValues.lost;
+                if (Math.abs(totalWidth - 100) > 0.1) {
+                    const scale = 100 / Math.max(1, totalWidth);
+                    opportunityProgress.querySelectorAll('[data-progress]').forEach((segment) => {
+                        const key = segment.getAttribute('data-progress');
+                        if (!key || !(key in progressValues)) {
+                            return;
+                        }
+                        const scaled = Math.round(progressValues[key] * scale * 10) / 10;
+                        segment.style.width = `${scaled}%`;
+                        const label = segment.querySelector('span');
+                        if (label) {
+                            const labelValue = Number.isInteger(scaled) ? scaled.toFixed(0) : scaled.toFixed(1);
+                            label.textContent = `${labelValue}%`;
+                        }
+                    });
+                }
             }
 
             if (opportunityStatusList) {
