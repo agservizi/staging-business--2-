@@ -426,6 +426,23 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     </main>
 </div>
 <link rel="stylesheet" href="<?php echo asset('modules/opportunities/assets/opportunities.css'); ?>">
+<div class="modal fade" id="discardDraftModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Elimina bozza</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">Vuoi eliminare la bozza salvata nel cloud? L'operazione è definitiva.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-danger" id="confirmDiscardDraft">Elimina</button>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const remoteDraftEndpoint = "<?php echo sanitize_output(asset('api/opportunities/drafts.php')); ?>";
@@ -501,20 +518,30 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const discardDraftButton = document.querySelector('[data-action="discard-remote-draft"]');
-    if (discardDraftButton && remoteDraftEndpoint) {
-        discardDraftButton.addEventListener('click', async () => {
-            if (!window.confirm('Vuoi davvero eliminare la bozza cloud?')) {
-                return;
-            }
-            const label = discardDraftButton.querySelector('[data-role="label"]');
-            const spinner = discardDraftButton.querySelector('[data-role="spinner"]');
-            discardDraftButton.disabled = true;
-            if (label) {
-                label.textContent = 'Eliminazione…';
-            }
-            if (spinner) {
-                spinner.classList.remove('d-none');
-            }
+    const discardModalElement = document.getElementById('discardDraftModal');
+    const discardConfirmButton = document.getElementById('confirmDiscardDraft');
+
+    if (discardDraftButton && discardModalElement && discardConfirmButton && remoteDraftEndpoint && window.bootstrap) {
+        const discardModal = new window.bootstrap.Modal(discardModalElement);
+
+        let isDeleting = false;
+
+        const setDeletingState = (active) => {
+            isDeleting = active;
+            discardConfirmButton.disabled = active;
+            discardDraftButton.disabled = active;
+            discardConfirmButton.textContent = active ? 'Eliminazione…' : 'Elimina';
+        };
+
+        discardDraftButton.addEventListener('click', () => {
+            if (isDeleting) return;
+            setDeletingState(false);
+            discardModal.show();
+        });
+
+        discardConfirmButton.addEventListener('click', async () => {
+            if (isDeleting) return;
+            setDeletingState(true);
             try {
                 const response = await fetch(remoteDraftEndpoint, {
                     method: 'DELETE',
@@ -530,14 +557,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 window.location.reload();
             } catch (error) {
-                discardDraftButton.disabled = false;
-                if (label) {
-                    label.textContent = 'Riprova eliminazione';
-                }
-                if (spinner) {
-                    spinner.classList.add('d-none');
-                }
+                setDeletingState(false);
                 alert('Non sono riuscito a eliminare la bozza. Riprova tra qualche istante.');
+            } finally {
+                discardModal.hide();
             }
         });
     }
