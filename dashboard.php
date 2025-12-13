@@ -559,6 +559,9 @@ require_once __DIR__ . '/includes/sidebar.php';
                 }
                 .opportunity-chart-wrap {
                     min-height: 320px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                 }
                 @media (max-width: 991.98px) {
                     .services-card-body {
@@ -775,7 +778,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <a class="btn btn-sm btn-outline-warning" href="modules/opportunities/index.php">Apri</a>
                         </div>
                         <div class="card-body">
-                            <div class="opportunity-chart-wrap mb-3">
+                            <div class="opportunity-chart-wrap service-chart-column mb-3">
                                 <canvas id="opportunityStatusChart" class="chart-canvas service-chart-canvas" height="320"></canvas>
                             </div>
                             <div class="opportunity-tabs d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
