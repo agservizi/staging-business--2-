@@ -373,8 +373,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const opportunityStatusList = document.getElementById('opportunityStatusList');
         const opportunityLatestList = document.getElementById('opportunityLatestList');
         const opportunityTodoList = document.getElementById('opportunityTodoList');
-        const opportunityTabBadge = document.getElementById('opportunityTabBadge');
-        const opportunityTabButtons = Array.from(document.querySelectorAll('[data-opportunity-tab]'));
+        const opportunityLatestBadge = document.getElementById('opportunityLatestBadge');
+        const opportunityTodoBadge = document.getElementById('opportunityTodoBadge');
         const opportunityProgress = opportunityWidget?.querySelector('.opportunity-progress');
         const opportunityStatusChartCanvas = document.getElementById('opportunityStatusChart');
         const opportunityTotals = {
@@ -745,42 +745,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             renderOpportunityList(opportunityLatestList, data.latest, 'Nessuna opportunity recente.');
             renderOpportunityList(opportunityTodoList, data.todo, 'Nessuna opportunity aperta da lavorare.');
-
-            const updateTabBadge = (activeTab) => {
-                if (!opportunityTabBadge) return;
-                const source = activeTab === 'todo' ? (Array.isArray(data.todo) ? data.todo : []) : (Array.isArray(data.latest) ? data.latest : []);
-                const label = activeTab === 'todo' ? 'Da fare' : 'Ultime';
-                opportunityTabBadge.textContent = `${label} ${source.length}`;
-            };
-
-            const setOpportunityTab = (tabKey) => {
-                const showLatest = tabKey !== 'todo';
-                if (opportunityLatestList) {
-                    opportunityLatestList.classList.toggle('d-none', !showLatest);
-                }
-                if (opportunityTodoList) {
-                    opportunityTodoList.classList.toggle('d-none', showLatest);
-                }
-                opportunityTabButtons.forEach((button) => {
-                    const key = button.getAttribute('data-opportunity-tab');
-                    button.classList.toggle('active', key === tabKey);
-                });
-                updateTabBadge(tabKey);
-            };
-
-            if (opportunityTabButtons.length) {
-                opportunityTabButtons.forEach((button) => {
-                    if (button.dataset.tabBound) {
-                        return;
-                    }
-                    button.dataset.tabBound = 'true';
-                    button.addEventListener('click', () => {
-                        const key = button.getAttribute('data-opportunity-tab') || 'latest';
-                        setOpportunityTab(key);
-                    });
-                });
+            if (opportunityLatestBadge) {
+                const latestCount = Array.isArray(data.latest) ? data.latest.length : 0;
+                opportunityLatestBadge.textContent = `Ultime ${latestCount}`;
             }
-            setOpportunityTab('latest');
+            if (opportunityTodoBadge) {
+                const todoCount = Array.isArray(data.todo) ? data.todo.length : 0;
+                opportunityTodoBadge.textContent = `Da fare ${todoCount}`;
+            }
 
             if (opportunityStatusChartCanvas && window.Chart) {
                 const chartStore = window.CSCharts || (window.CSCharts = {});

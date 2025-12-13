@@ -546,6 +546,18 @@ require_once __DIR__ . '/includes/sidebar.php';
                     font-weight: 700;
                     color: #0b2f6b;
                 }
+                .opportunity-lists-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+                    gap: 1.5rem;
+                    align-items: start;
+                }
+                .opportunity-list-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 0.5rem;
+                }
                 .opportunity-tabs .nav-link {
                     border: none;
                     background: transparent;
@@ -781,90 +793,93 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <div class="opportunity-chart-wrap service-chart-column mb-3">
                                 <canvas id="opportunityStatusChart" class="chart-canvas service-chart-canvas" height="320"></canvas>
                             </div>
-                            <div class="opportunity-tabs d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                                <ul class="nav nav-pills gap-2" id="opportunityTabNav" role="tablist">
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link active" data-opportunity-tab="latest" type="button">Ultime</button>
-                                    </li>
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link" data-opportunity-tab="todo" type="button">Da fare</button>
-                                    </li>
-                                </ul>
-                                <span class="badge ag-badge text-uppercase" id="opportunityTabBadge">Ultime <?php echo number_format(count($opportunityWidget['latest'])); ?></span>
-                            </div>
-                            <div class="list-group list-group-flush" id="opportunityLatestList">
-                                <?php if ($opportunityWidget['latest']): ?>
-                                    <?php foreach ($opportunityWidget['latest'] as $opportunityItem): ?>
-                                        <?php
-                                            $statusColorMap = [
-                                                'warning' => 'bg-warning text-dark',
-                                                'info' => 'bg-primary text-white',
-                                                'primary' => 'bg-primary',
-                                                'danger' => 'bg-danger',
-                                                'success' => 'bg-success',
-                                            ];
-                                            $badgeClass = $statusColorMap[$opportunityItem['status_color'] ?? ''] ?? 'bg-secondary';
-                                            $customerName = trim(($opportunityItem['customer_first_name'] ?? '') . ' ' . ($opportunityItem['customer_last_name'] ?? '')) ?: 'Cliente non indicato';
-                                            $providerLabel = $opportunityItem['provider_label'] ?? 'Gestore non indicato';
-                                            $codeLabel = $opportunityItem['code'] ?? ('OP-' . ($opportunityItem['id'] ?? ''));
-                                            $referenceDate = $opportunityItem['reference_date'] ?? null;
-                                        ?>
-                                        <div class="list-group-item px-0">
-                                            <div class="d-flex align-items-start justify-content-between gap-3">
-                                                <div>
-                                                    <div class="fw-semibold">#<?php echo sanitize_output($codeLabel); ?></div>
-                                                    <small class="text-muted"><?php echo sanitize_output($providerLabel); ?> · <?php echo sanitize_output($customerName); ?></small>
-                                                    <div class="text-muted small"><?php echo $referenceDate ? sanitize_output(format_datetime_locale($referenceDate)) : 'Data non disponibile'; ?></div>
-                                                </div>
-                                                <div class="text-end">
-                                                    <span class="badge <?php echo $badgeClass; ?> text-uppercase"><?php echo sanitize_output($opportunityItem['status_label'] ?? $opportunityItem['status_code'] ?? ''); ?></span>
-                                                    <div>
-                                                        <a class="btn btn-sm btn-outline-warning mt-2" href="modules/opportunities/detail.php?id=<?php echo (int) ($opportunityItem['id'] ?? 0); ?>">Apri</a>
+                            <div class="opportunity-lists-grid">
+                                <div>
+                                    <div class="opportunity-list-header">
+                                        <h6 class="mb-0 text-uppercase text-muted small">Ultime</h6>
+                                        <span class="badge ag-badge text-uppercase" id="opportunityLatestBadge">Ultime <?php echo number_format(count($opportunityWidget['latest'])); ?></span>
+                                    </div>
+                                    <div class="list-group list-group-flush" id="opportunityLatestList">
+                                        <?php if ($opportunityWidget['latest']): ?>
+                                            <?php foreach ($opportunityWidget['latest'] as $opportunityItem): ?>
+                                                <?php
+                                                    $statusColorMap = [
+                                                        'warning' => 'bg-warning text-dark',
+                                                        'info' => 'bg-primary text-white',
+                                                        'primary' => 'bg-primary',
+                                                        'danger' => 'bg-danger',
+                                                        'success' => 'bg-success',
+                                                    ];
+                                                    $badgeClass = $statusColorMap[$opportunityItem['status_color'] ?? ''] ?? 'bg-secondary';
+                                                    $customerName = trim(($opportunityItem['customer_first_name'] ?? '') . ' ' . ($opportunityItem['customer_last_name'] ?? '')) ?: 'Cliente non indicato';
+                                                    $providerLabel = $opportunityItem['provider_label'] ?? 'Gestore non indicato';
+                                                    $codeLabel = $opportunityItem['code'] ?? ('OP-' . ($opportunityItem['id'] ?? ''));
+                                                    $referenceDate = $opportunityItem['reference_date'] ?? null;
+                                                ?>
+                                                <div class="list-group-item px-0">
+                                                    <div class="d-flex align-items-start justify-content-between gap-3">
+                                                        <div>
+                                                            <div class="fw-semibold">#<?php echo sanitize_output($codeLabel); ?></div>
+                                                            <small class="text-muted"><?php echo sanitize_output($providerLabel); ?> · <?php echo sanitize_output($customerName); ?></small>
+                                                            <div class="text-muted small"><?php echo $referenceDate ? sanitize_output(format_datetime_locale($referenceDate)) : 'Data non disponibile'; ?></div>
+                                                        </div>
+                                                        <div class="text-end">
+                                                            <span class="badge <?php echo $badgeClass; ?> text-uppercase"><?php echo sanitize_output($opportunityItem['status_label'] ?? $opportunityItem['status_code'] ?? ''); ?></span>
+                                                            <div>
+                                                                <a class="btn btn-sm btn-outline-warning mt-2" href="modules/opportunities/detail.php?id=<?php echo (int) ($opportunityItem['id'] ?? 0); ?>">Apri</a>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <div class="list-group-item px-0 text-muted">Nessuna opportunity recente.</div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="list-group list-group-flush d-none" id="opportunityTodoList">
-                                <?php if ($opportunityWidget['todo']): ?>
-                                    <?php foreach ($opportunityWidget['todo'] as $opportunityItem): ?>
-                                        <?php
-                                            $statusColorMap = [
-                                                'warning' => 'bg-warning text-dark',
-                                                'info' => 'bg-primary text-white',
-                                                'primary' => 'bg-primary',
-                                                'danger' => 'bg-danger',
-                                                'success' => 'bg-success',
-                                            ];
-                                            $badgeClass = $statusColorMap[$opportunityItem['status_color'] ?? ''] ?? 'bg-secondary';
-                                            $customerName = trim(($opportunityItem['customer_first_name'] ?? '') . ' ' . ($opportunityItem['customer_last_name'] ?? '')) ?: 'Cliente non indicato';
-                                            $providerLabel = $opportunityItem['provider_label'] ?? 'Gestore non indicato';
-                                            $codeLabel = $opportunityItem['code'] ?? ('OP-' . ($opportunityItem['id'] ?? ''));
-                                            $referenceDate = $opportunityItem['reference_date'] ?? null;
-                                        ?>
-                                        <div class="list-group-item px-0">
-                                            <div class="d-flex align-items-start justify-content-between gap-3">
-                                                <div>
-                                                    <div class="fw-semibold">#<?php echo sanitize_output($codeLabel); ?></div>
-                                                    <small class="text-muted"><?php echo sanitize_output($providerLabel); ?> · <?php echo sanitize_output($customerName); ?></small>
-                                                    <div class="text-muted small"><?php echo $referenceDate ? sanitize_output(format_datetime_locale($referenceDate)) : 'Data non disponibile'; ?></div>
-                                                </div>
-                                                <div class="text-end">
-                                                    <span class="badge <?php echo $badgeClass; ?> text-uppercase"><?php echo sanitize_output($opportunityItem['status_label'] ?? $opportunityItem['status_code'] ?? ''); ?></span>
-                                                    <div>
-                                                        <a class="btn btn-sm btn-outline-warning mt-2" href="modules/opportunities/detail.php?id=<?php echo (int) ($opportunityItem['id'] ?? 0); ?>">Apri</a>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <div class="list-group-item px-0 text-muted">Nessuna opportunity recente.</div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="opportunity-list-header">
+                                        <h6 class="mb-0 text-uppercase text-muted small">Da fare</h6>
+                                        <span class="badge ag-badge text-uppercase" id="opportunityTodoBadge">Da fare <?php echo number_format(count($opportunityWidget['todo'])); ?></span>
+                                    </div>
+                                    <div class="list-group list-group-flush" id="opportunityTodoList">
+                                        <?php if ($opportunityWidget['todo']): ?>
+                                            <?php foreach ($opportunityWidget['todo'] as $opportunityItem): ?>
+                                                <?php
+                                                    $statusColorMap = [
+                                                        'warning' => 'bg-warning text-dark',
+                                                        'info' => 'bg-primary text-white',
+                                                        'primary' => 'bg-primary',
+                                                        'danger' => 'bg-danger',
+                                                        'success' => 'bg-success',
+                                                    ];
+                                                    $badgeClass = $statusColorMap[$opportunityItem['status_color'] ?? ''] ?? 'bg-secondary';
+                                                    $customerName = trim(($opportunityItem['customer_first_name'] ?? '') . ' ' . ($opportunityItem['customer_last_name'] ?? '')) ?: 'Cliente non indicato';
+                                                    $providerLabel = $opportunityItem['provider_label'] ?? 'Gestore non indicato';
+                                                    $codeLabel = $opportunityItem['code'] ?? ('OP-' . ($opportunityItem['id'] ?? ''));
+                                                    $referenceDate = $opportunityItem['reference_date'] ?? null;
+                                                ?>
+                                                <div class="list-group-item px-0">
+                                                    <div class="d-flex align-items-start justify-content-between gap-3">
+                                                        <div>
+                                                            <div class="fw-semibold">#<?php echo sanitize_output($codeLabel); ?></div>
+                                                            <small class="text-muted"><?php echo sanitize_output($providerLabel); ?> · <?php echo sanitize_output($customerName); ?></small>
+                                                            <div class="text-muted small"><?php echo $referenceDate ? sanitize_output(format_datetime_locale($referenceDate)) : 'Data non disponibile'; ?></div>
+                                                        </div>
+                                                        <div class="text-end">
+                                                            <span class="badge <?php echo $badgeClass; ?> text-uppercase"><?php echo sanitize_output($opportunityItem['status_label'] ?? $opportunityItem['status_code'] ?? ''); ?></span>
+                                                            <div>
+                                                                <a class="btn btn-sm btn-outline-warning mt-2" href="modules/opportunities/detail.php?id=<?php echo (int) ($opportunityItem['id'] ?? 0); ?>">Apri</a>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <div class="list-group-item px-0 text-muted">Nessuna opportunity aperta da lavorare.</div>
-                                <?php endif; ?>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <div class="list-group-item px-0 text-muted">Nessuna opportunity aperta da lavorare.</div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
