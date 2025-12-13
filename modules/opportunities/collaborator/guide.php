@@ -34,7 +34,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <ol class="list-group list-group-numbered mb-4">
                             <li class="list-group-item"><strong>Cerca/recupera cliente</strong> · Inserisci CF e usa “Recupera”.</li>
                             <li class="list-group-item"><strong>Compila dati anagrafici</strong> · Nome, contatti, indirizzo, documento.</li>
-                            <li class="list-group-item"><strong>Scegli categoria/gestore</strong> · Telefonia, Luce, Gas, offerta.</li>
+                            <li class="list-group-item"><strong>Scegli categoria/gestore</strong> · Telefonia, Luce, Gas, PayTV, offerta.</li>
                             <li class="list-group-item"><strong>Pagamento</strong> · IBAN (validazione automatica) o bollettino.</li>
                             <li class="list-group-item"><strong>Allega documenti</strong> · Documento, moduli gestore, altri allegati.</li>
                             <li class="list-group-item"><strong>Invia</strong> · Salva, controlla stato in “Elenco OP”.</li>
@@ -54,7 +54,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <li>Apri “Nuova OP” o duplica da elenco.</li>
                                             <li>Recupera cliente tramite CF per precompilare dati e pagamento.</li>
                                             <li>Telefonia: scegli “Migrazione” o “Nuova attivazione”; per migrazione servono operatore, numero, codice migrazione.</li>
-                                            <li>Luce/Gas: inserisci POD/PDR e dati fornitura.</li>
+                                            <li>Luce/Gas: inserisci POD/PDR e dati fornitura. Telefonia: inserisci numerazione e, se migrazione, codice migrazione.</li>
+                                            <li>PayTV: seleziona gestore/offerta e verifica dati pagamento corretti (beneficiario = intestatario).</li>
                                             <li>Pagamento: inserisci IBAN (validazione automatica) o bollettino.</li>
                                             <li>Allegati: carica documento identità e moduli richiesti dal gestore.</li>
                                         </ul>
@@ -120,11 +121,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <div class="d-flex flex-column gap-3">
                             <div>
                                 <p class="fw-semibold mb-1">Perché non vedo IBAN validato?</p>
-                                <p class="text-muted mb-0 small">La validazione IBAN avviene in salvataggio se hai compilato IBAN e intestatario. In dettaglio OP compare badge “Validato” con banca/cifre se esito positivo.</p>
+                                <p class="text-muted mb-0 small">La validazione IBAN avviene in salvataggio se hai compilato IBAN e intestatario. In dettaglio OP compare badge “Validato” con banca/cifre se esito positivo. Vale per tutte le categorie (Telefonia, Luce, Gas, PayTV).</p>
                             </div>
                             <div>
                                 <p class="fw-semibold mb-1">Quando servono operatore e numero?</p>
-                                <p class="text-muted mb-0 small">Solo per telefonia in modalità “Migrazione”. Per “Nuova attivazione” i campi restano nascosti.</p>
+                                <p class="text-muted mb-0 small">Per telefonia: in “Migrazione” servono operatore, numero e codice migrazione; in “Nuova attivazione” restano nascosti. Per Luce/Gas usa POD/PDR; per PayTV bastano dati cliente e pagamento.</p>
                             </div>
                             <div>
                                 <p class="fw-semibold mb-1">Posso recuperare un cliente esistente?</p>
@@ -132,7 +133,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div>
                                 <p class="fw-semibold mb-1">Come vedo le mie provvigioni?</p>
-                                <p class="text-muted mb-0 small">Sezione “Provvigioni”: timeline mensile, dettagli mese, stato delle OP conteggiate.</p>
+                                <p class="text-muted mb-0 small">Sezione “Provvigioni”: timeline mensile, dettagli mese, stato delle OP conteggiate (Telefonia, Luce, Gas, PayTV).</p>
                             </div>
                             <div>
                                 <p class="fw-semibold mb-1">Cosa significa stato “in verifica”?</p>
