@@ -681,11 +681,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 element.textContent = formatValue(value, 'number');
             });
 
-            const totalCount = Math.max(1, Number(totals.total) || 0);
+            const totalCount = Number(totals.total) || 0;
+            const safeTotal = totalCount > 0 ? totalCount : 1;
+            const toPercent = (count) => {
+                const value = ((Number(count) || 0) / safeTotal) * 100;
+                const clamped = Math.max(0, Math.min(100, value));
+                return Math.round(clamped * 10) / 10; // one decimal precision
+            };
             const progressValues = {
-                active: Math.round(((Number(totals.active) || 0) / totalCount) * 100),
-                won: Math.round(((Number(totals.won) || 0) / totalCount) * 100),
-                lost: Math.round(((Number(totals.lost) || 0) / totalCount) * 100)
+                active: toPercent(totals.active),
+                won: toPercent(totals.won),
+                lost: toPercent(totals.lost)
             };
             if (opportunityProgress) {
                 opportunityProgress.querySelectorAll('[data-progress]').forEach((segment) => {
@@ -697,7 +703,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     segment.style.width = `${value}%`;
                     const label = segment.querySelector('span');
                     if (label) {
-                        label.textContent = `${value}%`;
+                        const labelValue = Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
+                        label.textContent = `${labelValue}%`;
                     }
                     segment.title = `${key === 'won' ? 'Attivate' : key === 'lost' ? 'Annullate' : 'In lavorazione'}: ${value}%`;
                 });
