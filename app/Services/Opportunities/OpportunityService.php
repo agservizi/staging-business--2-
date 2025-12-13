@@ -900,6 +900,21 @@ final class OpportunityService
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
+    public function deleteOpportunity(int $opportunityId): void
+    {
+        if ($opportunityId <= 0) {
+            throw new RuntimeException('ID opportunity non valido.');
+        }
+
+        $stmt = $this->pdo->prepare('DELETE FROM opportunities WHERE id = :id LIMIT 1');
+        $stmt->bindValue(':id', $opportunityId, PDO::PARAM_INT);
+        $stmt->execute();
+
+        if ($stmt->rowCount() === 0) {
+            throw new RuntimeException('Opportunity non trovata o già eliminata.');
+        }
+    }
+
     /**
      * @return array<int,array<string,mixed>>
      */

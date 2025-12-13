@@ -11,6 +11,22 @@ $statusFilter = isset($_GET['status']) ? trim((string) $_GET['status']) : '';
 $categoryFilter = isset($_GET['category']) ? trim((string) $_GET['category']) : '';
 $searchFilter = isset($_GET['search']) ? trim((string) $_GET['search']) : '';
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_valid_csrf();
+    $action = (string) ($_POST['form_action'] ?? '');
+    if ($action === 'delete_opportunity') {
+        $opportunityId = (int) ($_POST['opportunity_id'] ?? 0);
+        try {
+            $opportunityService->deleteOpportunity($opportunityId);
+            add_flash('success', 'Opportunity eliminata.');
+        } catch (RuntimeException $exception) {
+            add_flash('warning', $exception->getMessage());
+        }
+        header('Location: index.php');
+        exit;
+    }
+}
+
 $filters = [];
 if ($statusFilter !== '') {
     $filters['status'] = $statusFilter;
@@ -160,6 +176,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             </button>
                                         </form>
                                     <?php endif; ?>
+                                    <form class="d-inline" method="post" action="<?php echo asset('modules/opportunities/index.php'); ?>" onsubmit="return confirm('Eliminare definitivamente questa opportunity?');">
+                                        <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
+                                        <input type="hidden" name="form_action" value="delete_opportunity">
+                                        <input type="hidden" name="opportunity_id" value="<?php echo (int) $opportunity['id']; ?>">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Elimina">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
                                     <a class="btn btn-sm btn-outline-primary" href="<?php echo asset('modules/opportunities/detail.php?id=' . (int) $opportunity['id']); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Gestisci opportunity">
                                         <i class="fa-solid fa-eye me-1"></i>Gestisci
                                     </a>
