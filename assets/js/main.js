@@ -590,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const statusColorMap = {
                 warning: 'bg-warning text-dark',
-                info: 'bg-info text-dark',
+                info: 'bg-primary text-white',
                 primary: 'bg-primary',
                 danger: 'bg-danger',
                 success: 'bg-success'
@@ -663,13 +663,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 danger: 'bg-danger',
                 success: 'bg-success'
             };
+            const cssVars = getComputedStyle(document.documentElement);
+            const resolveColor = (token, fallback) => {
+                const value = cssVars.getPropertyValue(`--bs-${token}`)?.trim();
+                return value || fallback;
+            };
             const statusColorPalette = {
-                warning: '#f6c23e',
-                info: '#0b2f6b',
-                primary: '#0d6efd',
-                danger: '#dc3545',
-                success: '#198754',
-                secondary: '#6c757d'
+                warning: resolveColor('warning', '#f6c23e'),
+                info: resolveColor('primary', '#0d6efd'),
+                primary: resolveColor('primary', '#0d6efd'),
+                danger: resolveColor('danger', '#dc3545'),
+                success: resolveColor('success', '#198754'),
+                secondary: resolveColor('secondary', '#6c757d')
             };
 
             const totals = data.totals || {};
