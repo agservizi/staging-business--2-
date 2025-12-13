@@ -10,7 +10,7 @@ use RuntimeException;
 
 final class OpportunityService
 {
-    private const CATEGORIES = ['telefonia', 'luce', 'gas'];
+    private const CATEGORIES = ['telefonia', 'luce', 'gas', 'paytv'];
     private const COMMISSION_STATUS_EXCLUSIONS = ['annullato', 'annullata', 'cancellato', 'cancellata', 'cancelled', 'canceled'];
     private const CLONEABLE_FIELDS = [
         'category',

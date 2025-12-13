@@ -12,6 +12,7 @@ $categoryLabels = [
     'telefonia' => 'Telefonia',
     'luce' => 'Luce',
     'gas' => 'Gas',
+    'paytv' => 'PayTV',
 ];
 $categoryKeys = array_keys($categoryLabels);
 $lastCategoryKey = end($categoryKeys) ?: 'gas';

@@ -425,6 +425,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <option value="telefonia" <?php echo (isset($formData['category']) && $formData['category'] === 'telefonia') ? 'selected' : ''; ?>>Telefonia</option>
                                     <option value="luce" <?php echo (isset($formData['category']) && $formData['category'] === 'luce') ? 'selected' : ''; ?>>Luce</option>
                                     <option value="gas" <?php echo (isset($formData['category']) && $formData['category'] === 'gas') ? 'selected' : ''; ?>>Gas</option>
+                                    <option value="paytv" <?php echo (isset($formData['category']) && $formData['category'] === 'paytv') ? 'selected' : ''; ?>>PayTV</option>
                                 </select>
                             </div>
                             <div class="col-md-4">

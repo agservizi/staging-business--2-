@@ -89,6 +89,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <option value="telefonia" <?php echo $categoryFilter === 'telefonia' ? 'selected' : ''; ?>>Telefonia</option>
                             <option value="luce" <?php echo $categoryFilter === 'luce' ? 'selected' : ''; ?>>Luce</option>
                             <option value="gas" <?php echo $categoryFilter === 'gas' ? 'selected' : ''; ?>>Gas</option>
+                            <option value="paytv" <?php echo $categoryFilter === 'paytv' ? 'selected' : ''; ?>>PayTV</option>
                         </select>
                     </div>
                     <div class="col-md-4">

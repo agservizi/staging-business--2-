@@ -9,6 +9,7 @@ $categoryLabels = [
     'telefonia' => 'Telefonia',
     'luce' => 'Luce',
     'gas' => 'Gas',
+    'paytv' => 'PayTV',
 ];
 
 $providersByCategory = $opportunityService->listProvidersWithOffers(null, true);
