@@ -173,29 +173,55 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         </div>
         <?php
             $statCards = [
-                'total' => ['label' => 'Totali inviate', 'icon' => 'fa-layer-group', 'badge' => 'bg-primary-subtle text-primary'],
-                'active' => ['label' => 'In lavorazione', 'icon' => 'fa-spinner', 'badge' => 'bg-warning-subtle text-warning'],
-                'won' => ['label' => 'Attivate', 'icon' => 'fa-circle-check', 'badge' => 'bg-success-subtle text-success'],
-                'lost' => ['label' => 'Annullate', 'icon' => 'fa-circle-xmark', 'badge' => 'bg-danger-subtle text-danger'],
+                'total' => [
+                    'label' => 'Totali inviate',
+                    'icon' => 'fa-layer-group',
+                    'tone' => 'indigo',
+                    'pill' => 'Volume',
+                ],
+                'active' => [
+                    'label' => 'In lavorazione',
+                    'icon' => 'fa-spinner',
+                    'tone' => 'amber',
+                    'pill' => 'Work in progress',
+                ],
+                'won' => [
+                    'label' => 'Attivate',
+                    'icon' => 'fa-circle-check',
+                    'tone' => 'emerald',
+                    'pill' => 'Completate',
+                ],
+                'lost' => [
+                    'label' => 'Annullate',
+                    'icon' => 'fa-circle-xmark',
+                    'tone' => 'crimson',
+                    'pill' => 'Scartate',
+                ],
             ];
         ?>
         <div class="row g-3 mb-4">
             <?php foreach ($statCards as $key => $meta): ?>
                 <div class="col-12 col-md-6 col-xl-3">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div>
-                                    <p class="text-uppercase small text-muted mb-1"><?php echo sanitize_output($meta['label']); ?></p>
-                                    <h2 class="h3 mb-0">
-                                        <?php echo sanitize_output(number_format((int) ($collaboratorTotals[$key] ?? 0), 0, ',', '.')); ?>
-                                    </h2>
+                    <div class="card stat-card stat-card--<?php echo sanitize_output($meta['tone']); ?> h-100">
+                        <div class="card-body d-flex flex-column gap-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="d-flex flex-column gap-1">
+                                    <span class="stat-card__eyebrow"><?php echo sanitize_output($meta['label']); ?></span>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <span class="stat-card__value">
+                                            <?php echo sanitize_output(number_format((int) ($collaboratorTotals[$key] ?? 0), 0, ',', '.')); ?>
+                                        </span>
+                                        <span class="badge stat-card__pill"><?php echo sanitize_output($meta['pill']); ?></span>
+                                    </div>
                                 </div>
-                                <span class="badge <?php echo sanitize_output($meta['badge']); ?>">
+                                <div class="stat-card__icon" aria-hidden="true">
                                     <i class="fa-solid <?php echo sanitize_output($meta['icon']); ?>"></i>
-                                </span>
+                                </div>
                             </div>
-                            <p class="text-muted mb-0 small">Aggiornato automaticamente</p>
+                            <div class="d-flex align-items-center gap-2 text-muted small">
+                                <span class="stat-card__status-dot"></span>
+                                Aggiornato automaticamente
+                            </div>
                         </div>
                     </div>
                 </div>
