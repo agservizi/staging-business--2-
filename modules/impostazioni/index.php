@@ -823,6 +823,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Assicura che i dati CAF/Patronato siano valorizzati anche su richieste GET
+if (!isset($cafPatronatoTypes)) {
+    $cafPatronatoTypes = $settingsService->getCafPatronatoTypes();
+}
+
+if (!isset($cafPatronatoTypesForm)) {
+    $cafPatronatoTypesForm = $cafPatronatoTypes;
+}
+
+if (!isset($cafPatronatoStatuses)) {
+    $cafPatronatoStatuses = $settingsService->getCafPatronatoStatuses();
+}
+
+if (!isset($cafPatronatoStatusesForm)) {
+    $cafPatronatoStatusesForm = $cafPatronatoStatuses;
+}
+
+if (!isset($cafPatronatoServices)) {
+    $cafPatronatoServices = $settingsService->getCafPatronatoServices();
+}
+
+if (!isset($cafPatronatoServicesForm)) {
+    $cafPatronatoServicesForm = settings_build_service_form($cafPatronatoTypes, $cafPatronatoServices);
+}
+
+if (!isset($cafPatronatoServiceSuggestions)) {
+    $cafPatronatoServiceSuggestions = settings_filter_service_suggestions($cafPatronatoServices, $settingsService->suggestCafPatronatoServices());
+}
+
 $lastTypeRow = $cafPatronatoTypesForm ? end($cafPatronatoTypesForm) : null;
 if ($lastTypeRow !== false && $lastTypeRow !== null) {
     $isLastTypeEmpty = trim((string) ($lastTypeRow['key'] ?? '')) === ''
