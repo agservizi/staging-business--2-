@@ -127,6 +127,43 @@ $settingsService = new SettingsService($pdo, $projectRoot);
 $appearanceConfig = get_ui_theme_config($pdo);
 $themeOptions = SettingsService::availableThemes();
 
+// Configurazione azienda e liste di supporto
+$companyDefaults = [
+    'ragione_sociale' => '',
+    'indirizzo' => '',
+    'cap' => '',
+    'citta' => '',
+    'provincia' => '',
+    'telefono' => '',
+    'email' => '',
+    'pec' => '',
+    'sdi' => '',
+    'vat_country' => 'IT',
+    'piva' => '',
+    'iban' => '',
+    'note' => '',
+    'company_logo' => '',
+];
+$companyConfig = $settingsService->fetchCompanySettings($companyDefaults);
+$vatCountries = [
+    'IT' => 'Italia', 'AT' => 'Austria', 'BE' => 'Belgio', 'BG' => 'Bulgaria', 'HR' => 'Croazia',
+    'CY' => 'Cipro', 'CZ' => 'Repubblica Ceca', 'DK' => 'Danimarca', 'EE' => 'Estonia', 'FI' => 'Finlandia',
+    'FR' => 'Francia', 'DE' => 'Germania', 'GR' => 'Grecia', 'HU' => 'Ungheria', 'IE' => 'Irlanda',
+    'LV' => 'Lettonia', 'LT' => 'Lituania', 'LU' => 'Lussemburgo', 'MT' => 'Malta', 'NL' => 'Paesi Bassi',
+    'PL' => 'Polonia', 'PT' => 'Portogallo', 'RO' => 'Romania', 'SK' => 'Slovacchia', 'SI' => 'Slovenia',
+    'ES' => 'Spagna', 'SE' => 'Svezia', 'CH' => 'Svizzera', 'GB' => 'Regno Unito', 'NO' => 'Norvegia',
+    'SM' => 'San Marino', 'LI' => 'Liechtenstein', 'MC' => 'Monaco', 'AD' => 'Andorra', 'BA' => 'Bosnia ed Erzegovina',
+    'RS' => 'Serbia', 'ME' => 'Montenegro', 'AL' => 'Albania', 'TR' => 'Turchia', 'UA' => 'Ucraina',
+];
+
+// Configurazioni varie
+$emailMarketingConfig = $settingsService->getEmailMarketingSettings();
+$movementDescriptions = $settingsService->getMovementDescriptions();
+$appointmentTypes = $settingsService->getAppointmentTypes();
+$appointmentStatuses = $settingsService->getAppointmentStatuses();
+$servicePricing = $settingsService->getServicePricing();
+$portalBrtPricingForm = $settingsService->getPortalBrtPricing();
+
 $opportunityService = new OpportunityService($pdo);
 $opportunityStatuses = [];
 $opportunityStatusPreview = [];
