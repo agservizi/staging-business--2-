@@ -176,50 +176,54 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 'total' => [
                     'label' => 'Totali inviate',
                     'icon' => 'fa-layer-group',
-                    'tone' => 'indigo',
-                    'pill' => 'Volume',
+                    'tone' => 'neon',
+                    'tag' => 'Volume',
+                    'hint' => 'Inviate complessivamente',
                 ],
                 'active' => [
                     'label' => 'In lavorazione',
                     'icon' => 'fa-spinner',
                     'tone' => 'amber',
-                    'pill' => 'Work in progress',
+                    'tag' => 'WIP',
+                    'hint' => 'Pratiche aperte ora',
                 ],
                 'won' => [
                     'label' => 'Attivate',
                     'icon' => 'fa-circle-check',
                     'tone' => 'emerald',
-                    'pill' => 'Completate',
+                    'tag' => 'Successi',
+                    'hint' => 'Contratti chiusi',
                 ],
                 'lost' => [
                     'label' => 'Annullate',
                     'icon' => 'fa-circle-xmark',
-                    'tone' => 'crimson',
-                    'pill' => 'Scartate',
+                    'tone' => 'magenta',
+                    'tag' => 'Scarti',
+                    'hint' => 'Non proseguono',
                 ],
             ];
         ?>
         <div class="row g-3 mb-4">
             <?php foreach ($statCards as $key => $meta): ?>
                 <div class="col-12 col-md-6 col-xl-3">
-                    <div class="card stat-card stat-card--<?php echo sanitize_output($meta['tone']); ?> h-100">
-                        <div class="card-body d-flex flex-column gap-3">
-                            <div class="d-flex justify-content-between align-items-start">
+                    <div class="stat-neo stat-neo--<?php echo sanitize_output($meta['tone']); ?> h-100">
+                        <div class="stat-neo__glow" aria-hidden="true"></div>
+                        <div class="stat-neo__body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div class="d-flex flex-column gap-1">
-                                    <span class="stat-card__eyebrow"><?php echo sanitize_output($meta['label']); ?></span>
-                                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                                        <span class="stat-card__value">
-                                            <?php echo sanitize_output(number_format((int) ($collaboratorTotals[$key] ?? 0), 0, ',', '.')); ?>
-                                        </span>
-                                        <span class="badge stat-card__pill"><?php echo sanitize_output($meta['pill']); ?></span>
-                                    </div>
+                                    <span class="stat-neo__label"><?php echo sanitize_output($meta['label']); ?></span>
+                                    <span class="stat-neo__value"><?php echo sanitize_output(number_format((int) ($collaboratorTotals[$key] ?? 0), 0, ',', '.')); ?></span>
                                 </div>
-                                <div class="stat-card__icon" aria-hidden="true">
+                                <div class="stat-neo__icon" aria-hidden="true">
                                     <i class="fa-solid <?php echo sanitize_output($meta['icon']); ?>"></i>
                                 </div>
                             </div>
-                            <div class="d-flex align-items-center gap-2 text-muted small">
-                                <span class="stat-card__status-dot"></span>
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <span class="stat-neo__tag"><?php echo sanitize_output($meta['tag']); ?></span>
+                                <span class="stat-neo__hint"><?php echo sanitize_output($meta['hint']); ?></span>
+                            </div>
+                            <div class="stat-neo__footer">
+                                <span class="stat-neo__dot"></span>
                                 Aggiornato automaticamente
                             </div>
                         </div>
