@@ -122,6 +122,37 @@ if (!function_exists('settings_build_service_form')) {
     }
 }
 
+$opportunityService = new OpportunityService($pdo);
+$opportunityStatuses = [];
+$opportunityStatusPreview = [];
+$opportunityProvidersByCategory = [];
+$opportunityCategoryLabels = [
+    'telefonia' => 'Telefonia',
+    'luce' => 'Luce',
+    'gas' => 'Gas',
+    'paytv' => 'Pay TV',
+];
+$opportunityCategorySummary = [];
+$opportunityCardSummary = [
+    'statuses' => 0,
+    'providers' => 0,
+    'offers' => 0,
+];
+
+try {
+    $opportunityStatuses = $opportunityService->listStatusesDetailed();
+} catch (Throwable $exception) {
+    error_log('Impostazioni: impossibile recuperare gli stati opportunity - ' . $exception->getMessage());
+    $opportunityStatuses = [];
+}
+
+try {
+    $opportunityProvidersByCategory = $opportunityService->listProvidersWithOffers(null, true);
+} catch (Throwable $exception) {
+    error_log('Impostazioni: impossibile recuperare gestori/ offerte opportunity - ' . $exception->getMessage());
+    $opportunityProvidersByCategory = [];
+}
+
 $opportunityCardSummary['statuses'] = count($opportunityStatuses);
 foreach ($opportunityProvidersByCategory as $categoryProviders) {
     $opportunityCardSummary['providers'] += count($categoryProviders);
