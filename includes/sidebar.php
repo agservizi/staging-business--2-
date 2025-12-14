@@ -288,7 +288,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                             </span>
                         </button>
                         <div class="collapse<?php echo $serviziMenuOpen ? ' show' : ''; ?>" id="sidebarServices">
-                            <ul class="nav flex-column ms-3 border-start ps-3" role="list">
+                            <ul class="nav flex-column gap-1 ms-3 border-start ps-3" role="list">
                                 <?php foreach ($serviziItems as $item): ?>
                                     <?php $itemActive = nav_active($item['needle'], $currentPath); ?>
                                     <li>
