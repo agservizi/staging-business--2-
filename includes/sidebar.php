@@ -53,13 +53,6 @@ $serviziItems = [
         'color' => 'amber',
     ],
     [
-        'needle' => 'modules/servizi/web',
-        'label' => 'Servizi Digitali & Web',
-        'icon' => 'fa-solid fa-earth-europe',
-        'href' => base_url('modules/servizi/web/index.php'),
-        'color' => 'azure',
-    ],
-    [
         'needle' => 'modules/servizi/curriculum',
         'label' => 'Gestione Curriculum',
         'icon' => 'fa-solid fa-id-card',
