@@ -184,7 +184,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     'label' => 'In lavorazione',
                     'icon' => 'fa-spinner',
                     'tone' => 'amber',
-                    'tag' => 'WIP',
+                    'tag' => 'Work in progress',
                     'hint' => 'Pratiche aperte ora',
                 ],
                 'won' => [
