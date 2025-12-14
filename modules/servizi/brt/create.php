@@ -37,6 +37,16 @@ $returnServiceCode = strtoupper($config->getReturnServiceCode() ?? '');
 $configuredReturnDepot = $config->getDefaultReturnDepot();
 $configuredReturnDepotString = $configuredReturnDepot !== null ? (string) $configuredReturnDepot : '';
 
+$defaultCountry = strtoupper($config->getDefaultCountryIsoAlpha2() ?? 'IT');
+if (!isset($allowedDestinationCountries[$defaultCountry])) {
+    if (isset($allowedDestinationCountries['IT'])) {
+        $defaultCountry = 'IT';
+    } else {
+        $allowedCountryKeys = array_keys($allowedDestinationCountries);
+        $defaultCountry = $allowedCountryKeys[0] ?? 'IT';
+    }
+}
+
 $projectRoot = realpath(__DIR__ . '/../../../') ?: __DIR__ . '/../../../';
 $settingsService = new SettingsService($pdo, $projectRoot);
 $portalBrtPricingConfig = $settingsService->getPortalBrtPricing();
@@ -200,16 +210,6 @@ $buildSenderReference = static function (int $numericReference, ?string $senderN
     $reference = sprintf('%s-%s-%d', $prefix, $slug, $numericReference);
     return strlen($reference) > 80 ? substr($reference, 0, 80) : $reference;
 };
-
-$defaultCountry = strtoupper($config->getDefaultCountryIsoAlpha2() ?? 'IT');
-if (!isset($allowedDestinationCountries[$defaultCountry])) {
-    if (isset($allowedDestinationCountries['IT'])) {
-        $defaultCountry = 'IT';
-    } else {
-        $allowedCountryKeys = array_keys($allowedDestinationCountries);
-        $defaultCountry = $allowedCountryKeys[0] ?? 'IT';
-    }
-}
 
 try {
     $senderCustomerCode = $config->getSenderCustomerCode();
