@@ -18,3 +18,5 @@ node_modules/
 .env.*
 customer-portal/cache/
 docs/
+uploads/*
+!uploads/.gitignore
