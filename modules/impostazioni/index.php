@@ -122,6 +122,9 @@ if (!function_exists('settings_build_service_form')) {
     }
 }
 
+$projectRoot = realpath(__DIR__ . '/../../') ?: __DIR__ . '/../../';
+$settingsService = new SettingsService($pdo, $projectRoot);
+
 $opportunityService = new OpportunityService($pdo);
 $opportunityStatuses = [];
 $opportunityStatusPreview = [];
