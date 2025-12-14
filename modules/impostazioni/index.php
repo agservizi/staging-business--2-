@@ -126,6 +126,21 @@ $projectRoot = realpath(__DIR__ . '/../../') ?: __DIR__ . '/../../';
 $settingsService = new SettingsService($pdo, $projectRoot);
 $appearanceConfig = get_ui_theme_config($pdo);
 $themeOptions = SettingsService::availableThemes();
+$portalBrtPricingForm = $settingsService->getPortalBrtPricing();
+$portalBrtZonesMeta = [
+    'italy' => ['label' => 'Italia', 'description' => 'Spedizioni nazionali'],
+    'europe' => ['label' => 'Europa', 'description' => 'Spedizioni UE/extra-UE'],
+    'swiss' => ['label' => 'Svizzera', 'description' => 'Spedizioni CH con documenti doganali'],
+];
+if (!isset($portalBrtPricingForm['zones'])) {
+    $portalBrtPricingForm = [
+        'zones' => [
+            'italy' => $portalBrtPricingForm,
+            'europe' => ['currency' => 'EUR', 'tiers' => []],
+            'swiss' => ['currency' => 'EUR', 'tiers' => []],
+        ],
+    ];
+}
 
 // Configurazione azienda e liste di supporto
 $companyDefaults = [
