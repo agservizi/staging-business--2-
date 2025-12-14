@@ -323,6 +323,36 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </div>
                 <?php endforeach; ?>
             </div>
+        <?php else: ?>
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-lg-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <p class="text-uppercase small text-muted mb-1">Ultimo accesso</p>
+                            <h2 class="h5 mb-0"><?php echo sanitize_output($lastLoginDisplay); ?></h2>
+                            <p class="text-muted small mb-0">Data e ora dell'ultimo login.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <p class="text-uppercase small text-muted mb-1">Creato il</p>
+                            <h2 class="h5 mb-0"><?php echo sanitize_output($createdAtDisplay); ?></h2>
+                            <p class="text-muted small mb-0">Data di creazione account.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <p class="text-uppercase small text-muted mb-1">Identificativo utente</p>
+                            <h2 class="h5 mb-0">#<?php echo (int) $user['id']; ?></h2>
+                            <p class="text-muted small mb-0">Riferimento interno account.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         <?php endif; ?>
 
         <div class="row g-4">
