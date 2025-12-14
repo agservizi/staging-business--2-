@@ -102,49 +102,69 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         </form>
 
+        <?php
+            $commissionCards = [
+                [
+                    'label' => 'Totale ' . $selectedMonthLabel,
+                    'value' => number_format($monthTotal, 2, ',', '.') . ' €',
+                    'tone' => 'neon',
+                    'icon' => 'fa-sack-dollar',
+                    'tag' => 'Mese',
+                    'hint' => 'Provvigioni stimate mese',
+                ],
+                [
+                    'label' => 'Opportunity',
+                    'value' => number_format($monthCount, 0, ',', '.'),
+                    'tone' => 'amber',
+                    'icon' => 'fa-briefcase',
+                    'tag' => 'Volumi',
+                    'hint' => 'Pratiche inviate nel periodo',
+                ],
+                [
+                    'label' => 'Media per pratica',
+                    'value' => number_format($averageCommission, 2, ',', '.') . ' €',
+                    'tone' => 'emerald',
+                    'icon' => 'fa-signal',
+                    'tag' => 'Margine medio',
+                    'hint' => 'Valore stimato per OP',
+                ],
+                [
+                    'label' => 'Totale storico',
+                    'value' => number_format($lifetimeTotal, 2, ',', '.') . ' €',
+                    'tone' => 'magenta',
+                    'icon' => 'fa-chart-line',
+                    'tag' => 'Lifetime',
+                    'hint' => 'Somma complessiva stimata',
+                ],
+            ];
+        ?>
         <div class="row g-3 mb-4">
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <p class="text-uppercase small text-muted mb-1">Totale <?php echo sanitize_output($selectedMonthLabel); ?></p>
-                        <h2 class="display-6 mb-0">
-                            <?php echo sanitize_output(number_format($monthTotal, 2, ',', '.')); ?> €
-                        </h2>
-                        <p class="text-muted small mb-0">Somma delle provvigioni stimate caricate nel mese.</p>
+            <?php foreach ($commissionCards as $card): ?>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="stat-neo stat-neo--<?php echo sanitize_output($card['tone']); ?> h-100">
+                        <div class="stat-neo__glow" aria-hidden="true"></div>
+                        <div class="stat-neo__body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="d-flex flex-column gap-1">
+                                    <span class="stat-neo__label"><?php echo sanitize_output($card['label']); ?></span>
+                                    <span class="stat-neo__value"><?php echo sanitize_output($card['value']); ?></span>
+                                </div>
+                                <div class="stat-neo__icon" aria-hidden="true">
+                                    <i class="fa-solid <?php echo sanitize_output($card['icon']); ?>"></i>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <span class="stat-neo__tag"><?php echo sanitize_output($card['tag']); ?></span>
+                                <span class="stat-neo__hint"><?php echo sanitize_output($card['hint']); ?></span>
+                            </div>
+                            <div class="stat-neo__footer">
+                                <span class="stat-neo__dot"></span>
+                                Aggiornato automaticamente
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <p class="text-uppercase small text-muted mb-1">Opportunity</p>
-                        <h2 class="display-6 mb-0"><?php echo (int) $monthCount; ?></h2>
-                        <p class="text-muted small mb-0">Numero di pratiche inviate nel mese selezionato.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <p class="text-uppercase small text-muted mb-1">Media per pratica</p>
-                        <h2 class="display-6 mb-0">
-                            <?php echo sanitize_output(number_format($averageCommission, 2, ',', '.')); ?> €
-                        </h2>
-                        <p class="text-muted small mb-0">Valore medio stimato per opportunity.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <p class="text-uppercase small text-muted mb-1">Totale storico</p>
-                        <h2 class="display-6 mb-0">
-                            <?php echo sanitize_output(number_format($lifetimeTotal, 2, ',', '.')); ?> €
-                        </h2>
-                        <p class="text-muted small mb-0">Somma complessiva delle tue provvigioni stimate.</p>
-                    </div>
-                </div>
-            </div>
+            <?php endforeach; ?>
         </div>
 
         <div class="row g-4">
