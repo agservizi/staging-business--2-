@@ -564,6 +564,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // Determina network e pricing condition coerenti con la nazione di destinazione
+    $networkAlias = 'ITALIA';
+    $networkCode = 'I';
+    if ($data['consignee_country'] === 'CH') {
+        $networkAlias = 'SWISS';
+        $networkCode = 'S';
+    } elseif ($data['consignee_country'] !== 'IT') {
+        $networkAlias = 'EUROPE';
+        $networkCode = 'E';
+    }
+    $pricingConditionToUse = $config->getPricingConditionCode($networkAlias) ?? $config->getPricingConditionCode();
+
     if (!$errors) {
         $createData = [
             'senderCustomerCode' => $senderCustomerCode,
@@ -586,6 +598,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'notes' => $data['notes'],
             'isLabelRequired' => $data['is_label_required'] === '1' ? 1 : 0,
             'pudoId' => $data['pudo_id'],
+            'network' => $networkCode,
+            'pricingConditionCode' => $pricingConditionToUse,
         ];
 
         if ($serviceCodeToUse !== '') {
@@ -641,6 +655,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'required_for_country' => $isCustomsRequired,
                     'form' => $customsForm,
                     'payload' => $customsPayload,
+                ],
+                'network' => [
+                    'alias' => $networkAlias,
+                    'code' => $networkCode,
+                    'pricing_condition' => $pricingConditionToUse,
                 ],
                 'service' => [
                     'code' => $serviceCodeToUse !== '' ? $serviceCodeToUse : null,
@@ -791,6 +810,8 @@ if ($canAttemptQuote) {
         'dimensionLengthCM' => $lengthCm,
         'dimensionDepthCM' => $depthCm,
         'dimensionHeightCM' => $heightCm,
+        'network' => $networkCode,
+        'pricingConditionCode' => $pricingConditionToUse,
     ];
 
     if ($computedVolumetricWeight !== null && $computedVolumetricWeight > 0) {
