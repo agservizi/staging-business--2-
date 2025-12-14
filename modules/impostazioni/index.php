@@ -186,7 +186,6 @@ $movementDescriptions = $settingsService->getMovementDescriptions();
 $appointmentTypes = $settingsService->getAppointmentTypes();
 $appointmentStatuses = $settingsService->getAppointmentStatuses();
 $servicePricing = $settingsService->getServicePricing();
-$portalBrtPricingForm = $settingsService->getPortalBrtPricing();
 
 $opportunityService = new OpportunityService($pdo);
 $opportunityStatuses = [];
