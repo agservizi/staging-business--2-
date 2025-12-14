@@ -89,43 +89,69 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         </div>
 
+        <?php
+            $ticketCards = [
+                'total' => [
+                    'value' => (int) $totalTickets,
+                    'label' => 'Totali',
+                    'tone' => 'neon',
+                    'icon' => 'fa-layer-group',
+                    'tag' => 'Volume',
+                    'hint' => 'Ticket registrati',
+                ],
+                'open' => [
+                    'value' => (int) $openTickets,
+                    'label' => 'Aperti',
+                    'tone' => 'amber',
+                    'icon' => 'fa-rotate-right',
+                    'tag' => 'Work in progress',
+                    'hint' => 'In lavorazione dal team',
+                ],
+                'waiting' => [
+                    'value' => (int) $waitingTickets,
+                    'label' => 'In attesa',
+                    'tone' => 'magenta',
+                    'icon' => 'fa-hourglass-half',
+                    'tag' => 'Serve risposta',
+                    'hint' => 'Richiedono un tuo riscontro',
+                ],
+                'closed' => [
+                    'value' => (int) $resolvedTickets,
+                    'label' => 'Chiusi',
+                    'tone' => 'emerald',
+                    'icon' => 'fa-circle-check',
+                    'tag' => 'Risolti',
+                    'hint' => 'Ticket risolti o archiviati',
+                ],
+            ];
+        ?>
         <div class="row g-3 mb-4">
-            <div class="col-12 col-md-3">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <p class="text-uppercase small text-muted mb-1">Totali</p>
-                        <h2 class="display-6 mb-0"><?php echo (int) $totalTickets; ?></h2>
-                        <p class="text-muted small mb-0">Ticket registrati da questo account.</p>
+            <?php foreach ($ticketCards as $card): ?>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="stat-neo stat-neo--<?php echo sanitize_output($card['tone']); ?> h-100">
+                        <div class="stat-neo__glow" aria-hidden="true"></div>
+                        <div class="stat-neo__body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="d-flex flex-column gap-1">
+                                    <span class="stat-neo__label"><?php echo sanitize_output($card['label']); ?></span>
+                                    <span class="stat-neo__value"><?php echo sanitize_output(number_format($card['value'], 0, ',', '.')); ?></span>
+                                </div>
+                                <div class="stat-neo__icon" aria-hidden="true">
+                                    <i class="fa-solid <?php echo sanitize_output($card['icon']); ?>"></i>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <span class="stat-neo__tag"><?php echo sanitize_output($card['tag']); ?></span>
+                                <span class="stat-neo__hint"><?php echo sanitize_output($card['hint']); ?></span>
+                            </div>
+                            <div class="stat-neo__footer">
+                                <span class="stat-neo__dot"></span>
+                                Aggiornato automaticamente
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-12 col-md-3">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <p class="text-uppercase small text-muted mb-1">Aperti</p>
-                        <h2 class="display-6 mb-0 text-warning"><?php echo (int) $openTickets; ?></h2>
-                        <p class="text-muted small mb-0">In lavorazione dal team.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-3">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <p class="text-uppercase small text-muted mb-1">In attesa</p>
-                        <h2 class="display-6 mb-0 text-info"><?php echo (int) $waitingTickets; ?></h2>
-                        <p class="text-muted small mb-0">Richiedono un tuo riscontro.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-3">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body">
-                        <p class="text-uppercase small text-muted mb-1">Chiusi</p>
-                        <h2 class="display-6 mb-0 text-success"><?php echo (int) $resolvedTickets; ?></h2>
-                        <p class="text-muted small mb-0">Ticket risolti o archiviati.</p>
-                    </div>
-                </div>
-            </div>
+            <?php endforeach; ?>
         </div>
 
         <div class="card shadow-sm mb-4">
