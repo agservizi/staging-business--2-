@@ -79,29 +79,6 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         </div>
 
-        <form class="card shadow-sm mb-4" method="get">
-            <div class="card-body">
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-6 col-lg-4">
-                        <label class="form-label text-uppercase small text-muted">Periodo mensile</label>
-                        <select class="form-select" name="month">
-                            <?php foreach ($monthOptions as $option): ?>
-                                <?php $key = (string) ($option['key'] ?? ''); ?>
-                                <option value="<?php echo sanitize_output($key); ?>" <?php echo $key === $monthParam ? 'selected' : ''; ?>>
-                                    <?php echo sanitize_output($option['label'] ?? $key); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-3 col-lg-2">
-                        <button class="btn btn-outline-primary w-100" type="submit">
-                            <i class="fa-solid fa-rotate me-2"></i>Aggiorna
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </form>
-
         <?php
             $commissionCards = [
                 [
@@ -109,7 +86,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     'value' => number_format($monthTotal, 2, ',', '.') . ' €',
                     'tone' => 'neon',
                     'icon' => 'fa-sack-dollar',
-                    'tag' => 'Mese',
+                    'tag' => 'Periodo',
                     'hint' => 'Provvigioni stimate mese',
                 ],
                 [
@@ -117,7 +94,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     'value' => number_format($monthCount, 0, ',', '.'),
                     'tone' => 'amber',
                     'icon' => 'fa-briefcase',
-                    'tag' => 'Volumi',
+                    'tag' => 'In lavorazione',
                     'hint' => 'Pratiche inviate nel periodo',
                 ],
                 [
@@ -133,11 +110,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     'value' => number_format($lifetimeTotal, 2, ',', '.') . ' €',
                     'tone' => 'magenta',
                     'icon' => 'fa-chart-line',
-                    'tag' => 'Lifetime',
+                    'tag' => 'Storico',
                     'hint' => 'Somma complessiva stimata',
                 ],
             ];
         ?>
+
         <div class="row g-3 mb-4">
             <?php foreach ($commissionCards as $card): ?>
                 <div class="col-12 col-md-6 col-xl-3">
@@ -166,6 +144,29 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <form class="card shadow-sm mb-4" method="get">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-6 col-lg-4">
+                        <label class="form-label text-uppercase small text-muted">Periodo mensile</label>
+                        <select class="form-select" name="month">
+                            <?php foreach ($monthOptions as $option): ?>
+                                <?php $key = (string) ($option['key'] ?? ''); ?>
+                                <option value="<?php echo sanitize_output($key); ?>" <?php echo $key === $monthParam ? 'selected' : ''; ?>>
+                                    <?php echo sanitize_output($option['label'] ?? $key); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-lg-2">
+                        <button class="btn btn-outline-primary w-100" type="submit">
+                            <i class="fa-solid fa-rotate me-2"></i>Aggiorna
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
 
         <div class="row g-4">
             <div class="col-12 col-lg-5">
