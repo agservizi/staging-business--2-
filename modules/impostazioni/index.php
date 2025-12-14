@@ -135,7 +135,7 @@ $portalBrtZonesMeta = [
 if (!isset($portalBrtPricingForm['zones']) || !is_array($portalBrtPricingForm['zones'])) {
     $portalBrtPricingForm = [
         'zones' => [
-            'italy' => $portalBrtPricingForm,
+            'italy' => array_merge(['currency' => 'EUR', 'tiers' => []], $portalBrtPricingForm),
             'europe' => ['currency' => 'EUR', 'tiers' => []],
             'swiss' => ['currency' => 'EUR', 'tiers' => []],
         ],
