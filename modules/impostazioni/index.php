@@ -124,6 +124,8 @@ if (!function_exists('settings_build_service_form')) {
 
 $projectRoot = realpath(__DIR__ . '/../../') ?: __DIR__ . '/../../';
 $settingsService = new SettingsService($pdo, $projectRoot);
+$appearanceConfig = get_ui_theme_config($pdo);
+$themeOptions = SettingsService::availableThemes();
 
 $opportunityService = new OpportunityService($pdo);
 $opportunityStatuses = [];
