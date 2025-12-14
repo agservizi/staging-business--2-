@@ -126,13 +126,13 @@ $projectRoot = realpath(__DIR__ . '/../../') ?: __DIR__ . '/../../';
 $settingsService = new SettingsService($pdo, $projectRoot);
 $appearanceConfig = get_ui_theme_config($pdo);
 $themeOptions = SettingsService::availableThemes();
-$portalBrtPricingForm = $settingsService->getPortalBrtPricing();
+$portalBrtPricingForm = $settingsService->getPortalBrtPricingFormConfig();
 $portalBrtZonesMeta = [
     'italy' => ['label' => 'Italia', 'description' => 'Spedizioni nazionali'],
     'europe' => ['label' => 'Europa', 'description' => 'Spedizioni UE/extra-UE'],
     'swiss' => ['label' => 'Svizzera', 'description' => 'Spedizioni CH con documenti doganali'],
 ];
-if (!isset($portalBrtPricingForm['zones'])) {
+if (!isset($portalBrtPricingForm['zones']) || !is_array($portalBrtPricingForm['zones'])) {
     $portalBrtPricingForm = [
         'zones' => [
             'italy' => $portalBrtPricingForm,
@@ -140,6 +140,15 @@ if (!isset($portalBrtPricingForm['zones'])) {
             'swiss' => ['currency' => 'EUR', 'tiers' => []],
         ],
     ];
+}
+// Assicura sempre la presenza delle tre zone attese
+foreach (['italy', 'europe', 'swiss'] as $zoneKey) {
+    if (!isset($portalBrtPricingForm['zones'][$zoneKey]) || !is_array($portalBrtPricingForm['zones'][$zoneKey])) {
+        $portalBrtPricingForm['zones'][$zoneKey] = ['currency' => 'EUR', 'tiers' => []];
+    }
+    if (!isset($portalBrtPricingForm['zones'][$zoneKey]['tiers']) || !is_array($portalBrtPricingForm['zones'][$zoneKey]['tiers'])) {
+        $portalBrtPricingForm['zones'][$zoneKey]['tiers'] = [];
+    }
 }
 
 // Configurazione azienda e liste di supporto
