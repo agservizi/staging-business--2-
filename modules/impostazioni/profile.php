@@ -237,6 +237,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $mfaEnabled = (int) ($user['mfa_enabled'] ?? 0) === 1;
 $mfaEnabledAt = $user['mfa_enabled_at'] ?? null;
+$lastLoginDisplay = $user['last_login_at'] ? format_datetime_locale($user['last_login_at']) : 'N/D';
+$createdAtDisplay = $user['created_at'] ? format_datetime_locale($user['created_at']) : 'N/D';
+$profileHighlights = [
+    [
+        'label' => 'Ultimo accesso',
+        'value' => $lastLoginDisplay,
+        'tone' => 'neon',
+        'icon' => 'fa-clock-rotate-left',
+        'tag' => 'Sicurezza',
+        'hint' => 'Ultimo movimento',
+    ],
+    [
+        'label' => 'MFA',
+        'value' => $mfaEnabled ? 'Attiva' : 'Non attiva',
+        'tone' => $mfaEnabled ? 'emerald' : 'magenta',
+        'icon' => $mfaEnabled ? 'fa-shield-halved' : 'fa-shield',
+        'tag' => $mfaEnabled ? 'Protetto' : 'Da attivare',
+        'hint' => $mfaEnabled ? 'Codice 2FA richiesto' : 'Aggiungi verifica 2FA',
+    ],
+    [
+        'label' => 'Tema',
+        'value' => $formValues['theme'] === 'dark' ? 'Scuro' : 'Chiaro',
+        'tone' => 'amber',
+        'icon' => 'fa-circle-half-stroke',
+        'tag' => 'Preferenza UI',
+        'hint' => 'Impatta il portale',
+    ],
+    [
+        'label' => 'ID utente',
+        'value' => '#' . (int) $user['id'],
+        'tone' => 'magenta',
+        'icon' => 'fa-id-badge',
+        'tag' => 'Identità',
+        'hint' => 'Creato il ' . $createdAtDisplay,
+    ],
+];
 
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
@@ -257,6 +293,37 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         <?php foreach ($alerts as $alert): ?>
             <div class="alert alert-<?php echo sanitize_output($alert['type']); ?>"><?php echo sanitize_output($alert['text']); ?></div>
         <?php endforeach; ?>
+
+        <?php if (($user['ruolo'] ?? '') === 'Collaboratore'): ?>
+            <div class="row g-3 mb-4">
+                <?php foreach ($profileHighlights as $card): ?>
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <div class="stat-neo stat-neo--<?php echo sanitize_output($card['tone']); ?> h-100">
+                            <div class="stat-neo__glow" aria-hidden="true"></div>
+                            <div class="stat-neo__body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div class="d-flex flex-column gap-1">
+                                        <span class="stat-neo__label"><?php echo sanitize_output($card['label']); ?></span>
+                                        <span class="stat-neo__value"><?php echo sanitize_output($card['value']); ?></span>
+                                    </div>
+                                    <div class="stat-neo__icon" aria-hidden="true">
+                                        <i class="fa-solid <?php echo sanitize_output($card['icon']); ?>"></i>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <span class="stat-neo__tag"><?php echo sanitize_output($card['tag']); ?></span>
+                                    <span class="stat-neo__hint"><?php echo sanitize_output($card['hint']); ?></span>
+                                </div>
+                                <div class="stat-neo__footer">
+                                    <span class="stat-neo__dot"></span>
+                                    Aggiornato automaticamente
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
 
         <div class="row g-4">
             <div class="col-12 col-xl-6">
@@ -398,33 +465,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </div>
         </div>
 
-        <div class="card ag-card mt-4">
-            <div class="card-header bg-transparent border-0">
-                <h5 class="card-title mb-0">Metadati account</h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-12 col-md-4">
-                        <div class="border rounded-3 p-3 bg-body-secondary h-100">
-                            <span class="text-muted small">Creato il</span>
-                            <div class="fw-semibold fs-5 mt-1"><?php echo sanitize_output(format_datetime($user['created_at'])); ?></div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <div class="border rounded-3 p-3 bg-body-secondary h-100">
-                            <span class="text-muted small">Ultimo accesso</span>
-                            <div class="fw-semibold fs-5 mt-1"><?php echo $user['last_login_at'] ? sanitize_output(format_datetime($user['last_login_at'])) : '—'; ?></div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <div class="border rounded-3 p-3 bg-body-secondary h-100">
-                            <span class="text-muted small">Identificativo utente</span>
-                            <div class="fw-semibold fs-5 mt-1">#<?php echo (int)$user['id']; ?></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </main>
 </div>
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
