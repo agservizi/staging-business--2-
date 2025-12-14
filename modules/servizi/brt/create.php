@@ -40,15 +40,29 @@ $configuredReturnDepotString = $configuredReturnDepot !== null ? (string) $confi
 $projectRoot = realpath(__DIR__ . '/../../../') ?: __DIR__ . '/../../../';
 $settingsService = new SettingsService($pdo, $projectRoot);
 $portalBrtPricingConfig = $settingsService->getPortalBrtPricing();
-$portalBrtPricingCurrency = strtoupper((string) ($portalBrtPricingConfig['currency'] ?? 'EUR'));
-$portalBrtPricingTiers = $portalBrtPricingConfig['tiers'] ?? [];
+$portalBrtPricingZones = $portalBrtPricingConfig['zones'] ?? [];
+$resolvePricingZone = static function (string $country): string {
+    $upper = strtoupper(trim($country));
+    if ($upper === 'CH') {
+        return 'CH';
+    }
+    if ($upper !== 'IT') {
+        return 'EU';
+    }
+    return 'IT';
+};
+$portalBrtPricingZoneKey = $resolvePricingZone($defaultCountry);
+$portalBrtPricingSelectedZone = $portalBrtPricingZones[$portalBrtPricingZoneKey] ?? $portalBrtPricingZones['IT'] ?? ['currency' => 'EUR', 'tiers' => []];
+$portalBrtPricingCurrency = strtoupper((string) ($portalBrtPricingSelectedZone['currency'] ?? 'EUR'));
+$portalBrtPricingTiers = $portalBrtPricingSelectedZone['tiers'] ?? [];
 try {
     $portalBrtPricingJson = htmlspecialchars(json_encode($portalBrtPricingConfig, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
 } catch (Throwable $pricingException) {
     $portalBrtPricingJson = htmlspecialchars('{"currency":"' . $portalBrtPricingCurrency . '","tiers":[]}', ENT_QUOTES, 'UTF-8');
 }
+$portalBrtZoneLabels = ['IT' => 'Italia', 'EU' => 'Europa', 'CH' => 'Svizzera'];
 $portalBrtPricingInfoMessage = $portalBrtPricingTiers === []
-    ? 'Configura le tariffe in Impostazioni -> Tariffe BRT per ottenere un costo stimato.'
+    ? 'Configura le tariffe in Impostazioni -> Tariffe BRT per ottenere un costo stimato per ' . ($portalBrtZoneLabels[$portalBrtPricingZoneKey] ?? 'questa area') . '.'
     : 'Compila peso e dimensioni per visualizzare il costo stimato.';
 
 $normalizePortalPricingTier = static function (array $tier, int $index): ?array {
@@ -763,6 +777,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$portalBrtPricingZoneKey = $resolvePricingZone($data['consignee_country'] ?? $defaultCountry);
+$portalBrtPricingSelectedZone = $portalBrtPricingZones[$portalBrtPricingZoneKey] ?? $portalBrtPricingZones['IT'] ?? ['currency' => 'EUR', 'tiers' => []];
+$portalBrtPricingCurrency = strtoupper((string) ($portalBrtPricingSelectedZone['currency'] ?? 'EUR'));
+$portalBrtPricingTiers = $portalBrtPricingSelectedZone['tiers'] ?? [];
+$portalBrtPricingInfoMessage = $portalBrtPricingTiers === []
+    ? 'Configura le tariffe in Impostazioni -> Tariffe BRT per ottenere un costo stimato per ' . ($portalBrtZoneLabels[$portalBrtPricingZoneKey] ?? 'questa area') . '.'
+    : 'Compila peso e dimensioni per visualizzare il costo stimato.';
+
 $isCustomsRequired = in_array($data['consignee_country'], $customsRequiredCountries, true);
 if ($isCustomsRequired && $customsForm['enabled'] !== '1') {
     $customsForm['enabled'] = '1';
@@ -920,7 +942,7 @@ window.CIEIstatLookupConfig = Object.assign({}, window.CIEIstatLookupConfig, {
                         </dl>
                     </div>
                 </div>
-                <div class="card ag-card mt-4" data-pricing-card data-pricing-config="<?php echo $portalBrtPricingJson; ?>" data-pricing-currency="<?php echo sanitize_output($portalBrtPricingCurrency); ?>" style="position: sticky; top: 6.5rem; z-index: 100;">
+                <div class="card ag-card mt-4" data-pricing-card data-pricing-config="<?php echo $portalBrtPricingJson; ?>" data-pricing-currency="<?php echo sanitize_output($portalBrtPricingCurrency); ?>" data-pricing-zone="<?php echo sanitize_output($portalBrtPricingZoneKey); ?>" style="position: sticky; top: 6.5rem; z-index: 100;">
                     <div class="card-body">
                         <h2 class="h5">Costo stimato</h2>
                         <div class="d-flex flex-column gap-2 d-none" data-pricing-summary>
@@ -1475,44 +1497,92 @@ window.CIEIstatLookupConfig = Object.assign({}, window.CIEIstatLookupConfig, {
 
             const resolvePricingConfig = () => {
                 if (!pricingCard) {
-                    return { currency: 'EUR', tiers: [] };
+                    return { zones: { IT: { currency: 'EUR', tiers: [] } } };
                 }
                 const raw = pricingCard.dataset.pricingConfig || '';
+                const fallbackCurrency = (pricingCard.dataset.pricingCurrency || 'EUR').toUpperCase();
                 try {
                     const parsed = JSON.parse(raw);
-                    const currency = typeof parsed.currency === 'string' && parsed.currency.trim() !== ''
-                        ? parsed.currency.trim().toUpperCase()
-                        : (pricingCard.dataset.pricingCurrency || 'EUR').toUpperCase();
-                    const tiers = Array.isArray(parsed.tiers) ? parsed.tiers : [];
-                    return { currency, tiers };
-                } catch (error) {
+                    const zones = typeof parsed.zones === 'object' && parsed.zones !== null ? parsed.zones : null;
+                    if (zones) {
+                        return { zones };
+                    }
                     return {
-                        currency: (pricingCard.dataset.pricingCurrency || 'EUR').toUpperCase(),
-                        tiers: [],
+                        zones: {
+                            IT: {
+                                currency: typeof parsed.currency === 'string' && parsed.currency.trim() !== '' ? parsed.currency.trim().toUpperCase() : fallbackCurrency,
+                                tiers: Array.isArray(parsed.tiers) ? parsed.tiers : [],
+                            },
+                        },
                     };
+                } catch (error) {
+                    return { zones: { IT: { currency: fallbackCurrency, tiers: [] } } };
                 }
             };
 
-            const pricingConfig = resolvePricingConfig();
-            const pricingCurrency = pricingConfig.currency;
-            const pricingTiers = pricingConfig.tiers.map((tier, index) => {
-                const safeTier = tier && typeof tier === 'object' ? tier : {};
-                const price = Number(safeTier.price ?? 0);
-                const maxWeight = safeTier.max_weight === null || safeTier.max_weight === undefined
-                    ? null
-                    : Number(safeTier.max_weight);
-                const maxVolume = safeTier.max_volume === null || safeTier.max_volume === undefined
-                    ? null
-                    : Number(safeTier.max_volume);
+            const normalizeZoneTiers = (tiers) => {
+                if (!Array.isArray(tiers)) {
+                    return [];
+                }
+                return tiers.map((tier, index) => {
+                    const safeTier = tier && typeof tier === 'object' ? tier : {};
+                    const price = Number(safeTier.price ?? 0);
+                    const maxWeight = safeTier.max_weight === null || safeTier.max_weight === undefined
+                        ? null
+                        : Number(safeTier.max_weight);
+                    const maxVolume = safeTier.max_volume === null || safeTier.max_volume === undefined
+                        ? null
+                        : Number(safeTier.max_volume);
 
-                return {
-                    index,
-                    label: typeof safeTier.label === 'string' ? safeTier.label : '',
-                    price: Number.isFinite(price) ? price : 0,
-                    max_weight: Number.isFinite(maxWeight) ? maxWeight : null,
-                    max_volume: Number.isFinite(maxVolume) ? maxVolume : null,
+                    return {
+                        index,
+                        label: typeof safeTier.label === 'string' ? safeTier.label : '',
+                        price: Number.isFinite(price) ? price : 0,
+                        max_weight: Number.isFinite(maxWeight) ? maxWeight : null,
+                        max_volume: Number.isFinite(maxVolume) ? maxVolume : null,
+                    };
+                }).filter((tier) => tier.price > 0);
+            };
+
+            const pricingConfig = resolvePricingConfig();
+            const pricingZonesRaw = pricingConfig.zones || {};
+            const pricingZones = {};
+            ['IT', 'EU', 'CH'].forEach((zoneKey) => {
+                const zone = pricingZonesRaw[zoneKey] || {};
+                const currency = typeof zone.currency === 'string' && zone.currency.trim() !== ''
+                    ? zone.currency.trim().toUpperCase()
+                    : 'EUR';
+                pricingZones[zoneKey] = {
+                    currency,
+                    tiers: normalizeZoneTiers(zone.tiers),
                 };
-            }).filter((tier) => tier.price > 0);
+            });
+
+            const resolveZoneFromCountry = (country) => {
+                const upper = (country || '').toString().trim().toUpperCase();
+                if (upper === 'CH') return 'CH';
+                if (upper !== 'IT' && upper !== '') return 'EU';
+                return 'IT';
+            };
+
+            const pricingState = {
+                zone: pricingCard ? (pricingCard.dataset.pricingZone || 'IT') : 'IT',
+                currency: 'EUR',
+                tiers: [],
+            };
+
+            const applyPricingZone = (countryValue) => {
+                const zoneKey = resolveZoneFromCountry(countryValue || pricingState.zone);
+                const zone = pricingZones[zoneKey] || pricingZones.IT || { currency: 'EUR', tiers: [] };
+                pricingState.zone = zoneKey;
+                pricingState.currency = zone.currency || 'EUR';
+                pricingState.tiers = zone.tiers || [];
+                if (pricingCurrencyElement) {
+                    pricingCurrencyElement.textContent = pricingState.currency;
+                }
+            };
+
+            applyPricingZone(countrySelect ? countrySelect.value : pricingState.zone);
 
             const basePricingInfo = pricingInfoElement && pricingInfoElement.textContent
                 ? pricingInfoElement.textContent.trim()
@@ -1551,8 +1621,9 @@ window.CIEIstatLookupConfig = Object.assign({}, window.CIEIstatLookupConfig, {
             };
 
             const findPricingTier = (weight, volume) => {
-                for (let i = 0; i < pricingTiers.length; i += 1) {
-                    const tier = pricingTiers[i];
+                const tiers = pricingState.tiers || [];
+                for (let i = 0; i < tiers.length; i += 1) {
+                    const tier = tiers[i];
                     const maxWeight = tier.max_weight;
                     const maxVolume = tier.max_volume;
 
@@ -1599,7 +1670,7 @@ window.CIEIstatLookupConfig = Object.assign({}, window.CIEIstatLookupConfig, {
                     pricingCriteriaElement.classList.add('d-none');
                 }
 
-                if (pricingTiers.length === 0) {
+                if (!pricingState.tiers || pricingState.tiers.length === 0) {
                     if (pricingInfoElement) {
                         pricingInfoElement.textContent = noPricingConfigMessage;
                     }
@@ -1652,7 +1723,7 @@ window.CIEIstatLookupConfig = Object.assign({}, window.CIEIstatLookupConfig, {
                     pricingTotalElement.textContent = formatMoney(tier.price);
                 }
                 if (pricingCurrencyElement) {
-                    pricingCurrencyElement.textContent = pricingCurrency;
+                    pricingCurrencyElement.textContent = pricingState.currency;
                 }
 
                 const labelText = tier.label && tier.label.trim() !== ''
@@ -1701,9 +1772,12 @@ window.CIEIstatLookupConfig = Object.assign({}, window.CIEIstatLookupConfig, {
                     pudoCountryInput.value = selectedValue;
                     pudoCountryInput.dispatchEvent(new Event('change', { bubbles: true }));
                 };
-
                 syncPudoCountry();
-                countrySelect.addEventListener('change', syncPudoCountry);
+                countrySelect.addEventListener('change', () => {
+                    syncPudoCountry();
+                    applyPricingZone(countrySelect.value);
+                    updatePricingCard();
+                });
             }
 
             if (form) {

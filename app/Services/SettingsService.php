@@ -20,6 +20,7 @@ class SettingsService
     private const EMAIL_MARKETING_SETTINGS_KEY = 'email_marketing_settings';
     private const SERVICE_PRICING_KEY = 'service_pricing';
     public const PORTAL_BRT_PRICING_KEY = 'portal_brt_pricing';
+    private const PORTAL_BRT_ZONES = ['IT', 'EU', 'CH'];
     public const CAF_PATRONATO_STATUS_CATEGORIES = [
         'pending' => 'Da lavorare / In attesa',
         'in_progress' => 'In lavorazione',
@@ -1485,17 +1486,14 @@ class SettingsService
             if (is_string($value) && $value !== '') {
                 $decoded = json_decode($value, true, 512, JSON_THROW_ON_ERROR);
                 if (is_array($decoded)) {
-                    return self::normalizePortalBrtPricing($decoded);
+                    return $this->normalizePortalBrtZones($decoded);
                 }
             }
         } catch (Throwable $exception) {
             error_log('Portal BRT pricing fetch failed: ' . $exception->getMessage());
         }
 
-        return [
-            'currency' => 'EUR',
-            'tiers' => [],
-        ];
+        return $this->normalizePortalBrtZones([]);
     }
 
     /**
@@ -1504,149 +1502,81 @@ class SettingsService
     public function getPortalBrtPricingFormConfig(): array
     {
         $config = $this->getPortalBrtPricing();
-        return $this->normalizeDisplayTiersForSuccess($config);
+        return $this->normalizeDisplayZonesForSuccess($config);
     }
 
     /**
-     * @return array{success:bool,errors:array<int,string>,config:array{currency:string,tiers:array<int,array{label:string,max_weight:string,max_volume:string,price:string}>}}
+     * @return array{success:bool,errors:array<int,string>,config:array{zones:array<string,array{currency:string,tiers:array<int,array{label:string,max_weight:string,max_volume:string,price:string}>}>}}
      */
     public function savePortalBrtPricing(array $input, int $userId): array
     {
-        $currency = self::normalizeCurrency($input['currency'] ?? null);
-        $tiersInput = isset($input['tiers']) && is_array($input['tiers']) ? $input['tiers'] : [];
+        $zonesInput = isset($input['zones']) && is_array($input['zones']) ? $input['zones'] : null;
 
-        $errors = [];
-        $preparedTiers = [];
-        $displayTiers = [];
-        $previousWeight = null;
-        $previousVolume = null;
-        $hasUnlimitedBoth = false;
-
-        foreach ($tiersInput as $index => $tierInput) {
-            if (!is_array($tierInput)) {
-                continue;
-            }
-
-            $rawLabel = is_string($tierInput['label'] ?? null) ? trim((string) $tierInput['label']) : '';
-            $rawWeight = is_string($tierInput['max_weight'] ?? null) ? trim((string) $tierInput['max_weight']) : ($tierInput['max_weight'] ?? null);
-            $rawVolume = is_string($tierInput['max_volume'] ?? null) ? trim((string) $tierInput['max_volume']) : ($tierInput['max_volume'] ?? null);
-            $rawPrice = is_string($tierInput['price'] ?? null) ? trim((string) $tierInput['price']) : ($tierInput['price'] ?? null);
-
-            $label = self::normalizeTierLabel($rawLabel);
-            $maxWeight = self::toNullableFloat($rawWeight);
-            $maxVolume = self::toNullableFloat($rawVolume);
-            $price = self::toNullableFloat($rawPrice);
-
-            $displayTiers[] = [
-                'label' => $label !== '' ? $label : $rawLabel,
-                'max_weight' => $maxWeight !== null ? $this->formatNumberForInput($maxWeight, 3) : (is_string($rawWeight) ? $rawWeight : ''),
-                'max_volume' => $maxVolume !== null ? $this->formatNumberForInput($maxVolume, 4) : (is_string($rawVolume) ? $rawVolume : ''),
-                'price' => $price !== null ? $this->formatNumberForInput($price, 2) : (is_string($rawPrice) ? $rawPrice : ''),
-            ];
-
-            $isRowEmpty = ($label === '' && $maxWeight === null && $maxVolume === null && ($price === null && ($rawPrice === null || (is_string($rawPrice) && trim((string) $rawPrice) === ''))));
-            if ($isRowEmpty) {
-                continue;
-            }
-
-            $rowNumber = $index + 1;
-
-            if ($price === null || $price <= 0) {
-                $errors[] = sprintf('Indica un prezzo valido e maggiore di zero per lo scaglione #%d.', $rowNumber);
-                continue;
-            }
-
-            if ($maxWeight !== null && $maxWeight <= 0) {
-                $errors[] = sprintf('Il limite di peso dello scaglione #%d deve essere maggiore di zero oppure lasciato vuoto.', $rowNumber);
-                continue;
-            }
-
-            if ($maxVolume !== null && $maxVolume <= 0) {
-                $errors[] = sprintf('Il limite di volume dello scaglione #%d deve essere maggiore di zero oppure lasciato vuoto.', $rowNumber);
-                continue;
-            }
-
-            $weightComparable = $maxWeight === null ? INF : $maxWeight;
-            $volumeComparable = $maxVolume === null ? INF : $maxVolume;
-
-            if ($previousWeight !== null) {
-                if ($previousWeight === INF && $weightComparable !== INF) {
-                    $errors[] = 'Gli scaglioni devono essere ordinati per peso crescente. Sposta gli scaglioni senza limite di peso alla fine.';
-                } elseif ($weightComparable + 1e-6 < $previousWeight) {
-                    $errors[] = 'Gli scaglioni devono essere ordinati per peso crescente.';
-                }
-            }
-
-            if ($previousVolume !== null) {
-                if ($previousVolume === INF && $volumeComparable !== INF) {
-                    $errors[] = 'Gli scaglioni devono essere ordinati per volume crescente. Sposta gli scaglioni senza limite di volume alla fine.';
-                } elseif ($volumeComparable + 1e-6 < $previousVolume) {
-                    $errors[] = 'Gli scaglioni devono essere ordinati per volume crescente.';
-                }
-            }
-
-            if ($maxWeight === null && $maxVolume === null) {
-                if ($hasUnlimitedBoth) {
-                    $errors[] = 'È consentito un solo scaglione senza limiti di peso e volume.';
-                }
-                $hasUnlimitedBoth = true;
-            }
-
-            $previousWeight = $weightComparable;
-            $previousVolume = $volumeComparable;
-
-            $preparedTiers[] = [
-                'label' => $label,
-                'max_weight' => $maxWeight === null ? null : round($maxWeight, 3),
-                'max_volume' => $maxVolume === null ? null : round($maxVolume, 4),
-                'price' => round($price, 2),
-            ];
-        }
-
-        $displayTiers = $this->normalizeDisplayTiers($displayTiers);
-
-        if ($preparedTiers === []) {
-            if ($displayTiers === []) {
-                $displayTiers[] = ['label' => '', 'max_weight' => '', 'max_volume' => '', 'price' => ''];
-            }
-
-            return [
-                'success' => false,
-                'errors' => ['Aggiungi almeno uno scaglione tariffario con prezzo valido.'],
-                'config' => [
-                    'currency' => $currency,
-                    'tiers' => $displayTiers,
+        // retrocompatibilità: se arriva la vecchia struttura, mappala su IT
+        if ($zonesInput === null) {
+            $zonesInput = [
+                'IT' => [
+                    'currency' => $input['currency'] ?? null,
+                    'tiers' => $input['tiers'] ?? [],
                 ],
             ];
         }
 
-        if ($errors) {
+        $zoneResults = [];
+        $zoneErrors = [];
+
+        foreach (self::PORTAL_BRT_ZONES as $zoneKey) {
+            $zonePayload = $zonesInput[$zoneKey] ?? [];
+            $parsed = $this->preparePortalBrtZonePricing($zonePayload);
+
+            if ($parsed['errors'] !== []) {
+                foreach ($parsed['errors'] as $error) {
+                    $zoneErrors[] = sprintf('[%s] %s', $zoneKey, $error);
+                }
+            }
+
+            $zoneResults[$zoneKey] = $parsed;
+        }
+
+        // almeno un listino deve avere scaglioni validi (es. IT)
+        $hasAtLeastOnePricing = false;
+        foreach ($zoneResults as $zone) {
+            if ($zone['tiers'] !== []) {
+                $hasAtLeastOnePricing = true;
+                break;
+            }
+        }
+
+        if (!$hasAtLeastOnePricing) {
+            $zoneErrors[] = 'Aggiungi almeno uno scaglione valido in uno dei listini (Italia, Europa o Svizzera).';
+        }
+
+        if ($zoneErrors) {
             return [
                 'success' => false,
-                'errors' => array_values(array_unique($errors)),
-                'config' => [
-                    'currency' => $currency,
-                    'tiers' => $displayTiers,
-                ],
+                'errors' => array_values(array_unique($zoneErrors)),
+                'config' => $this->normalizeDisplayZonesForError($zoneResults),
             ];
         }
 
-        $sanitized = [
-            'currency' => $currency,
-            'tiers' => array_values($preparedTiers),
-        ];
+        $sanitizedZones = [];
+        foreach ($zoneResults as $zoneKey => $zone) {
+            $sanitizedZones[$zoneKey] = [
+                'currency' => $zone['currency'],
+                'tiers' => array_values($zone['tiers']),
+            ];
+        }
+
+        $payload = ['zones' => $sanitizedZones];
 
         try {
-            $encoded = json_encode($sanitized, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         } catch (Throwable $exception) {
             error_log('Portal BRT pricing serialize failed: ' . $exception->getMessage());
             return [
                 'success' => false,
                 'errors' => ['Impossibile salvare la configurazione tariffaria.'],
-                'config' => [
-                    'currency' => $currency,
-                    'tiers' => $displayTiers,
-                ],
+                'config' => $this->normalizeDisplayZonesForError($zoneResults),
             ];
         }
 
@@ -1661,24 +1591,20 @@ class SettingsService
             ]);
 
             $this->logActivity($userId, 'Aggiornamento tariffe BRT portale', [
-                'currency' => $sanitized['currency'],
-                'tiers' => $sanitized['tiers'],
+                'zones' => $sanitizedZones,
             ]);
 
             return [
                 'success' => true,
                 'errors' => [],
-                'config' => $this->normalizeDisplayTiersForSuccess($sanitized),
+                'config' => $this->normalizeDisplayZonesForSuccess(['zones' => $sanitizedZones]),
             ];
         } catch (Throwable $exception) {
             error_log('Portal BRT pricing save failed: ' . $exception->getMessage());
             return [
                 'success' => false,
                 'errors' => ['Impossibile salvare la configurazione tariffaria.'],
-                'config' => [
-                    'currency' => $currency,
-                    'tiers' => $displayTiers,
-                ],
+                'config' => $this->normalizeDisplayZonesForError($zoneResults),
             ];
         }
     }
@@ -2212,6 +2138,37 @@ class SettingsService
         ];
     }
 
+    /**
+     * @param array<string,mixed> $raw
+     * @return array{zones:array<string,array{currency:string,tiers:array<int,array{label:string,max_weight:float|null,max_volume:float|null,price:float}>}>,currency:string,tiers:array<int,array{label:string,max_weight:float|null,max_volume:float|null,price:float}>}
+     */
+    private function normalizePortalBrtZones(array $raw): array
+    {
+        $zonesRaw = [];
+        if (isset($raw['zones']) && is_array($raw['zones'])) {
+            $zonesRaw = $raw['zones'];
+        } else {
+            $zonesRaw['IT'] = $raw;
+        }
+
+        $zones = [];
+        foreach (self::PORTAL_BRT_ZONES as $zoneKey) {
+            $zoneConfig = [];
+            if (isset($zonesRaw[$zoneKey]) && is_array($zonesRaw[$zoneKey])) {
+                $zoneConfig = $zonesRaw[$zoneKey];
+            }
+            $zones[$zoneKey] = self::normalizePortalBrtPricing($zoneConfig);
+        }
+
+        $primary = $zones['IT'] ?? ['currency' => 'EUR', 'tiers' => []];
+
+        return [
+            'zones' => $zones,
+            'currency' => $primary['currency'] ?? 'EUR',
+            'tiers' => $primary['tiers'] ?? [],
+        ];
+    }
+
     private static function normalizeCurrency($value): string
     {
         if (!is_string($value)) {
@@ -2244,6 +2201,113 @@ class SettingsService
         }
 
         return $trimmed;
+    }
+
+    /**
+     * @param array<string,mixed> $zoneInput
+     * @return array{currency:string,tiers:array<int,array{label:string,max_weight:float|null,max_volume:float|null,price:float}>,display_tiers:array<int,array{label:string,max_weight:string,max_volume:string,price:string}>,errors:array<int,string>}
+     */
+    private function preparePortalBrtZonePricing(array $zoneInput): array
+    {
+        $currency = self::normalizeCurrency($zoneInput['currency'] ?? null);
+        $tiersInput = isset($zoneInput['tiers']) && is_array($zoneInput['tiers']) ? $zoneInput['tiers'] : [];
+
+        $errors = [];
+        $preparedTiers = [];
+        $displayTiers = [];
+        $previousWeight = null;
+        $previousVolume = null;
+        $hasUnlimitedBoth = false;
+
+        foreach ($tiersInput as $index => $tierInput) {
+            if (!is_array($tierInput)) {
+                continue;
+            }
+
+            $rawLabel = is_string($tierInput['label'] ?? null) ? trim((string) $tierInput['label']) : '';
+            $rawWeight = is_string($tierInput['max_weight'] ?? null) ? trim((string) $tierInput['max_weight']) : ($tierInput['max_weight'] ?? null);
+            $rawVolume = is_string($tierInput['max_volume'] ?? null) ? trim((string) $tierInput['max_volume']) : ($tierInput['max_volume'] ?? null);
+            $rawPrice = is_string($tierInput['price'] ?? null) ? trim((string) $tierInput['price']) : ($tierInput['price'] ?? null);
+
+            $label = self::normalizeTierLabel($rawLabel);
+            $maxWeight = self::toNullableFloat($rawWeight);
+            $maxVolume = self::toNullableFloat($rawVolume);
+            $price = self::toNullableFloat($rawPrice);
+
+            $displayTiers[] = [
+                'label' => $label !== '' ? $label : $rawLabel,
+                'max_weight' => $maxWeight !== null ? $this->formatNumberForInput($maxWeight, 3) : (is_string($rawWeight) ? $rawWeight : ''),
+                'max_volume' => $maxVolume !== null ? $this->formatNumberForInput($maxVolume, 4) : (is_string($rawVolume) ? $rawVolume : ''),
+                'price' => $price !== null ? $this->formatNumberForInput($price, 2) : (is_string($rawPrice) ? $rawPrice : ''),
+            ];
+
+            $isRowEmpty = ($label === '' && $maxWeight === null && $maxVolume === null && ($price === null && ($rawPrice === null || (is_string($rawPrice) && trim((string) $rawPrice) === ''))));
+            if ($isRowEmpty) {
+                continue;
+            }
+
+            $rowNumber = $index + 1;
+
+            if ($price === null || $price <= 0) {
+                $errors[] = sprintf('Indica un prezzo valido e maggiore di zero per lo scaglione #%d.', $rowNumber);
+                continue;
+            }
+
+            if ($maxWeight !== null && $maxWeight <= 0) {
+                $errors[] = sprintf('Il limite di peso dello scaglione #%d deve essere maggiore di zero oppure lasciato vuoto.', $rowNumber);
+                continue;
+            }
+
+            if ($maxVolume !== null && $maxVolume <= 0) {
+                $errors[] = sprintf('Il limite di volume dello scaglione #%d deve essere maggiore di zero oppure lasciato vuoto.', $rowNumber);
+                continue;
+            }
+
+            $weightComparable = $maxWeight === null ? INF : $maxWeight;
+            $volumeComparable = $maxVolume === null ? INF : $maxVolume;
+
+            if ($previousWeight !== null) {
+                if ($previousWeight === INF && $weightComparable !== INF) {
+                    $errors[] = 'Gli scaglioni devono essere ordinati per peso crescente. Sposta gli scaglioni senza limite di peso alla fine.';
+                } elseif ($weightComparable + 1e-6 < $previousWeight) {
+                    $errors[] = 'Gli scaglioni devono essere ordinati per peso crescente.';
+                }
+            }
+
+            if ($previousVolume !== null) {
+                if ($previousVolume === INF && $volumeComparable !== INF) {
+                    $errors[] = 'Gli scaglioni devono essere ordinati per volume crescente. Sposta gli scaglioni senza limite di volume alla fine.';
+                } elseif ($volumeComparable + 1e-6 < $previousVolume) {
+                    $errors[] = 'Gli scaglioni devono essere ordinati per volume crescente.';
+                }
+            }
+
+            if ($maxWeight === null && $maxVolume === null) {
+                if ($hasUnlimitedBoth) {
+                    $errors[] = 'È consentito un solo scaglione senza limiti di peso e volume.';
+                }
+                $hasUnlimitedBoth = true;
+            }
+
+            $previousWeight = $weightComparable;
+            $previousVolume = $volumeComparable;
+
+            $preparedTiers[] = [
+                'label' => $label,
+                'max_weight' => $maxWeight === null ? null : round($maxWeight, 3),
+                'max_volume' => $maxVolume === null ? null : round($maxVolume, 4),
+                'price' => round($price, 2),
+            ];
+        }
+
+        $displayTiers = $this->normalizeDisplayTiers($displayTiers);
+
+        return [
+            'currency' => $currency,
+            'tiers' => array_values($preparedTiers),
+            'display_tiers' => $displayTiers,
+            'errors' => array_values(array_unique($errors)),
+        ];
     }
 
     /**
@@ -2324,6 +2388,44 @@ class SettingsService
             'currency' => $config['currency'],
             'tiers' => $tiers,
         ];
+    }
+
+    /**
+     * @param array{zones:array<string,array{currency:string,tiers:array<int,array{label:string,max_weight:float|null,max_volume:float|null,price:float}>}>} $config
+     * @return array{zones:array<string,array{currency:string,tiers:array<int,array{label:string,max_weight:string,max_volume:string,price:string}>}>}
+     */
+    private function normalizeDisplayZonesForSuccess(array $config): array
+    {
+        $zonesConfig = isset($config['zones']) && is_array($config['zones']) ? $config['zones'] : [];
+        $zones = [];
+
+        foreach (self::PORTAL_BRT_ZONES as $zoneKey) {
+            $zone = $zonesConfig[$zoneKey] ?? ['currency' => 'EUR', 'tiers' => []];
+            $zones[$zoneKey] = $this->normalizeDisplayTiersForSuccess([
+                'currency' => $zone['currency'] ?? 'EUR',
+                'tiers' => $zone['tiers'] ?? [],
+            ]);
+        }
+
+        return ['zones' => $zones];
+    }
+
+    /**
+     * @param array<string,array{currency:string,tiers:array<int,array{label:string,max_weight:float|null,max_volume:float|null,price:float}>,display_tiers:array<int,array{label:string,max_weight:string,max_volume:string,price:string}>,errors:array<int,string>}> $zoneResults
+     * @return array{zones:array<string,array{currency:string,tiers:array<int,array{label:string,max_weight:string,max_volume:string,price:string}>}>}
+     */
+    private function normalizeDisplayZonesForError(array $zoneResults): array
+    {
+        $zones = [];
+        foreach (self::PORTAL_BRT_ZONES as $zoneKey) {
+            $zone = $zoneResults[$zoneKey] ?? null;
+            $zones[$zoneKey] = [
+                'currency' => $zone['currency'] ?? 'EUR',
+                'tiers' => $zone['display_tiers'] ?? $this->normalizeDisplayTiers([]),
+            ];
+        }
+
+        return ['zones' => $zones];
     }
 
     private function sanitizeDescriptions(array $values): array

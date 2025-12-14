@@ -122,99 +122,6 @@ if (!function_exists('settings_build_service_form')) {
     }
 }
 
-$vatCountries = [
-    'AT' => 'Austria',
-    'BE' => 'Belgio',
-    'BG' => 'Bulgaria',
-    'HR' => 'Croazia',
-    'CY' => 'Cipro',
-    'CZ' => 'Repubblica Ceca',
-    'DK' => 'Danimarca',
-    'EE' => 'Estonia',
-    'FI' => 'Finlandia',
-    'FR' => 'Francia',
-    'DE' => 'Germania',
-    'GR' => 'Grecia',
-    'HU' => 'Ungheria',
-    'IE' => 'Irlanda',
-    'IT' => 'Italia',
-    'LV' => 'Lettonia',
-    'LT' => 'Lituania',
-    'LU' => 'Lussemburgo',
-    'MT' => 'Malta',
-    'NL' => 'Paesi Bassi',
-    'PL' => 'Polonia',
-    'PT' => 'Portogallo',
-    'RO' => 'Romania',
-    'SK' => 'Slovacchia',
-    'SI' => 'Slovenia',
-    'ES' => 'Spagna',
-    'SE' => 'Svezia',
-    'XI' => 'Irlanda del Nord',
-];
-
-$companyDefaults = [
-    'ragione_sociale' => 'Coresuite Business SRL',
-    'indirizzo' => 'Via Plinio 72',
-    'cap' => '20129',
-    'citta' => 'Milano',
-    'provincia' => 'MI',
-    'telefono' => '+39 02 1234567',
-    'email' => 'info@coresuitebusiness.com',
-    'pec' => '',
-    'sdi' => '',
-    'vat_country' => 'IT',
-    'piva' => '',
-    'iban' => '',
-    'note' => '',
-    'company_logo' => '',
-];
-
-$projectRoot = realpath(__DIR__ . '/../../') ?: __DIR__ . '/../../';
-$settingsService = new SettingsService($pdo, $projectRoot);
-
-$companyConfig = $settingsService->fetchCompanySettings($companyDefaults);
-$movementDescriptions = $settingsService->getMovementDescriptions();
-$appointmentTypes = $settingsService->getAppointmentTypes();
-$appointmentStatuses = $settingsService->getAppointmentStatuses();
-$appearanceConfig = $settingsService->getAppearanceSettings();
-$themeOptions = SettingsService::availableThemes();
-$emailMarketingConfig = $settingsService->getEmailMarketingSettings();
-$portalBrtPricingForm = $settingsService->getPortalBrtPricingFormConfig();
-$cafPatronatoTypes = $settingsService->getCafPatronatoTypes();
-$cafPatronatoStatuses = $settingsService->getCafPatronatoStatuses();
-$cafPatronatoServices = $settingsService->getCafPatronatoServices();
-$cafPatronatoTypesForm = $cafPatronatoTypes;
-$cafPatronatoStatusesForm = $cafPatronatoStatuses;
-$cafPatronatoServicesForm = settings_build_service_form($cafPatronatoTypes, $cafPatronatoServices);
-
-$cafPatronatoServiceSuggestions = $settingsService->suggestCafPatronatoServices();
-$cafPatronatoServiceSuggestions = settings_filter_service_suggestions($cafPatronatoServices, $cafPatronatoServiceSuggestions);
-
-$servicePricing = $settingsService->getServicePricing();
-$opportunityStatuses = [];
-$opportunityProvidersByCategory = [];
-$opportunityStatusPreview = [];
-$opportunityCategorySummary = [];
-$opportunityCardSummary = [
-    'statuses' => 0,
-    'providers' => 0,
-    'offers' => 0,
-];
-$opportunityCategoryLabels = [
-    'telefonia' => 'Telefonia',
-    'luce' => 'Luce',
-    'gas' => 'Gas',
-];
-
-try {
-    $opportunityService = new OpportunityService($pdo);
-    $opportunityStatuses = $opportunityService->listStatusesDetailed();
-    $opportunityProvidersByCategory = $opportunityService->listProvidersWithOffers();
-} catch (Throwable $exception) {
-    error_log('Impostazioni: impossibile leggere i dati Opportunity - ' . $exception->getMessage());
-}
-
 $opportunityCardSummary['statuses'] = count($opportunityStatuses);
 foreach ($opportunityProvidersByCategory as $categoryProviders) {
     $opportunityCardSummary['providers'] += count($categoryProviders);
@@ -806,10 +713,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'portal_brt_pricing') {
-        $tiersPayload = $_POST['tiers'] ?? [];
+        $zonesPayload = isset($_POST['zones']) && is_array($_POST['zones']) ? $_POST['zones'] : [];
         $result = $settingsService->savePortalBrtPricing([
-            'currency' => $_POST['currency'] ?? '',
-            'tiers' => is_array($tiersPayload) ? $tiersPayload : [],
+            'zones' => $zonesPayload,
         ], $currentUserId);
 
         $portalBrtPricingForm = $result['config'];
@@ -1687,52 +1593,102 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <h5 class="card-title mb-0">Tariffe spedizioni BRT (portale clienti)</h5>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted mb-3">Configura gli scaglioni progressivi per peso e volume visualizzati nel portale clienti. I limiti lasciati vuoti indicano "senza limite" per quel parametro.</p>
+                        <p class="text-muted mb-3">Configura gli scaglioni progressivi per peso e volume visualizzati nel portale clienti, distinti per area (Italia, Europa, Svizzera). I limiti lasciati vuoti indicano "senza limite" per quel parametro.</p>
                         <form method="post" class="portal-brt-pricing-form">
                             <input type="hidden" name="action" value="portal_brt_pricing">
                             <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-                            <div class="row g-3 align-items-end">
-                                <div class="col-auto">
-                                    <label class="form-label" for="portal_brt_currency">Valuta *</label>
-                                    <input class="form-control text-uppercase" id="portal_brt_currency" name="currency" value="<?php echo sanitize_output($portalBrtPricingForm['currency'] ?? 'EUR'); ?>" maxlength="3" pattern="[A-Za-z]{3}" title="Inserisci il codice valuta ISO a tre lettere (es. EUR)">
-                                    <div class="form-text">Codice ISO 4217 (es. EUR, USD).</div>
-                                </div>
-                            </div>
-                            <div class="table-responsive mt-3">
-                                <table class="table table-dark table-sm align-middle mb-0" id="portalBrtPricingTable">
-                                    <thead>
-                                        <tr>
-                                            <th style="width: 60px;">#</th>
-                                            <th>Etichetta</th>
-                                            <th style="width: 160px;">Peso max (kg)</th>
-                                            <th style="width: 170px;">Volume max (m³)</th>
-                                            <th style="width: 150px;">Prezzo</th>
-                                            <th style="width: 70px;" class="text-end">Azioni</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="portalBrtPricingRows">
-                                        <?php foreach ($portalBrtPricingForm['tiers'] as $index => $tier): ?>
-                                            <tr data-index="<?php echo (int) $index; ?>">
-                                                <td class="text-muted small portal-brt-tier-index">#<?php echo (int) ($index + 1); ?></td>
+
+                            <?php foreach ($portalBrtZonesMeta as $zoneKey => $zoneMeta): ?>
+                                <?php $zoneData = $portalBrtPricingForm['zones'][$zoneKey] ?? ['currency' => 'EUR', 'tiers' => [['label' => '', 'max_weight' => '', 'max_volume' => '', 'price' => '']]]; ?>
+                                <div class="card ag-card mb-3" data-portal-brt-pricing-zone="<?php echo sanitize_output($zoneKey); ?>">
+                                    <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                        <div>
+                                            <h6 class="mb-0">Listino <?php echo sanitize_output($zoneMeta['label']); ?></h6>
+                                            <p class="text-muted small mb-0"><?php echo sanitize_output($zoneMeta['description']); ?></p>
+                                        </div>
+                                        <div class="d-flex align-items-end gap-2">
+                                            <div>
+                                                <label class="form-label mb-1" for="portal_brt_currency_<?php echo sanitize_output($zoneKey); ?>">Valuta *</label>
+                                                <input class="form-control form-control-sm text-uppercase" id="portal_brt_currency_<?php echo sanitize_output($zoneKey); ?>" data-portal-brt-currency name="zones[<?php echo sanitize_output($zoneKey); ?>][currency]" value="<?php echo sanitize_output($zoneData['currency'] ?? 'EUR'); ?>" maxlength="3" pattern="[A-Za-z]{3}" title="Inserisci il codice valuta ISO a tre lettere (es. EUR)">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body pt-2">
+                                        <div class="table-responsive">
+                                            <table class="table table-dark table-sm align-middle mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 60px;">#</th>
+                                                        <th>Etichetta</th>
+                                                        <th style="width: 160px;">Peso max (kg)</th>
+                                                        <th style="width: 170px;">Volume max (m³)</th>
+                                                        <th style="width: 150px;">Prezzo</th>
+                                                        <th style="width: 70px;" class="text-end">Azioni</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody data-portal-brt-rows>
+                                                    <?php foreach ($zoneData['tiers'] as $index => $tier): ?>
+                                                        <tr data-index="<?php echo (int) $index; ?>">
+                                                            <td class="text-muted small portal-brt-tier-index">#<?php echo (int) ($index + 1); ?></td>
+                                                            <td>
+                                                                <input class="form-control form-control-sm" name="zones[<?php echo sanitize_output($zoneKey); ?>][tiers][<?php echo (int) $index; ?>][label]" data-field="label" maxlength="60" value="<?php echo sanitize_output($tier['label'] ?? ''); ?>" placeholder="Es. Fino a 10 kg">
+                                                            </td>
+                                                            <td>
+                                                                <div class="input-group input-group-sm">
+                                                                    <input class="form-control" name="zones[<?php echo sanitize_output($zoneKey); ?>][tiers][<?php echo (int) $index; ?>][max_weight]" data-field="max_weight" value="<?php echo sanitize_output($tier['max_weight'] ?? ''); ?>" inputmode="decimal" placeholder="es. 10.5">
+                                                                    <span class="input-group-text">kg</span>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div class="input-group input-group-sm">
+                                                                    <input class="form-control" name="zones[<?php echo sanitize_output($zoneKey); ?>][tiers][<?php echo (int) $index; ?>][max_volume]" data-field="max_volume" value="<?php echo sanitize_output($tier['max_volume'] ?? ''); ?>" inputmode="decimal" placeholder="es. 0.08">
+                                                                    <span class="input-group-text">m³</span>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div class="input-group input-group-sm">
+                                                                    <span class="input-group-text portal-brt-currency-label"><?php echo sanitize_output($zoneData['currency'] ?? 'EUR'); ?></span>
+                                                                    <input class="form-control" name="zones[<?php echo sanitize_output($zoneKey); ?>][tiers][<?php echo (int) $index; ?>][price]" data-field="price" value="<?php echo sanitize_output($tier['price'] ?? ''); ?>" inputmode="decimal" placeholder="es. 4.99">
+                                                                </div>
+                                                            </td>
+                                                            <td class="text-end">
+                                                                <button class="btn btn-icon btn-soft-danger btn-sm portal-brt-remove-tier" type="button" title="Rimuovi scaglione">
+                                                                    <i class="fa-solid fa-trash"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+                                            <button class="btn btn-soft-accent btn-sm" type="button" data-portal-brt-add-tier>
+                                                <i class="fa-solid fa-plus me-2"></i>Aggiungi scaglione
+                                            </button>
+                                        </div>
+                                        <p class="text-muted small mt-3 mb-0">Gli scaglioni devono essere ordinati in modo crescente. Lasciare vuoti peso e/o volume rende lo scaglione senza limite per quel valore.</p>
+                                        <template data-portal-brt-template>
+                                            <tr data-index="__INDEX__">
+                                                <td class="text-muted small portal-brt-tier-index">#__NUM__</td>
                                                 <td>
-                                                    <input class="form-control form-control-sm" name="tiers[<?php echo (int) $index; ?>][label]" data-field="label" maxlength="60" value="<?php echo sanitize_output($tier['label'] ?? ''); ?>" placeholder="Es. Fino a 10 kg">
+                                                    <input class="form-control form-control-sm" data-field="label" maxlength="60" placeholder="Es. Fino a 10 kg">
                                                 </td>
                                                 <td>
                                                     <div class="input-group input-group-sm">
-                                                        <input class="form-control" name="tiers[<?php echo (int) $index; ?>][max_weight]" data-field="max_weight" value="<?php echo sanitize_output($tier['max_weight'] ?? ''); ?>" inputmode="decimal" placeholder="es. 10.5">
+                                                        <input class="form-control" data-field="max_weight" inputmode="decimal" placeholder="es. 10.5">
                                                         <span class="input-group-text">kg</span>
                                                     </div>
                                                 </td>
                                                 <td>
                                                     <div class="input-group input-group-sm">
-                                                        <input class="form-control" name="tiers[<?php echo (int) $index; ?>][max_volume]" data-field="max_volume" value="<?php echo sanitize_output($tier['max_volume'] ?? ''); ?>" inputmode="decimal" placeholder="es. 0.08">
+                                                        <input class="form-control" data-field="max_volume" inputmode="decimal" placeholder="es. 0.08">
                                                         <span class="input-group-text">m³</span>
                                                     </div>
                                                 </td>
                                                 <td>
                                                     <div class="input-group input-group-sm">
-                                                        <span class="input-group-text portal-brt-currency-label"><?php echo sanitize_output($portalBrtPricingForm['currency'] ?? 'EUR'); ?></span>
-                                                        <input class="form-control" name="tiers[<?php echo (int) $index; ?>][price]" data-field="price" value="<?php echo sanitize_output($tier['price'] ?? ''); ?>" inputmode="decimal" placeholder="es. 4.99">
+                                                        <span class="input-group-text portal-brt-currency-label"><?php echo sanitize_output($zoneData['currency'] ?? 'EUR'); ?></span>
+                                                        <input class="form-control" data-field="price" inputmode="decimal" placeholder="es. 4.99">
                                                     </div>
                                                 </td>
                                                 <td class="text-end">
@@ -1741,50 +1697,16 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     </button>
                                                 </td>
                                             </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
-                                <button class="btn btn-soft-accent btn-sm" type="button" id="addPortalBrtTier">
-                                    <i class="fa-solid fa-plus me-2"></i>Aggiungi scaglione
-                                </button>
+                                        </template>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+
+                            <div class="d-flex align-items-center justify-content-end flex-wrap gap-2 mt-3">
                                 <button class="btn btn-warning" type="submit">
                                     <i class="fa-solid fa-save me-2"></i>Salva tariffe
                                 </button>
                             </div>
-                            <p class="text-muted small mt-3 mb-0">Gli scaglioni devono essere ordinati in modo crescente. Lasciare vuoti peso e/o volume rende lo scaglione senza limite per quel valore.</p>
-                            <template id="portalBrtTierTemplate">
-                                <tr data-index="__INDEX__">
-                                    <td class="text-muted small portal-brt-tier-index">#__NUM__</td>
-                                    <td>
-                                        <input class="form-control form-control-sm" data-field="label" maxlength="60" placeholder="Es. Fino a 10 kg">
-                                    </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <input class="form-control" data-field="max_weight" inputmode="decimal" placeholder="es. 10.5">
-                                            <span class="input-group-text">kg</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <input class="form-control" data-field="max_volume" inputmode="decimal" placeholder="es. 0.08">
-                                            <span class="input-group-text">m³</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text portal-brt-currency-label"><?php echo sanitize_output($portalBrtPricingForm['currency'] ?? 'EUR'); ?></span>
-                                            <input class="form-control" data-field="price" inputmode="decimal" placeholder="es. 4.99">
-                                        </div>
-                                    </td>
-                                    <td class="text-end">
-                                        <button class="btn btn-icon btn-soft-danger btn-sm portal-brt-remove-tier" type="button" title="Rimuovi scaglione">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            </template>
                         </form>
                     </div>
                 </div>
