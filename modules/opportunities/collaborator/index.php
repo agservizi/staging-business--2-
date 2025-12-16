@@ -108,7 +108,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         <?php elseif ($totalOpportunities <= 0 && $hasRemoteDraft): ?>
             <div class="alert alert-warning mb-4" role="alert">
-                Hai una bozza salvata: completila e inviala per farla comparire nell'elenco principale.
+                Hai una bozza salvata: completala e inviala per farla comparire nell'elenco principale.
             </div>
         <?php endif; ?>
 
