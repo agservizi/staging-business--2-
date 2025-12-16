@@ -21,6 +21,7 @@ $runtimeConfig = [
     'assets' => [
         'leafletMarker' => 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
         'leafletMarkerRetina' => 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        'leafletShadow' => 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     ],
 ];
 if (isset($pdo) && $pdo instanceof PDO && current_user_can('Admin', 'Operatore', 'Manager')) {

@@ -83,6 +83,7 @@
 
         const markerUrl = window.CS?.assets?.leafletMarker ?? resolveAssetUrl('assets/img/leaflet-marker.png');
         const markerRetinaUrl = window.CS?.assets?.leafletMarkerRetina ?? resolveAssetUrl('assets/img/leaflet-marker@2x.png');
+        const shadowUrl = window.CS?.assets?.leafletShadow ?? resolveAssetUrl('assets/img/leaflet-marker-shadow.png');
 
         try {
             // Evita che Leaflet pre-penda imagePath al nostro URL assoluto
@@ -90,8 +91,8 @@
             L.Icon.Default.mergeOptions({
                 iconUrl: markerUrl,
                 iconRetinaUrl: markerRetinaUrl,
-                shadowUrl: null,
-                shadowRetinaUrl: null,
+                shadowUrl,
+                shadowRetinaUrl: shadowUrl,
             });
         } catch (error) {
             console.warn('Leaflet default icon configuration failed', error);
