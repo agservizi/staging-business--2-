@@ -7,6 +7,8 @@ use DateTimeImmutable;
 use JsonException;
 use PDO;
 use RuntimeException;
+use SoapClient;
+use SoapFault;
 
 final class OpportunityService
 {
@@ -432,18 +434,26 @@ final class OpportunityService
     /**
      * @param array<string,mixed> $payload
      */
-    private function syncCollaboratorCustomer(int $collaboratorId, array $payload): void
+    /**
+     * @param array<string,mixed> $payload
+     * @param array<string,mixed> $metadata
+     */
+    private function syncCollaboratorCustomer(int $collaboratorId, array $payload, array $metadata = []): void
     {
         $taxCode = strtoupper(trim((string) ($payload['customer_tax_code'] ?? '')));
         if ($collaboratorId <= 0 || $taxCode === '') {
             return;
         }
 
+        $businessName = trim((string) ($metadata['business_name'] ?? ''));
+        $businessVat = strtoupper(trim((string) ($metadata['business_vat'] ?? '')));
         $firstName = trim((string) ($payload['customer_first_name'] ?? ''));
         $lastName = trim((string) ($payload['customer_last_name'] ?? ''));
         $email = trim((string) ($payload['customer_email'] ?? ''));
         $phone = trim((string) ($payload['customer_phone'] ?? ''));
         $address = trim((string) ($payload['customer_address'] ?? ''));
+
+        $ragioneSociale = $businessName !== '' ? $businessName : trim($firstName . ' ' . $lastName);
 
         $select = $this->pdo->prepare('SELECT id, nome, cognome, email, telefono, indirizzo FROM clienti WHERE UPPER(cf_piva) = :tax LIMIT 1');
         $select->execute([':tax' => $taxCode]);
@@ -462,6 +472,7 @@ final class OpportunityService
                 }
             };
 
+            $maybeUpdate('ragione_sociale', $ragioneSociale);
             $maybeUpdate('nome', $firstName);
             $maybeUpdate('cognome', $lastName);
             $maybeUpdate('email', $email);
@@ -481,7 +492,7 @@ final class OpportunityService
                  VALUES (:ragione, :nome, :cognome, :cf, :email, :telefono, :indirizzo, 0, "ok")'
             );
             $insert->execute([
-                ':ragione' => trim($firstName . ' ' . $lastName),
+                ':ragione' => $ragioneSociale,
                 ':nome' => $firstName,
                 ':cognome' => $lastName,
                 ':cf' => $taxCode,
@@ -1176,8 +1187,41 @@ final class OpportunityService
             }
         }
 
+        $businessName = trim((string) ($input['business_name'] ?? ''));
+        $businessVat = strtoupper(trim((string) ($input['business_vat'] ?? '')));
+
+        $metadata = [];
+
+        if ($businessVat !== '') {
+            $viesResult = $this->checkViesVat($businessVat);
+            if ($viesResult['valid'] === false) {
+                throw new RuntimeException('Partita IVA non valida secondo VIES.');
+            }
+            if ($businessName === '' && !empty($viesResult['name'])) {
+                $businessName = $viesResult['name'];
+            }
+            if (!empty($viesResult['address'])) {
+                $input['customer_address'] = $input['customer_address'] ?? '';
+                if (trim((string) $input['customer_address']) === '') {
+                    $input['customer_address'] = $viesResult['address'];
+                }
+            }
+            $metadata['business_vies_checked_at'] = (new DateTimeImmutable())->format('c');
+            if (!empty($viesResult['name'])) {
+                $metadata['business_vies_name'] = $viesResult['name'];
+            }
+            if (!empty($viesResult['address'])) {
+                $metadata['business_vies_address'] = $viesResult['address'];
+            }
+        }
+
         $customerFirstName = $this->requireString($input, 'customer_first_name', 'Nome cliente');
         $customerLastName = $this->requireString($input, 'customer_last_name', 'Cognome cliente');
+        $customerTaxRaw = (string) ($input['customer_tax_code'] ?? '');
+        if ($customerTaxRaw === '' && $businessVat !== '') {
+            $customerTaxRaw = $businessVat;
+        }
+        $input['customer_tax_code'] = $customerTaxRaw;
         $customerTaxCode = $this->requireString($input, 'customer_tax_code', 'Codice fiscale');
         $customerPhone = $this->requireString($input, 'customer_phone', 'Telefono');
         $customerEmail = $this->requireEmail($input, 'customer_email');
@@ -1185,7 +1229,12 @@ final class OpportunityService
         $documentType = $this->requireString($input, 'document_type', 'Tipologia documento');
         $documentExpiresAt = $this->requireString($input, 'document_expires_at', 'Scadenza documento');
 
-        $metadata = [];
+        if ($businessName !== '') {
+            $metadata['business_name'] = $businessName;
+        }
+        if ($businessVat !== '') {
+            $metadata['business_vat'] = $businessVat;
+        }
 
         if ($category === 'telefonia') {
             $telefoniaContractType = $this->validateTelefoniaContractType((string) ($input['telefonia_contract_type'] ?? 'migrazione'));
@@ -1356,7 +1405,7 @@ final class OpportunityService
             $resolvedUploads['files'] ?? []
         );
 
-        $this->pdo->beginTransaction();
+            $this->pdo->beginTransaction();
         try {
             $columns = array_keys($payload);
             $placeholders = array_map(static fn (string $column): string => ':' . $column, $columns);
@@ -1370,7 +1419,7 @@ final class OpportunityService
             $stmt->execute();
             $opportunityId = (int) $this->pdo->lastInsertId();
 
-            $this->syncCollaboratorCustomer($collaboratorId, $payload);
+            $this->syncCollaboratorCustomer($collaboratorId, $payload, $metadata);
 
             if ($normalizedFiles) {
                 $this->persistFiles($opportunityId, $normalizedFiles, $collaboratorId);
@@ -1436,14 +1485,56 @@ final class OpportunityService
             }
         }
 
+        $businessName = trim((string) ($input['business_name'] ?? ($metadata['business_name'] ?? '')));
+        $businessVat = strtoupper(trim((string) ($input['business_vat'] ?? ($metadata['business_vat'] ?? ''))));
+
+        if ($businessVat !== '') {
+            $viesResult = $this->checkViesVat($businessVat);
+            if ($viesResult['valid'] === false) {
+                throw new RuntimeException('Partita IVA non valida secondo VIES.');
+            }
+            if ($businessName === '' && !empty($viesResult['name'])) {
+                $businessName = $viesResult['name'];
+            }
+            if (!empty($viesResult['address'])) {
+                $input['customer_address'] = $input['customer_address'] ?? '';
+                if (trim((string) $input['customer_address']) === '') {
+                    $input['customer_address'] = $viesResult['address'];
+                }
+            }
+            $metadata['business_vies_checked_at'] = (new DateTimeImmutable())->format('c');
+            if (!empty($viesResult['name'])) {
+                $metadata['business_vies_name'] = $viesResult['name'];
+            }
+            if (!empty($viesResult['address'])) {
+                $metadata['business_vies_address'] = $viesResult['address'];
+            }
+        }
+
         $customerFirstName = $this->requireString($input, 'customer_first_name', 'Nome cliente');
         $customerLastName = $this->requireString($input, 'customer_last_name', 'Cognome cliente');
+        $customerTaxRaw = (string) ($input['customer_tax_code'] ?? '');
+        if ($customerTaxRaw === '' && $businessVat !== '') {
+            $customerTaxRaw = $businessVat;
+        }
+        $input['customer_tax_code'] = $customerTaxRaw;
         $customerTaxCode = $this->requireString($input, 'customer_tax_code', 'Codice fiscale');
         $customerPhone = $this->requireString($input, 'customer_phone', 'Telefono');
         $customerEmail = $this->requireEmail($input, 'customer_email');
         $documentNumber = $this->requireString($input, 'document_number', 'Numero documento');
         $documentType = $this->requireString($input, 'document_type', 'Tipologia documento');
         $documentExpiresAt = $this->requireString($input, 'document_expires_at', 'Scadenza documento');
+
+        if ($businessName !== '') {
+            $metadata['business_name'] = $businessName;
+        } else {
+            unset($metadata['business_name']);
+        }
+        if ($businessVat !== '') {
+            $metadata['business_vat'] = $businessVat;
+        } else {
+            unset($metadata['business_vat']);
+        }
 
         if ($category === 'telefonia') {
             $telefoniaContractType = $this->validateTelefoniaContractType((string) ($input['telefonia_contract_type'] ?? ($metadata['telefonia_contract_type'] ?? 'migrazione')));
@@ -1637,7 +1728,7 @@ final class OpportunityService
                 }
             }
 
-            $this->syncCollaboratorCustomer($collaboratorId, array_merge($existing, $payload));
+            $this->syncCollaboratorCustomer($collaboratorId, array_merge($existing, $payload), $metadata);
 
             $this->pdo->commit();
         } catch (RuntimeException $exception) {
@@ -2588,6 +2679,49 @@ final class OpportunityService
         $trimmed = trim($value);
 
         return $trimmed === '' ? null : $trimmed;
+    }
+
+    /**
+     * @return array{valid:bool,name:string,address:string}
+     */
+    private function checkViesVat(string $vat): array
+    {
+        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/', '', $vat) ?? '');
+        if (strlen($normalized) < 3) {
+            throw new RuntimeException('Partita IVA non valida.');
+        }
+
+        $countryCode = substr($normalized, 0, 2);
+        $vatNumber = substr($normalized, 2);
+        if (!preg_match('/^[A-Z]{2}$/', $countryCode) || $vatNumber === '') {
+            throw new RuntimeException('Partita IVA non valida.');
+        }
+
+        try {
+            $client = new SoapClient(
+                'https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl',
+                [
+                    'exceptions' => true,
+                    'cache_wsdl' => WSDL_CACHE_MEMORY,
+                    'trace' => false,
+                ]
+            );
+
+            $response = $client->checkVat([
+                'countryCode' => $countryCode,
+                'vatNumber' => $vatNumber,
+            ]);
+        } catch (SoapFault $exception) {
+            throw new RuntimeException('Servizio VIES non disponibile. Riprova più tardi.', 0, $exception);
+        }
+
+        $valid = isset($response->valid) ? (bool) $response->valid : false;
+
+        return [
+            'valid' => $valid,
+            'name' => $valid ? trim((string) ($response->name ?? '')) : '',
+            'address' => $valid ? trim((string) ($response->address ?? '')) : '',
+        ];
     }
 
     private function assertValidIban(string $iban): void

@@ -159,6 +159,8 @@ if ($isEditingOpportunity) {
             'payment_holder_first_name' => $existingOpportunity['payment_holder_first_name'] ?? '',
             'payment_holder_last_name' => $existingOpportunity['payment_holder_last_name'] ?? '',
             'payment_holder_tax_code' => $existingOpportunity['payment_holder_tax_code'] ?? '',
+            'business_name' => $existingMetadata['business_name'] ?? '',
+            'business_vat' => $existingMetadata['business_vat'] ?? '',
             'additional_notes' => $existingOpportunity['additional_notes'] ?? '',
         ];
     }
@@ -518,6 +520,21 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <input class="form-control" type="text" name="customer_province" id="customer-province" value="<?php echo sanitize_output($formData['customer_province'] ?? ''); ?>" maxlength="5">
                             </div>
                         </div>
+
+                        <hr class="my-4">
+                        <h3 class="h6 text-uppercase text-muted mb-3">Dati azienda (opzionali)</h3>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="business-name">Ragione sociale</label>
+                                <input class="form-control" type="text" name="business_name" id="business-name" value="<?php echo sanitize_output($formData['business_name'] ?? ''); ?>" placeholder="ACME S.r.l.">
+                                <div class="form-text text-muted">Se azienda o ditta, indica la ragione sociale completa.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="business-vat">Partita IVA</label>
+                                <input class="form-control" type="text" name="business_vat" id="business-vat" value="<?php echo sanitize_output($formData['business_vat'] ?? ''); ?>" placeholder="12345678901" inputmode="numeric" maxlength="16">
+                                <div class="form-text text-muted">Se lasci vuoto il codice fiscale cliente, useremo la P.IVA inserita.</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -859,6 +876,8 @@ window.CIEIstatLookupConfig = {
     const uploadEndpoint = "<?php echo sanitize_output(asset('api/opportunities/uploads.php')); ?>";
     const existingUploads = <?php echo json_encode($existingUploadTokens, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
     const taxCodeInput = document.getElementById('customer-tax-code');
+    const businessVatInput = document.getElementById('business-vat');
+    const businessNameInput = document.getElementById('business-name');
     const documentNumberInput = document.querySelector('input[name="document_number"]');
     const documentNumberHelp = document.getElementById('document-number-help');
     const taxCodeLookupBtn = document.getElementById('tax-code-lookup');
@@ -949,6 +968,28 @@ window.CIEIstatLookupConfig = {
                 if (selectionStart !== null && selectionEnd !== null) {
                     taxCodeInput.setSelectionRange(selectionStart, selectionEnd);
                 }
+            }
+        });
+    }
+
+    if (businessVatInput) {
+        businessVatInput.addEventListener('input', () => {
+            const { selectionStart, selectionEnd, value } = businessVatInput;
+            const upper = value.toUpperCase();
+            if (value !== upper) {
+                businessVatInput.value = upper;
+                if (selectionStart !== null && selectionEnd !== null) {
+                    businessVatInput.setSelectionRange(selectionStart, selectionEnd);
+                }
+            }
+        });
+        businessVatInput.addEventListener('blur', () => {
+            const vat = businessVatInput.value.trim().toUpperCase();
+            businessVatInput.value = vat;
+            if (taxCodeInput && taxCodeInput.value.trim() === '' && vat !== '') {
+                taxCodeInput.value = vat;
+                taxCodeInput.dispatchEvent(new Event('input', { bubbles: true }));
+                taxCodeInput.dispatchEvent(new Event('change', { bubbles: true }));
             }
         });
     }
