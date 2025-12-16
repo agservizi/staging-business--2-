@@ -1075,6 +1075,41 @@ window.CIEIstatLookupConfig = {
             const address = (payload.address || '').trim();
             const normalizedVat = (payload.vat || vat).trim();
 
+            const parseViesAddress = (raw) => {
+                if (!raw) {
+                    return { address: '', city: '', postalCode: '', province: '' };
+                }
+                const cleaned = raw.replace(/\s+/g, ' ').trim();
+                const match = cleaned.match(/^(.*?)(\d{5})\s+(.+?)\s+([A-Z]{2})$/);
+                if (match) {
+                    return {
+                        address: match[1].trim(),
+                        postalCode: match[2].trim(),
+                        city: match[3].trim(),
+                        province: match[4].trim(),
+                    };
+                }
+
+                // Fallback: try to drop the last 3 tokens if they look like city + province
+                const tokens = cleaned.split(' ');
+                if (tokens.length >= 3) {
+                    const maybeProvince = tokens[tokens.length - 1];
+                    const maybeCap = tokens[tokens.length - 2];
+                    if (/^[A-Z]{2}$/.test(maybeProvince) && /^\d{5}$/.test(maybeCap)) {
+                        return {
+                            address: tokens.slice(0, -2).join(' ').trim(),
+                            postalCode: maybeCap,
+                            city: tokens.slice(-2, -1)[0] || '',
+                            province: maybeProvince,
+                        };
+                    }
+                }
+
+                return { address: cleaned, city: '', postalCode: '', province: '' };
+            };
+
+            const addressParts = parseViesAddress(address);
+
             if (normalizedVat && businessVatInput.value !== normalizedVat) {
                 businessVatInput.value = normalizedVat;
             }
@@ -1085,7 +1120,16 @@ window.CIEIstatLookupConfig = {
                     updateInputValue(businessNameInput, name);
                 }
                 if (customerAddressInput) {
-                    updateInputValue(customerAddressInput, address);
+                    updateInputValue(customerAddressInput, addressParts.address || address);
+                }
+                if (customerPostalCodeInput) {
+                    updateInputValue(customerPostalCodeInput, addressParts.postalCode);
+                }
+                if (customerCityInput) {
+                    updateInputValue(customerCityInput, addressParts.city);
+                }
+                if (customerProvinceInput) {
+                    updateInputValue(customerProvinceInput, addressParts.province);
                 }
                 if (taxCodeInput && taxCodeInput.value.trim() === '') {
                     taxCodeInput.value = normalizedVat;
