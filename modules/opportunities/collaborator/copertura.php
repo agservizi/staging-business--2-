@@ -10,6 +10,11 @@ $apiBaseUrl = rtrim((string) env('COPERTURA_API_BASE_URL', 'https://api.pianetaf
 $apiToken = trim((string) env('COPERTURA_API_TOKEN', ''));
 $apiReady = $apiToken !== '';
 
+function copertura_log(string $message): void
+{
+    error_log('[Copertura] ' . $message);
+}
+
 function copertura_api_call(string $endpoint, array $params, string $apiBaseUrl, string $apiToken): array
 {
     $url = $apiBaseUrl . '?' . http_build_query(array_merge(['endpoint' => $endpoint], $params));
@@ -35,6 +40,9 @@ function copertura_api_call(string $endpoint, array $params, string $apiBaseUrl,
     $json = json_decode($response, true);
     if ($json === null) {
         throw new RuntimeException('Risposta non valida (HTTP ' . $status . '): ' . substr($response, 0, 400));
+    }
+    if (!is_array($json)) {
+        throw new RuntimeException('Risposta inattesa (HTTP ' . $status . '), atteso array JSON: ' . substr($response, 0, 400));
     }
 
     return ['status' => $status, 'data' => $json, 'raw' => $response];
@@ -266,6 +274,7 @@ if ($apiReady) {
             }
         }
     } catch (Throwable $e) {
+        copertura_log('Errore: ' . $e->getMessage());
         $messages[] = $e->getMessage();
     }
 } else {
