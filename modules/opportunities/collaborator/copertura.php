@@ -27,6 +27,7 @@ function copertura_file_log(string $endpoint, array $params, int $status, string
     ];
     $line = '[Copertura] ' . json_encode($payload, JSON_UNESCAPED_SLASHES) . PHP_EOL;
     @error_log($line, 3, $logPath);
+    @error_log($line); // anche nel log di sistema, in caso di permessi sul file
 }
 
 function copertura_api_call(string $endpoint, array $params, string $apiBaseUrl, string $apiToken): array
