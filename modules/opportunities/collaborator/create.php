@@ -19,6 +19,7 @@ $catalog = $opportunityService->getProviderCatalog();
 $errors = [];
 $formData = $_POST;
 $hasSubmitted = $_SERVER['REQUEST_METHOD'] === 'POST';
+$autoRestoreDraft = isset($_GET['auto_restore_draft']) && (int) $_GET['auto_restore_draft'] === 1;
 $telefoniaContractTypeValue = isset($formData['telefonia_contract_type']) ? (string) $formData['telefonia_contract_type'] : 'migrazione';
 $draftStorageKey = 'opportunity_collaborator_draft_' . $collaboratorId;
 $existingUploadTokens = [];
@@ -928,6 +929,7 @@ window.CIEIstatLookupConfig = {
         }
     })();
     const canUseServerDrafts = Boolean(remoteDraftEndpoint);
+    const autoRestoreDraft = <?php echo $autoRestoreDraft ? 'true' : 'false'; ?>;
     const documentTypeSelect = document.getElementById('document-type-select');
     const documentIssuedBySelect = document.getElementById('document-issued-by-select');
     const documentAuthorityDefaults = {
@@ -1671,6 +1673,9 @@ window.CIEIstatLookupConfig = {
                 remoteDraftSavedAt = parseServerDraftTimestamp(draft.saved_at ?? null) ?? Date.now();
                 remoteDraftAvailable = true;
                 updateRemoteDraftStatus(describeRemoteDraftStatus(), 'success');
+                if (autoRestoreDraft) {
+                    applyRemoteDraft();
+                }
             } else {
                 remoteDraftPayload = null;
                 remoteDraftSavedAt = null;

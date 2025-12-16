@@ -63,6 +63,54 @@ $remoteDraft = $opportunityService->getCollaboratorDraft($collaboratorId);
 $remoteDraftData = is_array($remoteDraft['data'] ?? null) ? $remoteDraft['data'] : [];
 $hasRemoteDraft = $remoteDraftData !== [];
 
+if ($hasRemoteDraft) {
+    $draftCustomerFirst = trim((string) ($remoteDraftData['customer_first_name'] ?? ''));
+    $draftCustomerLast = trim((string) ($remoteDraftData['customer_last_name'] ?? ''));
+    $draftCategory = strtolower((string) ($remoteDraftData['category'] ?? ''));
+    $draftProviderId = (int) ($remoteDraftData['provider_id'] ?? 0);
+    $draftOfferId = (int) ($remoteDraftData['offer_id'] ?? 0);
+
+    $providerLabel = '';
+    $offerLabel = '';
+    if ($draftProviderId > 0) {
+        $catalog = $opportunityService->getProviderCatalog(null);
+        foreach ($catalog as $providers) {
+            foreach ($providers as $provider) {
+                if ((int) ($provider['id'] ?? 0) === $draftProviderId) {
+                    $providerLabel = (string) ($provider['name'] ?? '');
+                    if ($draftOfferId > 0 && !empty($provider['offers'])) {
+                        foreach ($provider['offers'] as $offer) {
+                            if ((int) ($offer['id'] ?? 0) === $draftOfferId) {
+                                $offerLabel = (string) ($offer['name'] ?? '');
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    $draftRow = [
+        'is_draft' => true,
+        'id' => null,
+        'code' => 'BOZZA',
+        'customer_first_name' => $draftCustomerFirst,
+        'customer_last_name' => $draftCustomerLast,
+        'customer_tax_code' => (string) ($remoteDraftData['customer_tax_code'] ?? ''),
+        'category' => $draftCategory !== '' ? $draftCategory : '—',
+        'status_label' => 'Bozza da completare',
+        'status_color' => 'warning',
+        'status_code' => 'bozza',
+        'provider_label' => $providerLabel,
+        'offer_label' => $offerLabel,
+        'created_at' => $remoteDraft['saved_at'] ?? null,
+    ];
+
+    array_unshift($opportunities, $draftRow);
+    $hasResults = true;
+}
+
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
@@ -165,7 +213,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <tr>
                                 <td>
                                     <span class="fw-semibold"><?php echo sanitize_output($opportunity['code'] ?? ''); ?></span>
-                                    <div class="text-muted small">#<?php echo (int) ($opportunity['id'] ?? 0); ?></div>
+                                    <?php if (!empty($opportunity['is_draft'])): ?>
+                                        <div class="text-warning small">Bozza</div>
+                                    <?php else: ?>
+                                        <div class="text-muted small">#<?php echo (int) ($opportunity['id'] ?? 0); ?></div>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <div><?php echo sanitize_output(trim((string) ($opportunity['customer_first_name'] ?? '') . ' ' . (string) ($opportunity['customer_last_name'] ?? ''))); ?></div>
@@ -199,7 +251,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 </td>
                                 <td><?php echo sanitize_output(format_datetime_locale($opportunity['created_at'] ?? null)); ?></td>
                                 <td class="text-end">
-                                    <?php if (!empty($opportunity['id'])): ?>
+                                    <?php if (!empty($opportunity['is_draft'])): ?>
+                                        <a class="btn btn-sm btn-warning" href="<?php echo sanitize_output(asset('modules/opportunities/collaborator/create.php?auto_restore_draft=1')); ?>">
+                                            <i class="fa-solid fa-pen-to-square me-1"></i>Completa bozza
+                                        </a>
+                                    <?php elseif (!empty($opportunity['id'])): ?>
                                         <?php
                                             $opportunityId = (int) $opportunity['id'];
                                             $statusCode = strtolower((string) ($opportunity['status_code'] ?? ''));
