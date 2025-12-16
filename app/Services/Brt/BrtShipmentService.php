@@ -443,10 +443,6 @@ final class BrtShipmentService
             $defaults['network'] = $defaultNetworkCode;
         }
 
-        if (!isset($defaults['network']) || $defaults['network'] === '') {
-            $defaults['network'] = 'I';
-        }
-
         return array_merge($defaults, $consigneeData);
     }
 
@@ -521,10 +517,6 @@ final class BrtShipmentService
             $routing['network'] = $network;
         } elseif (!$hasNetworkOverride && $defaultNetworkCode !== '') {
             $routing['network'] = $defaultNetworkCode;
-        }
-
-        if (!isset($routing['network']) || $routing['network'] === '') {
-            $routing['network'] = 'I';
         }
 
         $serviceType = $this->toString($input['serviceType'] ?? $this->config->getDefaultServiceType() ?? '');
