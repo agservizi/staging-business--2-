@@ -627,8 +627,8 @@ function require_valid_csrf(): void
     }
 
     $sessionToken = $_SESSION['__csrf'] ?? null;
+    $cookieToken = $_COOKIE['XSRF-TOKEN'] ?? null;
     if (!is_string($sessionToken) || $sessionToken === '') {
-        $cookieToken = $_COOKIE['XSRF-TOKEN'] ?? null;
         if (is_string($cookieToken) && $cookieToken !== '') {
             $_SESSION['__csrf'] = $cookieToken;
             $sessionToken = $cookieToken;
@@ -641,6 +641,12 @@ function require_valid_csrf(): void
     }
 
     if (!hash_equals($sessionToken, $providedToken)) {
+        // Allinea la sessione se il token inviato combacia con il cookie XSRF (es. sessione rigenerata)
+        if (is_string($cookieToken) && $cookieToken !== '' && hash_equals($cookieToken, $providedToken)) {
+            $_SESSION['__csrf'] = $cookieToken;
+            return;
+        }
+
         http_response_code(419);
         exit('Token CSRF non valido.');
     }
