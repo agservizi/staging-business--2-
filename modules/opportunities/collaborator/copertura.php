@@ -15,6 +15,20 @@ function copertura_log(string $message): void
     error_log('[Copertura] ' . $message);
 }
 
+function copertura_file_log(string $endpoint, array $params, int $status, string $body): void
+{
+    $logPath = __DIR__ . '/../../../logs/app.log';
+    $payload = [
+        'ts' => date('c'),
+        'endpoint' => $endpoint,
+        'status' => $status,
+        'params' => $params,
+        'body_snippet' => substr($body, 0, 400),
+    ];
+    $line = '[Copertura] ' . json_encode($payload, JSON_UNESCAPED_SLASHES) . PHP_EOL;
+    @file_put_contents($logPath, $line, FILE_APPEND);
+}
+
 function copertura_api_call(string $endpoint, array $params, string $apiBaseUrl, string $apiToken): array
 {
     $url = $apiBaseUrl . '?' . http_build_query(array_merge(['endpoint' => $endpoint], $params));
@@ -39,15 +53,19 @@ function copertura_api_call(string $endpoint, array $params, string $apiBaseUrl,
 
     $json = json_decode($response, true);
     if ($json === null) {
+        copertura_file_log($endpoint, $params, $status, $response);
         throw new RuntimeException('Risposta non valida (HTTP ' . $status . '): ' . substr($response, 0, 400));
     }
     if (!is_array($json)) {
+        copertura_file_log($endpoint, $params, $status, $response);
         throw new RuntimeException('Risposta inattesa (HTTP ' . $status . '), atteso array JSON: ' . substr($response, 0, 400));
     }
     if ($status >= 400) {
+        copertura_file_log($endpoint, $params, $status, $response);
         throw new RuntimeException('API ' . $endpoint . ' ha risposto HTTP ' . $status . ' con payload: ' . substr($response, 0, 400));
     }
 
+    copertura_file_log($endpoint, $params, $status, $response);
     copertura_log('Chiamata ' . $endpoint . ' OK (HTTP ' . $status . ')');
     return ['status' => $status, 'data' => $json, 'raw' => $response];
 }
