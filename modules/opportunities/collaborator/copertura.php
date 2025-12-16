@@ -26,7 +26,7 @@ function copertura_file_log(string $endpoint, array $params, int $status, string
         'body_snippet' => substr($body, 0, 400),
     ];
     $line = '[Copertura] ' . json_encode($payload, JSON_UNESCAPED_SLASHES) . PHP_EOL;
-    @file_put_contents($logPath, $line, FILE_APPEND);
+    @error_log($line, 3, $logPath);
 }
 
 function copertura_api_call(string $endpoint, array $params, string $apiBaseUrl, string $apiToken): array
@@ -45,6 +45,7 @@ function copertura_api_call(string $endpoint, array $params, string $apiBaseUrl,
     $response = curl_exec($curl);
     if ($response === false) {
         $error = curl_error($curl);
+        copertura_file_log($endpoint, $params, 0, 'cURL error: ' . $error);
         curl_close($curl);
         throw new RuntimeException('cURL error: ' . $error);
     }
@@ -89,6 +90,30 @@ function copertura_normalize_cities(array $payload): array
         ];
     }
     return $normalized;
+}
+
+/**
+ * Se l'ID comune proviene dal dataset ISTAT (5 cifre) lo riconcilia con l'ID EGON dell'API.
+ */
+function copertura_resolve_city_id(string $cityName, string $cityZip, string $apiBaseUrl, string $apiToken): int
+{
+    if ($cityName === '') {
+        return 0;
+    }
+    $response = copertura_api_call('city', ['city' => $cityName], $apiBaseUrl, $apiToken);
+    $cities = copertura_normalize_cities($response['data']);
+    if (!$cities) {
+        return 0;
+    }
+    $normalizedName = mb_strtolower($cityName);
+    foreach ($cities as $city) {
+        $sameZip = $cityZip === '' || $city['zip'] === '' || $city['zip'] === $cityZip;
+        $nameMatches = mb_strtolower($city['name']) === $normalizedName || str_contains(mb_strtolower($city['name']), $normalizedName);
+        if ($sameZip && $nameMatches) {
+            return $city['id'];
+        }
+    }
+    return (int) ($cities[0]['id'] ?? 0);
 }
 
 function copertura_normalize_streets(array $payload): array
@@ -239,6 +264,18 @@ $messages = [];
 
 if ($apiReady) {
     try {
+        // Se l'ID comune proviene dal dataset ISTAT (5 cifre), convertilo in ID EGON tramite API.
+        if ($cityId > 0 && $cityId < 1000000000) {
+            $resolvedId = copertura_resolve_city_id($cityName, $cityZip, $apiBaseUrl, $apiToken);
+            if ($resolvedId > 0 && $resolvedId !== $cityId) {
+                $cityId = $resolvedId;
+                copertura_log('Comune riconciliato su API con ID EGON ' . $cityId);
+            } elseif ($resolvedId === 0) {
+                $cityId = 0;
+                $messages[] = 'Comune non trovato su API PianetaFibra, riprova specificando il nome completo.';
+            }
+        }
+
         if ($cityQuery !== '' && mb_strlen($cityQuery) >= 3) {
             $cityResults = load_local_cities($cityQuery);
             if (!$cityResults) {
