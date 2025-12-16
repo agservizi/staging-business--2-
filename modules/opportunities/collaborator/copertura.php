@@ -224,7 +224,10 @@ if ($apiReady) {
             $response = copertura_api_call('address', ['street' => $streetQuery, 'id_city' => $cityId], $apiBaseUrl, $apiToken);
             $streetResults = copertura_normalize_streets($response['data']);
             if (!$streetResults) {
-                $messages[] = 'Nessuna via trovata per i dati forniti.';
+                $messages[] = 'Nessuna via trovata per "' . $streetQuery . '" nel comune selezionato.';
+                if ($response['status'] !== 200) {
+                    $messages[] = 'Risposta API indirizzi: HTTP ' . $response['status'];
+                }
             }
         }
 
@@ -232,7 +235,10 @@ if ($apiReady) {
             $response = copertura_api_call('housenumber', ['num' => $houseQuery, 'id_street' => $streetId], $apiBaseUrl, $apiToken);
             $houseResults = copertura_normalize_houses($response['data']);
             if (!$houseResults) {
-                $messages[] = 'Nessun civico trovato per i dati forniti.';
+                $messages[] = 'Nessun civico trovato per "' . $houseQuery . '" nella via selezionata.';
+                if ($response['status'] !== 200) {
+                    $messages[] = 'Risposta API civici: HTTP ' . $response['status'];
+                }
             }
         }
 
