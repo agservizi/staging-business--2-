@@ -89,6 +89,13 @@ final class BrtShipmentService
             $payload['labelParameters'] = $labelOverrides;
         }
 
+        $this->debugLog('BRT create payload network', [
+            'input_network' => $input['network'] ?? null,
+            'resolved_network' => $payload['createData']['network'] ?? null,
+            'default_network_env' => $this->config->getDefaultNetwork(),
+            'pricing_condition' => $payload['createData']['pricingConditionCode'] ?? null,
+        ]);
+
         $response = $this->client->request('POST', '/shipments/shipment', null, $payload);
 
         if ($response['status'] < 200 || $response['status'] >= 300) {
@@ -436,6 +443,10 @@ final class BrtShipmentService
             $defaults['network'] = $defaultNetworkCode;
         }
 
+        if (!isset($defaults['network']) || $defaults['network'] === '') {
+            $defaults['network'] = 'I';
+        }
+
         return array_merge($defaults, $consigneeData);
     }
 
@@ -510,6 +521,10 @@ final class BrtShipmentService
             $routing['network'] = $network;
         } elseif (!$hasNetworkOverride && $defaultNetworkCode !== '') {
             $routing['network'] = $defaultNetworkCode;
+        }
+
+        if (!isset($routing['network']) || $routing['network'] === '') {
+            $routing['network'] = 'I';
         }
 
         $serviceType = $this->toString($input['serviceType'] ?? $this->config->getDefaultServiceType() ?? '');
@@ -971,6 +986,7 @@ final class BrtShipmentService
 
         return $value;
     }
+
     private function normalizeFloat($value): float
     {
         if ($value === null || $value === '') {
@@ -982,6 +998,30 @@ final class BrtShipmentService
         }
 
         return (float) $value;
+
+    }
+
+    /**
+     * Lightweight logger to trace BRT payload decisions without exposing PII.
+     */
+    private function debugLog(string $message, array $context = []): void
+    {
+        $safeContext = array_filter($context, static function ($value) {
+            if ($value === null) {
+                return false;
+            }
+            if (is_string($value)) {
+                return trim($value) !== '';
+            }
+            return true;
+        });
+
+        if (function_exists('brt_log_event')) {
+            \brt_log_event('info', $message, $safeContext);
+            return;
+        }
+
+        error_log($message . ' ' . json_encode($safeContext));
     }
 
     private function truncateMessage(string $message, int $length = 400): string
