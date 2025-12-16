@@ -337,7 +337,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
 
             </div>
-            <a class="btn btn-outline-secondary" href="<?php echo $isEditingOpportunity ? asset('modules/opportunities/collaborator/view.php?id=' . $editOpportunityId) : asset('modules/opportunities/collaborator/index.php'); ?>">
+            <a class="btn btn-outline-secondary" href="<?php echo $isEditingOpportunity ? asset('modules/opportunities/collaborator/view.php?id=' . $editOpportunityId) : asset('modules/opportunities/collaborator/list.php'); ?>">
                 <i class="fa-solid fa-arrow-left me-2"></i>Torna alla lista
             </a>
         </div>
