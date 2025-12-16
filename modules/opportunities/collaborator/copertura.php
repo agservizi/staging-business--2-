@@ -124,12 +124,27 @@ function load_local_cities(string $query): array
                 $cache = [];
             } else {
                 $cache = array_map(static function (array $row): array {
+                    $cap = $row['cap'] ?? '';
+                    if (is_array($cap)) {
+                        $cap = $cap[0] ?? '';
+                    }
+
+                    $provinceName = $row['provincia']['nome'] ?? ($row['provincia']['sigla'] ?? '');
+                    if (is_array($provinceName)) {
+                        $provinceName = $provinceName[0] ?? '';
+                    }
+
+                    $regionName = $row['regione']['nome'] ?? '';
+                    if (is_array($regionName)) {
+                        $regionName = $regionName[0] ?? '';
+                    }
+
                     return [
                         'id' => (int) ($row['codice'] ?? 0),
                         'name' => trim((string) ($row['nome'] ?? '')),
-                        'zip' => trim((string) ($row['cap'] ?? '')),
-                        'province' => trim((string) ($row['provincia']['nome'] ?? $row['provincia']['sigla'] ?? '')),
-                        'region' => trim((string) ($row['regione']['nome'] ?? '')),
+                        'zip' => trim((string) $cap),
+                        'province' => trim((string) $provinceName),
+                        'region' => trim((string) $regionName),
                     ];
                 }, $data);
             }
