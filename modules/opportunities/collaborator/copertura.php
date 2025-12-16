@@ -44,7 +44,11 @@ function copertura_api_call(string $endpoint, array $params, string $apiBaseUrl,
     if (!is_array($json)) {
         throw new RuntimeException('Risposta inattesa (HTTP ' . $status . '), atteso array JSON: ' . substr($response, 0, 400));
     }
+    if ($status >= 400) {
+        throw new RuntimeException('API ' . $endpoint . ' ha risposto HTTP ' . $status . ' con payload: ' . substr($response, 0, 400));
+    }
 
+    copertura_log('Chiamata ' . $endpoint . ' OK (HTTP ' . $status . ')');
     return ['status' => $status, 'data' => $json, 'raw' => $response];
 }
 
@@ -233,9 +237,6 @@ if ($apiReady) {
             $streetResults = copertura_normalize_streets($response['data']);
             if (!$streetResults) {
                 $messages[] = 'Nessuna via trovata per "' . $streetQuery . '" nel comune selezionato.';
-                if ($response['status'] !== 200) {
-                    $messages[] = 'Risposta API indirizzi: HTTP ' . $response['status'];
-                }
             }
         }
 
@@ -244,9 +245,6 @@ if ($apiReady) {
             $houseResults = copertura_normalize_houses($response['data']);
             if (!$houseResults) {
                 $messages[] = 'Nessun civico trovato per "' . $houseQuery . '" nella via selezionata.';
-                if ($response['status'] !== 200) {
-                    $messages[] = 'Risposta API civici: HTTP ' . $response['status'];
-                }
             }
         }
 
