@@ -99,6 +99,64 @@ function copertura_normalize_houses(array $payload): array
     return $normalized;
 }
 
+/**
+ * Ricerca comune via dataset ISTAT locale (fallback rapido e offline-friendly).
+ * Usa customer-portal/assets/data/comuni.json se presente.
+ *
+ * @return array<int,array{id:int,name:string,zip:string,province:string,region:string}>
+ */
+function load_local_cities(string $query): array
+{
+    static $cache = null;
+    $query = trim(mb_strtolower($query));
+    if ($query === '' || mb_strlen($query) < 3) {
+        return [];
+    }
+
+    if ($cache === null) {
+        $localPath = __DIR__ . '/../../../customer-portal/assets/data/comuni.json';
+        if (!is_file($localPath)) {
+            $cache = [];
+        } else {
+            $json = file_get_contents($localPath);
+            $data = json_decode($json, true);
+            if (!is_array($data)) {
+                $cache = [];
+            } else {
+                $cache = array_map(static function (array $row): array {
+                    return [
+                        'id' => (int) ($row['codice'] ?? 0),
+                        'name' => trim((string) ($row['nome'] ?? '')),
+                        'zip' => trim((string) ($row['cap'] ?? '')),
+                        'province' => trim((string) ($row['provincia']['nome'] ?? $row['provincia']['sigla'] ?? '')),
+                        'region' => trim((string) ($row['regione']['nome'] ?? '')),
+                    ];
+                }, $data);
+            }
+        }
+    }
+
+    if ($cache === []) {
+        return [];
+    }
+
+    $filtered = [];
+    foreach ($cache as $city) {
+        $name = mb_strtolower($city['name'] ?? '');
+        if ($name === '' || $city['id'] === 0) {
+            continue;
+        }
+        if (str_contains($name, $query)) {
+            $filtered[] = $city;
+        }
+        if (count($filtered) >= 25) {
+            break; // limite sicurezza
+        }
+    }
+
+    return $filtered;
+}
+
 function copertura_coverage_result(array $payload): array
 {
     $result = is_array($payload[0] ?? null) ? $payload[0] : $payload;
@@ -136,9 +194,12 @@ $messages = [];
 
 if ($apiReady) {
     try {
-        if ($cityQuery !== '' && strlen($cityQuery) >= 3) {
-            $response = copertura_api_call('city', ['city' => $cityQuery], $apiBaseUrl, $apiToken);
-            $cityResults = copertura_normalize_cities($response['data']);
+        if ($cityQuery !== '' && mb_strlen($cityQuery) >= 3) {
+            $cityResults = load_local_cities($cityQuery);
+            if (!$cityResults) {
+                $response = copertura_api_call('city', ['city' => $cityQuery], $apiBaseUrl, $apiToken);
+                $cityResults = copertura_normalize_cities($response['data']);
+            }
             if (!$cityResults) {
                 $messages[] = 'Nessun comune trovato per la ricerca indicata.';
             }
