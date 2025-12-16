@@ -156,6 +156,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     $collabFilesActive = nav_active('modules/opportunities/collaborator/promotions.php', $currentPath);
                     $collabCommissionActive = nav_active('modules/opportunities/collaborator/commissions.php', $currentPath);
                     $collabTicketsActive = nav_active('modules/opportunities/collaborator/tickets.php', $currentPath);
+                    $collabCoverageActive = nav_active('modules/opportunities/collaborator/copertura.php', $currentPath);
                 ?>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center <?php echo $collabDashboardActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/index.php'); ?>" aria-label="Dashboard opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Dashboard opportunity"<?php echo $collabDashboardActive ? ' aria-current="page"' : ''; ?>>
@@ -187,6 +188,14 @@ $appVersion = env('APP_VERSION', '1.0.0');
                             <i class="fa-solid fa-circle-question"></i>
                         </span>
                         <span class="nav-label">Guida</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $collabCoverageActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/copertura.php'); ?>" aria-label="Copertura rete" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Copertura rete"<?php echo $collabCoverageActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="sky" aria-hidden="true">
+                            <i class="fa-solid fa-wifi"></i>
+                        </span>
+                        <span class="nav-label">Copertura rete</span>
                     </a>
                 </li>
                 <li class="nav-item">
