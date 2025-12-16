@@ -108,7 +108,8 @@ function copertura_resolve_city_id(string $cityName, string $cityZip, string $ap
     $normalizedName = mb_strtolower($cityName);
     foreach ($cities as $city) {
         $sameZip = $cityZip === '' || $city['zip'] === '' || $city['zip'] === $cityZip;
-        $nameMatches = mb_strtolower($city['name']) === $normalizedName || str_contains(mb_strtolower($city['name']), $normalizedName);
+        $hay = mb_strtolower($city['name']);
+        $nameMatches = $hay === $normalizedName || mb_stripos($hay, $normalizedName) !== false;
         if ($sameZip && $nameMatches) {
             return $city['id'];
         }
@@ -216,7 +217,7 @@ function load_local_cities(string $query): array
         if ($name === '' || $city['id'] === 0) {
             continue;
         }
-        if (str_contains($name, $query)) {
+        if (mb_stripos($name, $query) !== false) {
             $filtered[] = $city;
         }
         if (count($filtered) >= 25) {
