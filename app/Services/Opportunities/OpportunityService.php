@@ -228,7 +228,6 @@ final class OpportunityService
         $conditions = ['cc.collaborator_id = :user'];
         $params = [
             ':user' => $userId,
-            ':user_latest' => $userId,
         ];
 
         $search = trim($search);
