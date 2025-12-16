@@ -1080,7 +1080,7 @@ window.CIEIstatLookupConfig = {
             }
 
             if (isValid) {
-                setVatFeedback('P.IVA valida secondo VIES.', 'success');
+                setVatFeedback('P.IVA VALIDATA', 'success');
                 if (businessNameInput) {
                     updateInputValue(businessNameInput, name);
                 }
