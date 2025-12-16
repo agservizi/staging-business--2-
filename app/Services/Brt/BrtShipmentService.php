@@ -73,6 +73,8 @@ final class BrtShipmentService
      */
     public function createShipment(array $input): array
     {
+        $input = $this->normalizeLegacyKeys($input);
+
         $payload = [
             'account' => $this->buildAccountData(),
             'createData' => $this->buildCreateData($input),
@@ -120,6 +122,50 @@ final class BrtShipmentService
         $this->assertExecutionSuccess($body['createResponse']);
 
         return $body['createResponse'];
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    private function normalizeLegacyKeys(array $input): array
+    {
+        $map = [
+            'number_of_parcels' => 'numberOfParcels',
+            'weight_kg' => 'weightKG',
+            'dimension_length_cm' => 'dimensionLengthCM',
+            'dimension_depth_cm' => 'dimensionDepthCM',
+            'dimension_height_cm' => 'dimensionHeightCM',
+            'cod_amount' => 'cashOnDeliveryAmount',
+            'cod_currency' => 'codCurrency',
+            'cod_payment_type' => 'codPaymentType',
+            'consignee_company_name' => 'consigneeCompanyName',
+            'consignee_address' => 'consigneeAddress',
+            'consignee_zip' => 'consigneeZIPCode',
+            'consignee_city' => 'consigneeCity',
+            'consignee_province' => 'consigneeProvinceAbbreviation',
+            'consignee_country' => 'consigneeCountryAbbreviationISOAlpha2',
+            'consignee_contact_name' => 'consigneeContactName',
+            'consignee_phone' => 'consigneeTelephone',
+            'consignee_mobile' => 'consigneeMobilePhoneNumber',
+            'consignee_email' => 'consigneeEMail',
+            'is_label_required' => 'isLabelRequired',
+            'return_depot' => 'returnDepot',
+            'service_code' => 'brtServiceCode',
+            'pudo_id' => 'pudoId',
+            'alphanumeric_sender_reference' => 'alphanumericSenderReference',
+            'numeric_sender_reference' => 'numericSenderReference',
+            'insurance_amount' => 'insuranceAmount',
+            'insurance_currency' => 'insuranceAmountCurrency',
+        ];
+
+        foreach ($map as $legacy => $modern) {
+            if (array_key_exists($legacy, $input) && !array_key_exists($modern, $input)) {
+                $input[$modern] = $input[$legacy];
+            }
+        }
+
+        return $input;
     }
 
     /**
