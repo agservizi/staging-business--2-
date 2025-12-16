@@ -225,21 +225,25 @@ final class OpportunityService
             return 0;
         }
 
-        $conditions = ['o.collaborator_id = :user', 'o.customer_tax_code <> ""'];
+        $conditions = ['cc.collaborator_id = :user'];
         $params = [':user' => $userId];
 
         $search = trim($search);
         if ($search !== '') {
             $conditions[] = '(
-                o.customer_tax_code LIKE :search
-                OR o.customer_first_name LIKE :search
-                OR o.customer_last_name LIKE :search
-                OR o.customer_email LIKE :search
+                c.cf_piva LIKE :search
+                OR c.nome LIKE :search
+                OR c.cognome LIKE :search
+                OR c.email LIKE :search
+                OR c.telefono LIKE :search
             )';
             $params[':search'] = '%' . $search . '%';
         }
 
-        $sql = 'SELECT COUNT(DISTINCT o.customer_tax_code) AS total FROM opportunities o WHERE ' . implode(' AND ', $conditions);
+        $sql = 'SELECT COUNT(*) AS total FROM collaborator_customers cc
+                INNER JOIN clienti c ON c.id = cc.customer_id
+                WHERE ' . implode(' AND ', $conditions);
+
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -256,37 +260,62 @@ final class OpportunityService
             return [];
         }
 
-        $conditions = ['o.collaborator_id = :user', 'o.customer_tax_code <> ""'];
+        $conditions = ['cc.collaborator_id = :user'];
         $params = [':user' => $userId];
 
         $search = trim($search);
         if ($search !== '') {
             $conditions[] = '(
-                o.customer_tax_code LIKE :search
-                OR o.customer_first_name LIKE :search
-                OR o.customer_last_name LIKE :search
-                OR o.customer_email LIKE :search
+                c.cf_piva LIKE :search
+                OR c.nome LIKE :search
+                OR c.cognome LIKE :search
+                OR c.email LIKE :search
+                OR c.telefono LIKE :search
             )';
             $params[':search'] = '%' . $search . '%';
         }
 
-        $baseWhere = implode(' AND ', $conditions);
+        $whereClause = implode(' AND ', $conditions);
 
-        $sql = 'SELECT latest.*, s.label AS status_label, s.color AS status_color,
-                   c.id AS customer_id, c.morosita_flag, c.morosita_score, c.morosita_note,
-                   c.morosita_aggiornato_il, c.morosita_fonte
-            FROM opportunities latest
-                INNER JOIN (
-                    SELECT o.customer_tax_code, MAX(o.id) AS last_op_id
-                    FROM opportunities o
-                    WHERE ' . $baseWhere . '
-                    GROUP BY o.customer_tax_code
-                    ORDER BY last_op_id DESC
-                    LIMIT :limit OFFSET :offset
-                ) idx ON idx.last_op_id = latest.id
-            LEFT JOIN opportunity_statuses s ON s.code = latest.status_code
-            LEFT JOIN clienti c ON UPPER(c.cf_piva) = UPPER(latest.customer_tax_code)
-                ORDER BY latest.id DESC';
+        $sql = 'SELECT
+                    c.id AS customer_id,
+                    c.nome AS customer_first_name,
+                    c.cognome AS customer_last_name,
+                    c.cf_piva AS customer_tax_code,
+                    c.telefono AS customer_phone,
+                    c.email AS customer_email,
+                    c.indirizzo AS customer_address,
+                    c.morosita_flag,
+                    c.morosita_score,
+                    c.morosita_note,
+                    c.morosita_aggiornato_il,
+                    c.morosita_fonte,
+                    latest.code,
+                    latest.status_label,
+                    latest.status_color,
+                    latest.status_code,
+                    latest.updated_at,
+                    latest.created_at,
+                    latest.document_type,
+                    latest.document_number
+                FROM collaborator_customers cc
+                INNER JOIN clienti c ON c.id = cc.customer_id
+                LEFT JOIN (
+                    SELECT idx.tax_code, o.code, o.status_code, o.updated_at, o.created_at,
+                           o.document_type, o.document_number,
+                           s.label AS status_label, s.color AS status_color
+                    FROM (
+                        SELECT UPPER(o.customer_tax_code) AS tax_code, MAX(o.id) AS last_op_id
+                        FROM opportunities o
+                        WHERE o.collaborator_id = :user
+                        GROUP BY UPPER(o.customer_tax_code)
+                    ) idx
+                    JOIN opportunities o ON o.id = idx.last_op_id
+                    LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+                ) latest ON latest.tax_code = UPPER(c.cf_piva)
+                WHERE ' . $whereClause . '
+                ORDER BY COALESCE(latest.updated_at, latest.created_at, cc.last_seen_at, cc.created_at) DESC
+                LIMIT :limit OFFSET :offset';
 
         $stmt = $this->pdo->prepare($sql);
         foreach ($params as $key => $value) {
@@ -313,24 +342,30 @@ final class OpportunityService
             return null;
         }
 
-                $stmt = $this->pdo->prepare(
-                        'SELECT o.*, s.label AS status_label, s.color AS status_color,
-                                        c.id AS customer_id, c.morosita_flag, c.morosita_score, c.morosita_note,
-                                        c.morosita_aggiornato_il, c.morosita_fonte
-                         FROM opportunities o
-                         LEFT JOIN opportunity_statuses s ON s.code = o.status_code
-                         LEFT JOIN clienti c ON UPPER(c.cf_piva) = UPPER(o.customer_tax_code)
-                         WHERE o.collaborator_id = :user
-                             AND UPPER(o.customer_tax_code) = :tax
-                         ORDER BY o.id DESC
-                         LIMIT 1'
-                );
-        $stmt->execute([':user' => $userId, ':tax' => $normalized]);
-        $latest = $stmt->fetch(PDO::FETCH_ASSOC);
+        $customerStmt = $this->pdo->prepare(
+            'SELECT c.*, cc.last_seen_at
+             FROM collaborator_customers cc
+             INNER JOIN clienti c ON c.id = cc.customer_id
+             WHERE cc.collaborator_id = :user AND UPPER(c.cf_piva) = :tax
+             LIMIT 1'
+        );
+        $customerStmt->execute([':user' => $userId, ':tax' => $normalized]);
+        $customer = $customerStmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$latest) {
+        if (!$customer) {
             return null;
         }
+
+        $stmt = $this->pdo->prepare(
+            'SELECT o.*, s.label AS status_label, s.color AS status_color
+             FROM opportunities o
+             LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+             WHERE o.collaborator_id = :user AND UPPER(o.customer_tax_code) = :tax
+             ORDER BY o.id DESC
+             LIMIT 1'
+        );
+        $stmt->execute([':user' => $userId, ':tax' => $normalized]);
+        $latest = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
         $historyStmt = $this->pdo->prepare(
             'SELECT o.id, o.code, o.provider_label, o.offer_label, o.category,
@@ -346,7 +381,7 @@ final class OpportunityService
         $opportunities = $historyStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         return [
-            'customer' => $latest,
+            'customer' => array_merge($customer, $latest),
             'opportunities' => $opportunities,
         ];
     }
@@ -387,6 +422,83 @@ final class OpportunityService
         }
 
         return [$conditions, $params];
+    }
+
+    /**
+     * @param array<string,mixed> $payload
+     */
+    private function syncCollaboratorCustomer(int $collaboratorId, array $payload): void
+    {
+        $taxCode = strtoupper(trim((string) ($payload['customer_tax_code'] ?? '')));
+        if ($collaboratorId <= 0 || $taxCode === '') {
+            return;
+        }
+
+        $firstName = trim((string) ($payload['customer_first_name'] ?? ''));
+        $lastName = trim((string) ($payload['customer_last_name'] ?? ''));
+        $email = trim((string) ($payload['customer_email'] ?? ''));
+        $phone = trim((string) ($payload['customer_phone'] ?? ''));
+        $address = trim((string) ($payload['customer_address'] ?? ''));
+
+        $select = $this->pdo->prepare('SELECT id, nome, cognome, email, telefono, indirizzo FROM clienti WHERE UPPER(cf_piva) = :tax LIMIT 1');
+        $select->execute([':tax' => $taxCode]);
+        $existing = $select->fetch(PDO::FETCH_ASSOC);
+
+        if ($existing) {
+            $updateFields = [];
+            $updateParams = [
+                ':id' => (int) $existing['id'],
+            ];
+
+            $maybeUpdate = static function (string $column, string $value) use (&$updateFields, &$updateParams): void {
+                if ($value !== '') {
+                    $updateFields[] = $column . ' = :' . $column;
+                    $updateParams[':' . $column] = $value;
+                }
+            };
+
+            $maybeUpdate('nome', $firstName);
+            $maybeUpdate('cognome', $lastName);
+            $maybeUpdate('email', $email);
+            $maybeUpdate('telefono', $phone);
+            $maybeUpdate('indirizzo', $address);
+
+            if ($updateFields !== []) {
+                $updateSql = 'UPDATE clienti SET ' . implode(', ', $updateFields) . ' WHERE id = :id';
+                $updateStmt = $this->pdo->prepare($updateSql);
+                $updateStmt->execute($updateParams);
+            }
+
+            $customerId = (int) $existing['id'];
+        } else {
+            $insert = $this->pdo->prepare(
+                'INSERT INTO clienti (ragione_sociale, nome, cognome, cf_piva, email, telefono, indirizzo, morosita_flag, morosita_score)
+                 VALUES (:ragione, :nome, :cognome, :cf, :email, :telefono, :indirizzo, 0, "ok")'
+            );
+            $insert->execute([
+                ':ragione' => trim($firstName . ' ' . $lastName),
+                ':nome' => $firstName,
+                ':cognome' => $lastName,
+                ':cf' => $taxCode,
+                ':email' => $email,
+                ':telefono' => $phone,
+                ':indirizzo' => $address,
+            ]);
+
+            $customerId = (int) $this->pdo->lastInsertId();
+        }
+
+        $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
+        $mapping = $this->pdo->prepare(
+            'INSERT INTO collaborator_customers (collaborator_id, customer_id, last_seen_at)
+             VALUES (:collaborator, :customer, :seen)
+             ON DUPLICATE KEY UPDATE last_seen_at = VALUES(last_seen_at), updated_at = VALUES(last_seen_at)'
+        );
+        $mapping->execute([
+            ':collaborator' => $collaboratorId,
+            ':customer' => $customerId,
+            ':seen' => $now,
+        ]);
     }
 
     /**
@@ -799,7 +911,47 @@ final class OpportunityService
         $stmt->execute([':taxCode' => $normalized]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $result ?: null;
+        if ($result) {
+            return $result;
+        }
+
+        $fallback = $this->pdo->prepare(
+            'SELECT
+                c.nome AS customer_first_name,
+                c.cognome AS customer_last_name,
+                c.cf_piva AS customer_tax_code,
+                c.telefono AS customer_phone,
+                c.email AS customer_email,
+                c.indirizzo AS customer_address,
+                NULL AS customer_city,
+                NULL AS customer_postal_code,
+                NULL AS customer_province,
+                NULL AS document_type,
+                NULL AS document_number,
+                NULL AS document_issued_by,
+                NULL AS document_issued_at,
+                NULL AS document_expires_at,
+                NULL AS telefonia_current_operator,
+                NULL AS telefonia_line_number,
+                NULL AS luce_pod,
+                NULL AS gas_pdr,
+                NULL AS payment_method,
+                NULL AS payment_iban,
+                NULL AS payment_holder_is_customer,
+                NULL AS payment_holder_first_name,
+                NULL AS payment_holder_last_name,
+                NULL AS payment_holder_tax_code,
+                c.morosita_score,
+                c.morosita_note,
+                c.morosita_aggiornato_il
+             FROM clienti c
+             WHERE UPPER(c.cf_piva) = :taxCode
+             LIMIT 1'
+        );
+        $fallback->execute([':taxCode' => $normalized]);
+        $row = $fallback->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
     }
 
     /**
@@ -1213,6 +1365,8 @@ final class OpportunityService
             $stmt->execute();
             $opportunityId = (int) $this->pdo->lastInsertId();
 
+            $this->syncCollaboratorCustomer($collaboratorId, $payload);
+
             if ($normalizedFiles) {
                 $this->persistFiles($opportunityId, $normalizedFiles, $collaboratorId);
                 $resolvedTokens = $resolvedUploads['tokens'] ?? [];
@@ -1477,6 +1631,8 @@ final class OpportunityService
                     OpportunityUploadStorage::cleanupTokens($collaboratorId, $resolvedTokens);
                 }
             }
+
+            $this->syncCollaboratorCustomer($collaboratorId, array_merge($existing, $payload));
 
             $this->pdo->commit();
         } catch (RuntimeException $exception) {
