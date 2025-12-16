@@ -226,7 +226,10 @@ final class OpportunityService
         }
 
         $conditions = ['cc.collaborator_id = :user'];
-        $params = [':user' => $userId];
+        $params = [
+            ':user' => $userId,
+            ':user_latest' => $userId,
+        ];
 
         $search = trim($search);
         if ($search !== '') {
@@ -261,7 +264,10 @@ final class OpportunityService
         }
 
         $conditions = ['cc.collaborator_id = :user'];
-        $params = [':user' => $userId];
+        $params = [
+            ':user' => $userId,
+            ':user_latest' => $userId,
+        ];
 
         $search = trim($search);
         if ($search !== '') {
@@ -307,7 +313,7 @@ final class OpportunityService
                     FROM (
                         SELECT UPPER(o.customer_tax_code) AS tax_code, MAX(o.id) AS last_op_id
                         FROM opportunities o
-                        WHERE o.collaborator_id = :user
+                        WHERE o.collaborator_id = :user_latest
                         GROUP BY UPPER(o.customer_tax_code)
                     ) idx
                     JOIN opportunities o ON o.id = idx.last_op_id
