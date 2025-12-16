@@ -59,6 +59,9 @@ $offset = ($currentPage - 1) * $perPage;
 
 $opportunities = $opportunityService->listCollaboratorOpportunities($collaboratorId, $listFilters, $perPage, $offset, $sort);
 $hasResults = !empty($opportunities);
+$remoteDraft = $opportunityService->getCollaboratorDraft($collaboratorId);
+$remoteDraftData = is_array($remoteDraft['data'] ?? null) ? $remoteDraft['data'] : [];
+$hasRemoteDraft = $remoteDraftData !== [];
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -134,6 +137,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
         <div class="card shadow-sm">
             <div class="card-body p-0">
+                <?php if (!$hasResults && $hasRemoteDraft): ?>
+                    <div class="alert alert-warning m-3" role="alert">
+                        Hai una bozza salvata: apri "Nuova OP" per riprendere la compilazione e inviarla, così comparirà nell'elenco.
+                    </div>
+                <?php endif; ?>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 align-middle">
                         <thead class="table-light">
