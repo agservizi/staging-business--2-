@@ -489,6 +489,11 @@ final class BrtShipmentService
             $defaults['network'] = $defaultNetworkCode;
         }
 
+        // Per Italia lascia vuoto il network così BRT usa lo standard
+        if (isset($defaults['network']) && $defaults['network'] === 'I' && ($networkAlias === null || $networkAlias === 'ITALIA')) {
+            unset($defaults['network']);
+        }
+
         return array_merge($defaults, $consigneeData);
     }
 
@@ -563,6 +568,11 @@ final class BrtShipmentService
             $routing['network'] = $network;
         } elseif (!$hasNetworkOverride && $defaultNetworkCode !== '') {
             $routing['network'] = $defaultNetworkCode;
+        }
+
+        // Per Italia lascia vuoto il network così BRT usa lo standard
+        if (isset($routing['network']) && $routing['network'] === 'I' && ($networkAlias === null || $networkAlias === 'ITALIA')) {
+            unset($routing['network']);
         }
 
         $serviceType = $this->toString($input['serviceType'] ?? $this->config->getDefaultServiceType() ?? '');
