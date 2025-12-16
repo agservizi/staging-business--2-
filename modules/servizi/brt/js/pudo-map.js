@@ -85,6 +85,8 @@
         const markerRetinaUrl = window.CS?.assets?.leafletMarkerRetina ?? resolveAssetUrl('assets/img/leaflet-marker@2x.png');
 
         try {
+            // Evita che Leaflet pre-penda imagePath al nostro URL assoluto
+            L.Icon.Default.imagePath = '';
             L.Icon.Default.mergeOptions({
                 iconUrl: markerUrl,
                 iconRetinaUrl: markerRetinaUrl,
