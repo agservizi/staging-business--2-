@@ -531,8 +531,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="business-vat">Partita IVA</label>
-                                <input class="form-control" type="text" name="business_vat" id="business-vat" value="<?php echo sanitize_output($formData['business_vat'] ?? ''); ?>" placeholder="12345678901" inputmode="numeric" maxlength="16">
-                                <div class="form-text text-muted">Se lasci vuoto il codice fiscale cliente, useremo la P.IVA inserita.</div>
+                                <div class="input-group">
+                                    <input class="form-control" type="text" name="business_vat" id="business-vat" value="<?php echo sanitize_output($formData['business_vat'] ?? ''); ?>" placeholder="IT12345678901" inputmode="numeric" maxlength="16" aria-describedby="business-vat-feedback">
+                                    <button class="btn btn-outline-secondary" type="button" id="business-vat-check" aria-label="Verifica Partita IVA">
+                                        <span id="business-vat-check-label">Verifica</span>
+                                        <span class="spinner-border spinner-border-sm d-none" id="business-vat-spinner" role="status" aria-hidden="true"></span>
+                                    </button>
+                                </div>
+                                <div class="form-text text-muted" id="business-vat-feedback">Inserisci la P.IVA con prefisso paese (es. IT12345678901). Se lasci vuoto il codice fiscale cliente, useremo questa P.IVA.</div>
                             </div>
                         </div>
                     </div>
@@ -878,6 +884,11 @@ window.CIEIstatLookupConfig = {
     const taxCodeInput = document.getElementById('customer-tax-code');
     const businessVatInput = document.getElementById('business-vat');
     const businessNameInput = document.getElementById('business-name');
+    const businessVatCheckBtn = document.getElementById('business-vat-check');
+    const businessVatCheckLabel = document.getElementById('business-vat-check-label');
+    const businessVatSpinner = document.getElementById('business-vat-spinner');
+    const businessVatFeedback = document.getElementById('business-vat-feedback');
+    const vatCheckEndpoint = "<?php echo sanitize_output(asset('api/opportunities/vat-check.php')); ?>";
     const documentNumberInput = document.querySelector('input[name="document_number"]');
     const documentNumberHelp = document.getElementById('document-number-help');
     const taxCodeLookupBtn = document.getElementById('tax-code-lookup');
@@ -975,16 +986,19 @@ window.CIEIstatLookupConfig = {
     if (businessVatInput) {
         businessVatInput.addEventListener('input', () => {
             const { selectionStart, selectionEnd, value } = businessVatInput;
-            const upper = value.toUpperCase();
-            if (value !== upper) {
-                businessVatInput.value = upper;
+            const normalized = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (value !== normalized) {
+                businessVatInput.value = normalized;
                 if (selectionStart !== null && selectionEnd !== null) {
                     businessVatInput.setSelectionRange(selectionStart, selectionEnd);
                 }
             }
         });
         businessVatInput.addEventListener('blur', () => {
-            const vat = businessVatInput.value.trim().toUpperCase();
+            let vat = businessVatInput.value.trim().toUpperCase().replace(/\s+/g, '');
+            if (/^[0-9]{11}$/.test(vat)) {
+                vat = `IT${vat}`;
+            }
             businessVatInput.value = vat;
             if (taxCodeInput && taxCodeInput.value.trim() === '' && vat !== '') {
                 taxCodeInput.value = vat;
@@ -992,6 +1006,104 @@ window.CIEIstatLookupConfig = {
                 taxCodeInput.dispatchEvent(new Event('change', { bubbles: true }));
             }
         });
+    }
+
+    const setVatFeedback = (message, tone = 'muted') => {
+        if (!businessVatFeedback) {
+            return;
+        }
+        businessVatFeedback.classList.remove('text-muted', 'text-success', 'text-warning', 'text-danger');
+        const toneClass = {
+            muted: 'text-muted',
+            success: 'text-success',
+            warning: 'text-warning',
+            danger: 'text-danger',
+        };
+        businessVatFeedback.classList.add(toneClass[tone] || 'text-muted');
+        businessVatFeedback.textContent = message;
+    };
+
+    const toggleVatCheckLoading = (isLoading) => {
+        if (!businessVatCheckBtn || !businessVatCheckLabel || !businessVatSpinner) {
+            return;
+        }
+        businessVatCheckBtn.disabled = isLoading;
+        businessVatSpinner.classList.toggle('d-none', !isLoading);
+        businessVatCheckLabel.classList.toggle('d-none', isLoading);
+    };
+
+    const handleVatCheck = async () => {
+        if (!businessVatInput || !vatCheckEndpoint) {
+            return;
+        }
+        let vat = businessVatInput.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (vat === '') {
+            setVatFeedback('Inserisci la P.IVA da verificare.', 'warning');
+            return;
+        }
+        if (/^[0-9]{11}$/i.test(vat)) {
+            vat = `IT${vat}`;
+            businessVatInput.value = vat;
+        }
+
+        toggleVatCheckLoading(true);
+        setVatFeedback('Verifica in corso...', 'muted');
+
+        try {
+            const response = await fetch(vatCheckEndpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-Token': csrfToken,
+                },
+                body: JSON.stringify({ vat, _token: csrfToken }),
+            });
+
+            const payload = await response.json();
+
+            if (!response.ok) {
+                const errorMessage = payload && payload.error ? payload.error : 'Verifica non riuscita.';
+                setVatFeedback(errorMessage, 'danger');
+                return;
+            }
+
+            const isValid = Boolean(payload.valid);
+            const name = (payload.name || '').trim();
+            const address = (payload.address || '').trim();
+            const normalizedVat = (payload.vat || vat).trim();
+
+            if (normalizedVat && businessVatInput.value !== normalizedVat) {
+                businessVatInput.value = normalizedVat;
+            }
+
+            if (isValid) {
+                setVatFeedback('P.IVA valida secondo VIES.', 'success');
+                if (businessNameInput) {
+                    updateInputValue(businessNameInput, name);
+                }
+                if (customerAddressInput) {
+                    updateInputValue(customerAddressInput, address);
+                }
+                if (taxCodeInput && taxCodeInput.value.trim() === '') {
+                    taxCodeInput.value = normalizedVat;
+                    taxCodeInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    taxCodeInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            } else {
+                setVatFeedback('P.IVA non valida secondo VIES.', 'warning');
+            }
+        } catch (error) {
+            setVatFeedback('Errore di rete durante la verifica.', 'danger');
+        } finally {
+            toggleVatCheckLoading(false);
+        }
+    };
+
+    if (businessVatCheckBtn) {
+        businessVatCheckBtn.addEventListener('click', handleVatCheck);
     }
 
     const getDocumentNumberRule = () => {
