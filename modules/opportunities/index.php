@@ -41,6 +41,7 @@ if ($searchFilter !== '') {
 $opportunities = $opportunityService->listAdminOpportunities($filters);
 $statuses = $opportunityService->getStatusOptions();
 $csrfToken = csrf_token();
+$latestOpportunityId = $opportunities ? (int) ($opportunities[0]['id'] ?? 0) : 0;
 
 require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
@@ -52,6 +53,74 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <div>
                 <p class="text-uppercase small fw-semibold text-muted mb-1">Opportunity</p>
                 <h1 class="h4 mb-0">Pipeline commerciale</h1>
+    <script>
+        (function () {
+            const endpoint = '<?php echo sanitize_output(asset('api/opportunities/admin/latest.php')); ?>';
+            const latestServerId = <?php echo (int) $latestOpportunityId; ?>;
+            const storageKey = 'cs_op_admin_latest_seen_id';
+
+            const safeParseInt = (value) => {
+                const num = parseInt(value, 10);
+                return Number.isFinite(num) ? num : 0;
+            };
+
+            const getStoredId = () => safeParseInt(localStorage.getItem(storageKey));
+            const setStoredId = (id) => localStorage.setItem(storageKey, String(id));
+
+            // Prime baseline without toast on first load
+            if (latestServerId > 0 && getStoredId() === 0) {
+                setStoredId(latestServerId);
+            }
+
+            const maybeShowToast = (payload) => {
+                if (!window.CS || typeof window.CS.showToast !== 'function') {
+                    return;
+                }
+                const code = (payload.code || '').trim();
+                const collaborator = (payload.collaborator_name || '').trim();
+                const message = code
+                    ? `Nuova opportunity ${code}${collaborator ? ' da ' + collaborator : ''}`
+                    : 'Nuova opportunity inserita';
+                window.CS.showToast(message, 'info', {
+                    delay: 7000,
+                    url: '<?php echo sanitize_output(asset('modules/opportunities/index.php')); ?>',
+                });
+            };
+
+            const checkLatest = async () => {
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'GET',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+                    if (!response.ok) {
+                        return;
+                    }
+                    const payload = await response.json();
+                    if (!payload || payload.status !== 'ok') {
+                        return;
+                    }
+                    const latestId = safeParseInt(payload.id);
+                    const seenId = getStoredId();
+                    if (latestId > seenId) {
+                        setStoredId(latestId);
+                        maybeShowToast(payload);
+                    }
+                } catch (error) {
+                    // Silently ignore polling errors
+                }
+            };
+
+            // Initial check (may show toast if page was open and new OP arrived)
+            checkLatest();
+            // Poll every 60s
+            setInterval(checkLatest, 60000);
+        })();
+    </script>
                 <p class="text-muted mb-0">Monitora le richieste inserite dai collaboratori e applica gli avanzamenti di stato.</p>
             </div>
             <div class="d-flex gap-2">
