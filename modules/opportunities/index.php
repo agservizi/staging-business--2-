@@ -117,8 +117,12 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
             // Initial check (may show toast if page was open and new OP arrived)
             checkLatest();
-            // Poll every 60s
-            setInterval(checkLatest, 60000);
+            const POLL_MS = 5000;
+            setInterval(() => {
+                if (document.visibilityState === 'visible') {
+                    checkLatest();
+                }
+            }, POLL_MS);
         })();
     </script>
                 <p class="text-muted mb-0">Monitora le richieste inserite dai collaboratori e applica gli avanzamenti di stato.</p>

@@ -1429,6 +1429,8 @@ final class OpportunityService
                 }
             }
 
+            $this->deleteCollaboratorDraft($collaboratorId);
+
             $this->pdo->commit();
         } catch (RuntimeException $exception) {
             $this->pdo->rollBack();
@@ -1729,6 +1731,8 @@ final class OpportunityService
             }
 
             $this->syncCollaboratorCustomer($collaboratorId, array_merge($existing, $payload), $metadata);
+
+            $this->deleteCollaboratorDraft($collaboratorId);
 
             $this->pdo->commit();
         } catch (RuntimeException $exception) {
