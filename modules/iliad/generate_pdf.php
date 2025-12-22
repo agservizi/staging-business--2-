@@ -4,6 +4,14 @@ declare(strict_types=1);
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// Debug: invia un messaggio di testo prima di tutto
+if (isset($_GET['debug'])) {
+    header('Content-Type: text/plain');
+    echo "Debug: Script iniziato\n";
+    echo "ID: " . ($_GET['id'] ?? 'null') . "\n";
+    exit;
+}
+
 // Avvia output buffering per evitare output indesiderato
 ob_start();
 
