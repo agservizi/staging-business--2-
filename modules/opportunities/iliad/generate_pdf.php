@@ -12,7 +12,15 @@ if (!$credential) {
     exit;
 }
 
-require_once __DIR__ . '/../../../lib/fpdf/fpdf.php';
+// Verifica che FPDF sia disponibile
+$fpdfPath = __DIR__ . '/../../../lib/fpdf/fpdf.php';
+if (!file_exists($fpdfPath)) {
+    http_response_code(500);
+    echo 'Errore di configurazione: Libreria FPDF mancante. File: ' . $fpdfPath;
+    exit;
+}
+
+require_once $fpdfPath;
 
 // Stub class for Intelephense if FPDF is not loaded
 if (!class_exists('FPDF')) {
