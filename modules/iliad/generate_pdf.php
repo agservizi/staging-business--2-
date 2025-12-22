@@ -12,80 +12,56 @@ if (!$credential) {
     exit;
 }
 
-// Verifica che FPDF sia disponibile
-$fpdfPath = __DIR__ . '/../../lib/fpdf/fpdf.php';
-if (!file_exists($fpdfPath)) {
+// Verifica che mPDF sia disponibile
+if (!class_exists('Mpdf\Mpdf')) {
     http_response_code(500);
-    echo 'Errore di configurazione: Libreria FPDF mancante. File: ' . $fpdfPath;
+    echo 'Errore di configurazione: Libreria mPDF mancante. Assicurati che sia installata tramite Composer.';
     exit;
 }
 
-require_once $fpdfPath;
+$mpdf = new \Mpdf\Mpdf();
 
-// Stub class for Intelephense if FPDF is not loaded
-if (!class_exists('FPDF')) {
-    /** @phpstan-ignore-next-line */
-    class FPDF {}
-}
+// Crea il contenuto HTML del PDF
+$html = '
+<style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { text-align: center; color: #333; }
+    h2 { color: #0066cc; margin-top: 30px; }
+    .credential { margin-bottom: 20px; }
+    .label { font-weight: bold; display: inline-block; width: 120px; }
+    .footer { text-align: center; font-size: 10px; color: #666; margin-top: 50px; }
+</style>
 
-/**
- * @extends FPDF
- * @method void SetFont(string $family, string $style = '', float $size = 0)
- * @method void Cell(float $w, float $h = 0, string $txt = '', mixed $border = 0, int $ln = 0, string $align = '', bool $fill = false, mixed $link = '')
- * @method void Ln(float $h = null)
- * @method void SetY(float $y)
- * @method void AddPage(string $orientation = '', mixed $size = '', int $rotation = 0)
- * @method void Output(string $dest = '', string $name = '', bool $isUTF8 = false)
- */
-class IliadPDF extends FPDF
-{
-    public function Header()
-    {
-        $this->SetFont('Arial', 'B', 16);
-        $this->Cell(0, 10, 'Credenziali Iliad', 0, 1, 'C');
-        $this->Ln(10);
-    }
-
-    public function Footer()
-    {
-        $this->SetY(-15);
-        $this->SetFont('Arial', 'I', 8);
-        $this->Cell(0, 10, 'Generato il ' . date('d/m/Y H:i'), 0, 0, 'C');
-    }
-}
-
-/** @var IliadPDF $pdf */
-$pdf = new IliadPDF();
-$pdf->AddPage();
-$pdf->SetFont('Arial', '', 12);
+<h1>Credenziali Iliad</h1>
+';
 
 if ($credential['include_fibra']) {
-    $pdf->SetFont('Arial', 'B', 14);
-    $pdf->Cell(0, 10, 'Credenziali Fibra', 0, 1);
-    $pdf->SetFont('Arial', '', 12);
+    $html .= '<h2>Credenziali Fibra</h2>';
+    $html .= '<div class="credential">';
     if (!empty($credential['fibra_id'])) {
-        $pdf->Cell(50, 10, 'ID Fibra:', 0, 0);
-        $pdf->Cell(0, 10, $credential['fibra_id'], 0, 1);
+        $html .= '<div><span class="label">ID Fibra:</span> ' . htmlspecialchars($credential['fibra_id']) . '</div>';
     }
-    $pdf->Cell(50, 10, 'Password:', 0, 0);
-    $pdf->Cell(0, 10, $credential['fibra_password'], 0, 1);
-    $pdf->Ln(10);
+    $html .= '<div><span class="label">Password:</span> ' . htmlspecialchars($credential['fibra_password']) . '</div>';
+    $html .= '</div>';
 }
 
 if ($credential['include_mobile']) {
-    $pdf->SetFont('Arial', 'B', 14);
-    $pdf->Cell(0, 10, 'Credenziali Mobile', 0, 1);
-    $pdf->SetFont('Arial', '', 12);
+    $html .= '<h2>Credenziali Mobile</h2>';
+    $html .= '<div class="credential">';
     if (!empty($credential['mobile_id'])) {
-        $pdf->Cell(50, 10, 'ID Mobile:', 0, 0);
-        $pdf->Cell(0, 10, $credential['mobile_id'], 0, 1);
+        $html .= '<div><span class="label">ID Mobile:</span> ' . htmlspecialchars($credential['mobile_id']) . '</div>';
     }
-    $pdf->Cell(50, 10, 'Password:', 0, 0);
-    $pdf->Cell(0, 10, $credential['mobile_password'], 0, 1);
-    $pdf->Ln(10);
+    $html .= '<div><span class="label">Password:</span> ' . htmlspecialchars($credential['mobile_password']) . '</div>';
+    $html .= '</div>';
 }
 
+$html .= '<div class="footer">Generato il ' . date('d/m/Y H:i') . '</div>';
+
+// Scrivi l'HTML nel PDF
+$mpdf->WriteHTML($html);
+
+// Output del PDF
 header('Content-Type: application/pdf');
 header('Content-Disposition: attachment; filename="credenziali_iliad_' . $id . '.pdf"');
-$pdf->Output('D');
+$mpdf->Output('D');
 exit;
