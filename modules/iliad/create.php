@@ -10,34 +10,41 @@ $oldInput = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_valid_csrf();
+
+    $serviceType = trim($_POST['service_type'] ?? '');
     $fibraId = trim($_POST['fibra_id'] ?? '');
-    $fibraPassword = trim($_POST['fibra_password'] ?? '');
     $mobileId = trim($_POST['mobile_id'] ?? '');
-    $mobilePassword = trim($_POST['mobile_password'] ?? '');
-    $includeFibra = isset($_POST['include_fibra']);
-    $includeMobile = isset($_POST['include_mobile']);
+    $password = trim($_POST['password'] ?? '');
 
-    if (empty($fibraPassword)) {
-        $errors['fibra_password'] = 'La password per Fibra è obbligatoria.';
+    if (empty($serviceType)) {
+        $errors['service_type'] = 'Seleziona il tipo di servizio.';
     }
 
-    if (empty($mobilePassword)) {
-        $errors['mobile_password'] = 'La password per Mobile è obbligatoria.';
+    if (empty($password)) {
+        $errors['password'] = 'La password è obbligatoria.';
     }
 
-    if (!$includeFibra && !$includeMobile) {
-        $errors['include'] = 'Devi includere almeno Fibra o Mobile nel PDF.';
+    if ($serviceType === 'fibra' || $serviceType === 'both') {
+        if (empty($fibraId)) {
+            $errors['fibra_id'] = 'L\'ID Fibra è obbligatorio per questo servizio.';
+        }
+    }
+
+    if ($serviceType === 'mobile' || $serviceType === 'both') {
+        if (empty($mobileId)) {
+            $errors['mobile_id'] = 'L\'ID Mobile è obbligatorio per questo servizio.';
+        }
     }
 
     if (empty($errors)) {
         try {
             $iliadService->createCredential([
                 'fibra_id' => $fibraId ?: null,
-                'fibra_password' => $fibraPassword,
+                'fibra_password' => $password,
                 'mobile_id' => $mobileId ?: null,
-                'mobile_password' => $mobilePassword,
-                'include_fibra' => $includeFibra,
-                'include_mobile' => $includeMobile,
+                'mobile_password' => $password,
+                'include_fibra' => in_array($serviceType, ['fibra', 'both']),
+                'include_mobile' => in_array($serviceType, ['mobile', 'both']),
             ], $_SESSION['user_id']);
 
             add_flash('success', 'Credenziali create con successo.');
@@ -78,9 +85,18 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
                 <form method="post" novalidate>
                     <input type="hidden" name="_token" value="<?php echo sanitize_output(csrf_token()); ?>">
-                    <input type="hidden" name="_token" value="<?php echo sanitize_output(csrf_token()); ?>">
                     <div class="row g-4">
-                        <div class="col-md-6">
+                        <div class="col-12">
+                            <label class="form-label" for="service_type">Tipo di servizio</label>
+                            <select class="form-select" id="service_type" name="service_type" required>
+                                <option value="">Seleziona...</option>
+                                <option value="fibra" <?php echo (isset($oldInput['service_type']) && $oldInput['service_type'] === 'fibra') ? 'selected' : ''; ?>>Solo Fibra</option>
+                                <option value="mobile" <?php echo (isset($oldInput['service_type']) && $oldInput['service_type'] === 'mobile') ? 'selected' : ''; ?>>Solo Mobile</option>
+                                <option value="both" <?php echo (isset($oldInput['service_type']) && $oldInput['service_type'] === 'both') ? 'selected' : (!isset($_POST['service_type']) ? 'selected' : ''); ?>>Fibra e Mobile</option>
+                            </select>
+                            <small class="text-muted">Scegli il tipo di servizio da attivare per il cliente.</small>
+                        </div>
+                        <div class="col-md-6 fibra-fields" style="display: none;">
                             <h5>Fibra</h5>
                             <div class="mb-3">
                                 <label for="fibra_id" class="form-label">ID Fibra</label>
@@ -89,21 +105,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     <div class="invalid-feedback"><?php echo sanitize_output($errors['fibra_id']); ?></div>
                                 <?php endif; ?>
                             </div>
-                            <div class="mb-3">
-                                <label for="fibra_password" class="form-label">Password Fibra <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control <?php echo isset($errors['fibra_password']) ? 'is-invalid' : ''; ?>" id="fibra_password" name="fibra_password" required>
-                                <?php if (isset($errors['fibra_password'])): ?>
-                                    <div class="invalid-feedback"><?php echo sanitize_output($errors['fibra_password']); ?></div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="include_fibra" name="include_fibra" <?php echo (isset($oldInput['include_fibra']) || !isset($_POST['include_fibra'])) ? 'checked' : ''; ?>>
-                                <label class="form-check-label" for="include_fibra">
-                                    Includi Fibra nel PDF
-                                </label>
-                            </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6 mobile-fields" style="display: none;">
                             <h5>Mobile</h5>
                             <div class="mb-3">
                                 <label for="mobile_id" class="form-label">ID Mobile</label>
@@ -112,19 +115,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     <div class="invalid-feedback"><?php echo sanitize_output($errors['mobile_id']); ?></div>
                                 <?php endif; ?>
                             </div>
-                            <div class="mb-3">
-                                <label for="mobile_password" class="form-label">Password Mobile <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control <?php echo isset($errors['mobile_password']) ? 'is-invalid' : ''; ?>" id="mobile_password" name="mobile_password" required>
-                                <?php if (isset($errors['mobile_password'])): ?>
-                                    <div class="invalid-feedback"><?php echo sanitize_output($errors['mobile_password']); ?></div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="include_mobile" name="include_mobile" <?php echo (isset($oldInput['include_mobile']) || !isset($_POST['include_mobile'])) ? 'checked' : ''; ?>>
-                                <label class="form-check-label" for="include_mobile">
-                                    Includi Mobile nel PDF
-                                </label>
-                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control <?php echo isset($errors['password']) ? 'is-invalid' : ''; ?>" id="password" name="password" required>
+                            <small class="text-muted">Password condivisa per tutti i servizi selezionati.</small>
+                            <?php if (isset($errors['password'])): ?>
+                                <div class="invalid-feedback"><?php echo sanitize_output($errors['password']); ?></div>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -141,5 +139,37 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </div>
     </main>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const serviceTypeSelect = document.getElementById('service_type');
+    const fibraFields = document.querySelector('.fibra-fields');
+    const mobileFields = document.querySelector('.mobile-fields');
+    const fibraIdInput = document.getElementById('fibra_id');
+    const mobileIdInput = document.getElementById('mobile_id');
+
+    function toggleFields() {
+        const selectedValue = serviceTypeSelect.value;
+        if (selectedValue === 'fibra' || selectedValue === 'both') {
+            fibraFields.style.display = 'block';
+            fibraIdInput.setAttribute('required', 'required');
+        } else {
+            fibraFields.style.display = 'none';
+            fibraIdInput.removeAttribute('required');
+        }
+
+        if (selectedValue === 'mobile' || selectedValue === 'both') {
+            mobileFields.style.display = 'block';
+            mobileIdInput.setAttribute('required', 'required');
+        } else {
+            mobileFields.style.display = 'none';
+            mobileIdInput.removeAttribute('required');
+        }
+    }
+
+    serviceTypeSelect.addEventListener('change', toggleFields);
+    toggleFields(); // Initialize on page load
+});
+</script>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
