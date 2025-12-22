@@ -91,7 +91,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                             <div class="mb-3">
                                 <label for="fibra_password" class="form-label">Password Fibra <span class="text-danger">*</span></label>
-                                <input type="password" class="form-control <?php echo isset($errors['fibra_password']) ? 'is-invalid' : ''; ?>" id="fibra_password" name="fibra_password" required>
+                                <input type="text" class="form-control <?php echo isset($errors['fibra_password']) ? 'is-invalid' : ''; ?>" id="fibra_password" name="fibra_password" required>
                                 <?php if (isset($errors['fibra_password'])): ?>
                                     <div class="invalid-feedback"><?php echo sanitize_output($errors['fibra_password']); ?></div>
                                 <?php endif; ?>
@@ -114,7 +114,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                             <div class="mb-3">
                                 <label for="mobile_password" class="form-label">Password Mobile <span class="text-danger">*</span></label>
-                                <input type="password" class="form-control <?php echo isset($errors['mobile_password']) ? 'is-invalid' : ''; ?>" id="mobile_password" name="mobile_password" required>
+                                <input type="text" class="form-control <?php echo isset($errors['mobile_password']) ? 'is-invalid' : ''; ?>" id="mobile_password" name="mobile_password" required>
                                 <?php if (isset($errors['mobile_password'])): ?>
                                     <div class="invalid-feedback"><?php echo sanitize_output($errors['mobile_password']); ?></div>
                                 <?php endif; ?>
