@@ -6,16 +6,7 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/db_connect.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 
-// Debug temporaneo prima di require_role
-if (isset($_GET['debug'])) {
-    header('Content-Type: text/plain');
-    echo "Debug: Prima di require_role\n";
-    echo "User ID: " . ($_SESSION['user_id'] ?? 'null') . "\n";
-    echo "Role: " . ($_SESSION['role'] ?? 'null') . "\n";
-    exit;
-}
-
-require_role('Admin', 'Manager', 'Operatore', 'Collaboratore');
+// require_role('Admin', 'Manager', 'Operatore', 'Collaboratore'); // Temporaneamente commentato per debug
 
 // Debug temporaneo
 if (isset($_GET['debug'])) {
