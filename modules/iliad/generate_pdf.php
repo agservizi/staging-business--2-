@@ -17,6 +17,15 @@ ob_start();
 
 require_once __DIR__ . '/bootstrap.php';
 
+// Debug dopo bootstrap
+if (isset($_GET['debug'])) {
+    header('Content-Type: text/plain');
+    echo "Debug: Bootstrap completato\n";
+    echo "Session user_id: " . ($_SESSION['user_id'] ?? 'null') . "\n";
+    echo "Session role: " . ($_SESSION['role'] ?? 'null') . "\n";
+    exit;
+}
+
 $id = (int) ($_GET['id'] ?? 0);
 $credential = $iliadService->getCredential($id);
 
