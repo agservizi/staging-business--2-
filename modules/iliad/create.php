@@ -50,11 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $oldInput = $_POST;
 }
 
-require_once __DIR__ . '/../../../includes/header.php';
-require_once __DIR__ . '/../../../includes/sidebar.php';
+require_once __DIR__ . '/../../includes/header.php';
+require_once __DIR__ . '/../../includes/sidebar.php';
 ?>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
-    <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
+    <?php require_once __DIR__ . '/../../includes/topbar.php'; ?>
 
     <main class="container-fluid py-4">
         <div class="row justify-content-center">
