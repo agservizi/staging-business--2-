@@ -213,6 +213,14 @@ $appVersion = env('APP_VERSION', '1.0.0');
                         <span class="nav-label">Ticket</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/opportunities/iliad', $currentPath); ?>" href="<?php echo base_url('modules/opportunities/iliad/index.php'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/opportunities/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="blue" aria-hidden="true">
+                            <i class="fa-solid fa-key"></i>
+                        </span>
+                        <span class="nav-label">Iliad</span>
+                    </a>
+                </li>
                 <?php
                     $profileActive = (nav_active('modules/impostazioni/profile.php', $currentPath) === 'active'
                         || nav_active('profile.php', $currentPath) === 'active') ? 'active' : '';
@@ -321,6 +329,15 @@ $appVersion = env('APP_VERSION', '1.0.0');
                                 <i class="fa-solid fa-sitemap"></i>
                             </span>
                             <span class="nav-label">Opportunity</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/opportunities/iliad', $currentPath); ?>" href="<?php echo base_url('modules/opportunities/iliad/index.php'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/opportunities/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
+                            <span class="nav-icon" data-color="blue" aria-hidden="true">
+                                <i class="fa-solid fa-key"></i>
+                            </span>
+                            <span class="nav-label">Iliad</span>
                         </a>
                     </li>
                 <?php endif; ?>
