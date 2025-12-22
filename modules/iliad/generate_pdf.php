@@ -27,10 +27,15 @@ if (!class_exists('Mpdf\Mpdf')) {
     exit;
 }
 
-$mpdf = new \Mpdf\Mpdf();
-
-// Test semplice
-$mpdf->WriteHTML('<h1>Test Iliad PDF</h1><p>ID: ' . $id . '</p>');
+try {
+    $mpdf = new \Mpdf\Mpdf();
+    $mpdf->WriteHTML('<h1>Test Iliad PDF</h1><p>ID: ' . $id . '</p>');
+} catch (Exception $e) {
+    ob_end_clean();
+    http_response_code(500);
+    echo 'Errore nella generazione PDF: ' . $e->getMessage();
+    exit;
+}
 
 // Pulisci il buffer di output
 ob_end_clean();
