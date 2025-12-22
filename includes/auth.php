@@ -11,6 +11,15 @@ if (!defined('BYPASS_AUTH') && !str_contains($_SERVER['REQUEST_URI'] ?? '', '/ap
         attempt_remembered_login($pdo, $auditLogger);
     }
 
+    // Debug per generate_pdf.php
+    if (str_contains($_SERVER['REQUEST_URI'] ?? '', 'generate_pdf.php') && isset($_GET['debug'])) {
+        header('Content-Type: text/plain');
+        echo "Auth Debug:\n";
+        echo "Session user_id: " . ($_SESSION['user_id'] ?? 'null') . "\n";
+        echo "REQUEST_URI: " . ($_SERVER['REQUEST_URI'] ?? 'null') . "\n";
+        exit;
+    }
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         require_valid_csrf();
     }
