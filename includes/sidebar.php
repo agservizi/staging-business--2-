@@ -214,7 +214,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/opportunities/iliad', $currentPath); ?>" href="<?php echo base_url('modules/opportunities/iliad/index.php'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/opportunities/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/iliad', $currentPath); ?>" href="<?php echo base_url('modules/iliad/index.php'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="blue" aria-hidden="true">
                             <i class="fa-solid fa-key"></i>
                         </span>
@@ -333,7 +333,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/opportunities/iliad', $currentPath); ?>" href="<?php echo base_url('modules/opportunities/iliad/index.php'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/opportunities/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
+                        <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/iliad', $currentPath); ?>" href="<?php echo base_url('modules/iliad/index.php'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="blue" aria-hidden="true">
                                 <i class="fa-solid fa-key"></i>
                             </span>
