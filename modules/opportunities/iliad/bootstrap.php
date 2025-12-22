@@ -8,6 +8,12 @@ $dbPath = $basePath . 'includes/db_connect.php';
 $helpersPath = $basePath . 'includes/helpers.php';
 
 $missingFiles = [];
+$debugInfo = "Debug info:\n";
+$debugInfo .= "Base path: $basePath\n";
+$debugInfo .= "Auth path: $authPath (exists: " . (file_exists($authPath) ? 'yes' : 'no') . ")\n";
+$debugInfo .= "DB path: $dbPath (exists: " . (file_exists($dbPath) ? 'yes' : 'no') . ")\n";
+$debugInfo .= "Helpers path: $helpersPath (exists: " . (file_exists($helpersPath) ? 'yes' : 'no') . ")\n";
+
 if (!file_exists($authPath)) {
     $missingFiles[] = 'includes/auth.php';
 }
@@ -22,6 +28,7 @@ if (!empty($missingFiles)) {
     http_response_code(500);
     echo 'Errore di configurazione: File mancanti: ' . implode(', ', $missingFiles) . '<br>';
     echo 'Percorso base: ' . $basePath . '<br>';
+    echo '<pre>' . $debugInfo . '</pre>';
     echo 'Verifica che tutti i file siano stati caricati correttamente sul server.';
     exit;
 }
