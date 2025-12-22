@@ -1,9 +1,34 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../includes/auth.php';
-require_once __DIR__ . '/../../includes/db_connect.php';
-require_once __DIR__ . '/../../includes/helpers.php';
+// Verifica che i file richiesti esistano prima di includerli
+$basePath = __DIR__ . '/../../';
+$authPath = $basePath . 'includes/auth.php';
+$dbPath = $basePath . 'includes/db_connect.php';
+$helpersPath = $basePath . 'includes/helpers.php';
+
+$missingFiles = [];
+if (!file_exists($authPath)) {
+    $missingFiles[] = 'includes/auth.php';
+}
+if (!file_exists($dbPath)) {
+    $missingFiles[] = 'includes/db_connect.php';
+}
+if (!file_exists($helpersPath)) {
+    $missingFiles[] = 'includes/helpers.php';
+}
+
+if (!empty($missingFiles)) {
+    http_response_code(500);
+    echo 'Errore di configurazione: File mancanti: ' . implode(', ', $missingFiles) . '<br>';
+    echo 'Percorso base: ' . $basePath . '<br>';
+    echo 'Verifica che tutti i file siano stati caricati correttamente sul server.';
+    exit;
+}
+
+require_once $authPath;
+require_once $dbPath;
+require_once $helpersPath;
 
 require_role('Admin', 'Manager', 'Operatore', 'Collaboratore');
 
