@@ -63,6 +63,21 @@ if (!headers_sent()) {
 <!DOCTYPE html>
 <html lang="it" data-bs-theme="light" data-ui-theme="<?php echo sanitize_output($activeTheme); ?>">
 <head>
+    <script>
+        (function () {
+            try {
+                var isCollapsed = localStorage.getItem('csSidebar') === 'collapsed';
+                if (isCollapsed) {
+                    document.documentElement.classList.add('sidebar-collapsed');
+                    document.documentElement.setAttribute('data-sidebar', 'collapsed');
+                } else {
+                    document.documentElement.setAttribute('data-sidebar', 'expanded');
+                }
+            } catch (e) {
+                document.documentElement.setAttribute('data-sidebar', 'expanded');
+            }
+        })();
+    </script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?php echo $csrfToken; ?>">
