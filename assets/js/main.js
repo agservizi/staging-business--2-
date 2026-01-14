@@ -194,11 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const setSidebarRootState = (isCollapsed) => {
-        document.documentElement.classList.toggle('sidebar-collapsed', isCollapsed);
-        document.documentElement.setAttribute('data-sidebar', isCollapsed ? 'collapsed' : 'expanded');
-    };
-
     const applySidebarState = () => {
         if (!sidebar) {
             return;
@@ -209,14 +204,12 @@ document.addEventListener('DOMContentLoaded', () => {
             sidebar.classList.remove('collapsed');
             sidebarToggle?.setAttribute('aria-expanded', 'false');
             sidebarMobileToggle?.setAttribute('aria-expanded', sidebar.classList.contains('open') ? 'true' : 'false');
-            setSidebarRootState(false);
         } else {
             sidebar.classList.toggle('collapsed', shouldCollapse);
             sidebarToggle?.setAttribute('aria-expanded', String(!shouldCollapse));
             if (sidebar.classList.contains('collapsed')) {
                 closeSidebarSubmenus();
             }
-            setSidebarRootState(shouldCollapse);
         }
         updateSidebarToggleIcon();
     };
@@ -263,7 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sidebar.classList.contains('collapsed')) {
             closeSidebarSubmenus();
         }
-        setSidebarRootState(shouldCollapse);
         updateSidebarToggleIcon();
         initializeTooltips();
     });
@@ -276,9 +268,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const isOpen = sidebar.classList.toggle('open');
         document.body.classList.toggle('offcanvas-active', isOpen);
         sidebarMobileToggle.setAttribute('aria-expanded', String(isOpen));
-        if (isOpen) {
-            setSidebarRootState(false);
-        }
         updateSidebarToggleIcon();
         initializeTooltips();
     });

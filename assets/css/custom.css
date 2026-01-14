@@ -977,10 +977,6 @@ body.login-body {
     color: #ffffff;
 }
 
-.sidebar .nav-link.active {
-    box-shadow: none;
-}
-
 .sidebar .nav-icon {
     display: inline-flex;
     align-items: center;
@@ -1036,8 +1032,7 @@ body.login-body {
     transition: color 0.2s ease;
 }
 
-.sidebar.collapsed #sidebarServices,
-html.sidebar-collapsed .sidebar #sidebarServices {
+.sidebar.collapsed #sidebarServices {
     margin-left: 0 !important;
     padding-left: 0 !important;
     border-left: none !important;
@@ -1045,8 +1040,7 @@ html.sidebar-collapsed .sidebar #sidebarServices {
     margin-top: 0.35rem;
 }
 
-.sidebar.collapsed #sidebarServices>.nav,
-html.sidebar-collapsed .sidebar #sidebarServices > .nav {
+.sidebar.collapsed #sidebarServices>.nav {
     margin-left: 0 !important;
     border-left: none !important;
     padding-left: 0 !important;
@@ -1054,24 +1048,20 @@ html.sidebar-collapsed .sidebar #sidebarServices > .nav {
     width: 100%;
 }
 
-.sidebar.collapsed #sidebarServices .nav-link,
-html.sidebar-collapsed .sidebar #sidebarServices .nav-link {
+.sidebar.collapsed #sidebarServices .nav-link {
     justify-content: center;
     padding-inline: 0.35rem;
     height: 2.5rem;
-    padding-block: 0;
     gap: 0;
 }
 
-.sidebar.collapsed #sidebarServices .nav-subicon,
-html.sidebar-collapsed .sidebar #sidebarServices .nav-subicon {
+.sidebar.collapsed #sidebarServices .nav-subicon {
     margin-right: 0;
     width: 1.9rem;
     height: 1.9rem;
 }
 
-.sidebar.collapsed #sidebarServices .nav-sub-label,
-html.sidebar-collapsed .sidebar #sidebarServices .nav-sub-label {
+.sidebar.collapsed #sidebarServices .nav-sub-label {
     display: none;
 }
 
@@ -1140,8 +1130,7 @@ html.sidebar-collapsed .sidebar #sidebarServices .nav-sub-label {
     }
 }
 
-.sidebar.collapsed,
-html.sidebar-collapsed .sidebar {
+.sidebar.collapsed {
     width: 88px;
 }
 
@@ -1164,88 +1153,65 @@ html.sidebar-collapsed .sidebar {
 .sidebar.collapsed .sidebar-brand-text,
 .sidebar.collapsed .nav-label,
 .sidebar.collapsed .nav-caret,
-.sidebar.collapsed .nav-link-toggle::after,
-html.sidebar-collapsed .sidebar .sidebar-brand-text,
-html.sidebar-collapsed .sidebar .nav-label,
-html.sidebar-collapsed .sidebar .nav-caret,
-html.sidebar-collapsed .sidebar .nav-link-toggle::after {
+.sidebar.collapsed .nav-link-toggle::after {
     display: none !important;
 }
 
-.sidebar.collapsed:not(.hover-expand) .nav-link,
-html.sidebar-collapsed .sidebar:not(.hover-expand) .nav-link {
+.sidebar.collapsed .nav-link {
     justify-content: center;
     padding-inline: 0.75rem;
-    height: 2.5rem;
-    padding-block: 0;
 }
 
-.sidebar.collapsed .nav-icon,
-html.sidebar-collapsed .sidebar .nav-icon {
+.sidebar.collapsed .nav-icon {
     margin-right: 0;
 }
 
-.sidebar.collapsed .nav-link-toggle,
-html.sidebar-collapsed .sidebar .nav-link-toggle {
+.sidebar.collapsed .nav-link-toggle {
     justify-content: center;
 }
 
-.sidebar.collapsed.hover-expand,
-html.sidebar-collapsed .sidebar.hover-expand {
+.sidebar.collapsed.hover-expand {
     width: 260px;
 }
 
 .sidebar.collapsed.hover-expand .sidebar-brand-text,
 .sidebar.collapsed.hover-expand .nav-label,
 .sidebar.collapsed.hover-expand .nav-caret,
-.sidebar.collapsed.hover-expand .nav-link-toggle::after,
-html.sidebar-collapsed .sidebar.hover-expand .sidebar-brand-text,
-html.sidebar-collapsed .sidebar.hover-expand .nav-label,
-html.sidebar-collapsed .sidebar.hover-expand .nav-caret,
-html.sidebar-collapsed .sidebar.hover-expand .nav-link-toggle::after {
+.sidebar.collapsed.hover-expand .nav-link-toggle::after {
     display: inline-flex !important;
 }
 
-.sidebar.collapsed.hover-expand .nav-link,
-html.sidebar-collapsed .sidebar.hover-expand .nav-link {
+.sidebar.collapsed.hover-expand .nav-link {
     justify-content: flex-start;
     padding-inline: 0.85rem;
-    height: auto;
-    padding-block: 0.35rem;
 }
 
-.sidebar.collapsed.hover-expand .nav-icon,
-html.sidebar-collapsed .sidebar.hover-expand .nav-icon {
+.sidebar.collapsed.hover-expand .nav-icon {
     margin-right: 0.65rem;
 }
 
-.sidebar.collapsed.hover-expand #sidebarServices,
-html.sidebar-collapsed .sidebar.hover-expand #sidebarServices {
+.sidebar.collapsed.hover-expand #sidebarServices {
     padding-top: 0.5rem;
 }
 
-.sidebar.collapsed.hover-expand #sidebarServices>.nav,
-html.sidebar-collapsed .sidebar.hover-expand #sidebarServices > .nav {
+.sidebar.collapsed.hover-expand #sidebarServices>.nav {
     margin-left: 1rem !important;
     padding-left: 1rem !important;
     border-left: 1px solid rgba(255, 255, 255, 0.18) !important;
     gap: 0.45rem;
 }
 
-.sidebar.collapsed.hover-expand #sidebarServices .nav-link,
-html.sidebar-collapsed .sidebar.hover-expand #sidebarServices .nav-link {
+.sidebar.collapsed.hover-expand #sidebarServices .nav-link {
     justify-content: flex-start;
     padding-inline: 0.5rem;
     gap: 0.5rem;
 }
 
-.sidebar.collapsed.hover-expand #sidebarServices .nav-subicon,
-html.sidebar-collapsed .sidebar.hover-expand #sidebarServices .nav-subicon {
+.sidebar.collapsed.hover-expand #sidebarServices .nav-subicon {
     margin-right: 0.35rem;
 }
 
-.sidebar.collapsed.hover-expand #sidebarServices .nav-sub-label,
-html.sidebar-collapsed .sidebar.hover-expand #sidebarServices .nav-sub-label {
+.sidebar.collapsed.hover-expand #sidebarServices .nav-sub-label {
     display: inline-flex;
 }
 
