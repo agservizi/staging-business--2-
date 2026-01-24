@@ -153,8 +153,8 @@ function posta_telematica_store_attachments(array $files): array
  */
 function posta_telematica_create_message(PDO $pdo, array $data): int
 {
-    $stmt = $pdo->prepare('INSERT INTO posta_telematica_messages (channel, recipient_email, subject, body, status, error_message, cliente_id, created_by, created_at, updated_at)
-        VALUES (:channel, :recipient_email, :subject, :body, :status, :error_message, :cliente_id, :created_by, NOW(), NOW())');
+    $stmt = $pdo->prepare('INSERT INTO posta_telematica_messages (channel, recipient_email, subject, body, status, error_message, cliente_id, created_by, message_id_header, created_at, updated_at)
+        VALUES (:channel, :recipient_email, :subject, :body, :status, :error_message, :cliente_id, :created_by, :message_id_header, NOW(), NOW())');
 
     $stmt->execute([
         ':channel' => $data['channel'],
@@ -165,6 +165,7 @@ function posta_telematica_create_message(PDO $pdo, array $data): int
         ':error_message' => $data['error_message'],
         ':cliente_id' => $data['cliente_id'],
         ':created_by' => $data['created_by'],
+        ':message_id_header' => $data['message_id_header'] ?? null,
     ]);
 
     return (int) $pdo->lastInsertId();
@@ -295,6 +296,104 @@ function posta_telematica_build_cliente_label(array $row): string
         return $ragione . ' · ' . $persona;
     }
     return $ragione !== '' ? $ragione : ($persona !== '' ? $persona : '—');
+}
+
+function posta_telematica_generate_message_id(string $fromAddress): string
+{
+    $domain = 'localhost';
+    if (str_contains($fromAddress, '@')) {
+        $domain = trim(substr($fromAddress, strpos($fromAddress, '@') + 1));
+    }
+    $token = bin2hex(random_bytes(16));
+    return sprintf('<%s@%s>', $token, $domain !== '' ? $domain : 'localhost');
+}
+
+function posta_telematica_normalize_message_id(?string $messageId): ?string
+{
+    if ($messageId === null) {
+        return null;
+    }
+    $value = trim($messageId);
+    if ($value === '') {
+        return null;
+    }
+    $value = trim($value, '<>');
+    return $value !== '' ? $value : null;
+}
+
+function posta_telematica_extract_message_id_from_text(string $text): ?string
+{
+    if (preg_match('/<([^>]+@[^>]+)>/i', $text, $matches)) {
+        return posta_telematica_normalize_message_id($matches[1] ?? null);
+    }
+
+    if (preg_match('/message-id\s*[:=]\s*<?([^\s>]+@[^\s>]+)>?/i', $text, $matches)) {
+        return posta_telematica_normalize_message_id($matches[1] ?? null);
+    }
+
+    if (preg_match('/references\s*[:=].*?<([^>]+@[^>]+)>/i', $text, $matches)) {
+        return posta_telematica_normalize_message_id($matches[1] ?? null);
+    }
+
+    if (preg_match('/in-reply-to\s*[:=].*?<([^>]+@[^>]+)>/i', $text, $matches)) {
+        return posta_telematica_normalize_message_id($matches[1] ?? null);
+    }
+
+    return null;
+}
+
+function posta_telematica_detect_receipt_type(string $subject, string $from, string $body): ?string
+{
+    $subjectUpper = mb_strtoupper($subject);
+
+    if (str_contains($subjectUpper, 'ACCETTAZIONE')) {
+        return 'accettazione';
+    }
+
+    if (str_contains($subjectUpper, 'CONSEGNA')) {
+        return 'consegna';
+    }
+
+    if (str_contains($subjectUpper, 'POSTA CERTIFICATA') || str_contains($subjectUpper, 'RICEVUTA')) {
+        return 'invio';
+    }
+
+    $fromUpper = mb_strtoupper($from);
+    if (str_contains($fromUpper, 'POSTACERT') || str_contains($fromUpper, 'PEC')) {
+        if (str_contains(mb_strtoupper($body), 'RICEVUTA')) {
+            return 'invio';
+        }
+    }
+
+    return null;
+}
+
+function posta_telematica_update_receipt(PDO $pdo, string $messageIdHeader, string $type, ?string $receivedAt = null): void
+{
+    $normalized = posta_telematica_normalize_message_id($messageIdHeader);
+    if ($normalized === null) {
+        return;
+    }
+
+    $column = null;
+    if ($type === 'invio') {
+        $column = 'pec_receipt_invio_at';
+    } elseif ($type === 'accettazione') {
+        $column = 'pec_receipt_accettazione_at';
+    } elseif ($type === 'consegna') {
+        $column = 'pec_receipt_consegna_at';
+    }
+
+    if ($column === null) {
+        return;
+    }
+
+    $stmt = $pdo->prepare("UPDATE posta_telematica_messages SET {$column} = COALESCE({$column}, :received_at), updated_at = NOW()
+        WHERE channel = 'pec' AND message_id_header = :message_id_header LIMIT 1");
+    $stmt->execute([
+        ':received_at' => $receivedAt,
+        ':message_id_header' => $normalized,
+    ]);
 }
 
 function posta_telematica_render_mail_template(string $title, string $content): string
@@ -525,5 +624,27 @@ function posta_telematica_get_cached_attachments(PDO $pdo, int $messageId): arra
 {
     $stmt = $pdo->prepare('SELECT * FROM posta_telematica_pec_attachments WHERE message_id = :message_id ORDER BY id ASC');
     $stmt->execute([':message_id' => $messageId]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
+/**
+ * @return array<int,array<string,mixed>>
+ */
+function posta_telematica_find_receipts(PDO $pdo, string $messageIdHeader, int $limit = 10): array
+{
+    $normalized = posta_telematica_normalize_message_id($messageIdHeader);
+    if ($normalized === null) {
+        return [];
+    }
+
+    $needle = '%' . $normalized . '%';
+    $limit = max(1, min(50, $limit));
+
+    $stmt = $pdo->prepare('SELECT * FROM posta_telematica_pec_messages
+        WHERE (subject LIKE :needle OR body LIKE :needle)
+        ORDER BY received_at DESC, id DESC
+        LIMIT ' . $limit);
+    $stmt->execute([':needle' => $needle]);
+
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }

@@ -81,7 +81,7 @@ function send_system_mail(string $to, string $subject, string $htmlBody, array $
     }
 
     if ($channel === 'pec') {
-        return send_mail_via_smtp_pec($to, $subject, $htmlBody, $preparedAttachments);
+        return send_mail_via_smtp_pec($to, $subject, $htmlBody, $preparedAttachments, $options);
     }
 
     if ($apiKey !== '') {
@@ -95,7 +95,7 @@ function send_system_mail(string $to, string $subject, string $htmlBody, array $
     return send_mail_via_php_mail($fromAddress, $fromName, $replyToAddress, $to, $subject, $htmlBody, $preparedAttachments);
 }
 
-function send_mail_via_smtp_pec(string $to, string $subject, string $htmlBody, array $attachments = []): bool
+function send_mail_via_smtp_pec(string $to, string $subject, string $htmlBody, array $attachments = [], array $options = []): bool
 {
     $autoload = __DIR__ . '/../vendor/autoload.php';
     if (!class_exists('\PHPMailer\PHPMailer\PHPMailer') && is_file($autoload)) {
@@ -123,7 +123,8 @@ function send_mail_via_smtp_pec(string $to, string $subject, string $htmlBody, a
     }
 
     try {
-        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+        $mailerClass = '\\PHPMailer\\PHPMailer\\PHPMailer';
+        $mail = new $mailerClass(true);
         $mail->isSMTP();
         $mail->Host = $host;
         $mail->Port = $port;
@@ -131,9 +132,9 @@ function send_mail_via_smtp_pec(string $to, string $subject, string $htmlBody, a
         $mail->Username = $username;
         $mail->Password = $password;
         if ($encryption === 'tls' || $encryption === 'starttls') {
-            $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->SMTPSecure = (string) constant($mailerClass . '::ENCRYPTION_STARTTLS');
         } elseif ($encryption === 'ssl') {
-            $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+            $mail->SMTPSecure = (string) constant($mailerClass . '::ENCRYPTION_SMTPS');
         } else {
             $mail->SMTPSecure = '';
             $mail->SMTPAutoTLS = false;
@@ -156,6 +157,10 @@ function send_mail_via_smtp_pec(string $to, string $subject, string $htmlBody, a
         }
         $mail->addAddress($to);
         $mail->Subject = $subject;
+        if (!empty($options['message_id'])) {
+            $mail->MessageID = (string) $options['message_id'];
+        }
+
         $mail->isHTML(true);
         $mail->Body = $htmlBody;
 

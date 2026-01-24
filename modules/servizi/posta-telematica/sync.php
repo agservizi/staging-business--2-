@@ -57,6 +57,15 @@ try {
             'body' => $bodyRaw,
         ]);
 
+        $headers = imap_fetchheader($connection, (int) $uid, FT_UID);
+        $receiptType = posta_telematica_detect_receipt_type($subject, $from, $bodyRaw);
+        if ($receiptType) {
+            $originalMessageId = posta_telematica_extract_message_id_from_text((string) $headers . "\n" . $bodyRaw);
+            if ($originalMessageId) {
+                posta_telematica_update_receipt($pdo, $originalMessageId, $receiptType, $receivedAt);
+            }
+        }
+
         if ($messageId <= 0) {
             continue;
         }

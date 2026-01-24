@@ -68,6 +68,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
+        $messageIdHeader = null;
+        if ($channel === 'pec') {
+            $messageIdHeader = posta_telematica_generate_message_id((string) env('PEC_FROM_ADDRESS', ''));
+        }
+
         $userId = (int) ($_SESSION['user_id'] ?? 0);
         $messageId = posta_telematica_create_message($pdo, [
             'channel' => $channel,
@@ -78,6 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'error_message' => null,
             'cliente_id' => $clienteId > 0 ? $clienteId : null,
             'created_by' => $userId,
+            'message_id_header' => $messageIdHeader ? posta_telematica_normalize_message_id($messageIdHeader) : null,
         ]);
 
         posta_telematica_insert_attachments($pdo, $messageId, $storedAttachments);
@@ -101,6 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sent = send_system_mail($recipient, $subject, $htmlBody, [
             'channel' => $channel,
             'attachments' => $preparedAttachments,
+            'message_id' => $messageIdHeader,
         ]);
 
         if ($sent) {

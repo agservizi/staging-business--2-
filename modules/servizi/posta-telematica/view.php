@@ -42,6 +42,15 @@ $statusClass = $statusBadge[$statusKey] ?? 'bg-secondary';
 
 $clienteLabel = posta_telematica_build_cliente_label($message);
 
+$pecReceipts = [];
+if (($message['channel'] ?? '') === 'pec' && !empty($message['message_id_header'])) {
+    $pecReceipts = posta_telematica_find_receipts($pdo, (string) $message['message_id_header']);
+}
+
+$invioDate = $message['pec_receipt_invio_at'] ?? null;
+$accettazioneDate = $message['pec_receipt_accettazione_at'] ?? null;
+$consegnaDate = $message['pec_receipt_consegna_at'] ?? null;
+
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
@@ -55,6 +64,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
             <div class="toolbar-actions d-flex gap-2">
                 <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
+                <a class="btn btn-outline-primary" href="receipt.php?id=<?php echo (int) $message['id']; ?>" target="_blank"><i class="fa-solid fa-print me-2"></i>Stampa ricevuta</a>
                 <a class="btn btn-primary" href="create.php"><i class="fa-solid fa-paper-plane me-2"></i>Nuovo invio</a>
             </div>
         </div>
@@ -110,6 +120,56 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </div>
             </div>
         </div>
+
+        <?php if (($message['channel'] ?? '') === 'pec'): ?>
+            <div class="card ag-card mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <h2 class="h5 mb-0">Ricevute PEC</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <div class="text-muted small">Ricevuta invio</div>
+                            <div class="fw-semibold">
+                                <?php echo $invioDate ? sanitize_output(format_datetime_locale($invioDate)) : 'Da verificare'; ?>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small">Ricevuta accettazione</div>
+                            <div class="fw-semibold">
+                                <?php echo $accettazioneDate ? sanitize_output(format_datetime_locale($accettazioneDate)) : 'Da verificare'; ?>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small">Ricevuta consegna</div>
+                            <div class="fw-semibold">
+                                <?php echo $consegnaDate ? sanitize_output(format_datetime_locale($consegnaDate)) : 'Da verificare'; ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <?php if (!$pecReceipts): ?>
+                        <p class="text-muted mb-0">Nessuna ricevuta PEC trovata in inbox.</p>
+                    <?php else: ?>
+                        <div class="list-group">
+                            <?php foreach ($pecReceipts as $receipt): ?>
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                                        <div>
+                                            <div class="fw-semibold"><?php echo sanitize_output($receipt['subject'] ?? 'Ricevuta PEC'); ?></div>
+                                            <div class="text-muted small"><?php echo sanitize_output($receipt['sender'] ?? ''); ?></div>
+                                        </div>
+                                        <div class="text-muted small">
+                                            <?php echo sanitize_output(format_datetime_locale($receipt['received_at'] ?? null)); ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endif; ?>
 
         <div class="card ag-card">
             <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
