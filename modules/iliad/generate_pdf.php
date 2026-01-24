@@ -57,37 +57,82 @@ try {
 
     $html = '
         <style>
-            body { font-family: sans-serif; font-size: 12px; color: #111827; }
-            h1 { font-size: 18px; margin: 0 0 8px; }
-            .meta { font-size: 11px; color: #6b7280; margin-bottom: 16px; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
-            th { background: #f9fafb; }
-            .muted { color: #6b7280; }
+            body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #111; }
+            .page { border: 1px solid #e5e5e5; }
+            .header { background: #e30613; color: #fff; padding: 18px 20px; }
+            .header-title { font-size: 20px; font-weight: bold; letter-spacing: 0.5px; }
+            .header-sub { font-size: 11px; opacity: 0.9; margin-top: 4px; }
+            .content { padding: 18px 20px; }
+            .section-title { font-size: 14px; font-weight: bold; margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.6px; }
+            .meta { font-size: 11px; color: #555; margin-bottom: 14px; }
+            .card { border: 1px solid #eee; padding: 12px; margin-bottom: 12px; }
+            .row { display: table; width: 100%; }
+            .col { display: table-cell; width: 50%; vertical-align: top; }
+            .label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.4px; }
+            .value { font-size: 13px; font-weight: bold; margin-top: 4px; }
+            .muted { color: #888; font-weight: normal; }
+            .divider { height: 1px; background: #f0f0f0; margin: 12px 0; }
+            .footer { font-size: 10px; color: #777; padding: 12px 20px 16px; }
         </style>
-        <h1>Credenziali Iliad</h1>
-        <div class="meta">ID credenziale: ' . (int) $credential['id'] . ' · Creata il: ' . htmlspecialchars((string) ($credential['created_at'] ?? ''), ENT_QUOTES, 'UTF-8') . '</div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Servizio</th>
-                    <th>ID</th>
-                    <th>Password</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Fibra</td>
-                    <td>' . ($includeFibra ? htmlspecialchars($fibraId, ENT_QUOTES, 'UTF-8') : '<span class="muted">Non incluso</span>') . '</td>
-                    <td>' . ($includeFibra ? htmlspecialchars($fibraPassword, ENT_QUOTES, 'UTF-8') : '<span class="muted">—</span>') . '</td>
-                </tr>
-                <tr>
-                    <td>Mobile</td>
-                    <td>' . ($includeMobile ? htmlspecialchars($mobileId, ENT_QUOTES, 'UTF-8') : '<span class="muted">Non incluso</span>') . '</td>
-                    <td>' . ($includeMobile ? htmlspecialchars($mobilePassword, ENT_QUOTES, 'UTF-8') : '<span class="muted">—</span>') . '</td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="page">
+            <div class="header">
+                <div class="header-title">ILIAD · Credenziali</div>
+                <div class="header-sub">Documento riservato al cliente</div>
+            </div>
+            <div class="content">
+                <div class="section-title">Dati credenziali</div>
+                <div class="meta">ID credenziale: ' . (int) $credential['id'] . ' · Creata il: ' . htmlspecialchars((string) ($credential['created_at'] ?? ''), ENT_QUOTES, 'UTF-8') . '</div>
+
+                <div class="card">
+                    <div class="row">
+                        <div class="col">
+                            <div class="label">Servizio</div>
+                            <div class="value">Fibra</div>
+                        </div>
+                        <div class="col">
+                            <div class="label">Stato</div>
+                            <div class="value">' . ($includeFibra ? 'Attivo' : '<span class="muted">Non incluso</span>') . '</div>
+                        </div>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="label">ID Fibra</div>
+                            <div class="value">' . ($includeFibra ? htmlspecialchars($fibraId, ENT_QUOTES, 'UTF-8') : '<span class="muted">—</span>') . '</div>
+                        </div>
+                        <div class="col">
+                            <div class="label">Password</div>
+                            <div class="value">' . ($includeFibra ? htmlspecialchars($fibraPassword, ENT_QUOTES, 'UTF-8') : '<span class="muted">—</span>') . '</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="row">
+                        <div class="col">
+                            <div class="label">Servizio</div>
+                            <div class="value">Mobile</div>
+                        </div>
+                        <div class="col">
+                            <div class="label">Stato</div>
+                            <div class="value">' . ($includeMobile ? 'Attivo' : '<span class="muted">Non incluso</span>') . '</div>
+                        </div>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="row">
+                        <div class="col">
+                            <div class="label">ID Mobile</div>
+                            <div class="value">' . ($includeMobile ? htmlspecialchars($mobileId, ENT_QUOTES, 'UTF-8') : '<span class="muted">—</span>') . '</div>
+                        </div>
+                        <div class="col">
+                            <div class="label">Password</div>
+                            <div class="value">' . ($includeMobile ? htmlspecialchars($mobilePassword, ENT_QUOTES, 'UTF-8') : '<span class="muted">—</span>') . '</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="footer">Questo documento contiene credenziali riservate. Conservalo in luogo sicuro.</div>
+        </div>
     ';
 
     $mpdf->WriteHTML($html);
