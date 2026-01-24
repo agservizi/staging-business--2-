@@ -23,6 +23,8 @@ if (!$pratica) {
     exit;
 }
 
+$isCompleted = strcasecmp(trim((string) ($pratica['stato'] ?? '')), 'Completata') === 0;
+
 $attachments = aci_get_attachments($pdo, $praticaId);
 $categorieLabels = [
     'documento_identita' => 'Documento identità intestatario',
@@ -54,6 +56,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
             <div class="toolbar-actions d-flex gap-2">
                 <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
+                <?php if ($isCompleted): ?>
+                    <a class="btn btn-outline-primary" href="receipt.php?id=<?php echo (int) $pratica['id']; ?>"><i class="fa-solid fa-file-pdf me-2"></i>Documento cliente</a>
+                <?php endif; ?>
                 <?php if (current_user_can('Admin', 'Operatore', 'Manager')): ?>
                     <a class="btn btn-warning text-dark" href="edit.php?id=<?php echo (int) $pratica['id']; ?>"><i class="fa-solid fa-pen me-2"></i>Modifica</a>
                 <?php endif; ?>
