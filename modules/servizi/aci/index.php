@@ -91,7 +91,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <a class="btn btn-outline-primary" href="https://visurenet.aci.it/auth/login" target="_blank" rel="noopener" title="Apri in finestra anonima">Apri Visurenet (incognito)</a>
                 <a class="btn btn-outline-warning" href="dashboard.php"><i class="fa-solid fa-gauge-high me-2"></i>Dashboard</a>
                 <?php if ($puoCreare): ?>
-                    <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova pratica</a>
+                    <a class="btn btn-warning text-dark" href="create-wizard.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova pratica</a>
                 <?php endif; ?>
             </div>
         </div>

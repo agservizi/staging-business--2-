@@ -24,6 +24,16 @@ if (!$pratica) {
 }
 
 $attachments = aci_get_attachments($pdo, $praticaId);
+$categorieLabels = [
+    'documento_identita' => 'Documento identità intestatario',
+    'tessera_sanitaria' => 'Tessera sanitaria',
+    'carta_circolazione' => 'Carta di circolazione',
+    'certificato_proprieta' => 'Certificato di proprietà (CDP)',
+    'atto_vendita' => 'Atto di vendita',
+    'delega' => 'Delega firmata',
+    'visura_pra' => 'Visura PRA',
+    'generico' => 'Allegato',
+];
 
 $clienteLabelParts = array_filter([
     $pratica['ragione_sociale'] ?? null,
@@ -95,7 +105,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                     <div class="col-md-3">
                         <div class="text-muted small">Costo</div>
-                        <div class="fw-semibold"><?php echo sanitize_output(format_currency((float) ($pratica['costo'] ?? 0))); ?></div>
+                        <div class="fw-semibold"><?php echo sanitize_output(format_currency((float) ($pratica['totale'] ?? $pratica['costo'] ?? 0))); ?></div>
                     </div>
                 </div>
 
@@ -107,6 +117,100 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                     </div>
                 <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="card ag-card mb-4">
+            <div class="card-header bg-transparent border-0">
+                <h2 class="h5 mb-0">Dati intestatario</h2>
+            </div>
+            <div class="card-body">
+                <?php if ((int) ($pratica['persona_giuridica'] ?? 0) === 1): ?>
+                    <div class="row g-3">
+                        <div class="col-md-6"><strong>Ragione sociale:</strong> <?php echo sanitize_output($pratica['intestatario_ragione_sociale'] ?? '—'); ?></div>
+                        <div class="col-md-6"><strong>Partita IVA:</strong> <?php echo sanitize_output($pratica['intestatario_partita_iva'] ?? '—'); ?></div>
+                        <div class="col-md-6"><strong>Codice fiscale:</strong> <?php echo sanitize_output($pratica['intestatario_codice_fiscale_giuridico'] ?? '—'); ?></div>
+                        <div class="col-md-12"><strong>Sede legale:</strong> <?php echo sanitize_output($pratica['intestatario_sede_legale'] ?? '—'); ?></div>
+                        <div class="col-md-6"><strong>Email:</strong> <?php echo sanitize_output($pratica['intestatario_email'] ?? '—'); ?></div>
+                        <div class="col-md-6"><strong>Telefono:</strong> <?php echo sanitize_output($pratica['intestatario_telefono'] ?? '—'); ?></div>
+                    </div>
+                <?php else: ?>
+                    <div class="row g-3">
+                        <div class="col-md-6"><strong>Nome:</strong> <?php echo sanitize_output($pratica['intestatario_nome'] ?? '—'); ?></div>
+                        <div class="col-md-6"><strong>Cognome:</strong> <?php echo sanitize_output($pratica['intestatario_cognome'] ?? '—'); ?></div>
+                        <div class="col-md-6"><strong>Codice fiscale:</strong> <?php echo sanitize_output($pratica['intestatario_codice_fiscale'] ?? '—'); ?></div>
+                        <div class="col-md-6"><strong>Data nascita:</strong> <?php echo sanitize_output(format_date_locale($pratica['intestatario_data_nascita'] ?? null)); ?></div>
+                        <div class="col-md-6"><strong>Luogo nascita:</strong> <?php echo sanitize_output($pratica['intestatario_luogo_nascita'] ?? '—'); ?></div>
+                        <div class="col-md-12"><strong>Residenza:</strong> <?php echo sanitize_output($pratica['intestatario_residenza'] ?? '—'); ?></div>
+                        <div class="col-md-6"><strong>Email:</strong> <?php echo sanitize_output($pratica['intestatario_email'] ?? '—'); ?></div>
+                        <div class="col-md-6"><strong>Telefono:</strong> <?php echo sanitize_output($pratica['intestatario_telefono'] ?? '—'); ?></div>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="card ag-card mb-4">
+            <div class="card-header bg-transparent border-0">
+                <h2 class="h5 mb-0">Dati veicolo</h2>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3"><strong>Targa:</strong> <?php echo sanitize_output($pratica['targa'] ?: '—'); ?></div>
+                    <div class="col-md-3"><strong>Tipo veicolo:</strong> <?php echo sanitize_output($pratica['veicolo_tipo'] ?? '—'); ?></div>
+                    <div class="col-md-3"><strong>Marca:</strong> <?php echo sanitize_output($pratica['veicolo_marca'] ?? '—'); ?></div>
+                    <div class="col-md-3"><strong>Modello:</strong> <?php echo sanitize_output($pratica['veicolo_modello'] ?? '—'); ?></div>
+                    <div class="col-md-3"><strong>Anno immatr.:</strong> <?php echo sanitize_output($pratica['veicolo_anno_immatricolazione'] ?? '—'); ?></div>
+                    <div class="col-md-3"><strong>Telaio:</strong> <?php echo sanitize_output($pratica['telaio'] ?: '—'); ?></div>
+                    <div class="col-md-3"><strong>Alimentazione:</strong> <?php echo sanitize_output($pratica['veicolo_alimentazione'] ?? '—'); ?></div>
+                    <div class="col-md-3"><strong>Potenza (kW):</strong> <?php echo sanitize_output($pratica['veicolo_potenza_kw'] ?? '—'); ?></div>
+                    <div class="col-md-3"><strong>Classe ambientale:</strong> <?php echo sanitize_output($pratica['veicolo_classe_ambientale'] ?? '—'); ?></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card ag-card mb-4">
+            <div class="card-header bg-transparent border-0">
+                <h2 class="h5 mb-0">Venditore / Acquirente</h2>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6"><strong>Venditore:</strong> <?php echo sanitize_output($pratica['venditore_nome'] ?? '—'); ?></div>
+                    <div class="col-md-6"><strong>Codice fiscale / P.IVA:</strong> <?php echo sanitize_output($pratica['venditore_codice_fiscale'] ?? '—'); ?></div>
+                    <div class="col-md-12"><strong>Indirizzo venditore:</strong> <?php echo sanitize_output($pratica['venditore_indirizzo'] ?? '—'); ?></div>
+                    <div class="col-md-6"><strong>Acquirente:</strong> <?php echo sanitize_output($pratica['acquirente_nome'] ?? '—'); ?></div>
+                    <div class="col-md-6"><strong>Codice fiscale / P.IVA:</strong> <?php echo sanitize_output($pratica['acquirente_codice_fiscale'] ?? '—'); ?></div>
+                    <div class="col-md-12"><strong>Indirizzo acquirente:</strong> <?php echo sanitize_output($pratica['acquirente_indirizzo'] ?? '—'); ?></div>
+                    <div class="col-md-12"><strong>Coincidono:</strong> <?php echo ((int) ($pratica['venditore_acquirente_coincidono'] ?? 0) === 1) ? 'Sì' : 'No'; ?></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card ag-card mb-4">
+            <div class="card-header bg-transparent border-0">
+                <h2 class="h5 mb-0">Costi e pagamenti</h2>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3"><strong>Diritti ACI:</strong> <?php echo sanitize_output(format_currency((float) ($pratica['diritti_aci'] ?? 0))); ?></div>
+                    <div class="col-md-3"><strong>Imposta di bollo:</strong> <?php echo sanitize_output(format_currency((float) ($pratica['imposta_bollo'] ?? 0))); ?></div>
+                    <div class="col-md-3"><strong>Emolumenti:</strong> <?php echo sanitize_output(format_currency((float) ($pratica['emolumenti'] ?? 0))); ?></div>
+                    <div class="col-md-3"><strong>Compenso agenzia:</strong> <?php echo sanitize_output(format_currency((float) ($pratica['compenso_agenzia'] ?? 0))); ?></div>
+                    <div class="col-md-3"><strong>Totale:</strong> <?php echo sanitize_output(format_currency((float) ($pratica['totale'] ?? 0))); ?></div>
+                    <div class="col-md-3"><strong>Metodo pagamento:</strong> <?php echo sanitize_output($pratica['metodo_pagamento'] ?? '—'); ?></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card ag-card mb-4">
+            <div class="card-header bg-transparent border-0">
+                <h2 class="h5 mb-0">Consensi</h2>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li>Privacy: <strong><?php echo !empty($pratica['consenso_privacy']) ? 'Sì' : 'No'; ?></strong></li>
+                    <li>Autorizzazione ACI: <strong><?php echo !empty($pratica['consenso_aci']) ? 'Sì' : 'No'; ?></strong></li>
+                    <li>Veridicità dati: <strong><?php echo !empty($pratica['consenso_veridicita']) ? 'Sì' : 'No'; ?></strong></li>
+                </ul>
             </div>
         </div>
 
@@ -123,7 +227,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <?php foreach ($attachments as $attachment): ?>
                             <div class="list-group-item d-flex justify-content-between align-items-center">
                                 <div>
-                                    <div class="fw-semibold"><?php echo sanitize_output($attachment['file_name'] ?? 'Allegato'); ?></div>
+                                    <div class="fw-semibold"><?php echo sanitize_output($categorieLabels[$attachment['categoria'] ?? 'generico'] ?? 'Allegato'); ?></div>
+                                    <small class="text-muted d-block"><?php echo sanitize_output($attachment['file_name'] ?? ''); ?></small>
                                     <small class="text-muted"><?php echo sanitize_output($attachment['mime_type'] ?? ''); ?> · <?php echo number_format((int) ($attachment['file_size'] ?? 0) / 1024, 1); ?> KB</small>
                                 </div>
                                 <a class="btn btn-sm btn-outline-primary" href="download.php?id=<?php echo (int) $attachment['id']; ?>"><i class="fa-solid fa-download me-1"></i>Scarica</a>

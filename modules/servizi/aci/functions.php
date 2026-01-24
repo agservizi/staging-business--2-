@@ -71,7 +71,20 @@ function aci_normalize_files(?array $files): array
     return $normalized;
 }
 
-function aci_store_attachment(PDO $pdo, int $praticaId, array $file, array &$errors): ?array
+/**
+ * @return array<string,string>
+ */
+function aci_allowed_mime_types(): array
+{
+    return [
+        'pdf' => 'application/pdf',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+    ];
+}
+
+function aci_store_attachment(PDO $pdo, int $praticaId, array $file, array &$errors, ?string $categoria = null): ?array
 {
     if (empty($file['name']) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
         return null;
@@ -87,13 +100,20 @@ function aci_store_attachment(PDO $pdo, int $praticaId, array $file, array &$err
         return null;
     }
 
+    $original = sanitize_filename((string) $file['name']);
+    $extension = strtolower(pathinfo($original, PATHINFO_EXTENSION));
+    $allowed = aci_allowed_mime_types();
+    if (!isset($allowed[$extension])) {
+        $errors[] = 'Formato file non consentito (ammessi PDF/JPG/PNG).';
+        return null;
+    }
+
     $storageDir = public_path(ACI_UPLOAD_DIR . '/' . $praticaId);
     if (!is_dir($storageDir) && !mkdir($storageDir, 0775, true) && !is_dir($storageDir)) {
         $errors[] = 'Impossibile creare la cartella per gli allegati.';
         return null;
     }
 
-    $original = sanitize_filename((string) $file['name']);
     $timestamp = date('YmdHis');
     $unique = bin2hex(random_bytes(4));
     $fileName = sprintf('%s_%s_%s', $timestamp, $unique, $original);
@@ -108,10 +128,13 @@ function aci_store_attachment(PDO $pdo, int $praticaId, array $file, array &$err
     $mimeType = is_file($destination) ? (mime_content_type($destination) ?: 'application/octet-stream') : 'application/octet-stream';
     $fileSize = is_file($destination) ? (int) filesize($destination) : 0;
 
-    $stmt = $pdo->prepare('INSERT INTO servizi_aci_allegati (pratica_id, file_name, file_path, file_size, mime_type, created_at)
-        VALUES (:pratica_id, :file_name, :file_path, :file_size, :mime_type, NOW())');
+    $categoria = $categoria !== null && trim($categoria) !== '' ? $categoria : 'generico';
+
+    $stmt = $pdo->prepare('INSERT INTO servizi_aci_allegati (pratica_id, categoria, file_name, file_path, file_size, mime_type, created_at)
+        VALUES (:pratica_id, :categoria, :file_name, :file_path, :file_size, :mime_type, NOW())');
     $stmt->execute([
         ':pratica_id' => $praticaId,
+        ':categoria' => $categoria,
         ':file_name' => $original,
         ':file_path' => $relativePath,
         ':file_size' => $fileSize,
@@ -123,10 +146,11 @@ function aci_store_attachment(PDO $pdo, int $praticaId, array $file, array &$err
         'file_path' => $relativePath,
         'file_size' => $fileSize,
         'mime_type' => $mimeType,
+        'categoria' => $categoria,
     ];
 }
 
-function aci_handle_uploads(PDO $pdo, int $praticaId, ?array $files, array &$errors): int
+function aci_handle_uploads(PDO $pdo, int $praticaId, ?array $files, array &$errors, ?string $categoria = null): int
 {
     $items = aci_normalize_files($files);
     if (!$items) {
@@ -135,13 +159,18 @@ function aci_handle_uploads(PDO $pdo, int $praticaId, ?array $files, array &$err
 
     $saved = 0;
     foreach ($items as $item) {
-        $result = aci_store_attachment($pdo, $praticaId, $item, $errors);
+        $result = aci_store_attachment($pdo, $praticaId, $item, $errors, $categoria);
         if ($result) {
             $saved++;
         }
     }
 
     return $saved;
+}
+
+function aci_handle_upload_category(PDO $pdo, int $praticaId, ?array $files, string $categoria, array &$errors): int
+{
+    return aci_handle_uploads($pdo, $praticaId, $files, $errors, $categoria);
 }
 
 function aci_delete_attachment_files(array $attachments): void
