@@ -207,7 +207,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <td><?php echo sanitize_output(format_date_locale($pratica['data_apertura'] ?? null)); ?></td>
                                         <td><?php echo sanitize_output(format_date_locale($pratica['data_scadenza'] ?? null)); ?></td>
                                         <td class="text-end">
-                                            <div class="btn-group btn-group-sm" role="group">
+                                            <div class="d-inline-flex gap-1" role="group">
                                                 <a class="btn btn-outline-light px-2 py-1" href="view.php?id=<?php echo (int) $pratica['id']; ?>"><i class="fa-solid fa-eye"></i></a>
                                                 <?php if ($puoModificare): ?>
                                                     <a class="btn btn-outline-light px-2 py-1" href="edit.php?id=<?php echo (int) $pratica['id']; ?>"><i class="fa-solid fa-pen"></i></a>
