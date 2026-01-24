@@ -5,8 +5,43 @@ use App\Services\ServiziWeb\OpenApiAutomotiveClient;
 use RuntimeException;
 use Throwable;
 
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+error_reporting(E_ALL);
+ob_start();
+
 define('AUTH_JSON', true);
 define('CSRF_JSON', true);
+
+register_shutdown_function(static function (): void {
+    $error = error_get_last();
+    if (!$error) {
+        return;
+    }
+
+    $fatalTypes = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR];
+    if (!in_array($error['type'], $fatalTypes, true)) {
+        return;
+    }
+
+    error_log('ACI Automotive lookup fatal error: ' . ($error['message'] ?? 'unknown'));
+
+    if (headers_sent() === false) {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        http_response_code(500);
+    }
+
+    if (ob_get_length()) {
+        ob_clean();
+    }
+
+    echo json_encode([
+        'success' => false,
+        'message' => 'Errore interno durante la ricerca.',
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+});
 
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
@@ -17,11 +52,12 @@ require_role('Admin', 'Operatore', 'Manager');
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
-ini_set('display_errors', '0');
-ini_set('display_startup_errors', '0');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
+    if (ob_get_length()) {
+        ob_clean();
+    }
     echo json_encode([
         'success' => false,
         'message' => 'Metodo non consentito.',
@@ -33,6 +69,9 @@ try {
     require_valid_csrf();
 } catch (Throwable $exception) {
     http_response_code(419);
+    if (ob_get_length()) {
+        ob_clean();
+    }
     echo json_encode([
         'success' => false,
         'message' => 'Token CSRF non valido.',
@@ -47,6 +86,9 @@ $checkId = trim((string) ($_POST['check_id'] ?? ''));
 
 if ($checkId === '' && $plate === '') {
     http_response_code(422);
+    if (ob_get_length()) {
+        ob_clean();
+    }
     echo json_encode([
         'success' => false,
         'message' => 'Inserisci una targa valida.',
@@ -74,6 +116,9 @@ try {
         $insuranceResult = $client->lookupItInsurance($plate);
     }
 
+    if (ob_get_length()) {
+        ob_clean();
+    }
     echo json_encode([
         'success' => true,
         'pending' => $vehicleResult['pending'],
@@ -89,6 +134,9 @@ try {
     $code = (int) $exception->getCode();
     error_log('ACI Automotive lookup runtime error: ' . $exception->getMessage() . ' (code ' . $code . ')');
     http_response_code(200);
+    if (ob_get_length()) {
+        ob_clean();
+    }
     echo json_encode([
         'success' => false,
         'message' => $exception->getMessage(),
@@ -97,6 +145,9 @@ try {
 } catch (Throwable $exception) {
     http_response_code(500);
     error_log('ACI Automotive lookup failed: ' . $exception->getMessage());
+    if (ob_get_length()) {
+        ob_clean();
+    }
     echo json_encode([
         'success' => false,
         'message' => 'Errore interno durante la ricerca.',
