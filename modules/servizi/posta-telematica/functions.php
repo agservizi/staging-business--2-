@@ -641,10 +641,13 @@ function posta_telematica_find_receipts(PDO $pdo, string $messageIdHeader, int $
     $limit = max(1, min(50, $limit));
 
     $stmt = $pdo->prepare('SELECT * FROM posta_telematica_pec_messages
-        WHERE (subject LIKE :needle OR body LIKE :needle)
+        WHERE (subject LIKE :needle_subject OR body LIKE :needle_body)
         ORDER BY received_at DESC, id DESC
         LIMIT ' . $limit);
-    $stmt->execute([':needle' => $needle]);
+    $stmt->execute([
+        ':needle_subject' => $needle,
+        ':needle_body' => $needle,
+    ]);
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
