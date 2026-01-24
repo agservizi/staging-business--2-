@@ -46,7 +46,51 @@ if (!class_exists('Mpdf\Mpdf')) {
 
 try {
     $mpdf = new \Mpdf\Mpdf();
-    $mpdf->WriteHTML('<h1>Test Iliad PDF</h1><p>ID: ' . $id . '</p>');
+    $mpdf->SetTitle('Credenziali Iliad');
+
+    $includeFibra = !empty($credential['include_fibra']);
+    $includeMobile = !empty($credential['include_mobile']);
+    $fibraId = $includeFibra ? (string) ($credential['fibra_id'] ?? '') : '';
+    $mobileId = $includeMobile ? (string) ($credential['mobile_id'] ?? '') : '';
+    $fibraPassword = $includeFibra ? (string) ($credential['fibra_password'] ?? '') : '';
+    $mobilePassword = $includeMobile ? (string) ($credential['mobile_password'] ?? '') : '';
+
+    $html = '
+        <style>
+            body { font-family: sans-serif; font-size: 12px; color: #111827; }
+            h1 { font-size: 18px; margin: 0 0 8px; }
+            .meta { font-size: 11px; color: #6b7280; margin-bottom: 16px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
+            th { background: #f9fafb; }
+            .muted { color: #6b7280; }
+        </style>
+        <h1>Credenziali Iliad</h1>
+        <div class="meta">ID credenziale: ' . (int) $credential['id'] . ' · Creata il: ' . htmlspecialchars((string) ($credential['created_at'] ?? ''), ENT_QUOTES, 'UTF-8') . '</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Servizio</th>
+                    <th>ID</th>
+                    <th>Password</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Fibra</td>
+                    <td>' . ($includeFibra ? htmlspecialchars($fibraId, ENT_QUOTES, 'UTF-8') : '<span class="muted">Non incluso</span>') . '</td>
+                    <td>' . ($includeFibra ? htmlspecialchars($fibraPassword, ENT_QUOTES, 'UTF-8') : '<span class="muted">—</span>') . '</td>
+                </tr>
+                <tr>
+                    <td>Mobile</td>
+                    <td>' . ($includeMobile ? htmlspecialchars($mobileId, ENT_QUOTES, 'UTF-8') : '<span class="muted">Non incluso</span>') . '</td>
+                    <td>' . ($includeMobile ? htmlspecialchars($mobilePassword, ENT_QUOTES, 'UTF-8') : '<span class="muted">—</span>') . '</td>
+                </tr>
+            </tbody>
+        </table>
+    ';
+
+    $mpdf->WriteHTML($html);
 } catch (Exception $e) {
     ob_end_clean();
     http_response_code(500);
