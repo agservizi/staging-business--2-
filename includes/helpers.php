@@ -188,6 +188,30 @@ function public_path(string $path = ''): string
     return rtrim($base, '/') . '/' . ltrim(str_replace('\\', '/', $path), '/');
 }
 
+function wants_json_response(): bool
+{
+    if (defined('AUTH_JSON') || defined('CSRF_JSON')) {
+        return true;
+    }
+
+    $requestedWith = strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''));
+    if ($requestedWith === 'xmlhttprequest') {
+        return true;
+    }
+
+    $accept = strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? ''));
+    if ($accept !== '' && str_contains($accept, 'application/json')) {
+        return true;
+    }
+
+    $contentType = strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? ''));
+    if ($contentType !== '' && str_contains($contentType, 'application/json')) {
+        return true;
+    }
+
+    return false;
+}
+
 function project_root_path(): string
 {
     static $root = null;
@@ -637,6 +661,14 @@ function require_valid_csrf(): void
 
     if (!is_string($sessionToken) || $sessionToken === '' || $providedToken === '') {
         http_response_code(419);
+        if (wants_json_response()) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Token CSRF non valido.',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
         exit('Token CSRF non valido.');
     }
 
@@ -648,6 +680,14 @@ function require_valid_csrf(): void
         }
 
         http_response_code(419);
+        if (wants_json_response()) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Token CSRF non valido.',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
         exit('Token CSRF non valido.');
     }
 }

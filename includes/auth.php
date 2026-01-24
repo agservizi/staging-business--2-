@@ -25,6 +25,15 @@ if (!defined('BYPASS_AUTH') && !str_contains($_SERVER['REQUEST_URI'] ?? '', '/ap
     }
 
     if (!isset($_SESSION['user_id'])) {
+        if (wants_json_response()) {
+            http_response_code(401);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Sessione scaduta. Effettua di nuovo l\'accesso.',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
         header('Location: index.php');
         exit;
     }
@@ -35,6 +44,15 @@ if (!defined('BYPASS_AUTH') && !str_contains($_SERVER['REQUEST_URI'] ?? '', '/ap
 function require_role(string ...$roles): void
 {
     if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], $roles, true)) {
+        if (wants_json_response()) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Permessi insufficienti.',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
         header('Location: dashboard.php');
         exit;
     }
