@@ -323,20 +323,21 @@ function posta_telematica_normalize_message_id(?string $messageId): ?string
 
 function posta_telematica_extract_message_id_from_text(string $text): ?string
 {
-    if (preg_match('/<([^>]+@[^>]+)>/i', $text, $matches)) {
-        return posta_telematica_normalize_message_id($matches[1] ?? null);
-    }
+    $patterns = [
+        '/(?:original-message-id|x-original-message-id|x-riferimento-message-id|x-riferimento-messageid|x-ref-message-id|riferimento\s+messaggio|id\s+messaggio\s+originale|message-id\s+del\s+messaggio\s+originale)\s*[:=]\s*<?([^\s>]+@[^\s>]+)>?/i',
+        '/references\s*[:=].*?<([^>]+@[^>]+)>/i',
+        '/in-reply-to\s*[:=].*?<([^>]+@[^>]+)>/i',
+        '/message-id\s*[:=]\s*<?([^\s>]+@[^\s>]+)>?/i',
+        '/<([^>]+@[^>]+)>/i',
+    ];
 
-    if (preg_match('/message-id\s*[:=]\s*<?([^\s>]+@[^\s>]+)>?/i', $text, $matches)) {
-        return posta_telematica_normalize_message_id($matches[1] ?? null);
-    }
-
-    if (preg_match('/references\s*[:=].*?<([^>]+@[^>]+)>/i', $text, $matches)) {
-        return posta_telematica_normalize_message_id($matches[1] ?? null);
-    }
-
-    if (preg_match('/in-reply-to\s*[:=].*?<([^>]+@[^>]+)>/i', $text, $matches)) {
-        return posta_telematica_normalize_message_id($matches[1] ?? null);
+    foreach ($patterns as $pattern) {
+        if (preg_match($pattern, $text, $matches)) {
+            $normalized = posta_telematica_normalize_message_id($matches[1] ?? null);
+            if ($normalized !== null) {
+                return $normalized;
+            }
+        }
     }
 
     return null;
@@ -345,12 +346,13 @@ function posta_telematica_extract_message_id_from_text(string $text): ?string
 function posta_telematica_detect_receipt_type(string $subject, string $from, string $body): ?string
 {
     $subjectUpper = mb_strtoupper($subject);
+    $bodyUpper = mb_strtoupper($body);
 
-    if (str_contains($subjectUpper, 'ACCETTAZIONE')) {
+    if (str_contains($subjectUpper, 'ACCETTAZIONE') || str_contains($bodyUpper, 'ACCETTAZIONE')) {
         return 'accettazione';
     }
 
-    if (str_contains($subjectUpper, 'CONSEGNA')) {
+    if (str_contains($subjectUpper, 'CONSEGNA') || str_contains($bodyUpper, 'CONSEGNA')) {
         return 'consegna';
     }
 
@@ -497,6 +499,128 @@ function posta_telematica_imap_connect()
     }
 
     return $connection;
+}
+
+function posta_telematica_decode_part_body(string $body, int $encoding): string
+{
+    if ($encoding === 3) {
+        return base64_decode($body, true) ?: '';
+    }
+
+    if ($encoding === 4) {
+        return quoted_printable_decode($body);
+    }
+
+    return $body;
+}
+
+function posta_telematica_get_part_parameter(object $part, string $name): ?string
+{
+    $name = strtoupper($name);
+    $params = [];
+
+    if (isset($part->parameters) && is_array($part->parameters)) {
+        $params = array_merge($params, $part->parameters);
+    }
+
+    if (isset($part->dparameters) && is_array($part->dparameters)) {
+        $params = array_merge($params, $part->dparameters);
+    }
+
+    foreach ($params as $param) {
+        if (!is_object($param) || !isset($param->attribute, $param->value)) {
+            continue;
+        }
+        if (strtoupper((string) $param->attribute) === $name) {
+            return (string) $param->value;
+        }
+    }
+
+    return null;
+}
+
+function posta_telematica_convert_charset(string $body, ?string $charset): string
+{
+    if ($charset === null || $charset === '') {
+        return $body;
+    }
+
+    $normalized = strtoupper(trim($charset));
+    if ($normalized === 'UTF-8' || $normalized === 'UTF8') {
+        return $body;
+    }
+
+    if (function_exists('mb_convert_encoding')) {
+        return mb_convert_encoding($body, 'UTF-8', $charset);
+    }
+
+    return $body;
+}
+
+/**
+ * @return array<int,array{part:string, subtype:string, encoding:int, charset:?string}>
+ */
+function posta_telematica_collect_text_parts(object $structure, string $prefix = ''): array
+{
+    $parts = [];
+
+    if (isset($structure->type) && (int) $structure->type === 0) {
+        $subtype = strtoupper((string) ($structure->subtype ?? ''));
+        $disposition = strtoupper((string) ($structure->disposition ?? ''));
+        if ($disposition !== 'ATTACHMENT' && in_array($subtype, ['PLAIN', 'HTML'], true)) {
+            $charset = posta_telematica_get_part_parameter($structure, 'charset');
+            $partNumber = $prefix === '' ? '1' : $prefix;
+            $parts[] = [
+                'part' => $partNumber,
+                'subtype' => $subtype,
+                'encoding' => (int) ($structure->encoding ?? 0),
+                'charset' => $charset,
+            ];
+        }
+        return $parts;
+    }
+
+    if (!empty($structure->parts) && is_array($structure->parts)) {
+        foreach ($structure->parts as $index => $part) {
+            $partNumber = $prefix === '' ? (string) ($index + 1) : $prefix . '.' . ($index + 1);
+            $parts = array_merge($parts, posta_telematica_collect_text_parts($part, $partNumber));
+        }
+    }
+
+    return $parts;
+}
+
+function posta_telematica_fetch_message_body($connection, int $uid): string
+{
+    $structure = imap_fetchstructure($connection, $uid, FT_UID);
+    $parts = $structure ? posta_telematica_collect_text_parts($structure) : [];
+
+    $preferred = null;
+    foreach ($parts as $part) {
+        if ($part['subtype'] === 'PLAIN') {
+            $preferred = $part;
+            break;
+        }
+        if ($preferred === null && $part['subtype'] === 'HTML') {
+            $preferred = $part;
+        }
+    }
+
+    if ($preferred) {
+        $raw = imap_fetchbody($connection, $uid, $preferred['part'], FT_UID | FT_PEEK);
+        $raw = $raw !== false ? (string) $raw : '';
+        $decoded = posta_telematica_decode_part_body($raw, (int) $preferred['encoding']);
+        $decoded = posta_telematica_convert_charset($decoded, $preferred['charset']);
+        if ($preferred['subtype'] === 'HTML') {
+            $decoded = html_entity_decode(strip_tags($decoded), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+        return trim($decoded);
+    }
+
+    $rawBody = imap_body($connection, $uid, FT_UID | FT_PEEK);
+    $rawBody = $rawBody !== false ? (string) $rawBody : '';
+    $decoded = posta_telematica_decode_part_body($rawBody, 4);
+    return trim($decoded);
 }
 
 /**

@@ -103,8 +103,7 @@ if (!function_exists('maybe_sync_posta_telematica_pec')) {
                 $seen = !empty($row->seen);
                 $messageIdHeader = isset($row->message_id) ? (string) $row->message_id : null;
 
-                $bodyRaw = imap_body($connection, (int) $uid, FT_UID | FT_PEEK);
-                $bodyRaw = $bodyRaw !== false ? quoted_printable_decode((string) $bodyRaw) : '';
+                $bodyRaw = posta_telematica_fetch_message_body($connection, (int) $uid);
                 $snippet = trim(preg_replace('/\s+/', ' ', strip_tags($bodyRaw))) ?: '';
                 if (mb_strlen($snippet) > 200) {
                     $snippet = mb_substr($snippet, 0, 200) . '…';
