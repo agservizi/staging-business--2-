@@ -174,6 +174,29 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     .pt-dropzone-input {
                         display: none;
                     }
+                    .pt-recipient-suggestions {
+                        position: absolute;
+                        z-index: 1050;
+                        width: 100%;
+                        max-height: 240px;
+                        overflow-y: auto;
+                        background: #ffffff;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 10px;
+                        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+                        padding: 6px;
+                        margin-top: 6px;
+                        display: none;
+                    }
+                    .pt-recipient-suggestions .pt-suggestion-item {
+                        padding: 8px 10px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 0.95rem;
+                    }
+                    .pt-recipient-suggestions .pt-suggestion-item:hover {
+                        background: #f1f5f9;
+                    }
                 </style>
                 <?php if (!empty($errors['general'])): ?>
                     <div class="alert alert-danger"><?php echo sanitize_output($errors['general']); ?></div>
@@ -195,8 +218,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                         <div class="col-md-4">
                             <label class="form-label" for="recipient">Destinatario</label>
-                            <input type="email" class="form-control <?php echo isset($errors['recipient']) ? 'is-invalid' : ''; ?>" id="recipient" name="recipient" value="<?php echo sanitize_output($formData['recipient']); ?>" required placeholder="cliente@example.com" list="recipientSuggestions" autocomplete="off">
-                            <datalist id="recipientSuggestions"></datalist>
+                            <div class="position-relative">
+                                <input type="email" class="form-control <?php echo isset($errors['recipient']) ? 'is-invalid' : ''; ?>" id="recipient" name="recipient" value="<?php echo sanitize_output($formData['recipient']); ?>" required placeholder="cliente@example.com" autocomplete="off">
+                                <div class="pt-recipient-suggestions" id="recipientSuggestionsPanel"></div>
+                            </div>
                             <?php if (isset($errors['recipient'])): ?>
                                 <div class="invalid-feedback"><?php echo sanitize_output($errors['recipient']); ?></div>
                             <?php endif; ?>
@@ -263,26 +288,38 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 <script>
     (function () {
         const recipientInput = document.getElementById('recipient');
-        const recipientSuggestions = document.getElementById('recipientSuggestions');
+        const recipientSuggestionsPanel = document.getElementById('recipientSuggestionsPanel');
         const fetchSuggestions = async (query) => {
-            if (!recipientSuggestions) {
+            if (!recipientSuggestionsPanel) {
                 return;
             }
-            recipientSuggestions.innerHTML = '';
+            recipientSuggestionsPanel.innerHTML = '';
             if (query.length < 3) {
+                recipientSuggestionsPanel.style.display = 'none';
                 return;
             }
             try {
                 const response = await fetch('recipients.php?q=' + encodeURIComponent(query));
                 const data = await response.json();
                 const results = Array.isArray(data.results) ? data.results : [];
+                if (results.length === 0) {
+                    recipientSuggestionsPanel.style.display = 'none';
+                    return;
+                }
                 results.forEach((email) => {
-                    const option = document.createElement('option');
-                    option.value = email;
-                    recipientSuggestions.appendChild(option);
+                    const item = document.createElement('div');
+                    item.className = 'pt-suggestion-item';
+                    item.textContent = email;
+                    item.addEventListener('click', () => {
+                        recipientInput.value = email;
+                        recipientSuggestionsPanel.style.display = 'none';
+                    });
+                    recipientSuggestionsPanel.appendChild(item);
                 });
+                recipientSuggestionsPanel.style.display = 'block';
             } catch (error) {
-                recipientSuggestions.innerHTML = '';
+                recipientSuggestionsPanel.innerHTML = '';
+                recipientSuggestionsPanel.style.display = 'none';
             }
         };
 
@@ -293,7 +330,21 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 const value = recipientInput.value.trim();
                 debounceId = setTimeout(() => fetchSuggestions(value), 200);
             });
+            recipientInput.addEventListener('focus', () => {
+                const value = recipientInput.value.trim();
+                fetchSuggestions(value);
+            });
         }
+
+        document.addEventListener('click', (event) => {
+            if (!recipientSuggestionsPanel || !recipientInput) {
+                return;
+            }
+            if (recipientSuggestionsPanel.contains(event.target) || recipientInput.contains(event.target)) {
+                return;
+            }
+            recipientSuggestionsPanel.style.display = 'none';
+        });
 
         const dropzone = document.getElementById('attachmentsDropzone');
         const input = document.getElementById('attachments');
