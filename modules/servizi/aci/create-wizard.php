@@ -652,11 +652,21 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="veicolo_marca">Marca</label>
-                                <input class="form-control" id="veicolo_marca" name="veicolo_marca" value="<?php echo sanitize_output($data['veicolo_marca']); ?>">
+                                <select class="form-select" id="veicolo_marca" name="veicolo_marca" data-initial-value="<?php echo sanitize_output($data['veicolo_marca']); ?>">
+                                    <option value="">Seleziona marca</option>
+                                    <?php if ($data['veicolo_marca'] !== ''): ?>
+                                        <option value="<?php echo sanitize_output($data['veicolo_marca']); ?>" selected><?php echo sanitize_output($data['veicolo_marca']); ?></option>
+                                    <?php endif; ?>
+                                </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="veicolo_modello">Modello</label>
-                                <input class="form-control" id="veicolo_modello" name="veicolo_modello" value="<?php echo sanitize_output($data['veicolo_modello']); ?>">
+                                <select class="form-select" id="veicolo_modello" name="veicolo_modello" data-initial-value="<?php echo sanitize_output($data['veicolo_modello']); ?>" disabled>
+                                    <option value="">Seleziona modello</option>
+                                    <?php if ($data['veicolo_modello'] !== ''): ?>
+                                        <option value="<?php echo sanitize_output($data['veicolo_modello']); ?>" selected><?php echo sanitize_output($data['veicolo_modello']); ?></option>
+                                    <?php endif; ?>
+                                </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="veicolo_anno_immatricolazione">Anno immatricolazione</label>
@@ -832,6 +842,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 .cr-step.is-active { display: block; }
 </style>
 
+<?php
+$vehicleDatasetUrl = asset('assets/data/vehicle-catalog.json');
+?>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const steps = Array.from(document.querySelectorAll('.cr-step'));
@@ -845,6 +859,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const venditoreCoincide = document.getElementById('venditore_acquirente_coincidono');
     const summary = document.getElementById('aci-summary');
     const pricingMap = <?php echo $aciPricingJson !== false ? $aciPricingJson : '{}'; ?>;
+    const vehicleDatasetUrl = '<?php echo sanitize_output($vehicleDatasetUrl); ?>';
+    const marcaSelect = document.getElementById('veicolo_marca');
+    const modelloSelect = document.getElementById('veicolo_modello');
+    const alimentazioneField = document.getElementById('veicolo_alimentazione');
+    const potenzaField = document.getElementById('veicolo_potenza_kw');
+    const classeField = document.getElementById('veicolo_classe_ambientale');
 
     let currentStep = 1;
 
@@ -995,6 +1015,131 @@ document.addEventListener('DOMContentLoaded', () => {
             if (venditoreCf && acqCf) venditoreCf.value = acqCf.value;
             if (venditoreIndirizzo && acqIndirizzo) venditoreIndirizzo.value = acqIndirizzo.value;
         });
+    }
+
+    const markManualInput = (field) => {
+        if (!field) return;
+        field.addEventListener('input', () => {
+            field.dataset.autofill = '0';
+        });
+    };
+
+    [alimentazioneField, potenzaField, classeField].forEach(markManualInput);
+
+    const normalizeLabel = (value) => String(value || '').trim();
+    const sortByLabel = (a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' });
+
+    const setOptions = (select, options, selected) => {
+        if (!select) return;
+        const placeholder = select.querySelector('option[value=""]');
+        select.innerHTML = '';
+        if (placeholder) {
+            select.appendChild(placeholder);
+        } else {
+            const empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = select === marcaSelect ? 'Seleziona marca' : 'Seleziona modello';
+            select.appendChild(empty);
+        }
+        options.forEach((optionValue) => {
+            const option = document.createElement('option');
+            option.value = optionValue;
+            option.textContent = optionValue;
+            if (selected && optionValue === selected) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+    };
+
+    const applyVehicleDetails = (details) => {
+        if (!details) return;
+        if (alimentazioneField && alimentazioneField.dataset.autofill !== '0') {
+            alimentazioneField.value = details.fuel ? String(details.fuel) : '';
+            alimentazioneField.dataset.autofill = '1';
+        }
+        if (potenzaField && potenzaField.dataset.autofill !== '0') {
+            potenzaField.value = details.power_kw !== undefined && details.power_kw !== null ? String(details.power_kw) : '';
+            potenzaField.dataset.autofill = '1';
+        }
+        if (classeField && classeField.dataset.autofill !== '0') {
+            classeField.value = details.emission_class ? String(details.emission_class) : '';
+            classeField.dataset.autofill = '1';
+        }
+    };
+
+    const clearVehicleDetails = () => {
+        [alimentazioneField, potenzaField, classeField].forEach((field) => {
+            if (!field) return;
+            if (field.dataset.autofill === '0') return;
+            field.value = '';
+            field.dataset.autofill = '1';
+        });
+    };
+
+    const initVehicleSelectors = (catalog) => {
+        if (!marcaSelect || !modelloSelect) return;
+        const initialBrand = normalizeLabel(marcaSelect.dataset.initialValue || marcaSelect.value);
+        const initialModel = normalizeLabel(modelloSelect.dataset.initialValue || modelloSelect.value);
+
+        const brandMap = new Map();
+        (catalog || []).forEach((entry) => {
+            if (!entry || !entry.brand) return;
+            const brand = normalizeLabel(entry.brand);
+            if (!brand) return;
+            const models = Array.isArray(entry.models) ? entry.models : [];
+            brandMap.set(brand, models);
+        });
+
+        const brandList = Array.from(brandMap.keys()).sort(sortByLabel);
+        if (initialBrand && !brandMap.has(initialBrand)) {
+            brandList.unshift(initialBrand);
+        }
+
+        setOptions(marcaSelect, brandList, initialBrand || '');
+
+        const populateModels = (brandValue, selectedModel) => {
+            const models = brandMap.get(brandValue) || [];
+            const modelNames = models
+                .map((model) => normalizeLabel(model.name))
+                .filter(Boolean)
+                .sort(sortByLabel);
+            if (selectedModel && !modelNames.includes(selectedModel)) {
+                modelNames.unshift(selectedModel);
+            }
+            setOptions(modelloSelect, modelNames, selectedModel || '');
+            modelloSelect.disabled = modelNames.length === 0;
+        };
+
+        const findDetails = (brandValue, modelValue) => {
+            const models = brandMap.get(brandValue) || [];
+            return models.find((model) => normalizeLabel(model.name) === modelValue) || null;
+        };
+
+        populateModels(initialBrand, initialModel);
+
+        if (initialBrand && initialModel) {
+            applyVehicleDetails(findDetails(initialBrand, initialModel));
+        }
+
+        marcaSelect.addEventListener('change', () => {
+            const brandValue = normalizeLabel(marcaSelect.value);
+            populateModels(brandValue, '');
+            clearVehicleDetails();
+        });
+
+        modelloSelect.addEventListener('change', () => {
+            const brandValue = normalizeLabel(marcaSelect.value);
+            const modelValue = normalizeLabel(modelloSelect.value);
+            applyVehicleDetails(findDetails(brandValue, modelValue));
+        });
+    };
+
+    if (vehicleDatasetUrl) {
+        fetch(vehicleDatasetUrl)
+            .then((response) => (response.ok ? response.json() : []))
+            .then((data) => initVehicleSelectors(data))
+            .catch(() => initVehicleSelectors([]));
     }
 
     document.querySelectorAll('.cost-field').forEach((field) => {

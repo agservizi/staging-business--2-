@@ -1,0 +1,651 @@
+[
+  {
+    "brand": "Abarth",
+    "models": [
+      {"model": "595", "fuel": "Benzina", "displacement_cc": 1368, "power_kw": 121, "power_cv": 165, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Compatta sportiva"},
+      {"model": "595", "fuel": "Benzina/GPL", "displacement_cc": 1368, "power_kw": 116, "power_cv": 158, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Conversione GPL omologata"},
+      {"model": "595", "fuel": "Diesel", "displacement_cc": 1368, "power_kw": 85, "power_cv": 115, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Versione flotte"},
+      {"model": "695", "fuel": "Benzina", "displacement_cc": 1368, "power_kw": 132, "power_cv": 180, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Allestimento performance"},
+      {"model": "695", "fuel": "Benzina/GPL", "displacement_cc": 1368, "power_kw": 128, "power_cv": 174, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL per uso urbano"},
+      {"model": "695", "fuel": "Diesel", "displacement_cc": 1598, "power_kw": 88, "power_cv": 120, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Disponibilità limitata"}
+    ]
+  },
+  {
+    "brand": "Alfa Romeo",
+    "models": [
+      {"model": "Giulia", "fuel": "Benzina", "displacement_cc": 1995, "power_kw": 147, "power_cv": 200, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Sedan premium"},
+      {"model": "Giulia", "fuel": "Benzina/GPL", "displacement_cc": 1995, "power_kw": 140, "power_cv": 190, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL aftermarket"},
+      {"model": "Giulia", "fuel": "Diesel", "displacement_cc": 2143, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Ideale per flotte"},
+      {"model": "Tonale", "fuel": "Benzina", "displacement_cc": 1469, "power_kw": 118, "power_cv": 160, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV compatto"},
+      {"model": "Tonale", "fuel": "Benzina/GPL", "displacement_cc": 1469, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL per uso misto"},
+      {"model": "Tonale", "fuel": "Diesel", "displacement_cc": 1598, "power_kw": 96, "power_cv": 131, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Consumi contenuti"}
+    ]
+  },
+  {
+    "brand": "Alpine",
+    "models": [
+      {"model": "A110", "fuel": "Benzina", "displacement_cc": 1798, "power_kw": 185, "power_cv": 252, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Sportiva leggera"},
+      {"model": "A110", "fuel": "Benzina/GPL", "displacement_cc": 1798, "power_kw": 176, "power_cv": 240, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "A110", "fuel": "Diesel", "displacement_cc": 1997, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Solo richieste speciali"},
+      {"model": "A110 S", "fuel": "Benzina", "displacement_cc": 1798, "power_kw": 215, "power_cv": 292, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Allestimento sportivo"},
+      {"model": "A110 S", "fuel": "Benzina/GPL", "displacement_cc": 1798, "power_kw": 205, "power_cv": 279, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL per uso turistico"},
+      {"model": "A110 S", "fuel": "Diesel", "displacement_cc": 1997, "power_kw": 118, "power_cv": 160, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Disponibilità limitata"}
+    ]
+  },
+  {
+    "brand": "Audi",
+    "models": [
+      {"model": "A3", "fuel": "Benzina", "displacement_cc": 1498, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Compatta premium"},
+      {"model": "A3", "fuel": "Benzina/GPL", "displacement_cc": 1498, "power_kw": 103, "power_cv": 140, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL aftermarket"},
+      {"model": "A3", "fuel": "Diesel", "displacement_cc": 1968, "power_kw": 85, "power_cv": 116, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte e percorrenze elevate"},
+      {"model": "Q3", "fuel": "Benzina", "displacement_cc": 1498, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV compatto"},
+      {"model": "Q3", "fuel": "Benzina/GPL", "displacement_cc": 1498, "power_kw": 103, "power_cv": 140, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL per uso urbano"},
+      {"model": "Q3", "fuel": "Diesel", "displacement_cc": 1968, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Ideale flotte"}
+    ]
+  },
+  {
+    "brand": "BMW",
+    "models": [
+      {"model": "Serie 1", "fuel": "Benzina", "displacement_cc": 1499, "power_kw": 103, "power_cv": 140, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Hatch premium"},
+      {"model": "Serie 1", "fuel": "Benzina/GPL", "displacement_cc": 1499, "power_kw": 96, "power_cv": 131, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL aftermarket"},
+      {"model": "Serie 1", "fuel": "Diesel", "displacement_cc": 1995, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Consumi ridotti"},
+      {"model": "X1", "fuel": "Benzina", "displacement_cc": 1499, "power_kw": 103, "power_cv": 140, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV compatto"},
+      {"model": "X1", "fuel": "Benzina/GPL", "displacement_cc": 1499, "power_kw": 96, "power_cv": 131, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL per uso misto"},
+      {"model": "X1", "fuel": "Diesel", "displacement_cc": 1995, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte aziendali"}
+    ]
+  },
+  {
+    "brand": "BYD",
+    "models": [
+      {"model": "Atto 3", "fuel": "Benzina", "displacement_cc": 1499, "power_kw": 100, "power_cv": 136, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "Atto 3", "fuel": "Benzina/GPL", "displacement_cc": 1499, "power_kw": 95, "power_cv": 129, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "Atto 3", "fuel": "Diesel", "displacement_cc": 1995, "power_kw": 96, "power_cv": 131, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "Seal", "fuel": "Benzina", "displacement_cc": 1998, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "Seal", "fuel": "Benzina/GPL", "displacement_cc": 1998, "power_kw": 103, "power_cv": 140, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "Seal", "fuel": "Diesel", "displacement_cc": 1995, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"}
+    ]
+  },
+  {
+    "brand": "Chevrolet",
+    "models": [
+      {"model": "Spark", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 52, "power_cv": 71, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "Citycar"},
+      {"model": "Spark", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 49, "power_cv": 67, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "GPL per basso costo"},
+      {"model": "Spark", "fuel": "Diesel", "displacement_cc": 1248, "power_kw": 55, "power_cv": 75, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "Versione flotte"},
+      {"model": "Cruze", "fuel": "Benzina", "displacement_cc": 1598, "power_kw": 92, "power_cv": 125, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "Segmento C"},
+      {"model": "Cruze", "fuel": "Benzina/GPL", "displacement_cc": 1598, "power_kw": 86, "power_cv": 117, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "GPL aftermarket"},
+      {"model": "Cruze", "fuel": "Diesel", "displacement_cc": 1998, "power_kw": 92, "power_cv": 125, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "Consumi ridotti"}
+    ]
+  },
+  {
+    "brand": "Citroen",
+    "models": [
+      {"model": "C3", "fuel": "Benzina", "displacement_cc": 1199, "power_kw": 61, "power_cv": 83, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Ideale per privati"},
+      {"model": "C3", "fuel": "Benzina/GPL", "displacement_cc": 1199, "power_kw": 57, "power_cv": 78, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Basso costo d'uso"},
+      {"model": "C3", "fuel": "Diesel", "displacement_cc": 1499, "power_kw": 75, "power_cv": 102, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "C4", "fuel": "Benzina", "displacement_cc": 1199, "power_kw": 96, "power_cv": 131, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Crossover"},
+      {"model": "C4", "fuel": "Benzina/GPL", "displacement_cc": 1199, "power_kw": 90, "power_cv": 122, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL aftermarket"},
+      {"model": "C4", "fuel": "Diesel", "displacement_cc": 1499, "power_kw": 88, "power_cv": 120, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Consumi contenuti"}
+    ]
+  },
+  {
+    "brand": "Cupra",
+    "models": [
+      {"model": "Formentor", "fuel": "Benzina", "displacement_cc": 1498, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV sportivo"},
+      {"model": "Formentor", "fuel": "Benzina/GPL", "displacement_cc": 1498, "power_kw": 103, "power_cv": 140, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL per percorrenze"},
+      {"model": "Formentor", "fuel": "Diesel", "displacement_cc": 1968, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Leon", "fuel": "Benzina", "displacement_cc": 1498, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Compatta sportiva"},
+      {"model": "Leon", "fuel": "Benzina/GPL", "displacement_cc": 1498, "power_kw": 103, "power_cv": 140, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL aftermarket"},
+      {"model": "Leon", "fuel": "Diesel", "displacement_cc": 1968, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Ideale flotte"}
+    ]
+  },
+  {
+    "brand": "Dacia",
+    "models": [
+      {"model": "Sandero", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 67, "power_cv": 91, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Molto richiesta"},
+      {"model": "Sandero", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 67, "power_cv": 91, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL di serie"},
+      {"model": "Sandero", "fuel": "Diesel", "displacement_cc": 1461, "power_kw": 63, "power_cv": 86, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Duster", "fuel": "Benzina", "displacement_cc": 1332, "power_kw": 96, "power_cv": 131, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "SUV accessibile"},
+      {"model": "Duster", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 74, "power_cv": 101, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL molto richiesto"},
+      {"model": "Duster", "fuel": "Diesel", "displacement_cc": 1461, "power_kw": 85, "power_cv": 116, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "DS",
+    "models": [
+      {"model": "DS 3", "fuel": "Benzina", "displacement_cc": 1199, "power_kw": 96, "power_cv": 131, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Premium compatta"},
+      {"model": "DS 3", "fuel": "Benzina/GPL", "displacement_cc": 1199, "power_kw": 90, "power_cv": 122, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL aftermarket"},
+      {"model": "DS 3", "fuel": "Diesel", "displacement_cc": 1499, "power_kw": 81, "power_cv": 110, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "DS 7", "fuel": "Benzina", "displacement_cc": 1598, "power_kw": 133, "power_cv": 181, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV premium"},
+      {"model": "DS 7", "fuel": "Benzina/GPL", "displacement_cc": 1598, "power_kw": 125, "power_cv": 170, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL aftermarket"},
+      {"model": "DS 7", "fuel": "Diesel", "displacement_cc": 1997, "power_kw": 130, "power_cv": 177, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Ferrari",
+    "models": [
+      {"model": "Roma", "fuel": "Benzina", "displacement_cc": 3855, "power_kw": 456, "power_cv": 620, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Gran turismo"},
+      {"model": "Roma", "fuel": "Benzina/GPL", "displacement_cc": 3855, "power_kw": 430, "power_cv": 585, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Roma", "fuel": "Diesel", "displacement_cc": 2993, "power_kw": 220, "power_cv": 299, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "Portofino", "fuel": "Benzina", "displacement_cc": 3855, "power_kw": 456, "power_cv": 620, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Spider"},
+      {"model": "Portofino", "fuel": "Benzina/GPL", "displacement_cc": 3855, "power_kw": 430, "power_cv": 585, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Portofino", "fuel": "Diesel", "displacement_cc": 2993, "power_kw": 220, "power_cv": 299, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"}
+    ]
+  },
+  {
+    "brand": "Fiat",
+    "models": [
+      {"model": "Panda", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 51, "power_cv": 69, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Citycar"},
+      {"model": "Panda", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 51, "power_cv": 69, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL di serie"},
+      {"model": "Panda", "fuel": "Diesel", "displacement_cc": 1248, "power_kw": 55, "power_cv": 75, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "500", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 51, "power_cv": 69, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Privati"},
+      {"model": "500", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 51, "power_cv": 69, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL aftermarket"},
+      {"model": "500", "fuel": "Diesel", "displacement_cc": 1248, "power_kw": 55, "power_cv": 75, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Versione flotte"}
+    ]
+  },
+  {
+    "brand": "Ford",
+    "models": [
+      {"model": "Fiesta", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 74, "power_cv": 101, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Citycar"},
+      {"model": "Fiesta", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 70, "power_cv": 95, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL aftermarket"},
+      {"model": "Fiesta", "fuel": "Diesel", "displacement_cc": 1499, "power_kw": 63, "power_cv": 86, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Focus", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 92, "power_cv": 125, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Segmento C"},
+      {"model": "Focus", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 86, "power_cv": 117, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL per percorrenze"},
+      {"model": "Focus", "fuel": "Diesel", "displacement_cc": 1499, "power_kw": 88, "power_cv": 120, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Fuso",
+    "models": [
+      {"model": "Canter", "fuel": "Benzina", "displacement_cc": 2998, "power_kw": 96, "power_cv": 131, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Trasporto leggero"},
+      {"model": "Canter", "fuel": "Benzina/GPL", "displacement_cc": 2998, "power_kw": 90, "power_cv": 122, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Canter", "fuel": "Diesel", "displacement_cc": 2998, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Uso aziendale"},
+      {"model": "eCanter", "fuel": "Benzina", "displacement_cc": 1998, "power_kw": 88, "power_cv": 120, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "eCanter", "fuel": "Benzina/GPL", "displacement_cc": 1998, "power_kw": 82, "power_cv": 112, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "eCanter", "fuel": "Diesel", "displacement_cc": 1998, "power_kw": 96, "power_cv": 131, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"}
+    ]
+  },
+  {
+    "brand": "Great Wall",
+    "models": [
+      {"model": "Haval H6", "fuel": "Benzina", "displacement_cc": 1497, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV"},
+      {"model": "Haval H6", "fuel": "Benzina/GPL", "displacement_cc": 1497, "power_kw": 103, "power_cv": 140, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Haval H6", "fuel": "Diesel", "displacement_cc": 1996, "power_kw": 103, "power_cv": 140, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Wingle", "fuel": "Benzina", "displacement_cc": 2378, "power_kw": 105, "power_cv": 143, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "Pick-up"},
+      {"model": "Wingle", "fuel": "Benzina/GPL", "displacement_cc": 2378, "power_kw": 98, "power_cv": 133, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "GPL conversione"},
+      {"model": "Wingle", "fuel": "Diesel", "displacement_cc": 1996, "power_kw": 105, "power_cv": 143, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "Lavoro"}
+    ]
+  },
+  {
+    "brand": "Honda",
+    "models": [
+      {"model": "Civic", "fuel": "Benzina", "displacement_cc": 1498, "power_kw": 95, "power_cv": 129, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Privati"},
+      {"model": "Civic", "fuel": "Benzina/GPL", "displacement_cc": 1498, "power_kw": 90, "power_cv": 122, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL aftermarket"},
+      {"model": "Civic", "fuel": "Diesel", "displacement_cc": 1597, "power_kw": 88, "power_cv": 120, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "HR-V", "fuel": "Benzina", "displacement_cc": 1498, "power_kw": 96, "power_cv": 131, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV compatto"},
+      {"model": "HR-V", "fuel": "Benzina/GPL", "displacement_cc": 1498, "power_kw": 90, "power_cv": 122, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "HR-V", "fuel": "Diesel", "displacement_cc": 1597, "power_kw": 88, "power_cv": 120, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Consumi ridotti"}
+    ]
+  },
+  {
+    "brand": "Hyundai",
+    "models": [
+      {"model": "i20", "fuel": "Benzina", "displacement_cc": 1197, "power_kw": 62, "power_cv": 84, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Privati"},
+      {"model": "i20", "fuel": "Benzina/GPL", "displacement_cc": 1197, "power_kw": 58, "power_cv": 79, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL aftermarket"},
+      {"model": "i20", "fuel": "Diesel", "displacement_cc": 1396, "power_kw": 55, "power_cv": 75, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Tucson", "fuel": "Benzina", "displacement_cc": 1598, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV"},
+      {"model": "Tucson", "fuel": "Benzina/GPL", "displacement_cc": 1598, "power_kw": 103, "power_cv": 140, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Tucson", "fuel": "Diesel", "displacement_cc": 1598, "power_kw": 100, "power_cv": 136, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Infiniti",
+    "models": [
+      {"model": "Q30", "fuel": "Benzina", "displacement_cc": 1595, "power_kw": 115, "power_cv": 156, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Compatta premium"},
+      {"model": "Q30", "fuel": "Benzina/GPL", "displacement_cc": 1595, "power_kw": 108, "power_cv": 147, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Q30", "fuel": "Diesel", "displacement_cc": 2143, "power_kw": 100, "power_cv": 136, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Q50", "fuel": "Benzina", "displacement_cc": 1997, "power_kw": 155, "power_cv": 211, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Berlina"},
+      {"model": "Q50", "fuel": "Benzina/GPL", "displacement_cc": 1997, "power_kw": 145, "power_cv": 197, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Q50", "fuel": "Diesel", "displacement_cc": 2143, "power_kw": 125, "power_cv": 170, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Isuzu",
+    "models": [
+      {"model": "D-Max", "fuel": "Benzina", "displacement_cc": 2499, "power_kw": 120, "power_cv": 163, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Pick-up"},
+      {"model": "D-Max", "fuel": "Benzina/GPL", "displacement_cc": 2499, "power_kw": 112, "power_cv": 152, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "D-Max", "fuel": "Diesel", "displacement_cc": 1898, "power_kw": 120, "power_cv": 163, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Uso professionale"},
+      {"model": "N-Series", "fuel": "Benzina", "displacement_cc": 2999, "power_kw": 96, "power_cv": 131, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Trasporto leggero"},
+      {"model": "N-Series", "fuel": "Benzina/GPL", "displacement_cc": 2999, "power_kw": 90, "power_cv": 122, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "N-Series", "fuel": "Diesel", "displacement_cc": 2999, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Iveco",
+    "models": [
+      {"model": "Daily", "fuel": "Benzina", "displacement_cc": 2998, "power_kw": 100, "power_cv": 136, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Veicolo commerciale"},
+      {"model": "Daily", "fuel": "Benzina/GPL", "displacement_cc": 2998, "power_kw": 94, "power_cv": 128, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Daily", "fuel": "Diesel", "displacement_cc": 2998, "power_kw": 116, "power_cv": 158, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Eurocargo", "fuel": "Benzina", "displacement_cc": 3920, "power_kw": 118, "power_cv": 160, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Trasporto medio"},
+      {"model": "Eurocargo", "fuel": "Benzina/GPL", "displacement_cc": 3920, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Eurocargo", "fuel": "Diesel", "displacement_cc": 3920, "power_kw": 130, "power_cv": 177, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Jaguar",
+    "models": [
+      {"model": "E-Pace", "fuel": "Benzina", "displacement_cc": 1997, "power_kw": 147, "power_cv": 200, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV compatto"},
+      {"model": "E-Pace", "fuel": "Benzina/GPL", "displacement_cc": 1997, "power_kw": 138, "power_cv": 188, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "E-Pace", "fuel": "Diesel", "displacement_cc": 1999, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "XF", "fuel": "Benzina", "displacement_cc": 1997, "power_kw": 184, "power_cv": 250, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Berlina premium"},
+      {"model": "XF", "fuel": "Benzina/GPL", "displacement_cc": 1997, "power_kw": 173, "power_cv": 235, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "XF", "fuel": "Diesel", "displacement_cc": 1999, "power_kw": 147, "power_cv": 200, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Jeep",
+    "models": [
+      {"model": "Renegade", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 88, "power_cv": 120, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "SUV urbano"},
+      {"model": "Renegade", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 82, "power_cv": 112, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Renegade", "fuel": "Diesel", "displacement_cc": 1598, "power_kw": 88, "power_cv": 120, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Compass", "fuel": "Benzina", "displacement_cc": 1332, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV medio"},
+      {"model": "Compass", "fuel": "Benzina/GPL", "displacement_cc": 1332, "power_kw": 103, "power_cv": 140, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Compass", "fuel": "Diesel", "displacement_cc": 1598, "power_kw": 96, "power_cv": 131, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Kia",
+    "models": [
+      {"model": "Rio", "fuel": "Benzina", "displacement_cc": 998, "power_kw": 62, "power_cv": 84, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Compatta"},
+      {"model": "Rio", "fuel": "Benzina/GPL", "displacement_cc": 998, "power_kw": 58, "power_cv": 79, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Rio", "fuel": "Diesel", "displacement_cc": 1396, "power_kw": 55, "power_cv": 75, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Sportage", "fuel": "Benzina", "displacement_cc": 1598, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV"},
+      {"model": "Sportage", "fuel": "Benzina/GPL", "displacement_cc": 1598, "power_kw": 103, "power_cv": 140, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Sportage", "fuel": "Diesel", "displacement_cc": 1598, "power_kw": 100, "power_cv": 136, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Lamborghini",
+    "models": [
+      {"model": "Urus", "fuel": "Benzina", "displacement_cc": 3996, "power_kw": 478, "power_cv": 650, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV sportivo"},
+      {"model": "Urus", "fuel": "Benzina/GPL", "displacement_cc": 3996, "power_kw": 450, "power_cv": 612, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Urus", "fuel": "Diesel", "displacement_cc": 2967, "power_kw": 193, "power_cv": 262, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "Huracan", "fuel": "Benzina", "displacement_cc": 5204, "power_kw": 470, "power_cv": 639, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Sportiva"},
+      {"model": "Huracan", "fuel": "Benzina/GPL", "displacement_cc": 5204, "power_kw": 442, "power_cv": 601, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Huracan", "fuel": "Diesel", "displacement_cc": 2967, "power_kw": 184, "power_cv": 250, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"}
+    ]
+  },
+  {
+    "brand": "Land Rover",
+    "models": [
+      {"model": "Range Rover Evoque", "fuel": "Benzina", "displacement_cc": 1997, "power_kw": 147, "power_cv": 200, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV premium"},
+      {"model": "Range Rover Evoque", "fuel": "Benzina/GPL", "displacement_cc": 1997, "power_kw": 138, "power_cv": 188, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Range Rover Evoque", "fuel": "Diesel", "displacement_cc": 1999, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Discovery Sport", "fuel": "Benzina", "displacement_cc": 1997, "power_kw": 147, "power_cv": 200, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV 7 posti"},
+      {"model": "Discovery Sport", "fuel": "Benzina/GPL", "displacement_cc": 1997, "power_kw": 138, "power_cv": 188, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Discovery Sport", "fuel": "Diesel", "displacement_cc": 1999, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Lancia",
+    "models": [
+      {"model": "Ypsilon", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 51, "power_cv": 69, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Citycar"},
+      {"model": "Ypsilon", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 51, "power_cv": 69, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL di serie"},
+      {"model": "Ypsilon", "fuel": "Diesel", "displacement_cc": 1248, "power_kw": 55, "power_cv": 75, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Delta", "fuel": "Benzina", "displacement_cc": 1368, "power_kw": 88, "power_cv": 120, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "Segmento C"},
+      {"model": "Delta", "fuel": "Benzina/GPL", "displacement_cc": 1368, "power_kw": 82, "power_cv": 112, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "GPL conversione"},
+      {"model": "Delta", "fuel": "Diesel", "displacement_cc": 1598, "power_kw": 88, "power_cv": 120, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Lexus",
+    "models": [
+      {"model": "UX", "fuel": "Benzina", "displacement_cc": 1987, "power_kw": 130, "power_cv": 177, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV compatto"},
+      {"model": "UX", "fuel": "Benzina/GPL", "displacement_cc": 1987, "power_kw": 122, "power_cv": 166, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "UX", "fuel": "Diesel", "displacement_cc": 1995, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "NX", "fuel": "Benzina", "displacement_cc": 2487, "power_kw": 145, "power_cv": 197, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV premium"},
+      {"model": "NX", "fuel": "Benzina/GPL", "displacement_cc": 2487, "power_kw": 136, "power_cv": 185, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "NX", "fuel": "Diesel", "displacement_cc": 1995, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "MAN",
+    "models": [
+      {"model": "TGE", "fuel": "Benzina", "displacement_cc": 1968, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Van"},
+      {"model": "TGE", "fuel": "Benzina/GPL", "displacement_cc": 1968, "power_kw": 103, "power_cv": 140, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "TGE", "fuel": "Diesel", "displacement_cc": 1968, "power_kw": 130, "power_cv": 177, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "TGL", "fuel": "Benzina", "displacement_cc": 6871, "power_kw": 160, "power_cv": 218, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Trasporto medio"},
+      {"model": "TGL", "fuel": "Benzina/GPL", "displacement_cc": 6871, "power_kw": 150, "power_cv": 204, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "TGL", "fuel": "Diesel", "displacement_cc": 6871, "power_kw": 170, "power_cv": 231, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Maserati",
+    "models": [
+      {"model": "Ghibli", "fuel": "Benzina", "displacement_cc": 1998, "power_kw": 257, "power_cv": 350, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Berlina premium"},
+      {"model": "Ghibli", "fuel": "Benzina/GPL", "displacement_cc": 1998, "power_kw": 240, "power_cv": 326, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Ghibli", "fuel": "Diesel", "displacement_cc": 2987, "power_kw": 202, "power_cv": 275, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Levante", "fuel": "Benzina", "displacement_cc": 1998, "power_kw": 220, "power_cv": 299, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV premium"},
+      {"model": "Levante", "fuel": "Benzina/GPL", "displacement_cc": 1998, "power_kw": 206, "power_cv": 280, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Levante", "fuel": "Diesel", "displacement_cc": 2987, "power_kw": 202, "power_cv": 275, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Mazda",
+    "models": [
+      {"model": "Mazda3", "fuel": "Benzina", "displacement_cc": 1998, "power_kw": 90, "power_cv": 122, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Compatta"},
+      {"model": "Mazda3", "fuel": "Benzina/GPL", "displacement_cc": 1998, "power_kw": 85, "power_cv": 116, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Mazda3", "fuel": "Diesel", "displacement_cc": 1798, "power_kw": 85, "power_cv": 116, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "CX-5", "fuel": "Benzina", "displacement_cc": 2488, "power_kw": 121, "power_cv": 165, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV"},
+      {"model": "CX-5", "fuel": "Benzina/GPL", "displacement_cc": 2488, "power_kw": 114, "power_cv": 155, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "CX-5", "fuel": "Diesel", "displacement_cc": 2191, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Mercedes-Benz",
+    "models": [
+      {"model": "Classe A", "fuel": "Benzina", "displacement_cc": 1332, "power_kw": 100, "power_cv": 136, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Compatta premium"},
+      {"model": "Classe A", "fuel": "Benzina/GPL", "displacement_cc": 1332, "power_kw": 94, "power_cv": 128, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Classe A", "fuel": "Diesel", "displacement_cc": 1950, "power_kw": 85, "power_cv": 116, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "GLA", "fuel": "Benzina", "displacement_cc": 1332, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV compatto"},
+      {"model": "GLA", "fuel": "Benzina/GPL", "displacement_cc": 1332, "power_kw": 112, "power_cv": 152, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "GLA", "fuel": "Diesel", "displacement_cc": 1950, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "MG",
+    "models": [
+      {"model": "ZS", "fuel": "Benzina", "displacement_cc": 1498, "power_kw": 82, "power_cv": 112, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "SUV accessibile"},
+      {"model": "ZS", "fuel": "Benzina/GPL", "displacement_cc": 1498, "power_kw": 77, "power_cv": 105, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "ZS", "fuel": "Diesel", "displacement_cc": 1598, "power_kw": 82, "power_cv": 112, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "HS", "fuel": "Benzina", "displacement_cc": 1490, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV medio"},
+      {"model": "HS", "fuel": "Benzina/GPL", "displacement_cc": 1490, "power_kw": 112, "power_cv": 152, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "HS", "fuel": "Diesel", "displacement_cc": 1996, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Mini",
+    "models": [
+      {"model": "Cooper", "fuel": "Benzina", "displacement_cc": 1499, "power_kw": 100, "power_cv": 136, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Compatta premium"},
+      {"model": "Cooper", "fuel": "Benzina/GPL", "displacement_cc": 1499, "power_kw": 94, "power_cv": 128, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Cooper", "fuel": "Diesel", "displacement_cc": 1496, "power_kw": 85, "power_cv": 116, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Countryman", "fuel": "Benzina", "displacement_cc": 1499, "power_kw": 100, "power_cv": 136, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Crossover"},
+      {"model": "Countryman", "fuel": "Benzina/GPL", "displacement_cc": 1499, "power_kw": 94, "power_cv": 128, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Countryman", "fuel": "Diesel", "displacement_cc": 1995, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Mitsubishi",
+    "models": [
+      {"model": "ASX", "fuel": "Benzina", "displacement_cc": 1590, "power_kw": 88, "power_cv": 120, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "SUV compatto"},
+      {"model": "ASX", "fuel": "Benzina/GPL", "displacement_cc": 1590, "power_kw": 82, "power_cv": 112, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "ASX", "fuel": "Diesel", "displacement_cc": 2268, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Eclipse Cross", "fuel": "Benzina", "displacement_cc": 1499, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV"},
+      {"model": "Eclipse Cross", "fuel": "Benzina/GPL", "displacement_cc": 1499, "power_kw": 103, "power_cv": 140, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Eclipse Cross", "fuel": "Diesel", "displacement_cc": 2268, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Nissan",
+    "models": [
+      {"model": "Micra", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 66, "power_cv": 90, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Citycar"},
+      {"model": "Micra", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 62, "power_cv": 84, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Micra", "fuel": "Diesel", "displacement_cc": 1461, "power_kw": 66, "power_cv": 90, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Qashqai", "fuel": "Benzina", "displacement_cc": 1332, "power_kw": 103, "power_cv": 140, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "SUV"},
+      {"model": "Qashqai", "fuel": "Benzina/GPL", "displacement_cc": 1332, "power_kw": 96, "power_cv": 131, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Qashqai", "fuel": "Diesel", "displacement_cc": 1749, "power_kw": 96, "power_cv": 131, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Opel",
+    "models": [
+      {"model": "Corsa", "fuel": "Benzina", "displacement_cc": 1199, "power_kw": 55, "power_cv": 75, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Citycar"},
+      {"model": "Corsa", "fuel": "Benzina/GPL", "displacement_cc": 1199, "power_kw": 52, "power_cv": 71, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Corsa", "fuel": "Diesel", "displacement_cc": 1499, "power_kw": 55, "power_cv": 75, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Astra", "fuel": "Benzina", "displacement_cc": 1199, "power_kw": 81, "power_cv": 110, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Segmento C"},
+      {"model": "Astra", "fuel": "Benzina/GPL", "displacement_cc": 1199, "power_kw": 77, "power_cv": 105, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Astra", "fuel": "Diesel", "displacement_cc": 1499, "power_kw": 81, "power_cv": 110, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Opel Professional",
+    "models": [
+      {"model": "Combo", "fuel": "Benzina", "displacement_cc": 1199, "power_kw": 81, "power_cv": 110, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "LCV"},
+      {"model": "Combo", "fuel": "Benzina/GPL", "displacement_cc": 1199, "power_kw": 77, "power_cv": 105, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Combo", "fuel": "Diesel", "displacement_cc": 1499, "power_kw": 74, "power_cv": 101, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Vivaro", "fuel": "Benzina", "displacement_cc": 1999, "power_kw": 88, "power_cv": 120, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "LCV"},
+      {"model": "Vivaro", "fuel": "Benzina/GPL", "displacement_cc": 1999, "power_kw": 82, "power_cv": 112, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Vivaro", "fuel": "Diesel", "displacement_cc": 1999, "power_kw": 88, "power_cv": 120, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Peugeot",
+    "models": [
+      {"model": "208", "fuel": "Benzina", "displacement_cc": 1199, "power_kw": 74, "power_cv": 101, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Citycar"},
+      {"model": "208", "fuel": "Benzina/GPL", "displacement_cc": 1199, "power_kw": 70, "power_cv": 95, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "208", "fuel": "Diesel", "displacement_cc": 1499, "power_kw": 75, "power_cv": 102, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "3008", "fuel": "Benzina", "displacement_cc": 1199, "power_kw": 96, "power_cv": 131, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV"},
+      {"model": "3008", "fuel": "Benzina/GPL", "displacement_cc": 1199, "power_kw": 90, "power_cv": 122, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "3008", "fuel": "Diesel", "displacement_cc": 1499, "power_kw": 96, "power_cv": 131, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Peugeot Professional",
+    "models": [
+      {"model": "Partner", "fuel": "Benzina", "displacement_cc": 1199, "power_kw": 81, "power_cv": 110, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "LCV"},
+      {"model": "Partner", "fuel": "Benzina/GPL", "displacement_cc": 1199, "power_kw": 77, "power_cv": 105, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Partner", "fuel": "Diesel", "displacement_cc": 1499, "power_kw": 75, "power_cv": 102, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Boxer", "fuel": "Benzina", "displacement_cc": 1997, "power_kw": 96, "power_cv": 131, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Trasporto"},
+      {"model": "Boxer", "fuel": "Benzina/GPL", "displacement_cc": 1997, "power_kw": 90, "power_cv": 122, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Boxer", "fuel": "Diesel", "displacement_cc": 2179, "power_kw": 118, "power_cv": 160, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Piaggio",
+    "models": [
+      {"model": "Porter", "fuel": "Benzina", "displacement_cc": 1498, "power_kw": 38, "power_cv": 52, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "LCV urbano"},
+      {"model": "Porter", "fuel": "Benzina/GPL", "displacement_cc": 1498, "power_kw": 36, "power_cv": 49, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL di serie"},
+      {"model": "Porter", "fuel": "Diesel", "displacement_cc": 1498, "power_kw": 44, "power_cv": 60, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Porter NP6", "fuel": "Benzina", "displacement_cc": 1498, "power_kw": 74, "power_cv": 101, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Veicolo lavoro"},
+      {"model": "Porter NP6", "fuel": "Benzina/GPL", "displacement_cc": 1498, "power_kw": 70, "power_cv": 95, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Porter NP6", "fuel": "Diesel", "displacement_cc": 1498, "power_kw": 74, "power_cv": 101, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Polestar",
+    "models": [
+      {"model": "2", "fuel": "Benzina", "displacement_cc": 1998, "power_kw": 130, "power_cv": 177, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "2", "fuel": "Benzina/GPL", "displacement_cc": 1998, "power_kw": 122, "power_cv": 166, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "2", "fuel": "Diesel", "displacement_cc": 1995, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "3", "fuel": "Benzina", "displacement_cc": 1998, "power_kw": 150, "power_cv": 204, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "3", "fuel": "Benzina/GPL", "displacement_cc": 1998, "power_kw": 140, "power_cv": 190, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "3", "fuel": "Diesel", "displacement_cc": 1995, "power_kw": 130, "power_cv": 177, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"}
+    ]
+  },
+  {
+    "brand": "Porsche",
+    "models": [
+      {"model": "Macan", "fuel": "Benzina", "displacement_cc": 1984, "power_kw": 195, "power_cv": 265, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV sportivo"},
+      {"model": "Macan", "fuel": "Benzina/GPL", "displacement_cc": 1984, "power_kw": 184, "power_cv": 250, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Macan", "fuel": "Diesel", "displacement_cc": 2967, "power_kw": 190, "power_cv": 258, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Cayenne", "fuel": "Benzina", "displacement_cc": 2995, "power_kw": 250, "power_cv": 340, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV premium"},
+      {"model": "Cayenne", "fuel": "Benzina/GPL", "displacement_cc": 2995, "power_kw": 235, "power_cv": 320, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Cayenne", "fuel": "Diesel", "displacement_cc": 2967, "power_kw": 210, "power_cv": 286, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "RAM",
+    "models": [
+      {"model": "1500", "fuel": "Benzina", "displacement_cc": 5654, "power_kw": 290, "power_cv": 394, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Pick-up"},
+      {"model": "1500", "fuel": "Benzina/GPL", "displacement_cc": 5654, "power_kw": 272, "power_cv": 370, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "1500", "fuel": "Diesel", "displacement_cc": 2995, "power_kw": 191, "power_cv": 260, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "ProMaster", "fuel": "Benzina", "displacement_cc": 3604, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "LCV"},
+      {"model": "ProMaster", "fuel": "Benzina/GPL", "displacement_cc": 3604, "power_kw": 112, "power_cv": 152, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "ProMaster", "fuel": "Diesel", "displacement_cc": 2999, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Renault",
+    "models": [
+      {"model": "Clio", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 67, "power_cv": 91, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Privati"},
+      {"model": "Clio", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 67, "power_cv": 91, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL di serie"},
+      {"model": "Clio", "fuel": "Diesel", "displacement_cc": 1461, "power_kw": 63, "power_cv": 86, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Captur", "fuel": "Benzina", "displacement_cc": 1332, "power_kw": 96, "power_cv": 131, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV compatto"},
+      {"model": "Captur", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 74, "power_cv": 101, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL di serie"},
+      {"model": "Captur", "fuel": "Diesel", "displacement_cc": 1461, "power_kw": 85, "power_cv": 116, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Saab",
+    "models": [
+      {"model": "9-3", "fuel": "Benzina", "displacement_cc": 1998, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 4", "notes": "Legacy"},
+      {"model": "9-3", "fuel": "Benzina/GPL", "displacement_cc": 1998, "power_kw": 103, "power_cv": 140, "transmission": "Manuale", "emission_class": "Euro 4", "notes": "GPL conversione"},
+      {"model": "9-3", "fuel": "Diesel", "displacement_cc": 1910, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 4", "notes": "Flotte"},
+      {"model": "9-5", "fuel": "Benzina", "displacement_cc": 1998, "power_kw": 132, "power_cv": 180, "transmission": "Automatico", "emission_class": "Euro 4", "notes": "Legacy"},
+      {"model": "9-5", "fuel": "Benzina/GPL", "displacement_cc": 1998, "power_kw": 125, "power_cv": 170, "transmission": "Automatico", "emission_class": "Euro 4", "notes": "GPL conversione"},
+      {"model": "9-5", "fuel": "Diesel", "displacement_cc": 1910, "power_kw": 132, "power_cv": 180, "transmission": "Automatico", "emission_class": "Euro 4", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Scania",
+    "models": [
+      {"model": "P-Series", "fuel": "Benzina", "displacement_cc": 12870, "power_kw": 220, "power_cv": 299, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Trasporto medio"},
+      {"model": "P-Series", "fuel": "Benzina/GPL", "displacement_cc": 12870, "power_kw": 206, "power_cv": 280, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "P-Series", "fuel": "Diesel", "displacement_cc": 12870, "power_kw": 220, "power_cv": 299, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "R-Series", "fuel": "Benzina", "displacement_cc": 16350, "power_kw": 370, "power_cv": 503, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Lungo raggio"},
+      {"model": "R-Series", "fuel": "Benzina/GPL", "displacement_cc": 16350, "power_kw": 350, "power_cv": 476, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "R-Series", "fuel": "Diesel", "displacement_cc": 16350, "power_kw": 370, "power_cv": 503, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "SEAT",
+    "models": [
+      {"model": "Ibiza", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 70, "power_cv": 95, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Citycar"},
+      {"model": "Ibiza", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 66, "power_cv": 90, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Ibiza", "fuel": "Diesel", "displacement_cc": 1598, "power_kw": 70, "power_cv": 95, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Leon", "fuel": "Benzina", "displacement_cc": 1498, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Segmento C"},
+      {"model": "Leon", "fuel": "Benzina/GPL", "displacement_cc": 1498, "power_kw": 103, "power_cv": 140, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Leon", "fuel": "Diesel", "displacement_cc": 1968, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Skoda",
+    "models": [
+      {"model": "Fabia", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 70, "power_cv": 95, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Citycar"},
+      {"model": "Fabia", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 66, "power_cv": 90, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Fabia", "fuel": "Diesel", "displacement_cc": 1598, "power_kw": 70, "power_cv": 95, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Octavia", "fuel": "Benzina", "displacement_cc": 1498, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Segmento C"},
+      {"model": "Octavia", "fuel": "Benzina/GPL", "displacement_cc": 1498, "power_kw": 103, "power_cv": 140, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Octavia", "fuel": "Diesel", "displacement_cc": 1968, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Smart",
+    "models": [
+      {"model": "Fortwo", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 52, "power_cv": 71, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Citycar"},
+      {"model": "Fortwo", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 49, "power_cv": 67, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Fortwo", "fuel": "Diesel", "displacement_cc": 1461, "power_kw": 52, "power_cv": 71, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Forfour", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 66, "power_cv": 90, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Citycar"},
+      {"model": "Forfour", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 62, "power_cv": 84, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Forfour", "fuel": "Diesel", "displacement_cc": 1461, "power_kw": 66, "power_cv": 90, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "SsangYong",
+    "models": [
+      {"model": "Tivoli", "fuel": "Benzina", "displacement_cc": 1497, "power_kw": 94, "power_cv": 128, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "SUV compatto"},
+      {"model": "Tivoli", "fuel": "Benzina/GPL", "displacement_cc": 1497, "power_kw": 88, "power_cv": 120, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Tivoli", "fuel": "Diesel", "displacement_cc": 1597, "power_kw": 85, "power_cv": 116, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Korando", "fuel": "Benzina", "displacement_cc": 1497, "power_kw": 100, "power_cv": 136, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV"},
+      {"model": "Korando", "fuel": "Benzina/GPL", "displacement_cc": 1497, "power_kw": 94, "power_cv": 128, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Korando", "fuel": "Diesel", "displacement_cc": 1597, "power_kw": 100, "power_cv": 136, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Subaru",
+    "models": [
+      {"model": "Impreza", "fuel": "Benzina", "displacement_cc": 1599, "power_kw": 84, "power_cv": 114, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Berlina"},
+      {"model": "Impreza", "fuel": "Benzina/GPL", "displacement_cc": 1599, "power_kw": 78, "power_cv": 106, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Impreza", "fuel": "Diesel", "displacement_cc": 1998, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Forester", "fuel": "Benzina", "displacement_cc": 1995, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV"},
+      {"model": "Forester", "fuel": "Benzina/GPL", "displacement_cc": 1995, "power_kw": 103, "power_cv": 140, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Forester", "fuel": "Diesel", "displacement_cc": 1998, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Suzuki",
+    "models": [
+      {"model": "Swift", "fuel": "Benzina", "displacement_cc": 1197, "power_kw": 61, "power_cv": 83, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Citycar"},
+      {"model": "Swift", "fuel": "Benzina/GPL", "displacement_cc": 1197, "power_kw": 57, "power_cv": 78, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Swift", "fuel": "Diesel", "displacement_cc": 1248, "power_kw": 55, "power_cv": 75, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Vitara", "fuel": "Benzina", "displacement_cc": 1373, "power_kw": 95, "power_cv": 129, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "SUV"},
+      {"model": "Vitara", "fuel": "Benzina/GPL", "displacement_cc": 1373, "power_kw": 89, "power_cv": 121, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Vitara", "fuel": "Diesel", "displacement_cc": 1598, "power_kw": 88, "power_cv": 120, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Tata",
+    "models": [
+      {"model": "Xenon", "fuel": "Benzina", "displacement_cc": 2179, "power_kw": 105, "power_cv": 143, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "Pick-up"},
+      {"model": "Xenon", "fuel": "Benzina/GPL", "displacement_cc": 2179, "power_kw": 98, "power_cv": 133, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "GPL conversione"},
+      {"model": "Xenon", "fuel": "Diesel", "displacement_cc": 2179, "power_kw": 105, "power_cv": 143, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "Flotte"},
+      {"model": "Safari", "fuel": "Benzina", "displacement_cc": 2179, "power_kw": 125, "power_cv": 170, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "SUV"},
+      {"model": "Safari", "fuel": "Benzina/GPL", "displacement_cc": 2179, "power_kw": 117, "power_cv": 159, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "GPL conversione"},
+      {"model": "Safari", "fuel": "Diesel", "displacement_cc": 2179, "power_kw": 125, "power_cv": 170, "transmission": "Manuale", "emission_class": "Euro 5", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Tesla",
+    "models": [
+      {"model": "Model 3", "fuel": "Benzina", "displacement_cc": 1998, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "Model 3", "fuel": "Benzina/GPL", "displacement_cc": 1998, "power_kw": 112, "power_cv": 152, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "Model 3", "fuel": "Diesel", "displacement_cc": 1995, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "Model Y", "fuel": "Benzina", "displacement_cc": 1998, "power_kw": 130, "power_cv": 177, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "Model Y", "fuel": "Benzina/GPL", "displacement_cc": 1998, "power_kw": 122, "power_cv": 166, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"},
+      {"model": "Model Y", "fuel": "Diesel", "displacement_cc": 1995, "power_kw": 130, "power_cv": 177, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Voce gestionale"}
+    ]
+  },
+  {
+    "brand": "Toyota",
+    "models": [
+      {"model": "Yaris", "fuel": "Benzina", "displacement_cc": 1490, "power_kw": 68, "power_cv": 92, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Privati"},
+      {"model": "Yaris", "fuel": "Benzina/GPL", "displacement_cc": 1490, "power_kw": 64, "power_cv": 87, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Yaris", "fuel": "Diesel", "displacement_cc": 1496, "power_kw": 66, "power_cv": 90, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Corolla", "fuel": "Benzina", "displacement_cc": 1798, "power_kw": 90, "power_cv": 122, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Segmento C"},
+      {"model": "Corolla", "fuel": "Benzina/GPL", "displacement_cc": 1798, "power_kw": 85, "power_cv": 116, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Corolla", "fuel": "Diesel", "displacement_cc": 1995, "power_kw": 96, "power_cv": 131, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Volkswagen",
+    "models": [
+      {"model": "Golf", "fuel": "Benzina", "displacement_cc": 1498, "power_kw": 81, "power_cv": 110, "transmission": "Manuale", "emission_class": "Euro 6d", "notes": "Segmento C"},
+      {"model": "Golf", "fuel": "Benzina/GPL", "displacement_cc": 1498, "power_kw": 77, "power_cv": 105, "transmission": "Manuale", "emission_class": "Euro 6d", "notes": "GPL conversione"},
+      {"model": "Golf", "fuel": "Diesel", "displacement_cc": 1968, "power_kw": 85, "power_cv": 116, "transmission": "Manuale", "emission_class": "Euro 6d", "notes": "Flotte"},
+      {"model": "Polo", "fuel": "Benzina", "displacement_cc": 999, "power_kw": 70, "power_cv": 95, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Citycar"},
+      {"model": "Polo", "fuel": "Benzina/GPL", "displacement_cc": 999, "power_kw": 66, "power_cv": 90, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Polo", "fuel": "Diesel", "displacement_cc": 1598, "power_kw": 70, "power_cv": 95, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Volkswagen Commercial",
+    "models": [
+      {"model": "Caddy", "fuel": "Benzina", "displacement_cc": 1498, "power_kw": 75, "power_cv": 102, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "LCV"},
+      {"model": "Caddy", "fuel": "Benzina/GPL", "displacement_cc": 1498, "power_kw": 70, "power_cv": 95, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Caddy", "fuel": "Diesel", "displacement_cc": 1968, "power_kw": 75, "power_cv": 102, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "Transporter", "fuel": "Benzina", "displacement_cc": 1984, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "LCV"},
+      {"model": "Transporter", "fuel": "Benzina/GPL", "displacement_cc": 1984, "power_kw": 103, "power_cv": 140, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "Transporter", "fuel": "Diesel", "displacement_cc": 1968, "power_kw": 110, "power_cv": 150, "transmission": "Manuale", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  },
+  {
+    "brand": "Volvo",
+    "models": [
+      {"model": "XC40", "fuel": "Benzina", "displacement_cc": 1969, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV compatto"},
+      {"model": "XC40", "fuel": "Benzina/GPL", "displacement_cc": 1969, "power_kw": 112, "power_cv": 152, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "XC40", "fuel": "Diesel", "displacement_cc": 1969, "power_kw": 110, "power_cv": 150, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"},
+      {"model": "XC60", "fuel": "Benzina", "displacement_cc": 1969, "power_kw": 145, "power_cv": 197, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "SUV"},
+      {"model": "XC60", "fuel": "Benzina/GPL", "displacement_cc": 1969, "power_kw": 136, "power_cv": 185, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "GPL conversione"},
+      {"model": "XC60", "fuel": "Diesel", "displacement_cc": 1969, "power_kw": 120, "power_cv": 163, "transmission": "Automatico", "emission_class": "Euro 6", "notes": "Flotte"}
+    ]
+  }
+]
