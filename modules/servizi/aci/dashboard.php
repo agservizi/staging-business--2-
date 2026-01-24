@@ -25,6 +25,14 @@ if (!$tipi) {
 
 $puoCreare = current_user_can('Admin', 'Operatore', 'Manager');
 
+$protocolloWizard = '';
+try {
+    $protocolloWizard = strtoupper(bin2hex(random_bytes(6)));
+} catch (Throwable $e) {
+    $fallback = strtoupper(str_replace(['-', '.', ' '], '', uniqid('', true)));
+    $protocolloWizard = substr($fallback, 0, 12);
+}
+
 $totalCount = (int) $pdo->query('SELECT COUNT(*) FROM servizi_aci_pratiche')->fetchColumn();
 $openCount = (int) $pdo->query("SELECT COUNT(*) FROM servizi_aci_pratiche WHERE stato NOT IN ('Chiusa', 'Completata')")->fetchColumn();
 $byStatus = $pdo->query('SELECT stato, COUNT(*) AS totale FROM servizi_aci_pratiche GROUP BY stato ORDER BY totale DESC')->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -62,7 +70,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             <div class="toolbar-actions d-flex gap-2">
                 <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-table-list me-2"></i>Elenco pratiche</a>
                 <?php if ($puoCreare): ?>
-                    <a class="btn btn-warning text-dark" href="create-wizard.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova pratica</a>
+                    <a class="btn btn-warning text-dark" href="create-wizard.php?protocollo=<?php echo urlencode($protocolloWizard); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova pratica</a>
                 <?php endif; ?>
             </div>
         </div>

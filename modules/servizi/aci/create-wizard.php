@@ -61,6 +61,32 @@ $operatorsStmt = $pdo->query("SELECT id, username, nome, cognome FROM users WHER
 $operators = $operatorsStmt ? $operatorsStmt->fetchAll(PDO::FETCH_ASSOC) : [];
 
 $errors = [];
+
+function aci_generate_protocol(): string
+{
+    try {
+        return strtoupper(bin2hex(random_bytes(6)));
+    } catch (Throwable $e) {
+        $fallback = strtoupper(str_replace(['-', '.', ' '], '', uniqid('', true)));
+        return substr($fallback, 0, 12);
+    }
+}
+
+function aci_normalize_protocol(?string $value): string
+{
+    $value = (string) $value;
+    $clean = preg_replace('/[^a-zA-Z0-9]/', '', $value);
+    if ($clean === null) {
+        return '';
+    }
+    return strtoupper($clean);
+}
+
+$defaultProtocollo = aci_normalize_protocol($_GET['protocollo'] ?? '');
+if ($defaultProtocollo === '') {
+    $defaultProtocollo = aci_generate_protocol();
+}
+
 $defaultTipo = $tipi[0] ?? $defaultTypes[0];
 $defaultCompenso = ($defaultTipo !== '' && isset($aciPricingMap[$defaultTipo])) ? $aciPricingMap[$defaultTipo] : 0.0;
 $data = [
@@ -68,7 +94,7 @@ $data = [
     'tipo_pratica' => $defaultTipo,
     'tipo_pratica_altro' => '',
     'stato' => $stati[0] ?? 'Bozza',
-    'protocollo' => '',
+    'protocollo' => $defaultProtocollo,
     'persona_giuridica' => false,
     'intestatario_nome' => '',
     'intestatario_cognome' => '',
@@ -135,7 +161,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data['tipo_pratica'] = trim((string) ($_POST['tipo_pratica'] ?? ''));
     $data['tipo_pratica_altro'] = trim((string) ($_POST['tipo_pratica_altro'] ?? ''));
     $data['stato'] = trim((string) ($_POST['stato'] ?? ''));
-    $data['protocollo'] = trim((string) ($_POST['protocollo'] ?? ''));
+    $data['protocollo'] = aci_normalize_protocol($_POST['protocollo'] ?? '');
+    if ($data['protocollo'] === '') {
+        $data['protocollo'] = aci_generate_protocol();
+    }
     $data['persona_giuridica'] = isset($_POST['persona_giuridica']);
 
     $data['intestatario_nome'] = trim((string) ($_POST['intestatario_nome'] ?? ''));
