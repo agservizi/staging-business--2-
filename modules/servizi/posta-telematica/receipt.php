@@ -43,6 +43,27 @@ $invioStatus = $invioDate ? 'Completato (' . format_datetime_locale($invioDate) 
 $accettazioneStatus = $accettazioneDate ? 'Completato (' . format_datetime_locale($accettazioneDate) . ')' : 'Da verificare';
 $consegnaStatus = $consegnaDate ? 'Completato (' . format_datetime_locale($consegnaDate) . ')' : 'Da verificare';
 
+$pecReceipts = [];
+$receiptBodies = [
+    'invio' => null,
+    'accettazione' => null,
+    'consegna' => null,
+];
+
+if ($channel === 'pec' && !empty($message['message_id_header'])) {
+    $pecReceipts = posta_telematica_find_receipts($pdo, (string) $message['message_id_header']);
+    foreach ($pecReceipts as $receipt) {
+        $type = posta_telematica_detect_receipt_type(
+            (string) ($receipt['subject'] ?? ''),
+            (string) ($receipt['sender'] ?? ''),
+            (string) ($receipt['body'] ?? '')
+        );
+        if ($type && $receiptBodies[$type] === null) {
+            $receiptBodies[$type] = (string) ($receipt['body'] ?? '');
+        }
+    }
+}
+
 $pageTitle = 'Ricevuta invio';
 
 require_once __DIR__ . '/../../../includes/header.php';
@@ -124,6 +145,62 @@ require_once __DIR__ . '/../../../includes/header.php';
         </div>
     </div>
 
+    <?php if ($channel === 'pec'): ?>
+        <div class="card mt-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h2 class="h6 mb-0">Ricevuta invio</h2>
+                <button class="btn btn-sm btn-outline-primary d-print-none" type="button" onclick="printReceipt('invio')">
+                    <i class="fa-solid fa-print me-1"></i>Stampa ricevuta
+                </button>
+            </div>
+            <div class="card-body" data-receipt-section="invio">
+                <?php if ($receiptBodies['invio']): ?>
+                    <div class="border rounded-3 p-3 bg-light">
+                        <?php echo nl2br(sanitize_output($receiptBodies['invio'])); ?>
+                    </div>
+                <?php else: ?>
+                    <div class="text-muted">Ricevuta invio non ancora disponibile.</div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h2 class="h6 mb-0">Ricevuta accettazione</h2>
+                <button class="btn btn-sm btn-outline-primary d-print-none" type="button" onclick="printReceipt('accettazione')">
+                    <i class="fa-solid fa-print me-1"></i>Stampa ricevuta
+                </button>
+            </div>
+            <div class="card-body" data-receipt-section="accettazione">
+                <?php if ($receiptBodies['accettazione']): ?>
+                    <div class="border rounded-3 p-3 bg-light">
+                        <?php echo nl2br(sanitize_output($receiptBodies['accettazione'])); ?>
+                    </div>
+                <?php else: ?>
+                    <div class="text-muted">Ricevuta accettazione non ancora disponibile.</div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h2 class="h6 mb-0">Ricevuta consegna</h2>
+                <button class="btn btn-sm btn-outline-primary d-print-none" type="button" onclick="printReceipt('consegna')">
+                    <i class="fa-solid fa-print me-1"></i>Stampa ricevuta
+                </button>
+            </div>
+            <div class="card-body" data-receipt-section="consegna">
+                <?php if ($receiptBodies['consegna']): ?>
+                    <div class="border rounded-3 p-3 bg-light">
+                        <?php echo nl2br(sanitize_output($receiptBodies['consegna'])); ?>
+                    </div>
+                <?php else: ?>
+                    <div class="text-muted">Ricevuta consegna non ancora disponibile.</div>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <div class="card mt-4">
         <div class="card-header bg-white">
             <h2 class="h6 mb-0">Messaggio inviato</h2>
@@ -147,7 +224,31 @@ require_once __DIR__ . '/../../../includes/header.php';
     .card {
         border: 1px solid #e5e7eb !important;
     }
+    [data-receipt-section] {
+        display: none;
+    }
+    [data-receipt-section].print-active {
+        display: block !important;
+    }
 }
 </style>
+
+<script>
+    function printReceipt(type) {
+        const sections = document.querySelectorAll('[data-receipt-section]');
+        sections.forEach((section) => section.classList.remove('print-active'));
+
+        const target = document.querySelector('[data-receipt-section="' + type + '"]');
+        if (target) {
+            target.classList.add('print-active');
+        }
+
+        window.print();
+
+        if (target) {
+            target.classList.remove('print-active');
+        }
+    }
+</script>
 
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
