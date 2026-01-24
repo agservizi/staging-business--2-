@@ -16,6 +16,11 @@ Piattaforma gestionale PHP con frontend Bootstrap. Questa guida riassume setup l
 5. `npm run build:js` per minificare gli asset JS (output in `assets/js/dist`).
 6. Avvia l'app da webserver/PHP built-in puntando alla root del progetto.
 
+## OpenAPI Automotive (ACI)
+Per abilitare la ricerca targa nelle pratiche ACI configura:
+- `OPENAPI_AUTOMOTIVE_TOKEN` (produzione) oppure `OPENAPI_AUTOMOTIVE_SANDBOX_TOKEN` (sandbox)
+- opzionale: `OPENAPI_AUTOMOTIVE_BASE_URI`, `OPENAPI_AUTOMOTIVE_TIMEOUT`, `OPENAPI_AUTOMOTIVE_VERIFY_SSL`
+
 ## Comandi utili
 - Lint PHP: `composer lint`
 - Static analysis: `composer stan`

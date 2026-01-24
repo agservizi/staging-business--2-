@@ -176,6 +176,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $attachments = aci_get_attachments($pdo, $praticaId);
 $csrfToken = csrf_token();
+$automotiveTokenValue = '';
+if (function_exists('env')) {
+    $automotiveTokenValue = (string) (env('OPENAPI_AUTOMOTIVE_TOKEN') ?? env('OPENAPI_AUTOMOTIVE_SANDBOX_TOKEN') ?? '');
+}
+$automotiveConfigured = trim($automotiveTokenValue) !== '';
+$automotiveDocUrl = 'https://console.openapi.com/it/apis/automotive/documentation';
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -248,6 +254,27 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <label class="form-label" for="telaio">Telaio</label>
                             <input class="form-control" id="telaio" name="telaio" value="<?php echo sanitize_output($data['telaio']); ?>">
                         </div>
+                        <div class="col-12">
+                            <div class="d-flex flex-wrap align-items-end gap-3">
+                                <div>
+                                    <label class="form-label" for="aci_lookup_type">Tipo veicolo</label>
+                                    <select class="form-select" id="aci_lookup_type" <?php echo $automotiveConfigured ? '' : 'disabled'; ?>>
+                                        <option value="car">Auto</option>
+                                        <option value="bike">Moto</option>
+                                    </select>
+                                </div>
+                                <div class="form-check form-switch mt-4">
+                                    <input class="form-check-input" type="checkbox" id="aci_lookup_insurance" <?php echo $automotiveConfigured ? '' : 'disabled'; ?>>
+                                    <label class="form-check-label" for="aci_lookup_insurance">Verifica assicurazione</label>
+                                </div>
+                                <button class="btn btn-outline-primary" type="button" id="aci_lookup_btn" <?php echo $automotiveConfigured ? '' : 'disabled'; ?>><i class="fa-solid fa-car-burst me-2"></i>Recupera dati da OpenAPI</button>
+                            </div>
+                            <div class="form-text">Dati dal servizio OpenAPI Automotive (solo Italia). <a href="<?php echo sanitize_output($automotiveDocUrl); ?>" target="_blank" rel="noopener">Documentazione</a></div>
+                            <?php if (!$automotiveConfigured): ?>
+                                <div class="text-warning small mt-2">Configura <strong>OPENAPI_AUTOMOTIVE_TOKEN</strong> (o sandbox) nel file .env per abilitare la ricerca.</div>
+                            <?php endif; ?>
+                            <div id="aci_lookup_feedback" class="small mt-2"></div>
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label" for="intestatario">Intestatario</label>
                             <input class="form-control" id="intestatario" name="intestatario" value="<?php echo sanitize_output($data['intestatario']); ?>">
@@ -315,5 +342,130 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         </div>
     </main>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const lookupBtn = document.getElementById('aci_lookup_btn');
+    const lookupType = document.getElementById('aci_lookup_type');
+    const lookupInsurance = document.getElementById('aci_lookup_insurance');
+    const lookupFeedback = document.getElementById('aci_lookup_feedback');
+    const targaField = document.getElementById('targa');
+    const telaioField = document.getElementById('telaio');
+    const noteField = document.getElementById('note');
+    const csrfToken = <?php echo json_encode($csrfToken, JSON_UNESCAPED_UNICODE); ?>;
+
+    const setLookupFeedback = (message, type) => {
+        if (!lookupFeedback) {
+            return;
+        }
+        lookupFeedback.textContent = message || '';
+        lookupFeedback.className = 'small mt-2 text-' + (type || 'muted');
+    };
+
+    const buildVehicleSummary = (vehicle) => {
+        if (!vehicle || typeof vehicle !== 'object') {
+            return '';
+        }
+        const parts = [vehicle.CarMake, vehicle.CarModel, vehicle.Version].filter(Boolean);
+        const summary = parts.join(' ');
+        const registration = vehicle.RegistrationYear ? 'Immatricolazione ' + vehicle.RegistrationYear : '';
+        return [summary, registration].filter(Boolean).join(' • ');
+    };
+
+    const applyVehicleData = (vehicle, insurance) => {
+        if (vehicle && telaioField && !telaioField.value.trim() && vehicle.Vin) {
+            telaioField.value = String(vehicle.Vin).toUpperCase();
+        }
+        if (noteField && !noteField.value.trim()) {
+            const summary = buildVehicleSummary(vehicle);
+            if (summary) {
+                noteField.value = 'Dati OpenAPI: ' + summary;
+            }
+        }
+
+        let message = '';
+        const summary = buildVehicleSummary(vehicle);
+        if (summary) {
+            message = 'Veicolo: ' + summary;
+        }
+        if (insurance && typeof insurance === 'object') {
+            const insured = insurance.IsInsured === true ? 'Assicurato' : 'Non assicurato';
+            const expiry = insurance.Expiry ? 'Scadenza ' + insurance.Expiry : '';
+            const company = insurance.Company ? insurance.Company : '';
+            const insuranceParts = [insured, company, expiry].filter(Boolean).join(' • ');
+            if (insuranceParts) {
+                message = message ? message + ' | ' + insuranceParts : insuranceParts;
+            }
+        }
+
+        setLookupFeedback(message || 'Dati recuperati.', message ? 'success' : 'muted');
+    };
+
+    const runLookup = async (payload) => {
+        const response = await fetch('lookup-vehicle.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: new URLSearchParams(payload),
+        });
+
+        const responseText = await response.text();
+        const data = responseText ? JSON.parse(responseText) : null;
+
+        if (!response.ok || !data || data.success !== true) {
+            throw new Error(data && data.message ? data.message : 'Ricerca non disponibile.');
+        }
+
+        return data;
+    };
+
+    if (lookupBtn && targaField) {
+        lookupBtn.addEventListener('click', async () => {
+            const plate = targaField.value.trim().toUpperCase();
+            if (!plate) {
+                setLookupFeedback('Inserisci una targa valida.', 'danger');
+                return;
+            }
+
+            setLookupFeedback('Ricerca in corso…', 'info');
+
+            try {
+                const payload = {
+                    _token: csrfToken,
+                    targa: plate,
+                    vehicle_type: lookupType ? lookupType.value : 'car',
+                    include_insurance: lookupInsurance && lookupInsurance.checked ? '1' : '',
+                };
+
+                const data = await runLookup(payload);
+
+                if (data.pending && data.check_id) {
+                    const delay = Math.max(2, Number(data.retry_after) || 4);
+                    setLookupFeedback('Richiesta in elaborazione, nuovo tentativo tra ' + delay + 's…', 'warning');
+                    window.setTimeout(async () => {
+                        try {
+                            const retryData = await runLookup({
+                                _token: csrfToken,
+                                check_id: data.check_id,
+                            });
+                            applyVehicleData(retryData.vehicle, retryData.insurance);
+                        } catch (error) {
+                            setLookupFeedback(error.message || 'Ricerca non disponibile.', 'danger');
+                        }
+                    }, delay * 1000);
+                    return;
+                }
+
+                applyVehicleData(data.vehicle, data.insurance);
+            } catch (error) {
+                setLookupFeedback(error.message || 'Ricerca non disponibile.', 'danger');
+            }
+        });
+    }
+});
+</script>
 
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
