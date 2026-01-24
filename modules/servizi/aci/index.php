@@ -216,7 +216,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                     <a class="btn btn-outline-light px-2 py-1" href="edit.php?id=<?php echo (int) $pratica['id']; ?>"><i class="fa-solid fa-pen"></i></a>
                                                 <?php endif; ?>
                                                 <?php if ($puoEliminare): ?>
-                                                    <a class="btn btn-outline-danger px-2 py-1" href="delete.php?id=<?php echo (int) $pratica['id']; ?>" onclick="return confirm('Confermi la rimozione della pratica?');"><i class="fa-solid fa-trash"></i></a>
+                                                    <button
+                                                        class="btn btn-outline-danger px-2 py-1"
+                                                        type="button"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#deletePraticaModal"
+                                                        data-pratica-id="<?php echo (int) $pratica['id']; ?>"
+                                                        data-pratica-protocollo="<?php echo sanitize_output($pratica['protocollo'] ?? ''); ?>"
+                                                    >
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
                                                 <?php endif; ?>
                                             </div>
                                         </td>
@@ -232,5 +241,61 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         </div>
     </main>
 </div>
+
+<?php if ($puoEliminare): ?>
+    <div class="modal fade" id="deletePraticaModal" tabindex="-1" aria-labelledby="deletePraticaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deletePraticaModalLabel">Elimina pratica</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">Confermi la rimozione della pratica selezionata? L'azione non è reversibile.</p>
+                    <small class="text-muted d-block mt-2" id="deletePraticaModalMeta"></small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <a class="btn btn-danger" id="deletePraticaModalConfirm" href="#">
+                        <i class="fa-solid fa-trash"></i> Elimina
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var deleteModal = document.getElementById('deletePraticaModal');
+            if (!deleteModal) {
+                return;
+            }
+
+            deleteModal.addEventListener('show.bs.modal', function (event) {
+                var trigger = event.relatedTarget;
+                if (!trigger) {
+                    return;
+                }
+
+                var praticaId = trigger.getAttribute('data-pratica-id');
+                var protocollo = trigger.getAttribute('data-pratica-protocollo') || '';
+                var confirmLink = deleteModal.querySelector('#deletePraticaModalConfirm');
+                var meta = deleteModal.querySelector('#deletePraticaModalMeta');
+
+                if (confirmLink && praticaId) {
+                    confirmLink.setAttribute('href', 'delete.php?id=' + praticaId);
+                }
+
+                if (meta) {
+                    var metaText = praticaId ? ('Pratica #' + praticaId) : '';
+                    if (protocollo) {
+                        metaText += (metaText ? ' • ' : '') + ('Protocollo: ' + protocollo);
+                    }
+                    meta.textContent = metaText;
+                }
+            });
+        })();
+    </script>
+<?php endif; ?>
 
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
