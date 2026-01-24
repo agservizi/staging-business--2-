@@ -297,6 +297,33 @@ function posta_telematica_build_cliente_label(array $row): string
     return $ragione !== '' ? $ragione : ($persona !== '' ? $persona : '—');
 }
 
+function posta_telematica_render_mail_template(string $title, string $content): string
+{
+    $year = date('Y');
+    return <<<HTML
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <title>{$title}</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f5f6f8; padding: 24px;">
+    <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
+        <div style="background: #1f2937; color: #ffffff; padding: 16px 24px;">
+            <h1 style="margin: 0; font-size: 18px; letter-spacing: 0.02em;">Comunicazione</h1>
+        </div>
+        <div style="padding: 24px; color: #111827; line-height: 1.6;">
+            {$content}
+        </div>
+        <div style="padding: 14px 24px; font-size: 12px; color: #6b7280; background: #f3f4f6;">
+            &copy; {$year}. Messaggio generato automaticamente.
+        </div>
+    </div>
+</body>
+</html>
+HTML;
+}
+
 /**
  * @return \IMAP\Connection|resource
  */

@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $content = nl2br(sanitize_output($message));
-        $htmlBody = render_mail_template($subject, '<p>' . $content . '</p>');
+        $htmlBody = posta_telematica_render_mail_template($subject, '<p>' . $content . '</p>');
 
         $sent = send_system_mail($recipient, $subject, $htmlBody, [
             'channel' => $channel,
@@ -195,7 +195,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                         <div class="col-md-4">
                             <label class="form-label" for="recipient">Destinatario</label>
-                            <input type="email" class="form-control <?php echo isset($errors['recipient']) ? 'is-invalid' : ''; ?>" id="recipient" name="recipient" value="<?php echo sanitize_output($formData['recipient']); ?>" required placeholder="cliente@example.com">
+                            <input type="email" class="form-control <?php echo isset($errors['recipient']) ? 'is-invalid' : ''; ?>" id="recipient" name="recipient" value="<?php echo sanitize_output($formData['recipient']); ?>" required placeholder="cliente@example.com" list="recipientSuggestions" autocomplete="off">
+                            <datalist id="recipientSuggestions"></datalist>
                             <?php if (isset($errors['recipient'])): ?>
                                 <div class="invalid-feedback"><?php echo sanitize_output($errors['recipient']); ?></div>
                             <?php endif; ?>
@@ -261,6 +262,39 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
 <script>
     (function () {
+        const recipientInput = document.getElementById('recipient');
+        const recipientSuggestions = document.getElementById('recipientSuggestions');
+        const fetchSuggestions = async (query) => {
+            if (!recipientSuggestions) {
+                return;
+            }
+            recipientSuggestions.innerHTML = '';
+            if (query.length < 3) {
+                return;
+            }
+            try {
+                const response = await fetch('recipients.php?q=' + encodeURIComponent(query));
+                const data = await response.json();
+                const results = Array.isArray(data.results) ? data.results : [];
+                results.forEach((email) => {
+                    const option = document.createElement('option');
+                    option.value = email;
+                    recipientSuggestions.appendChild(option);
+                });
+            } catch (error) {
+                recipientSuggestions.innerHTML = '';
+            }
+        };
+
+        if (recipientInput) {
+            let debounceId;
+            recipientInput.addEventListener('input', () => {
+                clearTimeout(debounceId);
+                const value = recipientInput.value.trim();
+                debounceId = setTimeout(() => fetchSuggestions(value), 200);
+            });
+        }
+
         const dropzone = document.getElementById('attachmentsDropzone');
         const input = document.getElementById('attachments');
         const list = document.getElementById('attachmentsList');
