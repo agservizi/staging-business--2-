@@ -83,10 +83,13 @@ try {
         'message' => $vehicleResult['message'],
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (RuntimeException $exception) {
-    http_response_code(502);
+    $code = (int) $exception->getCode();
+    error_log('ACI Automotive lookup runtime error: ' . $exception->getMessage() . ' (code ' . $code . ')');
+    http_response_code(200);
     echo json_encode([
         'success' => false,
         'message' => $exception->getMessage(),
+        'error_code' => $code > 0 ? $code : null,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (Throwable $exception) {
     http_response_code(500);
