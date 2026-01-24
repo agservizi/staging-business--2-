@@ -49,6 +49,21 @@ $receiptBodies = [
     'accettazione' => $message['pec_receipt_accettazione_body'] ?? null,
     'consegna' => $message['pec_receipt_consegna_body'] ?? null,
 ];
+$receiptSources = [
+    'invio' => isset($message['pec_receipt_invio_message_id']) ? (int) $message['pec_receipt_invio_message_id'] : 0,
+    'accettazione' => isset($message['pec_receipt_accettazione_message_id']) ? (int) $message['pec_receipt_accettazione_message_id'] : 0,
+    'consegna' => isset($message['pec_receipt_consegna_message_id']) ? (int) $message['pec_receipt_consegna_message_id'] : 0,
+];
+
+foreach ($receiptSources as $type => $sourceId) {
+    if ($sourceId <= 0) {
+        continue;
+    }
+    $cachedMessage = posta_telematica_get_cached_message($pdo, $sourceId);
+    if ($cachedMessage && !empty($cachedMessage['body'])) {
+        $receiptBodies[$type] = (string) $cachedMessage['body'];
+    }
+}
 
 if ($channel === 'pec' && !empty($message['message_id_header'])) {
     $pecReceipts = posta_telematica_find_receipts($pdo, (string) $message['message_id_header']);

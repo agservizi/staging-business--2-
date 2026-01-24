@@ -50,6 +50,9 @@ if (($message['channel'] ?? '') === 'pec' && !empty($message['message_id_header'
 $invioDate = $message['pec_receipt_invio_at'] ?? null;
 $accettazioneDate = $message['pec_receipt_accettazione_at'] ?? null;
 $consegnaDate = $message['pec_receipt_consegna_at'] ?? null;
+$invioSourceId = isset($message['pec_receipt_invio_message_id']) ? (int) $message['pec_receipt_invio_message_id'] : 0;
+$accettazioneSourceId = isset($message['pec_receipt_accettazione_message_id']) ? (int) $message['pec_receipt_accettazione_message_id'] : 0;
+$consegnaSourceId = isset($message['pec_receipt_consegna_message_id']) ? (int) $message['pec_receipt_consegna_message_id'] : 0;
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -144,18 +147,33 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <div class="fw-semibold">
                                 <?php echo $invioDate ? sanitize_output(format_datetime_locale($invioDate)) : 'Da verificare'; ?>
                             </div>
+                            <?php if ($invioSourceId > 0): ?>
+                                <div class="small text-muted">
+                                    Sorgente inbox: <a href="inbox.php?id=<?php echo $invioSourceId; ?>">#<?php echo $invioSourceId; ?></a>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-4">
                             <div class="text-muted small">Ricevuta accettazione</div>
                             <div class="fw-semibold">
                                 <?php echo $accettazioneDate ? sanitize_output(format_datetime_locale($accettazioneDate)) : 'Da verificare'; ?>
                             </div>
+                            <?php if ($accettazioneSourceId > 0): ?>
+                                <div class="small text-muted">
+                                    Sorgente inbox: <a href="inbox.php?id=<?php echo $accettazioneSourceId; ?>">#<?php echo $accettazioneSourceId; ?></a>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-4">
                             <div class="text-muted small">Ricevuta consegna</div>
                             <div class="fw-semibold">
                                 <?php echo $consegnaDate ? sanitize_output(format_datetime_locale($consegnaDate)) : 'Da verificare'; ?>
                             </div>
+                            <?php if ($consegnaSourceId > 0): ?>
+                                <div class="small text-muted">
+                                    Sorgente inbox: <a href="inbox.php?id=<?php echo $consegnaSourceId; ?>">#<?php echo $consegnaSourceId; ?></a>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
 

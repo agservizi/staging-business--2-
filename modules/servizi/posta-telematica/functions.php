@@ -384,7 +384,7 @@ function posta_telematica_build_invio_receipt_body(array $message): string
     return implode("\n", $lines);
 }
 
-function posta_telematica_update_receipt(PDO $pdo, string $messageIdHeader, string $type, ?string $receivedAt = null, ?string $body = null): void
+function posta_telematica_update_receipt(PDO $pdo, string $messageIdHeader, string $type, ?string $receivedAt = null, ?string $body = null, ?int $sourceMessageId = null): void
 {
     $normalized = posta_telematica_normalize_message_id($messageIdHeader);
     if ($normalized === null) {
@@ -393,15 +393,19 @@ function posta_telematica_update_receipt(PDO $pdo, string $messageIdHeader, stri
 
     $column = null;
     $bodyColumn = null;
+    $sourceColumn = null;
     if ($type === 'invio') {
         $column = 'pec_receipt_invio_at';
         $bodyColumn = 'pec_receipt_invio_body';
+        $sourceColumn = 'pec_receipt_invio_message_id';
     } elseif ($type === 'accettazione') {
         $column = 'pec_receipt_accettazione_at';
         $bodyColumn = 'pec_receipt_accettazione_body';
+        $sourceColumn = 'pec_receipt_accettazione_message_id';
     } elseif ($type === 'consegna') {
         $column = 'pec_receipt_consegna_at';
         $bodyColumn = 'pec_receipt_consegna_body';
+        $sourceColumn = 'pec_receipt_consegna_message_id';
     }
 
     if ($column === null) {
@@ -417,6 +421,11 @@ function posta_telematica_update_receipt(PDO $pdo, string $messageIdHeader, stri
     if ($bodyColumn !== null && $body !== null && trim($body) !== '') {
         $sql .= ", {$bodyColumn} = COALESCE({$bodyColumn}, :body)";
         $params[':body'] = $body;
+    }
+
+    if ($sourceColumn !== null && $sourceMessageId !== null && $sourceMessageId > 0) {
+        $sql .= ", {$sourceColumn} = COALESCE({$sourceColumn}, :source_message_id)";
+        $params[':source_message_id'] = $sourceMessageId;
     }
 
     $sql .= " , updated_at = NOW() WHERE channel = 'pec' AND message_id_header = :message_id_header LIMIT 1";

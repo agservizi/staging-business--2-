@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $messageRow = posta_telematica_get_message($pdo, $messageId);
                 if ($messageRow) {
                     $receiptBody = posta_telematica_build_invio_receipt_body($messageRow);
-                    posta_telematica_update_receipt($pdo, $messageIdHeader, 'invio', date('Y-m-d H:i:s'), $receiptBody);
+                    posta_telematica_update_receipt($pdo, $messageIdHeader, 'invio', date('Y-m-d H:i:s'), $receiptBody, null);
                 }
             }
             add_flash('success', 'Invio completato con successo.');
