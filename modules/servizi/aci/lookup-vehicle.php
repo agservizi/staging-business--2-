@@ -14,6 +14,8 @@ require_role('Admin', 'Operatore', 'Manager');
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

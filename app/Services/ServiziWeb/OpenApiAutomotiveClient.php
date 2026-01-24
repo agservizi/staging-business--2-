@@ -98,6 +98,10 @@ final class OpenApiAutomotiveClient
         $method = strtoupper($method);
         $url = $this->baseUri . '/' . ltrim($path, '/');
 
+        if (!function_exists('curl_init')) {
+            throw new RuntimeException('Estensione cURL non disponibile.');
+        }
+
         $handle = curl_init($url);
         if ($handle === false) {
             throw new RuntimeException('Impossibile inizializzare la richiesta OpenAPI Automotive.');
