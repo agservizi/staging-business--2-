@@ -209,6 +209,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <td class="text-end">
                                             <div class="d-inline-flex gap-1" role="group">
                                                 <a class="btn btn-outline-light px-2 py-1" href="view.php?id=<?php echo (int) $pratica['id']; ?>"><i class="fa-solid fa-eye"></i></a>
+                                                <?php if (strcasecmp(trim((string) ($pratica['stato'] ?? '')), 'Completata') === 0): ?>
+                                                    <a class="btn btn-outline-primary px-2 py-1" href="receipt.php?id=<?php echo (int) $pratica['id']; ?>"><i class="fa-solid fa-file-pdf"></i></a>
+                                                <?php endif; ?>
                                                 <?php if ($puoModificare): ?>
                                                     <a class="btn btn-outline-light px-2 py-1" href="edit.php?id=<?php echo (int) $pratica['id']; ?>"><i class="fa-solid fa-pen"></i></a>
                                                 <?php endif; ?>
