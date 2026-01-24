@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+use App\Services\SettingsService;
+
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
@@ -9,33 +11,44 @@ require_once __DIR__ . '/functions.php';
 require_role('Admin', 'Operatore', 'Manager');
 $pageTitle = 'Nuova pratica ACI';
 
-$stati = [
-    'Aperta',
-    'Documenti richiesti',
-    'In lavorazione',
-    'Inviata',
-    'Completata',
-    'Annullata',
-];
+$projectRoot = realpath(__DIR__ . '/../../../') ?: __DIR__ . '/../../../';
+$settingsService = new SettingsService($pdo, $projectRoot);
+$stati = $settingsService->getAciStatuses();
+$tipi = $settingsService->getAciTypes();
+if (!$stati) {
+    $stati = SettingsService::defaultAciStatuses();
+}
+if (!$tipi) {
+    $tipi = SettingsService::defaultAciTypes();
+}
 
-$tipi = [
-    'Passaggio proprietà',
-    'Radiazione',
-    'Duplicato documenti',
-    'Immatricolazione',
-    'Reimmatricolazione',
-    'Perdita possesso',
-    'Visura PRA',
-];
+$aciPricingList = $settingsService->getAciPricing($tipi);
+$aciPricingMap = [];
+foreach ($aciPricingList as $item) {
+    if (!is_array($item)) {
+        continue;
+    }
+    $name = trim((string) ($item['name'] ?? ''));
+    if ($name === '') {
+        continue;
+    }
+    $price = $item['price'] ?? null;
+    if ($price !== null && $price !== '') {
+        $aciPricingMap[$name] = (float) $price;
+    }
+}
+$aciPricingJson = json_encode($aciPricingMap, JSON_UNESCAPED_UNICODE);
 
 $clientsStmt = $pdo->query('SELECT id, nome, cognome, ragione_sociale FROM clienti ORDER BY ragione_sociale, cognome, nome');
 $clients = $clientsStmt ? $clientsStmt->fetchAll() : [];
 
 $errors = [];
+$defaultTipo = $tipi[0] ?? '';
+$defaultCost = ($defaultTipo !== '' && isset($aciPricingMap[$defaultTipo])) ? $aciPricingMap[$defaultTipo] : null;
 $data = [
     'cliente_id' => '',
-    'tipo_pratica' => $tipi[0],
-    'stato' => 'Aperta',
+    'tipo_pratica' => $defaultTipo,
+    'stato' => $stati[0] ?? 'Aperta',
     'targa' => '',
     'telaio' => '',
     'intestatario' => '',
@@ -43,7 +56,7 @@ $data = [
     'data_apertura' => date('d/m/Y'),
     'data_scadenza' => '',
     'data_chiusura' => '',
-    'costo' => '0.00',
+    'costo' => $defaultCost !== null ? number_format((float) $defaultCost, 2, '.', '') : '0.00',
     'note' => '',
 ];
 
@@ -292,5 +305,34 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         </div>
     </main>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const typeSelect = document.getElementById('tipo_pratica');
+    const costField = document.getElementById('costo');
+    const pricingMap = <?php echo $aciPricingJson !== false ? $aciPricingJson : '{}'; ?>;
+
+    if (!typeSelect || !costField) {
+        return;
+    }
+
+    const formatPrice = (value) => {
+        const number = Number(value);
+        if (Number.isNaN(number)) {
+            return '';
+        }
+        return number.toFixed(2);
+    };
+
+    const updateCost = () => {
+        const type = typeSelect.value || '';
+        if (Object.prototype.hasOwnProperty.call(pricingMap, type)) {
+            costField.value = formatPrice(pricingMap[type]);
+        }
+    };
+
+    typeSelect.addEventListener('change', updateCost);
+});
+</script>
 
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+use App\Services\SettingsService;
+
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
@@ -9,24 +11,16 @@ require_once __DIR__ . '/functions.php';
 require_role('Admin', 'Operatore', 'Manager');
 $pageTitle = 'Modifica pratica ACI';
 
-$stati = [
-    'Aperta',
-    'Documenti richiesti',
-    'In lavorazione',
-    'Inviata',
-    'Completata',
-    'Annullata',
-];
-
-$tipi = [
-    'Passaggio proprietà',
-    'Radiazione',
-    'Duplicato documenti',
-    'Immatricolazione',
-    'Reimmatricolazione',
-    'Perdita possesso',
-    'Visura PRA',
-];
+$projectRoot = realpath(__DIR__ . '/../../../') ?: __DIR__ . '/../../../';
+$settingsService = new SettingsService($pdo, $projectRoot);
+$stati = $settingsService->getAciStatuses();
+$tipi = $settingsService->getAciTypes();
+if (!$stati) {
+    $stati = SettingsService::defaultAciStatuses();
+}
+if (!$tipi) {
+    $tipi = SettingsService::defaultAciTypes();
+}
 
 $praticaId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($praticaId <= 0) {
@@ -42,14 +36,22 @@ if (!$pratica) {
     exit;
 }
 
+if (!empty($pratica['stato']) && !in_array($pratica['stato'], $stati, true)) {
+    $stati[] = $pratica['stato'];
+}
+
+if (!empty($pratica['tipo_pratica']) && !in_array($pratica['tipo_pratica'], $tipi, true)) {
+    $tipi[] = $pratica['tipo_pratica'];
+}
+
 $clientsStmt = $pdo->query('SELECT id, nome, cognome, ragione_sociale FROM clienti ORDER BY ragione_sociale, cognome, nome');
 $clients = $clientsStmt ? $clientsStmt->fetchAll() : [];
 
 $errors = [];
 $data = [
     'cliente_id' => $pratica['cliente_id'] ?? '',
-    'tipo_pratica' => $pratica['tipo_pratica'] ?? $tipi[0],
-    'stato' => $pratica['stato'] ?? 'Aperta',
+    'tipo_pratica' => $pratica['tipo_pratica'] ?? ($tipi[0] ?? ''),
+    'stato' => $pratica['stato'] ?? ($stati[0] ?? 'Aperta'),
     'targa' => $pratica['targa'] ?? '',
     'telaio' => $pratica['telaio'] ?? '',
     'intestatario' => $pratica['intestatario'] ?? '',

@@ -13,6 +13,9 @@ class SettingsService
     private const MOVEMENT_DESCRIPTIONS_KEY = 'entrate_uscite_descrizioni';
     private const APPOINTMENT_STATUSES_KEY = 'servizi_appuntamenti_statuses';
     private const APPOINTMENT_TYPES_KEY = 'servizi_appuntamenti_tipologie';
+    private const ACI_TYPES_KEY = 'servizi_aci_tipologie';
+    private const ACI_STATUSES_KEY = 'servizi_aci_stati';
+    private const ACI_PRICING_KEY = 'servizi_aci_costi';
     private const CAF_PATRONATO_TYPES_KEY = 'caf_patronato_tipologie';
     private const CAF_PATRONATO_STATUSES_KEY = 'caf_patronato_stati';
     private const CAF_PATRONATO_SERVICES_KEY = 'caf_patronato_servizi';
@@ -282,6 +285,37 @@ class SettingsService
     }
 
     /**
+     * @return array<int, string>
+     */
+    public static function defaultAciTypes(): array
+    {
+        return [
+            'Passaggio proprietà',
+            'Radiazione',
+            'Duplicato documenti',
+            'Immatricolazione',
+            'Reimmatricolazione',
+            'Perdita possesso',
+            'Visura PRA',
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function defaultAciStatuses(): array
+    {
+        return [
+            'Aperta',
+            'Documenti richiesti',
+            'In lavorazione',
+            'Inviata',
+            'Completata',
+            'Annullata',
+        ];
+    }
+
+    /**
      * @return array<int, array{key:string,label:string,prefix:string}>
      */
     public static function defaultCafPatronatoTypes(): array
@@ -526,6 +560,84 @@ class SettingsService
             }
         } catch (Throwable $exception) {
             error_log('Appointment types fetch failed: ' . $exception->getMessage());
+        }
+
+        return $defaults;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getAciTypes(): array
+    {
+        $defaults = self::defaultAciTypes();
+
+        try {
+            $stmt = $this->pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :chiave LIMIT 1');
+            $stmt->execute([':chiave' => self::ACI_TYPES_KEY]);
+            $value = $stmt->fetchColumn();
+
+            if ($value === false || $value === null || $value === '') {
+                return $defaults;
+            }
+
+            $decoded = json_decode((string) $value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $list = [];
+                if (isset($decoded['types']) && is_array($decoded['types'])) {
+                    $list = $decoded['types'];
+                } elseif ($this->isSequentialArray($decoded)) {
+                    $list = $decoded;
+                }
+
+                if ($list) {
+                    $types = $this->enforceListLength($this->sanitizeStatusList($list), 60);
+                    if ($types) {
+                        return $types;
+                    }
+                }
+            }
+        } catch (Throwable $exception) {
+            error_log('ACI types fetch failed: ' . $exception->getMessage());
+        }
+
+        return $defaults;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getAciStatuses(): array
+    {
+        $defaults = self::defaultAciStatuses();
+
+        try {
+            $stmt = $this->pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :chiave LIMIT 1');
+            $stmt->execute([':chiave' => self::ACI_STATUSES_KEY]);
+            $value = $stmt->fetchColumn();
+
+            if ($value === false || $value === null || $value === '') {
+                return $defaults;
+            }
+
+            $decoded = json_decode((string) $value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $list = [];
+                if (isset($decoded['statuses']) && is_array($decoded['statuses'])) {
+                    $list = $decoded['statuses'];
+                } elseif ($this->isSequentialArray($decoded)) {
+                    $list = $decoded;
+                }
+
+                if ($list) {
+                    $statuses = $this->enforceListLength($this->sanitizeStatusList($list), 40);
+                    if ($statuses) {
+                        return $statuses;
+                    }
+                }
+            }
+        } catch (Throwable $exception) {
+            error_log('ACI statuses fetch failed: ' . $exception->getMessage());
         }
 
         return $defaults;
@@ -993,6 +1105,136 @@ class SettingsService
     }
 
     /**
+     * @param array<int, string> $types
+     * @return array{success:bool,errors:array<int,string>,types:array<int,string>}
+     */
+    public function saveAciTypes(array $types, int $userId): array
+    {
+        $types = $this->sanitizeStatusList($types);
+        $errors = [];
+        $hadInput = !empty($types);
+
+        if (!$hadInput) {
+            $errors[] = 'Inserisci almeno una tipologia ACI.';
+        }
+
+        $enforcedTypes = $this->enforceListLength($types, 60);
+        if (count($enforcedTypes) !== count($types)) {
+            $errors[] = 'Le tipologie ACI non possono superare i 60 caratteri.';
+        }
+
+        $types = $enforcedTypes;
+
+        if (!$types && $hadInput) {
+            $errors[] = 'Inserisci almeno una tipologia ACI valida.';
+        }
+
+        if ($errors) {
+            return [
+                'success' => false,
+                'errors' => array_values(array_unique($errors)),
+                'types' => array_values($types),
+            ];
+        }
+
+        $payload = json_encode(['types' => array_values($types)], JSON_UNESCAPED_UNICODE);
+        if ($payload === false) {
+            return [
+                'success' => false,
+                'errors' => ['Impossibile serializzare le tipologie ACI.'],
+                'types' => array_values($types),
+            ];
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                'INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore)
+                 ON DUPLICATE KEY UPDATE valore = VALUES(valore)'
+            );
+            $stmt->execute([
+                ':chiave' => self::ACI_TYPES_KEY,
+                ':valore' => $payload,
+            ]);
+
+            $this->logActivity($userId, 'Aggiornamento tipologie ACI', ['types' => array_values($types)]);
+
+            return ['success' => true, 'errors' => [], 'types' => array_values($types)];
+        } catch (Throwable $exception) {
+            error_log('ACI types save failed: ' . $exception->getMessage());
+            return [
+                'success' => false,
+                'errors' => ['Impossibile salvare le tipologie ACI.'],
+                'types' => array_values($types),
+            ];
+        }
+    }
+
+    /**
+     * @param array<int, string> $statuses
+     * @return array{success:bool,errors:array<int,string>,statuses:array<int,string>}
+     */
+    public function saveAciStatuses(array $statuses, int $userId): array
+    {
+        $statuses = $this->sanitizeStatusList($statuses);
+        $errors = [];
+        $hadInput = !empty($statuses);
+
+        if (!$hadInput) {
+            $errors[] = 'Inserisci almeno uno stato ACI.';
+        }
+
+        $enforcedStatuses = $this->enforceListLength($statuses, 40);
+        if (count($enforcedStatuses) !== count($statuses)) {
+            $errors[] = 'Gli stati ACI non possono superare i 40 caratteri.';
+        }
+
+        $statuses = $enforcedStatuses;
+
+        if (!$statuses && $hadInput) {
+            $errors[] = 'Inserisci almeno uno stato ACI valido.';
+        }
+
+        if ($errors) {
+            return [
+                'success' => false,
+                'errors' => array_values(array_unique($errors)),
+                'statuses' => array_values($statuses),
+            ];
+        }
+
+        $payload = json_encode(['statuses' => array_values($statuses)], JSON_UNESCAPED_UNICODE);
+        if ($payload === false) {
+            return [
+                'success' => false,
+                'errors' => ['Impossibile serializzare gli stati ACI.'],
+                'statuses' => array_values($statuses),
+            ];
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                'INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore)
+                 ON DUPLICATE KEY UPDATE valore = VALUES(valore)'
+            );
+            $stmt->execute([
+                ':chiave' => self::ACI_STATUSES_KEY,
+                ':valore' => $payload,
+            ]);
+
+            $this->logActivity($userId, 'Aggiornamento stati ACI', ['statuses' => array_values($statuses)]);
+
+            return ['success' => true, 'errors' => [], 'statuses' => array_values($statuses)];
+        } catch (Throwable $exception) {
+            error_log('ACI statuses save failed: ' . $exception->getMessage());
+            return [
+                'success' => false,
+                'errors' => ['Impossibile salvare gli stati ACI.'],
+                'statuses' => array_values($statuses),
+            ];
+        }
+    }
+
+    /**
      * @param array<int, array{key?:string,label?:string,prefix?:string}> $types
      * @return array{success:bool,errors:array<int,string>,config:array<int,array{key:string,label:string,prefix:string}>}
      */
@@ -1113,7 +1355,6 @@ class SettingsService
 
         $input = $services;
         if (!$this->isAssociativeArray($input)) {
-            // Backward compatibility: treat as global list assigned to CAF
             $input = ['CAF' => $services];
         }
 
@@ -2007,6 +2248,23 @@ class SettingsService
         return $filtered;
     }
 
+    /**
+     * @param array<int, string> $values
+     * @return array<int, string>
+     */
+    private function enforceListLength(array $values, int $maxLength): array
+    {
+        $filtered = [];
+
+        foreach ($values as $value) {
+            if (mb_strlen($value) <= $maxLength) {
+                $filtered[] = $value;
+            }
+        }
+
+        return $filtered;
+    }
+
     private function isSequentialArray(array $array): bool
     {
         if (function_exists('array_is_list')) {
@@ -2737,6 +2995,152 @@ class SettingsService
         }
 
         return str_repeat('*', $length - 4) . substr($secret, -4);
+    }
+
+    /**
+     * @param array<int, string>|null $types
+     * @return array<int, array{name: string, price: float|null}>
+     */
+    public function getAciPricing(?array $types = null): array
+    {
+        $types = $types ?? $this->getAciTypes();
+        $types = $this->sanitizeStatusList($types);
+
+        if (!$types) {
+            return [];
+        }
+
+        $priceMap = [];
+
+        try {
+            $stmt = $this->pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :chiave LIMIT 1');
+            $stmt->execute([':chiave' => self::ACI_PRICING_KEY]);
+            $value = $stmt->fetchColumn();
+
+            if ($value !== false && $value !== null && $value !== '') {
+                $decoded = json_decode((string) $value, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    if ($this->isSequentialArray($decoded)) {
+                        foreach ($decoded as $item) {
+                            if (!is_array($item)) {
+                                continue;
+                            }
+                            $name = trim((string) ($item['name'] ?? ''));
+                            if ($name === '') {
+                                continue;
+                            }
+                            $rawPrice = $item['price'] ?? null;
+                            $price = null;
+                            if ($rawPrice !== null && $rawPrice !== '') {
+                                $price = (float) $rawPrice;
+                            }
+                            $priceMap[mb_strtolower($name, 'UTF-8')] = $price;
+                        }
+                    } else {
+                        foreach ($decoded as $key => $rawPrice) {
+                            if (!is_string($key)) {
+                                continue;
+                            }
+                            $name = trim($key);
+                            if ($name === '') {
+                                continue;
+                            }
+                            $price = null;
+                            if ($rawPrice !== null && $rawPrice !== '') {
+                                $price = (float) $rawPrice;
+                            }
+                            $priceMap[mb_strtolower($name, 'UTF-8')] = $price;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable $exception) {
+            error_log('SettingsService::getAciPricing - ' . $exception->getMessage());
+        }
+
+        $pricing = [];
+        foreach ($types as $type) {
+            $key = mb_strtolower($type, 'UTF-8');
+            $pricing[] = [
+                'name' => $type,
+                'price' => array_key_exists($key, $priceMap) ? $priceMap[$key] : null,
+            ];
+        }
+
+        return $pricing;
+    }
+
+    /**
+     * @param array<int, array{name?: string, price?: float|null}> $pricing
+     * @return array{success: bool, errors: array<int, string>, pricing?: array<int, array{name: string, price: float|null}>}
+     */
+    public function saveAciPricing(array $pricing, int $userId): array
+    {
+        $errors = [];
+        $types = $this->sanitizeStatusList($this->getAciTypes());
+        $allowed = [];
+        foreach ($types as $type) {
+            $allowed[mb_strtolower($type, 'UTF-8')] = $type;
+        }
+
+        $priceMap = [];
+        foreach ($pricing as $index => $item) {
+            if (!is_array($item)) {
+                $errors[] = 'Elemento ' . ($index + 1) . ' non valido.';
+                continue;
+            }
+
+            $rawName = trim((string) ($item['name'] ?? ''));
+            if ($rawName === '') {
+                continue;
+            }
+
+            $lookup = mb_strtolower($rawName, 'UTF-8');
+            if (!isset($allowed[$lookup])) {
+                $errors[] = "Tipologia ACI non valida: " . $rawName . ".";
+                continue;
+            }
+
+            $priceRaw = $item['price'] ?? null;
+            $price = null;
+            if ($priceRaw !== null && $priceRaw !== '') {
+                $price = (float) $priceRaw;
+                if ($price < 0) {
+                    $errors[] = "Costo predefinito per '" . $allowed[$lookup] . "' non può essere negativo.";
+                    continue;
+                }
+            }
+
+            $priceMap[$lookup] = $price;
+        }
+
+        if ($errors) {
+            return ['success' => false, 'errors' => $errors];
+        }
+
+        $normalizedPricing = [];
+        foreach ($types as $type) {
+            $key = mb_strtolower($type, 'UTF-8');
+            $normalizedPricing[] = [
+                'name' => $type,
+                'price' => array_key_exists($key, $priceMap) ? $priceMap[$key] : null,
+            ];
+        }
+
+        try {
+            $stmt = $this->pdo->prepare('INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore) ON DUPLICATE KEY UPDATE valore = VALUES(valore)');
+            $stmt->execute([
+                ':chiave' => self::ACI_PRICING_KEY,
+                ':valore' => json_encode($normalizedPricing, JSON_UNESCAPED_UNICODE),
+            ]);
+
+            $this->logActivity($userId, 'Aggiornamento costi predefiniti ACI', ['count' => count($normalizedPricing)]);
+
+            return ['success' => true, 'errors' => [], 'pricing' => $normalizedPricing];
+        } catch (Throwable $exception) {
+            error_log('SettingsService::saveAciPricing - ' . $exception->getMessage());
+            return ['success' => false, 'errors' => ['Errore interno del server.']];
+        }
     }
 
     /**

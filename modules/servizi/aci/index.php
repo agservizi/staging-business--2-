@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+use App\Services\SettingsService;
+
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
@@ -9,24 +11,16 @@ require_once __DIR__ . '/functions.php';
 require_role('Admin', 'Operatore', 'Manager', 'Viewer');
 $pageTitle = 'Pratiche ACI';
 
-$stati = [
-    'Aperta',
-    'Documenti richiesti',
-    'In lavorazione',
-    'Inviata',
-    'Completata',
-    'Annullata',
-];
-
-$tipi = [
-    'Passaggio proprietà',
-    'Radiazione',
-    'Duplicato documenti',
-    'Immatricolazione',
-    'Reimmatricolazione',
-    'Perdita possesso',
-    'Visura PRA',
-];
+$projectRoot = realpath(__DIR__ . '/../../../') ?: __DIR__ . '/../../../';
+$settingsService = new SettingsService($pdo, $projectRoot);
+$stati = $settingsService->getAciStatuses();
+$tipi = $settingsService->getAciTypes();
+if (!$stati) {
+    $stati = SettingsService::defaultAciStatuses();
+}
+if (!$tipi) {
+    $tipi = SettingsService::defaultAciTypes();
+}
 
 $clientsStmt = $pdo->query('SELECT id, nome, cognome, ragione_sociale FROM clienti ORDER BY ragione_sociale, cognome, nome');
 $clients = $clientsStmt ? $clientsStmt->fetchAll() : [];

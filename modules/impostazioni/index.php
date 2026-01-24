@@ -185,6 +185,9 @@ $emailMarketingConfig = $settingsService->getEmailMarketingSettings();
 $movementDescriptions = $settingsService->getMovementDescriptions();
 $appointmentTypes = $settingsService->getAppointmentTypes();
 $appointmentStatuses = $settingsService->getAppointmentStatuses();
+$aciTypes = $settingsService->getAciTypes();
+$aciStatuses = $settingsService->getAciStatuses();
+$aciPricing = $settingsService->getAciPricing($aciTypes);
 $servicePricing = $settingsService->getServicePricing();
 
 $opportunityService = new OpportunityService($pdo);
@@ -636,6 +639,148 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($action === 'aci_types') {
+        $typesRaw = (string) ($_POST['aci_types_list'] ?? '');
+        $typesList = array_filter(array_map('trim', preg_split('/\r?\n/', $typesRaw) ?: []));
+
+        $result = $settingsService->saveAciTypes($typesList, $currentUserId);
+        if ($result['success']) {
+            if ($isAjax) {
+                $updatedTypes = $result['types'] ?? $settingsService->getAciTypes();
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Tipologie ACI aggiornate con successo.',
+                    'data' => ['types' => array_values($updatedTypes)],
+                ]);
+                exit;
+            }
+            add_flash('success', 'Tipologie ACI aggiornate con successo.');
+            header('Location: index.php#aci-types');
+            exit;
+        }
+
+        foreach ($result['errors'] as $error) {
+            $alerts[] = ['type' => 'danger', 'text' => $error];
+        }
+
+        if (isset($result['types']) && is_array($result['types'])) {
+            $aciTypes = $result['types'];
+        } else {
+            $aciTypes = array_values($typesList);
+        }
+        if ($isAjax) {
+            http_response_code(422);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'errors' => $result['errors'],
+                'data' => ['types' => $aciTypes],
+            ]);
+            exit;
+        }
+    }
+
+    if ($action === 'aci_statuses') {
+        $statusesRaw = (string) ($_POST['aci_statuses_list'] ?? '');
+        $statusesList = array_filter(array_map('trim', preg_split('/\r?\n/', $statusesRaw) ?: []));
+
+        $result = $settingsService->saveAciStatuses($statusesList, $currentUserId);
+        if ($result['success']) {
+            if ($isAjax) {
+                $updatedStatuses = $result['statuses'] ?? $settingsService->getAciStatuses();
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Stati ACI aggiornati con successo.',
+                    'data' => ['statuses' => array_values($updatedStatuses)],
+                ]);
+                exit;
+            }
+            add_flash('success', 'Stati ACI aggiornati con successo.');
+            header('Location: index.php#aci-statuses');
+            exit;
+        }
+
+        foreach ($result['errors'] as $error) {
+            $alerts[] = ['type' => 'danger', 'text' => $error];
+        }
+
+        if (isset($result['statuses']) && is_array($result['statuses'])) {
+            $aciStatuses = $result['statuses'];
+        } else {
+            $aciStatuses = array_values($statusesList);
+        }
+        if ($isAjax) {
+            http_response_code(422);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'errors' => $result['errors'],
+                'data' => ['statuses' => $aciStatuses],
+            ]);
+            exit;
+        }
+    }
+
+    if ($action === 'aci_pricing') {
+        $pricingPayload = $_POST['aci_pricing'] ?? [];
+        $pricingList = [];
+        if (is_array($pricingPayload)) {
+            foreach ($pricingPayload as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $name = trim((string) ($item['name'] ?? ''));
+                if ($name === '') {
+                    continue;
+                }
+                $priceRaw = $item['price'] ?? null;
+                $price = null;
+                if ($priceRaw !== null && $priceRaw !== '') {
+                    $price = (float) str_replace(',', '.', (string) $priceRaw);
+                }
+                $pricingList[] = [
+                    'name' => $name,
+                    'price' => $price,
+                ];
+            }
+        }
+
+        $result = $settingsService->saveAciPricing($pricingList, $currentUserId);
+        if ($result['success']) {
+            $aciPricing = $result['pricing'] ?? $settingsService->getAciPricing($aciTypes);
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Costi predefiniti ACI aggiornati con successo.',
+                    'data' => ['pricing' => $aciPricing],
+                ]);
+                exit;
+            }
+            add_flash('success', 'Costi predefiniti ACI aggiornati con successo.');
+            header('Location: index.php#aci-pricing');
+            exit;
+        }
+
+        foreach ($result['errors'] as $error) {
+            $alerts[] = ['type' => 'danger', 'text' => $error];
+        }
+
+        $aciPricing = $settingsService->getAciPricing($aciTypes);
+        if ($isAjax) {
+            http_response_code(422);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'errors' => $result['errors'],
+                'data' => ['pricing' => $aciPricing],
+            ]);
+            exit;
+        }
+    }
+
     if ($action === 'caf_patronato_types') {
         $typesPayload = $_POST['types'] ?? [];
         if (!is_array($typesPayload)) {
@@ -885,6 +1030,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Assicura che i dati ACI siano valorizzati anche su richieste GET
+if (!isset($aciTypes)) {
+    $aciTypes = $settingsService->getAciTypes();
+}
+
+if (!isset($aciStatuses)) {
+    $aciStatuses = $settingsService->getAciStatuses();
+}
+
+if (!isset($aciPricing)) {
+    $aciPricing = $settingsService->getAciPricing($aciTypes);
+}
+
 // Assicura che i dati CAF/Patronato siano valorizzati anche su richieste GET
 if (!isset($cafPatronatoTypes)) {
     $cafPatronatoTypes = $settingsService->getCafPatronatoTypes();
@@ -1012,6 +1170,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="appointments" type="button">Appuntamenti</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-section-target="aci" type="button">Pratiche ACI</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="caf-patronato" type="button">CAF &amp; Patronato</button>
@@ -1511,6 +1672,92 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                             <div class="text-end mt-4">
                                 <button class="btn btn-warning" type="submit"><i class="fa-solid fa-save me-2"></i>Salva stati</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-6" data-section="aci">
+                <div class="card ag-card h-100" id="aci-types">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Tipologie pratiche ACI</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Definisci le tipologie disponibili per le pratiche ACI. Verranno proposte nei moduli di creazione e modifica.</p>
+                        <form method="post" data-ajax="settings" data-ajax-section="aci-types">
+                            <input type="hidden" name="action" value="aci_types">
+                            <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                            <label class="form-label" for="aci_types_list">Una tipologia per riga (max 60 caratteri).</label>
+                            <textarea class="form-control" id="aci_types_list" name="aci_types_list" rows="6" placeholder="Passaggio proprietà&#10;Radiazione&#10;Duplicato documenti"><?php echo sanitize_output(implode("\n", $aciTypes)); ?></textarea>
+                            <div class="form-text">L'elenco è deduplicato automaticamente e mantiene l'ordine indicato.</div>
+                            <div class="text-end mt-4">
+                                <button class="btn btn-warning" type="submit"><i class="fa-solid fa-save me-2"></i>Salva tipologie</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-6" data-section="aci">
+                <div class="card ag-card h-100" id="aci-statuses">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Stati pratiche ACI</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Personalizza gli stati disponibili per le pratiche ACI. Verranno proposti per filtri e aggiornamenti.</p>
+                        <form method="post" data-ajax="settings" data-ajax-section="aci-statuses">
+                            <input type="hidden" name="action" value="aci_statuses">
+                            <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                            <label class="form-label" for="aci_statuses_list">Uno stato per riga (max 40 caratteri).</label>
+                            <textarea class="form-control" id="aci_statuses_list" name="aci_statuses_list" rows="6" placeholder="Aperta&#10;Documenti richiesti&#10;In lavorazione"><?php echo sanitize_output(implode("\n", $aciStatuses)); ?></textarea>
+                            <div class="form-text">Gli stati vengono deduplicati automaticamente e mantenuti nell'ordine inserito.</div>
+                            <div class="text-end mt-4">
+                                <button class="btn btn-warning" type="submit"><i class="fa-solid fa-save me-2"></i>Salva stati</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12" data-section="aci">
+                <div class="card ag-card" id="aci-pricing">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Costi predefiniti ACI</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Imposta un costo predefinito per ogni tipologia ACI. Verrà proposto automaticamente in fase di creazione.</p>
+                        <form method="post" data-ajax="settings" data-ajax-section="aci-pricing">
+                            <input type="hidden" name="action" value="aci_pricing">
+                            <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-sm align-middle mb-3">
+                                    <thead>
+                                        <tr>
+                                            <th>Tipologia</th>
+                                            <th style="width: 200px;">Costo predefinito (€)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($aciPricing as $index => $item): ?>
+                                            <?php
+                                                $name = (string) ($item['name'] ?? '');
+                                                $priceValue = '';
+                                                if (isset($item['price']) && $item['price'] !== null && $item['price'] !== '') {
+                                                    $priceValue = number_format((float) $item['price'], 2, '.', '');
+                                                }
+                                            ?>
+                                            <tr>
+                                                <td>
+                                                    <input class="form-control form-control-sm" name="aci_pricing[<?php echo (int) $index; ?>][name]" value="<?php echo sanitize_output($name); ?>" readonly>
+                                                </td>
+                                                <td>
+                                                    <input class="form-control form-control-sm" name="aci_pricing[<?php echo (int) $index; ?>][price]" value="<?php echo sanitize_output($priceValue); ?>" inputmode="decimal" placeholder="0.00">
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="text-end">
+                                <button class="btn btn-warning" type="submit"><i class="fa-solid fa-save me-2"></i>Salva costi</button>
                             </div>
                         </form>
                     </div>
@@ -2994,6 +3241,39 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     }
 
+                    if (section === 'aci-types' && Array.isArray(data.types)) {
+                        const textarea = form.querySelector('#aci_types_list');
+                        if (textarea) {
+                            textarea.value = data.types.join('\n');
+                        }
+                    }
+
+                    if (section === 'aci-statuses' && Array.isArray(data.statuses)) {
+                        const textarea = form.querySelector('#aci_statuses_list');
+                        if (textarea) {
+                            textarea.value = data.statuses.join('\n');
+                        }
+                    }
+
+                    if (section === 'aci-pricing' && Array.isArray(data.pricing)) {
+                        const rows = form.querySelectorAll('tbody tr');
+                        data.pricing.forEach((item, index) => {
+                            const row = rows[index];
+                            if (!row) return;
+                            const nameField = row.querySelector('input[name*="[name]"]');
+                            const priceField = row.querySelector('input[name*="[price]"]');
+                            if (nameField && typeof item.name === 'string') {
+                                nameField.value = item.name;
+                            }
+                            if (priceField) {
+                                const price = item.price !== null && item.price !== undefined && item.price !== ''
+                                    ? Number(item.price).toFixed(2)
+                                    : '';
+                                priceField.value = price;
+                            }
+                        });
+                    }
+
                     if (section === 'caf-patronato-types' && Array.isArray(data)) {
                         renderCafPatronatoTypes(form, data);
                     }
@@ -3047,6 +3327,36 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (select && typeof data.confirmation === 'string') {
                                 select.value = data.confirmation;
                             }
+                        }
+                        if (section === 'aci-types' && Array.isArray(data.types)) {
+                            const textarea = form.querySelector('#aci_types_list');
+                            if (textarea) {
+                                textarea.value = data.types.join('\n');
+                            }
+                        }
+                        if (section === 'aci-statuses' && Array.isArray(data.statuses)) {
+                            const textarea = form.querySelector('#aci_statuses_list');
+                            if (textarea) {
+                                textarea.value = data.statuses.join('\n');
+                            }
+                        }
+                        if (section === 'aci-pricing' && Array.isArray(data.pricing)) {
+                            const rows = form.querySelectorAll('tbody tr');
+                            data.pricing.forEach((item, index) => {
+                                const row = rows[index];
+                                if (!row) return;
+                                const nameField = row.querySelector('input[name*="[name]"]');
+                                const priceField = row.querySelector('input[name*="[price]"]');
+                                if (nameField && typeof item.name === 'string') {
+                                    nameField.value = item.name;
+                                }
+                                if (priceField) {
+                                    const price = item.price !== null && item.price !== undefined && item.price !== ''
+                                        ? Number(item.price).toFixed(2)
+                                        : '';
+                                    priceField.value = price;
+                                }
+                            });
                         }
                         if (section === 'caf-patronato-types' && Array.isArray(data)) {
                             renderCafPatronatoTypes(form, data);
