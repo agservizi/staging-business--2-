@@ -65,6 +65,11 @@ if ($channel === 'pec' && !empty($message['message_id_header'])) {
 }
 
 $pageTitle = 'Ricevuta invio';
+$autoPrintType = isset($_GET['type']) ? trim((string) $_GET['type']) : '';
+$allowedPrintTypes = ['invio', 'accettazione', 'consegna'];
+if (!in_array($autoPrintType, $allowedPrintTypes, true)) {
+    $autoPrintType = '';
+}
 
 require_once __DIR__ . '/../../../includes/header.php';
 ?>
@@ -249,6 +254,13 @@ require_once __DIR__ . '/../../../includes/header.php';
             target.classList.remove('print-active');
         }
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const autoType = <?php echo $autoPrintType !== '' ? '"' . sanitize_output($autoPrintType) . '"' : 'null'; ?>;
+        if (autoType) {
+            printReceipt(autoType);
+        }
+    });
 </script>
 
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

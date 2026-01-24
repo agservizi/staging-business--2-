@@ -123,8 +123,19 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
         <?php if (($message['channel'] ?? '') === 'pec'): ?>
             <div class="card ag-card mb-4">
-                <div class="card-header bg-transparent border-0">
+                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <h2 class="h5 mb-0">Ricevute PEC</h2>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-sm btn-outline-primary" href="receipt.php?id=<?php echo (int) $message['id']; ?>&type=invio" target="_blank">
+                            <i class="fa-solid fa-print me-1"></i>Stampa invio
+                        </a>
+                        <a class="btn btn-sm btn-outline-primary" href="receipt.php?id=<?php echo (int) $message['id']; ?>&type=accettazione" target="_blank">
+                            <i class="fa-solid fa-print me-1"></i>Stampa accettazione
+                        </a>
+                        <a class="btn btn-sm btn-outline-primary" href="receipt.php?id=<?php echo (int) $message['id']; ?>&type=consegna" target="_blank">
+                            <i class="fa-solid fa-print me-1"></i>Stampa consegna
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="row g-3 mb-3">
