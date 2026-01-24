@@ -95,6 +95,13 @@ $serviziItems = [
         'color' => 'teal',
     ],
     [
+        'needle' => 'modules/servizi/visure-cr',
+        'label' => 'Visure CR',
+        'icon' => 'fa-solid fa-file-signature',
+        'href' => base_url('modules/servizi/visure-cr/index.php'),
+        'color' => 'amber',
+    ],
+    [
         'needle' => 'modules/servizi/energia',
         'label' => 'Contratti Energia',
         'icon' => 'fa-solid fa-bolt',
