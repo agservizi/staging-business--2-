@@ -964,6 +964,28 @@ if ($praticaId <= 0) {
         const normalizeLabel = (value) => String(value || '').trim();
         const sortByLabel = (a, b) => a.localeCompare(b, 'it', { sensitivity: 'base' });
 
+        const getModelBaseName = (model) => normalizeLabel(model && (model.name || model.model) ? (model.name || model.model) : '');
+        const getModelFuel = (model) => normalizeLabel(model && model.fuel ? model.fuel : '');
+        const getModelLabel = (model) => {
+            const base = getModelBaseName(model);
+            if (!base) return '';
+            const fuel = getModelFuel(model);
+            if (!fuel) return base;
+            const baseLower = base.toLowerCase();
+            const fuelLower = fuel.toLowerCase();
+            if (baseLower.includes(fuelLower)) return base;
+            return `${base} - ${fuel}`;
+        };
+
+        const resolveSelectedModel = (models, selectedValue) => {
+            const normalized = normalizeLabel(selectedValue);
+            if (!normalized) return '';
+            const exact = (models || []).find((model) => normalizeLabel(getModelLabel(model)) === normalized);
+            if (exact) return getModelLabel(exact);
+            const baseMatch = (models || []).find((model) => normalizeLabel(getModelBaseName(model)) === normalized);
+            return baseMatch ? getModelLabel(baseMatch) : normalized;
+        };
+
         const setOptions = (select, options, selected) => {
             if (!select) return;
             const placeholder = select.querySelector('option[value=""]');
@@ -1036,19 +1058,22 @@ if ($praticaId <= 0) {
             const populateModels = (brandValue, selectedModel) => {
                 const models = brandMap.get(brandValue) || [];
                 const modelNames = models
-                    .map((model) => normalizeLabel(model.name))
+                    .map((model) => getModelLabel(model))
                     .filter(Boolean)
                     .sort(sortByLabel);
-                if (selectedModel && !modelNames.includes(selectedModel)) {
-                    modelNames.unshift(selectedModel);
+                const resolvedSelected = resolveSelectedModel(models, selectedModel);
+                if (resolvedSelected && !modelNames.includes(resolvedSelected)) {
+                    modelNames.unshift(resolvedSelected);
                 }
-                setOptions(modelloSelect, modelNames, selectedModel || '');
+                setOptions(modelloSelect, modelNames, resolvedSelected || '');
                 modelloSelect.disabled = modelNames.length === 0;
             };
 
             const findDetails = (brandValue, modelValue) => {
                 const models = brandMap.get(brandValue) || [];
-                return models.find((model) => normalizeLabel(model.name) === modelValue) || null;
+                return models.find((model) => normalizeLabel(getModelLabel(model)) === modelValue)
+                    || models.find((model) => normalizeLabel(getModelBaseName(model)) === modelValue)
+                    || null;
             };
 
             populateModels(initialBrand, initialModel);
