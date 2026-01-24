@@ -1,7 +1,7 @@
 <?php
-declare(strict_types=1);
-
-use App\Services\OfficeSuite\SpreadsheetService;
+http_response_code(410);
+exit;
+__halt_compiler();
 
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
@@ -28,7 +28,7 @@ $hfLicenseKey = (string) env('HF_LICENSE_KEY', 'gpl-v3');
 $userRole = isset($_SESSION['role']) ? (string) $_SESSION['role'] : 'Operatore';
 $roleOptions = ['Admin', 'Manager', 'Operatore', 'Patronato', 'Cliente'];
 $canSharePresets = in_array($userRole, ['Admin', 'Manager'], true);
-$presetApiUrl = asset('modules/office-suite/api/spreadsheet-presets.php');
+$presetApiUrl = '';
 
 $formError = null;
 $sheet = null;
@@ -162,10 +162,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-0 gap-3">
                 <div>
                     <h1 class="h4 mb-1"><?php echo $formData['id'] ? 'Modifica foglio' : 'Nuovo foglio'; ?></h1>
-                    <p class="text-muted mb-0">Shell stile Excel con storage versione Office Suite.</p>
+                    <p class="text-muted mb-0">Shell stile Excel con storage versionato.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <a class="btn btn-outline-secondary" href="<?php echo asset('modules/office-suite/spreadsheets/index.php'); ?>">
+                    <a class="btn btn-outline-secondary" href="#">
                         <i class="fa-solid fa-arrow-left me-2"></i>Ritorna ai fogli
                     </a>
                     <button class="btn btn-outline-secondary" type="button" disabled>
@@ -294,7 +294,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <div id="sheet-grid" class="hot-container"></div>
                         </div>
                         <div class="grid-hint text-muted small p-3">
-                            Handsontable + HyperFormula sono attivi per calcoli client-side e serializzazione Office Suite.
+                            Handsontable + HyperFormula sono attivi per calcoli client-side e serializzazione dati.
                         </div>
                         <?php if (!empty($sheet) && !empty($sheet['revisions']) && $sheetId > 0): ?>
                             <div class="version-history border-top p-3 bg-light">
@@ -317,7 +317,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
                                 <div>
                                     <p class="text-uppercase small fw-semibold text-muted mb-1">Filtri e viste CRM</p>
-                                    <h3 class="h6 mb-0">Preset Office Suite</h3>
+                                    <h3 class="h6 mb-0">Preset CRM</h3>
                                 </div>
                                 <span class="badge bg-light text-dark" id="preset-active-label">Nessun preset attivo</span>
                             </div>

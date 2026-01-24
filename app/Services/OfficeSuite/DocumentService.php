@@ -1,7 +1,7 @@
 <?php
-declare(strict_types=1);
-
-namespace App\Services\OfficeSuite;
+http_response_code(410);
+exit;
+__halt_compiler();
 
 use PDO;
 use RuntimeException;
