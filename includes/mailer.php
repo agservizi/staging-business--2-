@@ -80,6 +80,10 @@ function send_system_mail(string $to, string $subject, string $htmlBody, array $
         $replyToAddress = $fromAddress;
     }
 
+    if ($channel === 'pec') {
+        return send_mail_via_smtp_pec($to, $subject, $htmlBody, $preparedAttachments);
+    }
+
     if ($apiKey !== '') {
         $resendChannel = $channel === 'marketing' ? 'resend_marketing' : 'resend';
         $resendResult = send_mail_via_resend($apiKey, $fromAddress, $fromName, $replyToAddress, $to, $subject, $htmlBody, $preparedAttachments, $metadata, $resendChannel);
@@ -89,6 +93,87 @@ function send_system_mail(string $to, string $subject, string $htmlBody, array $
     }
 
     return send_mail_via_php_mail($fromAddress, $fromName, $replyToAddress, $to, $subject, $htmlBody, $preparedAttachments);
+}
+
+function send_mail_via_smtp_pec(string $to, string $subject, string $htmlBody, array $attachments = []): bool
+{
+    $autoload = __DIR__ . '/../vendor/autoload.php';
+    if (!class_exists('\PHPMailer\PHPMailer\PHPMailer') && is_file($autoload)) {
+        require_once $autoload;
+    }
+
+    if (!class_exists('\PHPMailer\PHPMailer\PHPMailer')) {
+        log_mail_failure('pec', $to, $subject, 'PHPMailer non disponibile. Esegui composer install.');
+        return false;
+    }
+
+    $host = trim((string) env('PEC_SMTP_HOST', ''));
+    $port = (int) env('PEC_SMTP_PORT', 465);
+    $username = trim((string) env('PEC_SMTP_USERNAME', ''));
+    $password = (string) env('PEC_SMTP_PASSWORD', '');
+    $encryption = strtolower(trim((string) env('PEC_SMTP_ENCRYPTION', 'ssl')));
+    $fromAddress = trim((string) env('PEC_FROM_ADDRESS', $username));
+    $fromName = trim((string) env('PEC_FROM_NAME', env('MAIL_FROM_NAME', 'Coresuite Business')));
+    $replyTo = trim((string) env('PEC_REPLY_TO', $fromAddress));
+    $verifySsl = filter_var(env('PEC_SMTP_VERIFY_SSL', 'true'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) !== false;
+
+    if ($host === '' || $fromAddress === '' || $username === '' || $password === '') {
+        log_mail_failure('pec', $to, $subject, 'Configurazione PEC SMTP incompleta.');
+        return false;
+    }
+
+    try {
+        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host = $host;
+        $mail->Port = $port;
+        $mail->SMTPAuth = true;
+        $mail->Username = $username;
+        $mail->Password = $password;
+        if ($encryption === 'tls' || $encryption === 'starttls') {
+            $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+        } elseif ($encryption === 'ssl') {
+            $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+        } else {
+            $mail->SMTPSecure = '';
+            $mail->SMTPAutoTLS = false;
+        }
+
+        if (!$verifySsl) {
+            $mail->SMTPOptions = [
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true,
+                ],
+            ];
+        }
+
+        $mail->CharSet = 'UTF-8';
+        $mail->setFrom($fromAddress, $fromName !== '' ? $fromName : $fromAddress);
+        if ($replyTo !== '') {
+            $mail->addReplyTo($replyTo);
+        }
+        $mail->addAddress($to);
+        $mail->Subject = $subject;
+        $mail->isHTML(true);
+        $mail->Body = $htmlBody;
+
+        foreach ($attachments as $attachment) {
+            $name = $attachment['name'] ?? 'allegato';
+            $content = $attachment['content'] ?? '';
+            $mime = $attachment['mime'] ?? 'application/octet-stream';
+            if ($content !== '') {
+                $mail->addStringAttachment($content, $name, 'base64', $mime);
+            }
+        }
+
+        $mail->send();
+        return true;
+    } catch (\Throwable $exception) {
+        log_mail_failure('pec', $to, $subject, 'Errore SMTP PEC: ' . $exception->getMessage());
+        return false;
+    }
 }
 
 function send_mail_via_resend(string $apiKey, string $fromAddress, string $fromName, string $replyTo, string $to, string $subject, string $htmlBody, array $attachments = [], array $metadata = [], string $logChannel = 'resend'): bool

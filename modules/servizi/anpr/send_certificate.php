@@ -71,7 +71,7 @@ $content = '<p>Gentile ' . sanitize_output($clienteNome !== '' ? $clienteNome : 
 
 $htmlBody = render_mail_template($subject, $content);
 
-if (!send_system_mail($recipient, $subject, $htmlBody)) {
+if (!send_system_mail($recipient, $subject, $htmlBody, ['channel' => $channel])) {
     add_flash('warning', 'Invio non riuscito. Controlla le impostazioni email e riprova.');
     header('Location: view_request.php?id=' . $praticaId);
     exit;

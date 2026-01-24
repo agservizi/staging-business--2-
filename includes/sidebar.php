@@ -81,6 +81,13 @@ $serviziItems = [
         'color' => 'sky',
     ],
     [
+        'needle' => 'modules/servizi/posta-telematica',
+        'label' => 'Posta Telematica',
+        'icon' => 'fa-solid fa-envelopes-bulk',
+        'href' => base_url('modules/servizi/posta-telematica/index.php'),
+        'color' => 'indigo',
+    ],
+    [
         'needle' => 'modules/servizi/energia',
         'label' => 'Contratti Energia',
         'icon' => 'fa-solid fa-bolt',

@@ -96,6 +96,8 @@ require_once __DIR__ . '/energia_reminder_scheduler.php';
 maybe_send_energia_reminders($pdo);
 require_once __DIR__ . '/telegrammi_sync_scheduler.php';
 maybe_sync_telegrammi($pdo);
+require_once __DIR__ . '/posta_telematica_sync_scheduler.php';
+maybe_sync_posta_telematica_pec($pdo);
 require_once __DIR__ . '/brt_tracking_scheduler.php';
 maybe_refresh_brt_tracking($pdo);
 require_once __DIR__ . '/morosita_scheduler.php';
