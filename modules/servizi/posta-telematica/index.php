@@ -170,6 +170,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <a class="btn btn-sm btn-outline-primary" href="view.php?id=<?php echo (int) $record['id']; ?>">
                                                 Dettagli
                                             </a>
+                                            <a class="btn btn-sm btn-outline-secondary" href="receipt.php?id=<?php echo (int) $record['id']; ?>" target="_blank">
+                                                <i class="fa-solid fa-print me-1"></i>Stampa
+                                            </a>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
