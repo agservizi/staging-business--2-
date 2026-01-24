@@ -133,6 +133,48 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
         <div class="card ag-card">
             <div class="card-body">
+                <style>
+                    .pt-dropzone {
+                        border: 2px dashed #cbd5e1;
+                        border-radius: 12px;
+                        padding: 20px;
+                        background: #f8fafc;
+                        transition: border-color 0.2s ease, background 0.2s ease;
+                        cursor: pointer;
+                    }
+                    .pt-dropzone.is-dragover {
+                        border-color: #0d6efd;
+                        background: #eef4ff;
+                    }
+                    .pt-dropzone .pt-dropzone-title {
+                        font-weight: 600;
+                    }
+                    .pt-dropzone .pt-dropzone-hint {
+                        color: #6c757d;
+                        font-size: 0.9rem;
+                    }
+                    .pt-dropzone-list {
+                        margin-top: 12px;
+                        padding-left: 0;
+                        list-style: none;
+                    }
+                    .pt-dropzone-list li {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        padding: 6px 10px;
+                        background: #ffffff;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                        margin-bottom: 6px;
+                    }
+                    .pt-dropzone-list li i {
+                        color: #0d6efd;
+                    }
+                    .pt-dropzone-input {
+                        display: none;
+                    }
+                </style>
                 <?php if (!empty($errors['general'])): ?>
                     <div class="alert alert-danger"><?php echo sanitize_output($errors['general']); ?></div>
                 <?php endif; ?>
@@ -194,9 +236,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                         <div class="col-12">
                             <label class="form-label" for="attachments">Allegati (max 10MB)</label>
-                            <input class="form-control <?php echo isset($errors['attachments']) ? 'is-invalid' : ''; ?>" type="file" id="attachments" name="attachments[]" multiple>
+                            <div class="pt-dropzone" id="attachmentsDropzone" role="button" tabindex="0">
+                                <div class="pt-dropzone-title">Trascina qui i file</div>
+                                <div class="pt-dropzone-hint">oppure clicca per selezionare più file.</div>
+                                <ul class="pt-dropzone-list" id="attachmentsList"></ul>
+                            </div>
+                            <input class="pt-dropzone-input <?php echo isset($errors['attachments']) ? 'is-invalid' : ''; ?>" type="file" id="attachments" name="attachments[]" multiple>
                             <?php if (isset($errors['attachments'])): ?>
-                                <div class="invalid-feedback"><?php echo sanitize_output($errors['attachments']); ?></div>
+                                <div class="invalid-feedback d-block"><?php echo sanitize_output($errors['attachments']); ?></div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -211,5 +258,73 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         </div>
     </main>
 </div>
+
+<script>
+    (function () {
+        const dropzone = document.getElementById('attachmentsDropzone');
+        const input = document.getElementById('attachments');
+        const list = document.getElementById('attachmentsList');
+
+        if (!dropzone || !input || !list) {
+            return;
+        }
+
+        const renderList = (files) => {
+            list.innerHTML = '';
+            if (!files || files.length === 0) {
+                return;
+            }
+            Array.from(files).forEach((file) => {
+                const li = document.createElement('li');
+                li.innerHTML = '<i class="fa-solid fa-paperclip"></i><span></span>';
+                li.querySelector('span').textContent = file.name + ' (' + Math.ceil(file.size / 1024) + ' KB)';
+                list.appendChild(li);
+            });
+        };
+
+        const updateFiles = (files) => {
+            if (!files) {
+                return;
+            }
+            const dataTransfer = new DataTransfer();
+            Array.from(files).forEach((file) => dataTransfer.items.add(file));
+            input.files = dataTransfer.files;
+            renderList(input.files);
+        };
+
+        dropzone.addEventListener('click', () => input.click());
+        dropzone.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                input.click();
+            }
+        });
+
+        input.addEventListener('change', () => {
+            renderList(input.files);
+        });
+
+        ['dragenter', 'dragover'].forEach((eventName) => {
+            dropzone.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                dropzone.classList.add('is-dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach((eventName) => {
+            dropzone.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                dropzone.classList.remove('is-dragover');
+            });
+        });
+
+        dropzone.addEventListener('drop', (event) => {
+            const files = event.dataTransfer ? event.dataTransfer.files : null;
+            updateFiles(files);
+        });
+    })();
+</script>
 
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
