@@ -88,6 +88,13 @@ $serviziItems = [
         'color' => 'indigo',
     ],
     [
+        'needle' => 'modules/servizi/aci',
+        'label' => 'Pratiche ACI',
+        'icon' => 'fa-solid fa-car',
+        'href' => base_url('modules/servizi/aci/index.php'),
+        'color' => 'teal',
+    ],
+    [
         'needle' => 'modules/servizi/energia',
         'label' => 'Contratti Energia',
         'icon' => 'fa-solid fa-bolt',
