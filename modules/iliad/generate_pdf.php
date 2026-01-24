@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', '0');
 
 // Debug: invia un messaggio di testo prima di tutto
 if (isset($_GET['debug'])) {
@@ -67,5 +67,5 @@ ini_set('zlib.output_compression', '0');
 header('Content-Type: application/pdf');
 header('Cache-Control: private, max-age=0, must-revalidate');
 header('Pragma: public');
-$mpdf->Output('I');
+$mpdf->Output('', 'I');
 exit;
