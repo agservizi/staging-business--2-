@@ -117,8 +117,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        posta_telematica_update_message_status($pdo, $messageId, 'failed', 'Invio non riuscito. Controlla la configurazione del canale.');
-        $errors['general'] = 'Invio non riuscito. Controlla la configurazione del canale.';
+        $lastError = function_exists('get_last_mail_error') ? get_last_mail_error() : null;
+        $errorMessage = 'Invio non riuscito. Controlla la configurazione del canale.';
+        if ($lastError) {
+            $errorMessage .= ' Dettaglio: ' . $lastError;
+        }
+        posta_telematica_update_message_status($pdo, $messageId, 'failed', $errorMessage);
+        $errors['general'] = $errorMessage;
     }
 }
 

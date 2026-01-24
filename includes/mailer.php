@@ -328,8 +328,10 @@ function send_mail_via_php_mail(string $fromAddress, string $fromName, string $r
 
 function log_mail_failure(string $channel, string $recipient, string $subject, string $message): void
 {
+    $GLOBALS['last_mail_error'] = $message;
     $logDir = __DIR__ . '/../backups';
     if (!is_dir($logDir) && !mkdir($logDir, 0775, true) && !is_dir($logDir)) {
+        error_log(sprintf('[%s][%s] Mail fallita verso %s (oggetto: %s) - %s', date('c'), strtoupper($channel), $recipient, $subject, $message));
         return;
     }
 
@@ -344,6 +346,15 @@ function log_mail_failure(string $channel, string $recipient, string $subject, s
     );
 
     file_put_contents($logDir . '/email.log', $logMessage, FILE_APPEND);
+}
+
+function get_last_mail_error(): ?string
+{
+    $value = $GLOBALS['last_mail_error'] ?? null;
+    if (is_string($value) && trim($value) !== '') {
+        return $value;
+    }
+    return null;
 }
 
 function render_mail_template(string $title, string $content): string
