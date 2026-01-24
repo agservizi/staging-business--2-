@@ -112,6 +112,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($sent) {
             posta_telematica_update_message_status($pdo, $messageId, 'sent', null);
+            if ($channel === 'pec' && $messageIdHeader) {
+                $messageRow = posta_telematica_get_message($pdo, $messageId);
+                if ($messageRow) {
+                    $receiptBody = posta_telematica_build_invio_receipt_body($messageRow);
+                    posta_telematica_update_receipt($pdo, $messageIdHeader, 'invio', date('Y-m-d H:i:s'), $receiptBody);
+                }
+            }
             add_flash('success', 'Invio completato con successo.');
             header('Location: view.php?id=' . $messageId);
             exit;

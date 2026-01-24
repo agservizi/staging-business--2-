@@ -368,7 +368,23 @@ function posta_telematica_detect_receipt_type(string $subject, string $from, str
     return null;
 }
 
-function posta_telematica_update_receipt(PDO $pdo, string $messageIdHeader, string $type, ?string $receivedAt = null): void
+function posta_telematica_build_invio_receipt_body(array $message): string
+{
+    $lines = [];
+    $lines[] = 'Ricevuta di invio PEC';
+    $lines[] = 'Data invio: ' . format_datetime_locale($message['created_at'] ?? null);
+    $lines[] = 'Destinatario: ' . ($message['recipient_email'] ?? '');
+    $lines[] = 'Oggetto: ' . ($message['subject'] ?? '');
+    if (!empty($message['message_id_header'])) {
+        $lines[] = 'Message-ID: ' . $message['message_id_header'];
+    }
+    $lines[] = '';
+    $lines[] = 'Messaggio:';
+    $lines[] = (string) ($message['body'] ?? '');
+    return implode("\n", $lines);
+}
+
+function posta_telematica_update_receipt(PDO $pdo, string $messageIdHeader, string $type, ?string $receivedAt = null, ?string $body = null): void
 {
     $normalized = posta_telematica_normalize_message_id($messageIdHeader);
     if ($normalized === null) {
@@ -376,24 +392,37 @@ function posta_telematica_update_receipt(PDO $pdo, string $messageIdHeader, stri
     }
 
     $column = null;
+    $bodyColumn = null;
     if ($type === 'invio') {
         $column = 'pec_receipt_invio_at';
+        $bodyColumn = 'pec_receipt_invio_body';
     } elseif ($type === 'accettazione') {
         $column = 'pec_receipt_accettazione_at';
+        $bodyColumn = 'pec_receipt_accettazione_body';
     } elseif ($type === 'consegna') {
         $column = 'pec_receipt_consegna_at';
+        $bodyColumn = 'pec_receipt_consegna_body';
     }
 
     if ($column === null) {
         return;
     }
 
-    $stmt = $pdo->prepare("UPDATE posta_telematica_messages SET {$column} = COALESCE({$column}, :received_at), updated_at = NOW()
-        WHERE channel = 'pec' AND message_id_header = :message_id_header LIMIT 1");
-    $stmt->execute([
+    $sql = "UPDATE posta_telematica_messages SET {$column} = COALESCE({$column}, :received_at)";
+    $params = [
         ':received_at' => $receivedAt,
         ':message_id_header' => $normalized,
-    ]);
+    ];
+
+    if ($bodyColumn !== null && $body !== null && trim($body) !== '') {
+        $sql .= ", {$bodyColumn} = COALESCE({$bodyColumn}, :body)";
+        $params[':body'] = $body;
+    }
+
+    $sql .= " , updated_at = NOW() WHERE channel = 'pec' AND message_id_header = :message_id_header LIMIT 1";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
 }
 
 function posta_telematica_render_mail_template(string $title, string $content): string

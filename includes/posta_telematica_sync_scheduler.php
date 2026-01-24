@@ -139,7 +139,7 @@ if (!function_exists('maybe_sync_posta_telematica_pec')) {
                 if ($receiptType) {
                     $originalMessageId = posta_telematica_extract_message_id_from_text((string) $headers . "\n" . $bodyRaw);
                     if ($originalMessageId) {
-                        posta_telematica_update_receipt($pdo, $originalMessageId, $receiptType, $receivedAt);
+                        posta_telematica_update_receipt($pdo, $originalMessageId, $receiptType, $receivedAt, $bodyRaw);
                     }
                 }
             }

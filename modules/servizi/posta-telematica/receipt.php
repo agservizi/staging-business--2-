@@ -45,9 +45,9 @@ $consegnaStatus = $consegnaDate ? 'Completato (' . format_datetime_locale($conse
 
 $pecReceipts = [];
 $receiptBodies = [
-    'invio' => null,
-    'accettazione' => null,
-    'consegna' => null,
+    'invio' => $message['pec_receipt_invio_body'] ?? null,
+    'accettazione' => $message['pec_receipt_accettazione_body'] ?? null,
+    'consegna' => $message['pec_receipt_consegna_body'] ?? null,
 ];
 
 if ($channel === 'pec' && !empty($message['message_id_header'])) {
@@ -58,7 +58,7 @@ if ($channel === 'pec' && !empty($message['message_id_header'])) {
             (string) ($receipt['sender'] ?? ''),
             (string) ($receipt['body'] ?? '')
         );
-        if ($type && $receiptBodies[$type] === null) {
+        if ($type && ($receiptBodies[$type] === null || trim((string) $receiptBodies[$type]) === '')) {
             $receiptBodies[$type] = (string) ($receipt['body'] ?? '');
         }
     }
