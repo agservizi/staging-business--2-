@@ -553,7 +553,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="protocollo">Protocollo pratica</label>
-                                <input class="form-control" id="protocollo" name="protocollo" value="<?php echo sanitize_output($data['protocollo']); ?>">
+                                <input class="form-control" id="protocollo" name="protocollo" value="<?php echo sanitize_output($data['protocollo']); ?>" readonly>
+                                <div class="form-text">Protocollo generato automaticamente.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" for="assigned_to">Operatore assegnato</label>
