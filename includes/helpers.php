@@ -828,7 +828,10 @@ function current_user_has_capability(string ...$capabilities): bool
         return true;
     }
 
-    $role = $_SESSION['role'];
+    $role = trim((string) $_SESSION['role']);
+    if ($role === '') {
+        return false;
+    }
 
     return App\Auth\Authorization::roleAllows($role, ...$capabilities);
 }

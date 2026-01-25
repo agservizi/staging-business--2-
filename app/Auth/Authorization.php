@@ -44,6 +44,21 @@ final class Authorization
             'tickets.manage',
             'reports.view',
         ],
+        'Support' => [
+            'clients.view',
+            'email.marketing.view',
+            'services.manage',
+            'tickets.manage',
+            'reports.view',
+        ],
+        'Tecnico' => [
+            'settings.view',
+            'clients.view',
+            'email.marketing.view',
+            'services.manage',
+            'tickets.manage',
+            'reports.view',
+        ],
         'Patronato' => [
             'services.manage',
         ],
