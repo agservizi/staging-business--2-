@@ -213,6 +213,21 @@ if ($role === 'Collaboratore') {
                 </div>
             </div>
 
+            <div class="topbar-search" id="globalSearch" data-search-endpoint="<?php echo sanitize_output(base_url('api/search.php')); ?>" data-search-page="<?php echo sanitize_output(base_url('modules/impostazioni/search.php')); ?>">
+                <button class="btn topbar-btn topbar-btn-icon topbar-search-toggle d-lg-none" type="button" id="globalSearchToggle" aria-label="Apri ricerca">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                </button>
+                <div class="live-search" id="globalSearchBox">
+                    <i class="fa-solid fa-magnifying-glass live-search-icon" aria-hidden="true"></i>
+                    <input class="form-control live-search-input" type="search" id="globalSearchInput" placeholder="Cerca clienti, pratiche, contratti, documenti…" autocomplete="off" aria-label="Cerca nel gestionale">
+                    <button class="live-search-clear" type="button" id="globalSearchClear" aria-label="Svuota ricerca">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                    <div class="live-search-spinner" aria-hidden="true"></div>
+                    <div class="live-search-results" id="globalSearchResults" role="listbox" hidden></div>
+                </div>
+            </div>
+
             <div class="topbar-actions">
                 <div class="dropdown me-1">
                     <button class="btn topbar-btn topbar-btn-icon topbar-btn-icon-compact position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifiche" id="notificationsToggle">

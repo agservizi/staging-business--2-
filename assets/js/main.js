@@ -390,6 +390,323 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchNotifications({ append: false, silent: true });
     }, 60000);
 
+    const searchWrapper = document.getElementById('globalSearch');
+    const searchBox = document.getElementById('globalSearchBox');
+    const searchInput = document.getElementById('globalSearchInput');
+    const searchResults = document.getElementById('globalSearchResults');
+    const searchClear = document.getElementById('globalSearchClear');
+    const searchToggle = document.getElementById('globalSearchToggle');
+    const searchEndpoint = searchWrapper?.dataset.searchEndpoint || '';
+    const searchPageUrl = searchWrapper?.dataset.searchPage || '/modules/impostazioni/search.php';
+    const searchState = {
+        items: [],
+        activeIndex: -1,
+        open: false,
+        loading: false,
+        query: '',
+        controller: null,
+    };
+
+    const SEARCH_TYPES = {
+        cliente: { label: 'Clienti', icon: 'fa-user' },
+        pratica: { label: 'Pratiche CAF/Patronato', icon: 'fa-folder-open' },
+        opportunita: { label: 'Opportunità', icon: 'fa-briefcase' },
+        contratto: { label: 'Contratti energia', icon: 'fa-file-contract' },
+        fattura: { label: 'Entrate/Uscite', icon: 'fa-receipt' },
+        documento: { label: 'Documenti', icon: 'fa-file-lines' },
+        appuntamento: { label: 'Appuntamenti', icon: 'fa-calendar-check' },
+        aci: { label: 'Pratiche ACI', icon: 'fa-car' },
+        anpr: { label: 'Pratiche ANPR', icon: 'fa-id-card' },
+        cie: { label: 'Prenotazioni CIE', icon: 'fa-id-card-clip' },
+        digitale: { label: 'Servizi digitali', icon: 'fa-shield-halved' },
+        fedelta: { label: 'Movimenti fedeltà', icon: 'fa-star' },
+        curriculum: { label: 'Curriculum', icon: 'fa-file-signature' },
+        spedizione: { label: 'Spedizioni', icon: 'fa-truck' },
+        brt_spedizione: { label: 'Spedizioni BRT', icon: 'fa-truck-fast' },
+        brt_manifest: { label: 'Manifest BRT', icon: 'fa-list-check' },
+        telegramma: { label: 'Telegrammi', icon: 'fa-paper-plane' },
+        visura: { label: 'Visure CR', icon: 'fa-building' },
+        posta: { label: 'Posta telematica', icon: 'fa-envelope-open-text' },
+        pickup: { label: 'Logistica pickup', icon: 'fa-box' },
+        pickup_report: { label: 'Segnalazioni pickup', icon: 'fa-triangle-exclamation' },
+        iliad: { label: 'Credenziali Iliad', icon: 'fa-sim-card' },
+        campagna_email: { label: 'Campagne email', icon: 'fa-envelope-circle-check' },
+        iscritto_email: { label: 'Iscritti email', icon: 'fa-user-check' },
+        report: { label: 'Report', icon: 'fa-chart-line' },
+        utente: { label: 'Utenti', icon: 'fa-user-gear' },
+        notifica: { label: 'Notifiche', icon: 'fa-bell' },
+        ticket: { label: 'Ticket', icon: 'fa-life-ring' },
+    };
+
+    const escapeHtml = (value) => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const escapeRegExp = (value) => String(value ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    const highlightText = (text, query) => {
+        const safe = escapeHtml(text);
+        const needle = String(query ?? '').trim();
+        if (!needle) {
+            return safe;
+        }
+        const regex = new RegExp(`(${escapeRegExp(needle)})`, 'ig');
+        return safe.replace(regex, '<mark class="live-search-highlight">$1</mark>');
+    };
+
+    const setSearchLoading = (loading) => {
+        if (!searchBox) {
+            return;
+        }
+        searchState.loading = loading;
+        searchBox.classList.toggle('is-loading', loading);
+    };
+
+    const openSearchResults = () => {
+        if (!searchResults || !searchBox || !searchWrapper) {
+            return;
+        }
+        searchResults.hidden = false;
+        searchBox.classList.add('is-open');
+        searchWrapper.classList.add('is-open');
+        searchState.open = true;
+    };
+
+    const closeSearchResults = () => {
+        if (!searchResults || !searchBox || !searchWrapper) {
+            return;
+        }
+        searchResults.hidden = true;
+        searchBox.classList.remove('is-open');
+        searchWrapper.classList.remove('is-open');
+        searchState.open = false;
+        searchState.activeIndex = -1;
+        searchState.items = [];
+    };
+
+    const setActiveResult = (index) => {
+        if (!searchResults) {
+            return;
+        }
+        const items = Array.from(searchResults.querySelectorAll('.live-search-item'));
+        items.forEach((item) => item.classList.remove('is-active'));
+        if (index < 0 || index >= items.length) {
+            searchState.activeIndex = -1;
+            return;
+        }
+        const target = items[index];
+        target.classList.add('is-active');
+        searchState.activeIndex = index;
+        target.scrollIntoView({ block: 'nearest' });
+    };
+
+    const renderSearchResults = (items, query) => {
+        if (!searchResults) {
+            return;
+        }
+        searchResults.innerHTML = '';
+        searchState.items = [];
+        searchState.activeIndex = -1;
+
+        if (!items || items.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'live-search-empty';
+            empty.textContent = 'Nessun risultato trovato.';
+            searchResults.append(empty);
+            return;
+        }
+
+        const grouped = items.reduce((acc, item) => {
+            const key = item.type || 'altro';
+            if (!acc[key]) {
+                acc[key] = [];
+            }
+            acc[key].push(item);
+            return acc;
+        }, {});
+
+        Object.entries(grouped).forEach(([type, groupItems]) => {
+            const meta = SEARCH_TYPES[type] || { label: type, icon: 'fa-circle-info' };
+            const group = document.createElement('div');
+            group.className = 'live-search-group';
+
+            const label = document.createElement('div');
+            label.className = 'live-search-group-label';
+            label.innerHTML = `<i class="fa-solid ${meta.icon}"></i>${escapeHtml(meta.label)}`;
+            group.append(label);
+
+            groupItems.forEach((item) => {
+                const index = searchState.items.length;
+                searchState.items.push(item);
+
+                const link = document.createElement('a');
+                link.href = item.url || '#';
+                link.className = 'live-search-item';
+                link.dataset.index = String(index);
+                link.setAttribute('role', 'option');
+
+                const icon = item.icon || meta.icon || 'fa-circle-info';
+                const badge = item.badge || meta.label || '';
+
+                link.innerHTML = `
+                    <div class="d-flex align-items-start gap-3 flex-grow-1">
+                        <div class="live-search-item-icon"><i class="fa-solid ${icon}"></i></div>
+                        <div class="live-search-item-content">
+                            <div class="live-search-item-title">${highlightText(item.title || 'Risultato', query)}</div>
+                            <div class="live-search-item-subtitle">${highlightText(item.subtitle || '', query)}</div>
+                        </div>
+                    </div>
+                    <div class="live-search-item-badge">${escapeHtml(badge)}</div>
+                `;
+
+                link.addEventListener('mouseenter', () => setActiveResult(index));
+                link.addEventListener('focus', () => setActiveResult(index));
+                group.append(link);
+            });
+
+            searchResults.append(group);
+        });
+    };
+
+    const runSearch = async (query) => {
+        if (!searchEndpoint || !searchResults) {
+            return;
+        }
+        const normalized = String(query ?? '').trim();
+        if (normalized.length < 2) {
+            closeSearchResults();
+            return;
+        }
+
+        if (searchState.controller) {
+            searchState.controller.abort();
+        }
+        const controller = new AbortController();
+        searchState.controller = controller;
+        setSearchLoading(true);
+
+        try {
+            const params = new URLSearchParams({ q: normalized, limit: '8' });
+            const response = await fetch(`${searchEndpoint}?${params.toString()}`, {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                signal: controller.signal,
+            });
+            if (!response.ok) {
+                throw new Error('Search failed');
+            }
+            const payload = await response.json();
+            const items = Array.isArray(payload.items) ? payload.items : [];
+            renderSearchResults(items, normalized);
+            openSearchResults();
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                return;
+            }
+            if (searchResults) {
+                searchResults.innerHTML = '<div class="live-search-empty text-danger">Errore durante la ricerca.</div>';
+                openSearchResults();
+            }
+        } finally {
+            setSearchLoading(false);
+        }
+    };
+
+    const debounce = (callback, delay = 250) => {
+        let timer;
+        return (...args) => {
+            window.clearTimeout(timer);
+            timer = window.setTimeout(() => callback(...args), delay);
+        };
+    };
+
+    const debouncedSearch = debounce(runSearch, 250);
+
+    searchInput?.addEventListener('input', (event) => {
+        const value = event.target.value;
+        searchState.query = value;
+        searchBox?.classList.toggle('has-value', value.trim() !== '');
+        debouncedSearch(value);
+    });
+
+    searchInput?.addEventListener('keydown', (event) => {
+        if (!searchState.open && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+            openSearchResults();
+            return;
+        }
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            const next = Math.min(searchState.items.length - 1, searchState.activeIndex + 1);
+            setActiveResult(next);
+            return;
+        }
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            const prev = Math.max(0, searchState.activeIndex - 1);
+            setActiveResult(prev);
+            return;
+        }
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const current = searchState.items[searchState.activeIndex];
+            if (current && current.url) {
+                window.location.assign(current.url);
+                return;
+            }
+            const query = String(searchInput.value || '').trim();
+            if (query !== '') {
+                window.location.assign(`${searchPageUrl}?q=${encodeURIComponent(query)}`);
+            }
+            return;
+        }
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeSearchResults();
+            searchInput.blur();
+        }
+    });
+
+    searchInput?.addEventListener('focus', () => {
+        if (searchInput.value.trim().length >= 2 && searchResults && searchResults.innerHTML.trim() !== '') {
+            openSearchResults();
+        }
+    });
+
+    searchClear?.addEventListener('click', () => {
+        if (!searchInput) {
+            return;
+        }
+        searchInput.value = '';
+        searchBox?.classList.remove('has-value');
+        closeSearchResults();
+        searchInput.focus();
+    });
+
+    searchToggle?.addEventListener('click', () => {
+        if (!searchWrapper) {
+            return;
+        }
+        const willOpen = !searchWrapper.classList.contains('is-open');
+        if (willOpen) {
+            searchWrapper.classList.add('is-open');
+            searchInput?.focus();
+        } else {
+            closeSearchResults();
+        }
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!searchWrapper || !searchState.open) {
+            return;
+        }
+        if (!searchWrapper.contains(event.target)) {
+            closeSearchResults();
+        }
+    });
+
     if (initialFlashes.length > 0) {
         initialFlashes.forEach((flash, index) => {
             const { message = '', type = 'info' } = flash || {};
