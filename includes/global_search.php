@@ -11,9 +11,26 @@ if (!function_exists('db_table_exists')) {
         if (array_key_exists($tableName, $cache)) {
             return $cache[$tableName];
         }
-        $stmt = $pdo->prepare('SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table LIMIT 1');
-        $stmt->execute([':table' => $tableName]);
-        $cache[$tableName] = (bool) $stmt->fetchColumn();
+        try {
+            $stmt = $pdo->prepare('SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table LIMIT 1');
+            $stmt->execute([':table' => $tableName]);
+            $cache[$tableName] = (bool) $stmt->fetchColumn();
+            return $cache[$tableName];
+        } catch (Throwable $exception) {
+            // Fallback per ambienti che non consentono l'accesso a information_schema
+        }
+
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $tableName)) {
+            $cache[$tableName] = false;
+            return false;
+        }
+
+        try {
+            $pdo->query('SELECT 1 FROM `' . $tableName . '` LIMIT 1');
+            $cache[$tableName] = true;
+        } catch (Throwable $exception) {
+            $cache[$tableName] = false;
+        }
         return $cache[$tableName];
     }
 }
@@ -26,12 +43,29 @@ if (!function_exists('db_column_exists')) {
         if (array_key_exists($key, $cache)) {
             return $cache[$key];
         }
-        $stmt = $pdo->prepare('SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = :table AND column_name = :column LIMIT 1');
-        $stmt->execute([
-            ':table' => $tableName,
-            ':column' => $columnName,
-        ]);
-        $cache[$key] = (bool) $stmt->fetchColumn();
+        try {
+            $stmt = $pdo->prepare('SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = :table AND column_name = :column LIMIT 1');
+            $stmt->execute([
+                ':table' => $tableName,
+                ':column' => $columnName,
+            ]);
+            $cache[$key] = (bool) $stmt->fetchColumn();
+            return $cache[$key];
+        } catch (Throwable $exception) {
+            // Fallback per ambienti che non consentono l'accesso a information_schema
+        }
+
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $tableName) || !preg_match('/^[a-zA-Z0-9_]+$/', $columnName)) {
+            $cache[$key] = false;
+            return false;
+        }
+
+        try {
+            $pdo->query('SELECT `' . $columnName . '` FROM `' . $tableName . '` LIMIT 1');
+            $cache[$key] = true;
+        } catch (Throwable $exception) {
+            $cache[$key] = false;
+        }
         return $cache[$key];
     }
 }
@@ -212,6 +246,7 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     $hasClientCompanyName = db_column_exists($pdo, 'clienti', 'ragione_sociale');
     $clientBaseNameExpression = "TRIM(CONCAT_WS(' ', c.nome, c.cognome))";
+    $clientReverseNameExpression = "TRIM(CONCAT_WS(' ', c.cognome, c.nome))";
     $clientDisplayExpression = $hasClientCompanyName
         ? "COALESCE(NULLIF(TRIM(c.ragione_sociale), ''), NULLIF($clientBaseNameExpression, ''), NULLIF(c.email, ''), c.cf_piva)"
         : "COALESCE(NULLIF($clientBaseNameExpression, ''), NULLIF(c.email, ''), c.cf_piva)";
@@ -220,12 +255,12 @@ function global_search(PDO $pdo, string $term, array $options = []): array
         try {
             $clientSql = "SELECT c.id, c.nome, c.cognome, c.ragione_sociale, c.email, c.telefono, c.cf_piva, c.updated_at,
                     CASE
-                        WHEN c.nome LIKE :start OR c.cognome LIKE :start OR c.ragione_sociale LIKE :start OR c.email LIKE :start OR c.cf_piva LIKE :start THEN 3
-                        WHEN c.nome LIKE :term OR c.cognome LIKE :term OR c.ragione_sociale LIKE :term OR c.email LIKE :term OR c.cf_piva LIKE :term THEN 2
+                        WHEN c.nome LIKE :start OR c.cognome LIKE :start OR $clientBaseNameExpression LIKE :start OR $clientReverseNameExpression LIKE :start OR c.ragione_sociale LIKE :start OR c.email LIKE :start OR c.cf_piva LIKE :start THEN 3
+                        WHEN c.nome LIKE :term OR c.cognome LIKE :term OR $clientBaseNameExpression LIKE :term OR $clientReverseNameExpression LIKE :term OR c.ragione_sociale LIKE :term OR c.email LIKE :term OR c.cf_piva LIKE :term THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM clienti c
-                WHERE (c.nome LIKE :term OR c.cognome LIKE :term OR c.ragione_sociale LIKE :term OR c.email LIKE :term OR c.cf_piva LIKE :term)";
+                WHERE (c.nome LIKE :term OR c.cognome LIKE :term OR $clientBaseNameExpression LIKE :term OR $clientReverseNameExpression LIKE :term OR c.ragione_sociale LIKE :term OR c.email LIKE :term OR c.cf_piva LIKE :term)";
             $params = [':term' => $likeTerm, ':start' => $likeStart];
             if ($isClienteRole && $userEmail !== '') {
                 $clientSql .= ' AND c.email = :user_email';

@@ -36,6 +36,14 @@ final class Authorization
             'tickets.manage',
             'reports.view',
         ],
+        'Collaboratore' => [
+            'clients.view',
+            'clients.manage',
+            'email.marketing.view',
+            'services.manage',
+            'tickets.manage',
+            'reports.view',
+        ],
         'Patronato' => [
             'services.manage',
         ],

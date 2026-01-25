@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../includes/db_connect.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../includes/global_search.php';
 
-require_role('Admin', 'Manager', 'Operatore', 'Cliente');
+require_role('Admin', 'Manager', 'Operatore', 'Collaboratore', 'Cliente');
 
 $pageTitle = 'Risultati ricerca';
 
