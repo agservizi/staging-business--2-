@@ -241,6 +241,9 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     $likeTerm = '%' . $term . '%';
     $likeStart = $term . '%';
+    $termCompact = mb_strtolower((string) (preg_replace("/[\s'’]+/u", '', $term) ?? ''), 'UTF-8');
+    $likeCompact = $termCompact !== '' ? ('%' . $termCompact . '%') : '';
+    $likeCompactStart = $termCompact !== '' ? ($termCompact . '%') : '';
     $perTypeLimit = min(10, $limit);
 
     $items = [];
@@ -284,6 +287,9 @@ function global_search(PDO $pdo, string $term, array $options = []): array
                 $clientSelect[] = 'c.updated_at';
             }
 
+            $clientCompactExpression = "LOWER(REPLACE(REPLACE(REPLACE(CONCAT_WS('', c.nome, c.cognome), ' ', ''), '\'', ''), '’', ''))";
+            $clientCompactReverseExpression = "LOWER(REPLACE(REPLACE(REPLACE(CONCAT_WS('', c.cognome, c.nome), ' ', ''), '\'', ''), '’', ''))";
+
             $clientStartParts = [
                 'c.nome LIKE :start',
                 'c.cognome LIKE :start',
@@ -296,6 +302,12 @@ function global_search(PDO $pdo, string $term, array $options = []): array
                 $clientBaseNameExpression . ' LIKE :term',
                 $clientReverseNameExpression . ' LIKE :term',
             ];
+            if ($likeCompact !== '') {
+                $clientStartParts[] = $clientCompactExpression . ' LIKE :compact_start';
+                $clientStartParts[] = $clientCompactReverseExpression . ' LIKE :compact_start';
+                $clientTermParts[] = $clientCompactExpression . ' LIKE :compact';
+                $clientTermParts[] = $clientCompactReverseExpression . ' LIKE :compact';
+            }
             if ($hasClientCompanyName) {
                 $clientStartParts[] = 'c.ragione_sociale LIKE :start';
                 $clientTermParts[] = 'c.ragione_sociale LIKE :term';
@@ -348,6 +360,10 @@ function global_search(PDO $pdo, string $term, array $options = []): array
                 FROM clienti c
                 WHERE " . $clientWhere;
             $params = array_merge([':term' => $likeTerm, ':start' => $likeStart], $clientTokenParams);
+            if ($likeCompact !== '') {
+                $params[':compact'] = $likeCompact;
+                $params[':compact_start'] = $likeCompactStart;
+            }
             if ($isClienteRole && $userEmail !== '') {
                 $clientSql .= ' AND c.email = :user_email';
                 $params[':user_email'] = $userEmail;
