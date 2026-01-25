@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/db_connect.php';
 require_once __DIR__ . '/../../includes/helpers.php';
+require_once __DIR__ . '/../../includes/notifications.php';
 
 require_role('Admin', 'Operatore');
 $pageTitle = 'Importa clienti';
@@ -475,6 +476,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     if ($skipped > 0) {
                         add_flash('warning', sprintf('%d righe non sono state importate. Consulta i dettagli qui sotto.', $skipped));
+                    }
+
+                    $actorRole = (string) ($_SESSION['role'] ?? '');
+                    $actorId = (int) ($_SESSION['user_id'] ?? 0);
+                    $notificationType = ($created > 0 || $updated > 0) ? 'success' : 'info';
+                    $notification = [
+                        'type' => $notificationType,
+                        'title' => 'Import clienti CSV',
+                        'message' => sprintf('Import completato: %d creati, %d aggiornati, %d invariati, %d scartati.', $created, $updated, $unchanged, $skipped),
+                        'metadata' => [
+                            'entity' => 'clienti',
+                            'action' => 'import',
+                            'created' => $created,
+                            'updated' => $updated,
+                            'unchanged' => $unchanged,
+                            'skipped' => $skipped,
+                            'file' => (string) ($file['name'] ?? ''),
+                        ],
+                    ];
+                    foreach (['Admin', 'Manager'] as $notifyRole) {
+                        create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
                     }
                 } catch (Throwable $exception) {
                     if ($pdo->inTransaction()) {

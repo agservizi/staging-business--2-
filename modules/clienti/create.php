@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/db_connect.php';
 require_once __DIR__ . '/../../includes/helpers.php';
+require_once __DIR__ . '/../../includes/notifications.php';
 
 require_role('Admin', 'Operatore');
 $pageTitle = 'Nuovo cliente';
@@ -93,6 +94,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         add_flash('success', 'Cliente creato con successo.');
+        $actorRole = (string) ($_SESSION['role'] ?? '');
+        $actorId = (int) ($_SESSION['user_id'] ?? 0);
+        $notification = [
+            'type' => 'success',
+            'title' => 'Nuovo cliente',
+            'message' => sprintf('Creato cliente #%d (%s).', $clientId, $logLabel),
+            'metadata' => [
+                'entity' => 'clienti',
+                'id' => $clientId,
+                'action' => 'create',
+            ],
+        ];
+        foreach (['Admin', 'Manager'] as $notifyRole) {
+            create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
+        }
         header('Location: index.php');
         exit;
     }

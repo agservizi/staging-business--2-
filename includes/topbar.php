@@ -225,8 +225,9 @@ if ($role === 'Collaboratore') {
                             <button class="btn btn-sm btn-outline-secondary" type="button" id="notificationsMarkAll">Segna tutte come lette</button>
                         </div>
                         <div class="notifications-list" id="notificationsList"></div>
-                        <div class="notifications-footer">
-                            <button class="btn btn-sm btn-outline-primary w-100" type="button" id="notificationsLoadMore">Carica altre</button>
+                        <div class="notifications-footer d-grid gap-2">
+                            <button class="btn btn-sm btn-outline-primary" type="button" id="notificationsLoadMore">Carica altre</button>
+                            <a class="btn btn-sm btn-outline-secondary" href="<?php echo base_url('modules/impostazioni/notifications.php'); ?>">Mostra di più</a>
                         </div>
                     </div>
                 </div>
