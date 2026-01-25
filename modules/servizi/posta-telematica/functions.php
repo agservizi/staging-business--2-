@@ -73,6 +73,17 @@ function posta_telematica_store_attachments(array $files): array
     $relativeBase = $config['relative'];
     $allowed = $config['allowed_mimes'];
     $maxSize = $config['max_size'];
+    $allowedExtensions = [
+        'pdf' => 'application/pdf',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'doc' => 'application/msword',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls' => 'application/vnd.ms-excel',
+        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'txt' => 'text/plain',
+    ];
 
     if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
         throw new RuntimeException('Impossibile creare la cartella degli allegati.');
@@ -117,6 +128,12 @@ function posta_telematica_store_attachments(array $files): array
         }
 
         if (!array_key_exists($mime, $allowed)) {
+            if ($extension !== '' && array_key_exists($extension, $allowedExtensions)) {
+                $mime = $allowedExtensions[$extension];
+            }
+        }
+
+        if (!array_key_exists($mime, $allowed)) {
             throw new RuntimeException('Tipo di allegato non consentito: ' . $mime);
         }
 
@@ -141,9 +158,7 @@ function posta_telematica_store_attachments(array $files): array
         ];
     }
 
-    if ($finfo) {
-        finfo_close($finfo);
-    }
+    $finfo = null;
 
     return $stored;
 }
