@@ -2162,8 +2162,26 @@ main.content-wrapper[data-dashboard-state="stale"] .ag-card {
     box-shadow: 0 32px 64px rgba(8, 28, 60, 0.24);
     padding: 1rem;
     max-height: 320px;
+    overflow: hidden;
     overflow-y: auto;
+    background-clip: padding-box;
+    scrollbar-gutter: stable;
     z-index: 1050;
+}
+
+.live-search-results::-webkit-scrollbar {
+    width: 8px;
+}
+
+.live-search-results::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 999px;
+    margin: 10px 4px;
+}
+
+.live-search-results::-webkit-scrollbar-thumb {
+    background: rgba(var(--ag-accent-rgb), 0.28);
+    border-radius: 999px;
 }
 
 .live-search-results[hidden] {
