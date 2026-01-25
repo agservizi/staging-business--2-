@@ -245,22 +245,77 @@ function global_search(PDO $pdo, string $term, array $options = []): array
     $items = [];
 
     $hasClientCompanyName = db_column_exists($pdo, 'clienti', 'ragione_sociale');
+    $hasClientEmail = db_column_exists($pdo, 'clienti', 'email');
+    $hasClientPhone = db_column_exists($pdo, 'clienti', 'telefono');
+    $hasClientCfPiva = db_column_exists($pdo, 'clienti', 'cf_piva');
+    $hasClientUpdatedAt = db_column_exists($pdo, 'clienti', 'updated_at');
     $clientBaseNameExpression = "TRIM(CONCAT_WS(' ', c.nome, c.cognome))";
     $clientReverseNameExpression = "TRIM(CONCAT_WS(' ', c.cognome, c.nome))";
-    $clientDisplayExpression = $hasClientCompanyName
-        ? "COALESCE(NULLIF(TRIM(c.ragione_sociale), ''), NULLIF($clientBaseNameExpression, ''), NULLIF(c.email, ''), c.cf_piva)"
-        : "COALESCE(NULLIF($clientBaseNameExpression, ''), NULLIF(c.email, ''), c.cf_piva)";
+    $clientDisplayParts = [];
+    if ($hasClientCompanyName) {
+        $clientDisplayParts[] = "NULLIF(TRIM(c.ragione_sociale), '')";
+    }
+    $clientDisplayParts[] = "NULLIF($clientBaseNameExpression, '')";
+    if ($hasClientEmail) {
+        $clientDisplayParts[] = "NULLIF(c.email, '')";
+    }
+    if ($hasClientCfPiva) {
+        $clientDisplayParts[] = 'c.cf_piva';
+    }
+    $clientDisplayExpression = 'COALESCE(' . implode(', ', $clientDisplayParts) . ')';
 
     if ($canSeeClients && $hasClientScope && (empty($typeFilter) || in_array('cliente', $typeFilter, true))) {
         try {
-            $clientSql = "SELECT c.id, c.nome, c.cognome, c.ragione_sociale, c.email, c.telefono, c.cf_piva, c.updated_at,
+            $clientSelect = ['c.id', 'c.nome', 'c.cognome'];
+            if ($hasClientCompanyName) {
+                $clientSelect[] = 'c.ragione_sociale';
+            }
+            if ($hasClientEmail) {
+                $clientSelect[] = 'c.email';
+            }
+            if ($hasClientPhone) {
+                $clientSelect[] = 'c.telefono';
+            }
+            if ($hasClientCfPiva) {
+                $clientSelect[] = 'c.cf_piva';
+            }
+            if ($hasClientUpdatedAt) {
+                $clientSelect[] = 'c.updated_at';
+            }
+
+            $clientStartParts = [
+                'c.nome LIKE :start',
+                'c.cognome LIKE :start',
+                $clientBaseNameExpression . ' LIKE :start',
+                $clientReverseNameExpression . ' LIKE :start',
+            ];
+            $clientTermParts = [
+                'c.nome LIKE :term',
+                'c.cognome LIKE :term',
+                $clientBaseNameExpression . ' LIKE :term',
+                $clientReverseNameExpression . ' LIKE :term',
+            ];
+            if ($hasClientCompanyName) {
+                $clientStartParts[] = 'c.ragione_sociale LIKE :start';
+                $clientTermParts[] = 'c.ragione_sociale LIKE :term';
+            }
+            if ($hasClientEmail) {
+                $clientStartParts[] = 'c.email LIKE :start';
+                $clientTermParts[] = 'c.email LIKE :term';
+            }
+            if ($hasClientCfPiva) {
+                $clientStartParts[] = 'c.cf_piva LIKE :start';
+                $clientTermParts[] = 'c.cf_piva LIKE :term';
+            }
+
+            $clientSql = "SELECT " . implode(', ', $clientSelect) . ",
                     CASE
-                        WHEN c.nome LIKE :start OR c.cognome LIKE :start OR $clientBaseNameExpression LIKE :start OR $clientReverseNameExpression LIKE :start OR c.ragione_sociale LIKE :start OR c.email LIKE :start OR c.cf_piva LIKE :start THEN 3
-                        WHEN c.nome LIKE :term OR c.cognome LIKE :term OR $clientBaseNameExpression LIKE :term OR $clientReverseNameExpression LIKE :term OR c.ragione_sociale LIKE :term OR c.email LIKE :term OR c.cf_piva LIKE :term THEN 2
+                        WHEN " . implode(' OR ', $clientStartParts) . " THEN 3
+                        WHEN " . implode(' OR ', $clientTermParts) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM clienti c
-                WHERE (c.nome LIKE :term OR c.cognome LIKE :term OR $clientBaseNameExpression LIKE :term OR $clientReverseNameExpression LIKE :term OR c.ragione_sociale LIKE :term OR c.email LIKE :term OR c.cf_piva LIKE :term)";
+                WHERE (" . implode(' OR ', $clientTermParts) . ")";
             $params = [':term' => $likeTerm, ':start' => $likeStart];
             if ($isClienteRole && $userEmail !== '') {
                 $clientSql .= ' AND c.email = :user_email';
