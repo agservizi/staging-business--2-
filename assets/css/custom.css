@@ -2094,6 +2094,22 @@ main.content-wrapper[data-dashboard-state="stale"] .ag-card {
     font-size: 0.95rem;
 }
 
+.live-search-input::-webkit-search-cancel-button,
+.live-search-input::-webkit-search-decoration,
+.live-search-input::-webkit-search-results-button,
+.live-search-input::-webkit-search-results-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+    display: none;
+}
+
+.live-search-input::-ms-clear,
+.live-search-input::-ms-reveal {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
 .live-search-input:focus {
     outline: none;
 }
