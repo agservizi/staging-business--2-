@@ -109,6 +109,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         window.CS_INITIAL_FLASHES = [];
     }
+
+    const ensureMainContentAnchor = () => {
+        const mainContent = document.querySelector('main.content-wrapper');
+        if (!mainContent) {
+            return;
+        }
+        if (!mainContent.id) {
+            mainContent.id = 'main-content';
+        }
+        if (!mainContent.hasAttribute('tabindex')) {
+            mainContent.setAttribute('tabindex', '-1');
+        }
+    };
+
+    ensureMainContentAnchor();
     const closeSidebarSubmenus = () => {
         if (!sidebar) {
             return;
@@ -214,6 +229,20 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSidebarToggleIcon();
     };
 
+    const closeMobileSidebar = (focusTarget = null) => {
+        if (!sidebar) {
+            return;
+        }
+        sidebar.classList.remove('open');
+        document.body.classList.remove('offcanvas-active');
+        sidebarMobileToggle?.setAttribute('aria-expanded', 'false');
+        sidebarToggle?.setAttribute('aria-expanded', String(!sidebar.classList.contains('collapsed')));
+        if (focusTarget && typeof focusTarget.focus === 'function') {
+            focusTarget.focus();
+        }
+        initializeTooltips();
+    };
+
     const syncSidebarMode = () => {
         if (!sidebar) {
             return;
@@ -272,14 +301,40 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeTooltips();
     });
 
+    document.addEventListener('click', (event) => {
+        if (!mobileBreakpoint.matches || !sidebar || !sidebar.classList.contains('open')) {
+            return;
+        }
+        const target = event.target;
+        if (sidebar.contains(target)) {
+            return;
+        }
+        if (sidebarMobileToggle && sidebarMobileToggle.contains(target)) {
+            return;
+        }
+        if (sidebarToggle && sidebarToggle.contains(target)) {
+            return;
+        }
+        closeMobileSidebar();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') {
+            return;
+        }
+        if (!mobileBreakpoint.matches || !sidebar || !sidebar.classList.contains('open')) {
+            return;
+        }
+        closeMobileSidebar(sidebarMobileToggle);
+    });
+
     if (sidebar) {
         sidebar.querySelectorAll('a').forEach((link) => {
             link.addEventListener('click', () => {
                 if (!mobileBreakpoint.matches) {
                     return;
                 }
-                sidebar.classList.remove('open');
-                document.body.classList.remove('offcanvas-active');
+                closeMobileSidebar();
             });
         });
     }
@@ -339,14 +394,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
     enableSidebarHoverPeek();
 
+    const applyMobileTableStacking = () => {
+        const shouldStack = window.matchMedia('(max-width: 768px)').matches;
+        document.querySelectorAll('table').forEach((table) => {
+            const headerCells = Array.from(table.querySelectorAll('thead th'));
+            if (headerCells.length === 0) {
+                return;
+            }
+
+            const headers = headerCells.map((cell) => (cell.textContent || '').trim());
+            table.querySelectorAll('tbody tr').forEach((row) => {
+                let columnIndex = 0;
+                row.querySelectorAll('td').forEach((cell) => {
+                    const label = headers[columnIndex] || '';
+                    cell.setAttribute('data-label', label);
+                    const colspan = Number.parseInt(cell.getAttribute('colspan') || '1', 10);
+                    columnIndex += Number.isFinite(colspan) && colspan > 0 ? colspan : 1;
+                });
+            });
+
+            table.classList.toggle('table-stacked', shouldStack);
+        });
+    };
+
+    let tableStackTimer = null;
+    const scheduleTableStacking = () => {
+        if (tableStackTimer) {
+            window.clearTimeout(tableStackTimer);
+        }
+        tableStackTimer = window.setTimeout(() => {
+            applyMobileTableStacking();
+            tableStackTimer = null;
+        }, 120);
+    };
+
+    window.addEventListener('resize', scheduleTableStacking);
+
     document.querySelectorAll('[data-datatable="true"]').forEach((table) => {
         // eslint-disable-next-line no-undef
-        new DataTable(table, {
+        const dataTableInstance = new DataTable(table, {
             language: {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/it-IT.json'
             }
         });
+        if (dataTableInstance && typeof dataTableInstance.on === 'function') {
+            dataTableInstance.on('draw', applyMobileTableStacking);
+        } else {
+            table.addEventListener('draw.dt', applyMobileTableStacking);
+        }
     });
+
+    applyMobileTableStacking();
 
     if (csrfToken) {
         document.querySelectorAll('form').forEach((form) => {

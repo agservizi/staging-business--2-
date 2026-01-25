@@ -82,6 +82,7 @@ if (!headers_sent()) {
     <script src="<?php echo asset('assets/js/cookie-consent.js'); ?>" defer></script>
 </head>
 <body class="layout-wrapper">
+<a class="skip-link" href="#main-content">Salta al contenuto</a>
 <div id="app" class="d-flex">
 <?php if ($flashMessages): ?>
     <script>
