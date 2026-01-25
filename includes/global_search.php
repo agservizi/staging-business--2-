@@ -107,6 +107,7 @@ function global_search_type_meta(): array
 function global_search(PDO $pdo, string $term, array $options = []): array
 {
     $term = trim($term);
+    $term = preg_replace('/\s+/', ' ', $term) ?? $term;
     $limit = (int) ($options['limit'] ?? 8);
     $limit = max(1, min(60, $limit));
 
@@ -308,6 +309,36 @@ function global_search(PDO $pdo, string $term, array $options = []): array
                 $clientTermParts[] = 'c.cf_piva LIKE :term';
             }
 
+            $clientTokenConditions = [];
+            $clientTokenParams = [];
+            $tokens = array_values(array_filter(explode(' ', $term), static fn(string $value): bool => $value !== ''));
+            if (count($tokens) > 1) {
+                foreach ($tokens as $index => $token) {
+                    $param = ':token' . $index;
+                    $clientTokenParams[$param] = '%' . $token . '%';
+                    $tokenParts = [
+                        'c.nome LIKE ' . $param,
+                        'c.cognome LIKE ' . $param,
+                        $clientBaseNameExpression . ' LIKE ' . $param,
+                        $clientReverseNameExpression . ' LIKE ' . $param,
+                    ];
+                    if ($hasClientCompanyName) {
+                        $tokenParts[] = 'c.ragione_sociale LIKE ' . $param;
+                    }
+                    if ($hasClientEmail) {
+                        $tokenParts[] = 'c.email LIKE ' . $param;
+                    }
+                    if ($hasClientCfPiva) {
+                        $tokenParts[] = 'c.cf_piva LIKE ' . $param;
+                    }
+                    $clientTokenConditions[] = '(' . implode(' OR ', $tokenParts) . ')';
+                }
+            }
+
+            $clientWhere = $clientTokenConditions
+                ? implode(' AND ', $clientTokenConditions)
+                : '(' . implode(' OR ', $clientTermParts) . ')';
+
             $clientSql = "SELECT " . implode(', ', $clientSelect) . ",
                     CASE
                         WHEN " . implode(' OR ', $clientStartParts) . " THEN 3
@@ -315,8 +346,8 @@ function global_search(PDO $pdo, string $term, array $options = []): array
                         ELSE 1
                     END AS relevance_score
                 FROM clienti c
-                WHERE (" . implode(' OR ', $clientTermParts) . ")";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE " . $clientWhere;
+            $params = array_merge([':term' => $likeTerm, ':start' => $likeStart], $clientTokenParams);
             if ($isClienteRole && $userEmail !== '') {
                 $clientSql .= ' AND c.email = :user_email';
                 $params[':user_email'] = $userEmail;
