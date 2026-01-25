@@ -30,6 +30,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <h1 class="h3 mb-1">Notifiche</h1>
                 <p class="text-muted mb-0">Storico completo delle notifiche più recenti.</p>
             </div>
+            <div class="toolbar-actions">
+                <button class="btn btn-outline-secondary" type="button" id="markAllNotifications">Segna tutte come lette</button>
+            </div>
         </div>
 
         <div class="card ag-card">
@@ -39,7 +42,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <?php else: ?>
                     <div class="list-group">
                         <?php foreach ($items as $item): ?>
-                            <div class="list-group-item notification-item<?php echo $item['isRead'] ? '' : ' is-unread'; ?>">
+                            <div class="list-group-item notification-item<?php echo $item['isRead'] ? '' : ' is-unread'; ?>" data-notification-id="<?php echo (int) $item['id']; ?>">
                                 <div class="<?php echo sanitize_output($item['colorClass']); ?>" aria-hidden="true">
                                     <i class="fa-solid <?php echo sanitize_output($item['icon']); ?>"></i>
                                 </div>
@@ -60,6 +63,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     <?php endif; ?>
                                     <div class="notification-item-meta"><?php echo sanitize_output($item['createdAtLabel']); ?></div>
                                 </div>
+                                <div class="ms-auto">
+                                    <button class="btn btn-sm btn-outline-primary notification-mark-read" type="button"<?php echo $item['isRead'] ? ' disabled' : ''; ?>>Leggi</button>
+                                </div>
                             </div>
                         <?php endforeach; ?>
                     </div>
@@ -73,5 +79,72 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         </div>
     </main>
 </div>
+
+<script>
+(() => {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const markAllButton = document.getElementById('markAllNotifications');
+    const markAllEndpoint = '<?php echo sanitize_output(base_url('api/mark_notifications.php')); ?>';
+    const markEndpoint = '<?php echo sanitize_output(base_url('api/mark_notification.php')); ?>';
+
+    const markRowAsRead = (row) => {
+        if (!row) {
+            return;
+        }
+        row.classList.remove('is-unread');
+        const button = row.querySelector('.notification-mark-read');
+        if (button) {
+            button.disabled = true;
+        }
+    };
+
+    document.querySelectorAll('.notification-mark-read').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const row = button.closest('[data-notification-id]');
+            const id = row?.getAttribute('data-notification-id');
+            if (!id) {
+                return;
+            }
+            try {
+                const response = await fetch(markEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ id }),
+                });
+                if (response.ok) {
+                    markRowAsRead(row);
+                }
+            } catch (e) {
+                // ignore
+            }
+        });
+    });
+
+    markAllButton?.addEventListener('click', async () => {
+        try {
+            const response = await fetch(markAllEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrf,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ action: 'mark_all' }),
+            });
+            if (response.ok) {
+                document.querySelectorAll('.notification-item').forEach(markRowAsRead);
+            }
+        } catch (e) {
+            // ignore
+        }
+    });
+})();
+</script>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
