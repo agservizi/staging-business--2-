@@ -270,6 +270,15 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeClients && $hasClientScope && (empty($typeFilter) || in_array('cliente', $typeFilter, true))) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $clientSelect = ['c.id', 'c.nome', 'c.cognome'];
             if ($hasClientCompanyName) {
                 $clientSelect[] = 'c.ragione_sociale';
@@ -291,57 +300,55 @@ function global_search(PDO $pdo, string $term, array $options = []): array
             $clientCompactReverseExpression = "LOWER(REPLACE(REPLACE(REPLACE(CONCAT_WS('', c.cognome, c.nome), ' ', ''), '\'', ''), '’', ''))";
 
             $clientStartParts = [
-                'c.nome LIKE :start',
-                'c.cognome LIKE :start',
-                $clientBaseNameExpression . ' LIKE :start',
-                $clientReverseNameExpression . ' LIKE :start',
+                'c.nome LIKE ' . $makeParam('start', $likeStart),
+                'c.cognome LIKE ' . $makeParam('start', $likeStart),
+                $clientBaseNameExpression . ' LIKE ' . $makeParam('start', $likeStart),
+                $clientReverseNameExpression . ' LIKE ' . $makeParam('start', $likeStart),
             ];
             $clientTermParts = [
-                'c.nome LIKE :term',
-                'c.cognome LIKE :term',
-                $clientBaseNameExpression . ' LIKE :term',
-                $clientReverseNameExpression . ' LIKE :term',
+                'c.nome LIKE ' . $makeParam('term', $likeTerm),
+                'c.cognome LIKE ' . $makeParam('term', $likeTerm),
+                $clientBaseNameExpression . ' LIKE ' . $makeParam('term', $likeTerm),
+                $clientReverseNameExpression . ' LIKE ' . $makeParam('term', $likeTerm),
             ];
             if ($likeCompact !== '') {
-                $clientStartParts[] = $clientCompactExpression . ' LIKE :compact_start';
-                $clientStartParts[] = $clientCompactReverseExpression . ' LIKE :compact_start';
-                $clientTermParts[] = $clientCompactExpression . ' LIKE :compact';
-                $clientTermParts[] = $clientCompactReverseExpression . ' LIKE :compact';
+                $clientStartParts[] = $clientCompactExpression . ' LIKE ' . $makeParam('compact_start', $likeCompactStart);
+                $clientStartParts[] = $clientCompactReverseExpression . ' LIKE ' . $makeParam('compact_start', $likeCompactStart);
+                $clientTermParts[] = $clientCompactExpression . ' LIKE ' . $makeParam('compact', $likeCompact);
+                $clientTermParts[] = $clientCompactReverseExpression . ' LIKE ' . $makeParam('compact', $likeCompact);
             }
             if ($hasClientCompanyName) {
-                $clientStartParts[] = 'c.ragione_sociale LIKE :start';
-                $clientTermParts[] = 'c.ragione_sociale LIKE :term';
+                $clientStartParts[] = 'c.ragione_sociale LIKE ' . $makeParam('start', $likeStart);
+                $clientTermParts[] = 'c.ragione_sociale LIKE ' . $makeParam('term', $likeTerm);
             }
             if ($hasClientEmail) {
-                $clientStartParts[] = 'c.email LIKE :start';
-                $clientTermParts[] = 'c.email LIKE :term';
+                $clientStartParts[] = 'c.email LIKE ' . $makeParam('start', $likeStart);
+                $clientTermParts[] = 'c.email LIKE ' . $makeParam('term', $likeTerm);
             }
             if ($hasClientCfPiva) {
-                $clientStartParts[] = 'c.cf_piva LIKE :start';
-                $clientTermParts[] = 'c.cf_piva LIKE :term';
+                $clientStartParts[] = 'c.cf_piva LIKE ' . $makeParam('start', $likeStart);
+                $clientTermParts[] = 'c.cf_piva LIKE ' . $makeParam('term', $likeTerm);
             }
 
             $clientTokenConditions = [];
-            $clientTokenParams = [];
             $tokens = array_values(array_filter(explode(' ', $term), static fn(string $value): bool => $value !== ''));
             if (count($tokens) > 1) {
                 foreach ($tokens as $index => $token) {
-                    $param = ':token' . $index;
-                    $clientTokenParams[$param] = '%' . $token . '%';
+                    $tokenValue = '%' . $token . '%';
                     $tokenParts = [
-                        'c.nome LIKE ' . $param,
-                        'c.cognome LIKE ' . $param,
-                        $clientBaseNameExpression . ' LIKE ' . $param,
-                        $clientReverseNameExpression . ' LIKE ' . $param,
+                        'c.nome LIKE ' . $makeParam('token', $tokenValue),
+                        'c.cognome LIKE ' . $makeParam('token', $tokenValue),
+                        $clientBaseNameExpression . ' LIKE ' . $makeParam('token', $tokenValue),
+                        $clientReverseNameExpression . ' LIKE ' . $makeParam('token', $tokenValue),
                     ];
                     if ($hasClientCompanyName) {
-                        $tokenParts[] = 'c.ragione_sociale LIKE ' . $param;
+                        $tokenParts[] = 'c.ragione_sociale LIKE ' . $makeParam('token', $tokenValue);
                     }
                     if ($hasClientEmail) {
-                        $tokenParts[] = 'c.email LIKE ' . $param;
+                        $tokenParts[] = 'c.email LIKE ' . $makeParam('token', $tokenValue);
                     }
                     if ($hasClientCfPiva) {
-                        $tokenParts[] = 'c.cf_piva LIKE ' . $param;
+                        $tokenParts[] = 'c.cf_piva LIKE ' . $makeParam('token', $tokenValue);
                     }
                     $clientTokenConditions[] = '(' . implode(' OR ', $tokenParts) . ')';
                 }
@@ -359,14 +366,8 @@ function global_search(PDO $pdo, string $term, array $options = []): array
                     END AS relevance_score
                 FROM clienti c
                 WHERE " . $clientWhere;
-            $params = array_merge([':term' => $likeTerm, ':start' => $likeStart], $clientTokenParams);
-            if ($likeCompact !== '') {
-                $params[':compact'] = $likeCompact;
-                $params[':compact_start'] = $likeCompactStart;
-            }
             if ($isClienteRole && $userEmail !== '') {
-                $clientSql .= ' AND c.email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $clientSql .= ' AND c.email = ' . $makeParam('user_email', $userEmail);
             }
             $clientSql .= ' ORDER BY relevance_score DESC, c.updated_at DESC LIMIT :limit';
             $stmt = $pdo->prepare($clientSql);
