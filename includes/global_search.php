@@ -311,23 +311,34 @@ function global_search(PDO $pdo, string $term, array $options = []): array
                 $clientBaseNameExpression . ' LIKE ' . $makeParam('term', $likeTerm),
                 $clientReverseNameExpression . ' LIKE ' . $makeParam('term', $likeTerm),
             ];
+            $clientTermPartsWhere = [
+                'c.nome LIKE ' . $makeParam('term', $likeTerm),
+                'c.cognome LIKE ' . $makeParam('term', $likeTerm),
+                $clientBaseNameExpression . ' LIKE ' . $makeParam('term', $likeTerm),
+                $clientReverseNameExpression . ' LIKE ' . $makeParam('term', $likeTerm),
+            ];
             if ($likeCompact !== '') {
                 $clientStartParts[] = $clientCompactExpression . ' LIKE ' . $makeParam('compact_start', $likeCompactStart);
                 $clientStartParts[] = $clientCompactReverseExpression . ' LIKE ' . $makeParam('compact_start', $likeCompactStart);
                 $clientTermParts[] = $clientCompactExpression . ' LIKE ' . $makeParam('compact', $likeCompact);
                 $clientTermParts[] = $clientCompactReverseExpression . ' LIKE ' . $makeParam('compact', $likeCompact);
+                $clientTermPartsWhere[] = $clientCompactExpression . ' LIKE ' . $makeParam('compact', $likeCompact);
+                $clientTermPartsWhere[] = $clientCompactReverseExpression . ' LIKE ' . $makeParam('compact', $likeCompact);
             }
             if ($hasClientCompanyName) {
                 $clientStartParts[] = 'c.ragione_sociale LIKE ' . $makeParam('start', $likeStart);
                 $clientTermParts[] = 'c.ragione_sociale LIKE ' . $makeParam('term', $likeTerm);
+                $clientTermPartsWhere[] = 'c.ragione_sociale LIKE ' . $makeParam('term', $likeTerm);
             }
             if ($hasClientEmail) {
                 $clientStartParts[] = 'c.email LIKE ' . $makeParam('start', $likeStart);
                 $clientTermParts[] = 'c.email LIKE ' . $makeParam('term', $likeTerm);
+                $clientTermPartsWhere[] = 'c.email LIKE ' . $makeParam('term', $likeTerm);
             }
             if ($hasClientCfPiva) {
                 $clientStartParts[] = 'c.cf_piva LIKE ' . $makeParam('start', $likeStart);
                 $clientTermParts[] = 'c.cf_piva LIKE ' . $makeParam('term', $likeTerm);
+                $clientTermPartsWhere[] = 'c.cf_piva LIKE ' . $makeParam('term', $likeTerm);
             }
 
             $clientTokenConditions = [];
@@ -356,7 +367,7 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
             $clientWhere = $clientTokenConditions
                 ? implode(' AND ', $clientTokenConditions)
-                : '(' . implode(' OR ', $clientTermParts) . ')';
+                : '(' . implode(' OR ', $clientTermPartsWhere) . ')';
 
             $clientSql = "SELECT " . implode(', ', $clientSelect) . ",
                     CASE
@@ -413,20 +424,27 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && $hasClientScope && (empty($typeFilter) || in_array('pratica', $typeFilter, true)) && db_table_exists($pdo, 'pratiche')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $praticaSql = "SELECT p.id, p.titolo, p.categoria, p.stato, p.tracking_code, p.data_aggiornamento,
                     $clientDisplayExpression AS cliente,
                     CASE
-                        WHEN p.titolo LIKE :start OR p.tracking_code LIKE :start OR $clientDisplayExpression LIKE :start THEN 3
-                        WHEN p.titolo LIKE :term OR p.tracking_code LIKE :term OR $clientDisplayExpression LIKE :term THEN 2
+                        WHEN p.titolo LIKE " . $makeParam('start', $likeStart) . " OR p.tracking_code LIKE " . $makeParam('start', $likeStart) . " OR $clientDisplayExpression LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN p.titolo LIKE " . $makeParam('term', $likeTerm) . " OR p.tracking_code LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM pratiche p
                 LEFT JOIN clienti c ON c.id = p.cliente_id
-                WHERE (p.titolo LIKE :term OR p.tracking_code LIKE :term OR $clientDisplayExpression LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (p.titolo LIKE " . $makeParam('term', $likeTerm) . " OR p.tracking_code LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $praticaSql .= ' AND c.email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $praticaSql .= ' AND c.email = ' . $makeParam('user_email', $userEmail);
             }
             $praticaSql .= ' ORDER BY relevance_score DESC, p.data_aggiornamento DESC LIMIT :limit';
             $stmt = $pdo->prepare($praticaSql);
@@ -463,18 +481,25 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && $hasClientScope && (empty($typeFilter) || in_array('contratto', $typeFilter, true)) && db_table_exists($pdo, 'energia_contratti')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $contrattiSql = "SELECT ec.id, ec.contract_code, ec.nominativo, ec.codice_fiscale, ec.email, ec.telefono, ec.fornitura, ec.stato, ec.updated_at,
                     CASE
-                        WHEN ec.contract_code LIKE :start OR ec.nominativo LIKE :start OR ec.email LIKE :start THEN 3
-                        WHEN ec.contract_code LIKE :term OR ec.nominativo LIKE :term OR ec.email LIKE :term OR ec.codice_fiscale LIKE :term THEN 2
+                        WHEN ec.contract_code LIKE " . $makeParam('start', $likeStart) . " OR ec.nominativo LIKE " . $makeParam('start', $likeStart) . " OR ec.email LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN ec.contract_code LIKE " . $makeParam('term', $likeTerm) . " OR ec.nominativo LIKE " . $makeParam('term', $likeTerm) . " OR ec.email LIKE " . $makeParam('term', $likeTerm) . " OR ec.codice_fiscale LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM energia_contratti ec
-                WHERE (ec.contract_code LIKE :term OR ec.nominativo LIKE :term OR ec.email LIKE :term OR ec.codice_fiscale LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (ec.contract_code LIKE " . $makeParam('term', $likeTerm) . " OR ec.nominativo LIKE " . $makeParam('term', $likeTerm) . " OR ec.email LIKE " . $makeParam('term', $likeTerm) . " OR ec.codice_fiscale LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $contrattiSql .= ' AND ec.email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $contrattiSql .= ' AND ec.email = ' . $makeParam('user_email', $userEmail);
             }
             $contrattiSql .= ' ORDER BY relevance_score DESC, ec.updated_at DESC LIMIT :limit';
             $stmt = $pdo->prepare($contrattiSql);
@@ -512,19 +537,29 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && (empty($typeFilter) || in_array('fattura', $typeFilter, true)) && db_table_exists($pdo, 'entrate_uscite')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $fattureSql = "SELECT eu.id, eu.descrizione, eu.riferimento, eu.tipo_movimento, eu.stato, eu.data_scadenza, eu.updated_at,
                     CASE
-                        WHEN eu.descrizione LIKE :start OR eu.riferimento LIKE :start THEN 3
-                        WHEN eu.descrizione LIKE :term OR eu.riferimento LIKE :term THEN 2
+                        WHEN eu.descrizione LIKE " . $makeParam('start', $likeStart) . " OR eu.riferimento LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN eu.descrizione LIKE " . $makeParam('term', $likeTerm) . " OR eu.riferimento LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM entrate_uscite eu
-                WHERE (eu.descrizione LIKE :term OR eu.riferimento LIKE :term)
+                WHERE (eu.descrizione LIKE " . $makeParam('term', $likeTerm) . " OR eu.riferimento LIKE " . $makeParam('term', $likeTerm) . ")
                 ORDER BY relevance_score DESC, eu.updated_at DESC
                 LIMIT :limit";
             $stmt = $pdo->prepare($fattureSql);
-            $stmt->bindValue(':term', $likeTerm, PDO::PARAM_STR);
-            $stmt->bindValue(':start', $likeStart, PDO::PARAM_STR);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_STR);
+            }
             $stmt->bindValue(':limit', $perTypeLimit, PDO::PARAM_INT);
             $stmt->execute();
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -557,21 +592,31 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeDocuments && (empty($typeFilter) || in_array('documento', $typeFilter, true)) && db_table_exists($pdo, 'documents')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $documentsSql = "SELECT d.id, d.titolo, d.descrizione, d.modulo, d.stato, d.updated_at,
                     $clientDisplayExpression AS cliente,
                     CASE
-                        WHEN d.titolo LIKE :start OR d.descrizione LIKE :start OR $clientDisplayExpression LIKE :start THEN 3
-                        WHEN d.titolo LIKE :term OR d.descrizione LIKE :term OR $clientDisplayExpression LIKE :term THEN 2
+                        WHEN d.titolo LIKE " . $makeParam('start', $likeStart) . " OR d.descrizione LIKE " . $makeParam('start', $likeStart) . " OR $clientDisplayExpression LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN d.titolo LIKE " . $makeParam('term', $likeTerm) . " OR d.descrizione LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM documents d
                 LEFT JOIN clienti c ON c.id = d.cliente_id
-                WHERE (d.titolo LIKE :term OR d.descrizione LIKE :term OR $clientDisplayExpression LIKE :term)
+                WHERE (d.titolo LIKE " . $makeParam('term', $likeTerm) . " OR d.descrizione LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . ")
                 ORDER BY relevance_score DESC, d.updated_at DESC
                 LIMIT :limit";
             $stmt = $pdo->prepare($documentsSql);
-            $stmt->bindValue(':term', $likeTerm, PDO::PARAM_STR);
-            $stmt->bindValue(':start', $likeStart, PDO::PARAM_STR);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_STR);
+            }
             $stmt->bindValue(':limit', $perTypeLimit, PDO::PARAM_INT);
             $stmt->execute();
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -601,19 +646,29 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canManageUsers && (empty($typeFilter) || in_array('utente', $typeFilter, true))) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $usersSql = "SELECT id, username, email, ruolo, nome, cognome, created_at,
                     CASE
-                        WHEN username LIKE :start OR email LIKE :start OR nome LIKE :start OR cognome LIKE :start THEN 3
-                        WHEN username LIKE :term OR email LIKE :term OR nome LIKE :term OR cognome LIKE :term THEN 2
+                        WHEN username LIKE " . $makeParam('start', $likeStart) . " OR email LIKE " . $makeParam('start', $likeStart) . " OR nome LIKE " . $makeParam('start', $likeStart) . " OR cognome LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN username LIKE " . $makeParam('term', $likeTerm) . " OR email LIKE " . $makeParam('term', $likeTerm) . " OR nome LIKE " . $makeParam('term', $likeTerm) . " OR cognome LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM users
-                WHERE (username LIKE :term OR email LIKE :term OR nome LIKE :term OR cognome LIKE :term)
+                WHERE (username LIKE " . $makeParam('term', $likeTerm) . " OR email LIKE " . $makeParam('term', $likeTerm) . " OR nome LIKE " . $makeParam('term', $likeTerm) . " OR cognome LIKE " . $makeParam('term', $likeTerm) . ")
                 ORDER BY relevance_score DESC, created_at DESC
                 LIMIT :limit";
             $stmt = $pdo->prepare($usersSql);
-            $stmt->bindValue(':term', $likeTerm, PDO::PARAM_STR);
-            $stmt->bindValue(':start', $likeStart, PDO::PARAM_STR);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_STR);
+            }
             $stmt->bindValue(':limit', $perTypeLimit, PDO::PARAM_INT);
             $stmt->execute();
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -643,18 +698,25 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeTickets && $hasClientScope && (empty($typeFilter) || in_array('ticket', $typeFilter, true)) && db_table_exists($pdo, 'tickets')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $ticketsSql = "SELECT id, codice, subject, status, customer_name, customer_email, updated_at,
                     CASE
-                        WHEN codice LIKE :start OR subject LIKE :start OR customer_name LIKE :start OR customer_email LIKE :start THEN 3
-                        WHEN codice LIKE :term OR subject LIKE :term OR customer_name LIKE :term OR customer_email LIKE :term THEN 2
+                        WHEN codice LIKE " . $makeParam('start', $likeStart) . " OR subject LIKE " . $makeParam('start', $likeStart) . " OR customer_name LIKE " . $makeParam('start', $likeStart) . " OR customer_email LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN codice LIKE " . $makeParam('term', $likeTerm) . " OR subject LIKE " . $makeParam('term', $likeTerm) . " OR customer_name LIKE " . $makeParam('term', $likeTerm) . " OR customer_email LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM tickets
-                WHERE (codice LIKE :term OR subject LIKE :term OR customer_name LIKE :term OR customer_email LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (codice LIKE " . $makeParam('term', $likeTerm) . " OR subject LIKE " . $makeParam('term', $likeTerm) . " OR customer_name LIKE " . $makeParam('term', $likeTerm) . " OR customer_email LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $ticketsSql .= ' AND customer_email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $ticketsSql .= ' AND customer_email = ' . $makeParam('user_email', $userEmail);
             }
             $ticketsSql .= ' ORDER BY relevance_score DESC, updated_at DESC LIMIT :limit';
             $stmt = $pdo->prepare($ticketsSql);
@@ -695,25 +757,37 @@ function global_search(PDO $pdo, string $term, array $options = []): array
     if ($canSeeNotifications && (empty($typeFilter) || in_array('notifica', $typeFilter, true)) && db_table_exists($pdo, 'notifications')) {
         try {
             $canViewBug = notification_can_view_bug($role) ? 1 : 0;
-            $filters = '((user_id = :user_id) OR (user_id IS NULL AND role = :role))';
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
+            $filters = '((user_id = ' . $makeParam('user_id', (string) $userId) . ') OR (user_id IS NULL AND role = ' . $makeParam('role', (string) $role) . '))';
             if (!$canViewBug) {
                 $filters .= " AND type <> 'bug'";
             }
             $notifSql = "SELECT id, title, message, type, created_at,
                     CASE
-                        WHEN title LIKE :start OR message LIKE :start THEN 3
-                        WHEN title LIKE :term OR message LIKE :term THEN 2
+                        WHEN title LIKE " . $makeParam('start', $likeStart) . " OR message LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN title LIKE " . $makeParam('term', $likeTerm) . " OR message LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM notifications
-                WHERE {$filters} AND (title LIKE :term OR message LIKE :term)
+                WHERE {$filters} AND (title LIKE " . $makeParam('term', $likeTerm) . " OR message LIKE " . $makeParam('term', $likeTerm) . ")
                 ORDER BY relevance_score DESC, created_at DESC
                 LIMIT :limit";
             $stmt = $pdo->prepare($notifSql);
-            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
-            $stmt->bindValue(':role', $role, PDO::PARAM_STR);
-            $stmt->bindValue(':term', $likeTerm, PDO::PARAM_STR);
-            $stmt->bindValue(':start', $likeStart, PDO::PARAM_STR);
+            foreach ($params as $key => $value) {
+                if (str_starts_with($key, ':user_id')) {
+                    $stmt->bindValue($key, (int) $value, PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue($key, $value, PDO::PARAM_STR);
+                }
+            }
             $stmt->bindValue(':limit', min(5, $perTypeLimit), PDO::PARAM_INT);
             $stmt->execute();
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -738,19 +812,29 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeEmailMarketing && (empty($typeFilter) || in_array('campagna_email', $typeFilter, true)) && db_table_exists($pdo, 'email_campaigns')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $campaignSql = "SELECT id, name, subject, status, scheduled_at, updated_at,
                     CASE
-                        WHEN name LIKE :start OR subject LIKE :start THEN 3
-                        WHEN name LIKE :term OR subject LIKE :term THEN 2
+                        WHEN name LIKE " . $makeParam('start', $likeStart) . " OR subject LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN name LIKE " . $makeParam('term', $likeTerm) . " OR subject LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM email_campaigns
-                WHERE (name LIKE :term OR subject LIKE :term)
+                WHERE (name LIKE " . $makeParam('term', $likeTerm) . " OR subject LIKE " . $makeParam('term', $likeTerm) . ")
                 ORDER BY relevance_score DESC, updated_at DESC
                 LIMIT :limit";
             $stmt = $pdo->prepare($campaignSql);
-            $stmt->bindValue(':term', $likeTerm, PDO::PARAM_STR);
-            $stmt->bindValue(':start', $likeStart, PDO::PARAM_STR);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_STR);
+            }
             $stmt->bindValue(':limit', min(8, $perTypeLimit), PDO::PARAM_INT);
             $stmt->execute();
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -783,19 +867,29 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeEmailMarketing && (empty($typeFilter) || in_array('iscritto_email', $typeFilter, true)) && db_table_exists($pdo, 'email_subscribers')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $subscriberSql = "SELECT id, email, first_name, last_name, status, created_at,
                     CASE
-                        WHEN email LIKE :start OR first_name LIKE :start OR last_name LIKE :start THEN 3
-                        WHEN email LIKE :term OR first_name LIKE :term OR last_name LIKE :term THEN 2
+                        WHEN email LIKE " . $makeParam('start', $likeStart) . " OR first_name LIKE " . $makeParam('start', $likeStart) . " OR last_name LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN email LIKE " . $makeParam('term', $likeTerm) . " OR first_name LIKE " . $makeParam('term', $likeTerm) . " OR last_name LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM email_subscribers
-                WHERE (email LIKE :term OR first_name LIKE :term OR last_name LIKE :term)
+                WHERE (email LIKE " . $makeParam('term', $likeTerm) . " OR first_name LIKE " . $makeParam('term', $likeTerm) . " OR last_name LIKE " . $makeParam('term', $likeTerm) . ")
                 ORDER BY relevance_score DESC, created_at DESC
                 LIMIT :limit";
             $stmt = $pdo->prepare($subscriberSql);
-            $stmt->bindValue(':term', $likeTerm, PDO::PARAM_STR);
-            $stmt->bindValue(':start', $likeStart, PDO::PARAM_STR);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_STR);
+            }
             $stmt->bindValue(':limit', min(8, $perTypeLimit), PDO::PARAM_INT);
             $stmt->execute();
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -825,18 +919,25 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && $hasClientScope && (empty($typeFilter) || in_array('opportunita', $typeFilter, true)) && db_table_exists($pdo, 'opportunities')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $opSql = "SELECT id, code, status_code, category, customer_first_name, customer_last_name, customer_email, customer_phone, updated_at,
                     CASE
-                        WHEN code LIKE :start OR customer_first_name LIKE :start OR customer_last_name LIKE :start OR customer_email LIKE :start THEN 3
-                        WHEN code LIKE :term OR customer_first_name LIKE :term OR customer_last_name LIKE :term OR customer_email LIKE :term OR customer_phone LIKE :term THEN 2
+                        WHEN code LIKE " . $makeParam('start', $likeStart) . " OR customer_first_name LIKE " . $makeParam('start', $likeStart) . " OR customer_last_name LIKE " . $makeParam('start', $likeStart) . " OR customer_email LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN code LIKE " . $makeParam('term', $likeTerm) . " OR customer_first_name LIKE " . $makeParam('term', $likeTerm) . " OR customer_last_name LIKE " . $makeParam('term', $likeTerm) . " OR customer_email LIKE " . $makeParam('term', $likeTerm) . " OR customer_phone LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM opportunities
-                WHERE (code LIKE :term OR customer_first_name LIKE :term OR customer_last_name LIKE :term OR customer_email LIKE :term OR customer_phone LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (code LIKE " . $makeParam('term', $likeTerm) . " OR customer_first_name LIKE " . $makeParam('term', $likeTerm) . " OR customer_last_name LIKE " . $makeParam('term', $likeTerm) . " OR customer_email LIKE " . $makeParam('term', $likeTerm) . " OR customer_phone LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $opSql .= ' AND customer_email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $opSql .= ' AND customer_email = ' . $makeParam('user_email', $userEmail);
             }
             $opSql .= ' ORDER BY relevance_score DESC, updated_at DESC LIMIT :limit';
             $stmt = $pdo->prepare($opSql);
@@ -878,20 +979,27 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && $hasClientScope && (empty($typeFilter) || in_array('appuntamento', $typeFilter, true)) && db_table_exists($pdo, 'servizi_appuntamenti')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $appSql = "SELECT a.id, a.titolo, a.tipo_servizio, a.stato, a.data_inizio, a.updated_at,
                     $clientDisplayExpression AS cliente,
                     CASE
-                        WHEN a.titolo LIKE :start OR a.tipo_servizio LIKE :start OR $clientDisplayExpression LIKE :start THEN 3
-                        WHEN a.titolo LIKE :term OR a.tipo_servizio LIKE :term OR $clientDisplayExpression LIKE :term THEN 2
+                        WHEN a.titolo LIKE " . $makeParam('start', $likeStart) . " OR a.tipo_servizio LIKE " . $makeParam('start', $likeStart) . " OR $clientDisplayExpression LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN a.titolo LIKE " . $makeParam('term', $likeTerm) . " OR a.tipo_servizio LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM servizi_appuntamenti a
                 LEFT JOIN clienti c ON c.id = a.cliente_id
-                WHERE (a.titolo LIKE :term OR a.tipo_servizio LIKE :term OR $clientDisplayExpression LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (a.titolo LIKE " . $makeParam('term', $likeTerm) . " OR a.tipo_servizio LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $appSql .= ' AND c.email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $appSql .= ' AND c.email = ' . $makeParam('user_email', $userEmail);
             }
             $appSql .= ' ORDER BY relevance_score DESC, a.data_inizio DESC LIMIT :limit';
             $stmt = $pdo->prepare($appSql);
@@ -927,20 +1035,27 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && $hasClientScope && (empty($typeFilter) || in_array('aci', $typeFilter, true)) && db_table_exists($pdo, 'servizi_aci_pratiche')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $aciSql = "SELECT p.id, p.tipo_pratica, p.stato, p.targa, p.intestatario, p.protocollo, p.updated_at,
                     $clientDisplayExpression AS cliente,
                     CASE
-                        WHEN p.tipo_pratica LIKE :start OR p.targa LIKE :start OR p.intestatario LIKE :start OR p.protocollo LIKE :start OR $clientDisplayExpression LIKE :start THEN 3
-                        WHEN p.tipo_pratica LIKE :term OR p.targa LIKE :term OR p.intestatario LIKE :term OR p.protocollo LIKE :term OR $clientDisplayExpression LIKE :term THEN 2
+                        WHEN p.tipo_pratica LIKE " . $makeParam('start', $likeStart) . " OR p.targa LIKE " . $makeParam('start', $likeStart) . " OR p.intestatario LIKE " . $makeParam('start', $likeStart) . " OR p.protocollo LIKE " . $makeParam('start', $likeStart) . " OR $clientDisplayExpression LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN p.tipo_pratica LIKE " . $makeParam('term', $likeTerm) . " OR p.targa LIKE " . $makeParam('term', $likeTerm) . " OR p.intestatario LIKE " . $makeParam('term', $likeTerm) . " OR p.protocollo LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM servizi_aci_pratiche p
                 LEFT JOIN clienti c ON c.id = p.cliente_id
-                WHERE (p.tipo_pratica LIKE :term OR p.targa LIKE :term OR p.intestatario LIKE :term OR p.protocollo LIKE :term OR $clientDisplayExpression LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (p.tipo_pratica LIKE " . $makeParam('term', $likeTerm) . " OR p.targa LIKE " . $makeParam('term', $likeTerm) . " OR p.intestatario LIKE " . $makeParam('term', $likeTerm) . " OR p.protocollo LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $aciSql .= ' AND c.email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $aciSql .= ' AND c.email = ' . $makeParam('user_email', $userEmail);
             }
             $aciSql .= ' ORDER BY relevance_score DESC, p.updated_at DESC LIMIT :limit';
             $stmt = $pdo->prepare($aciSql);
@@ -977,20 +1092,27 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && $hasClientScope && (empty($typeFilter) || in_array('anpr', $typeFilter, true)) && db_table_exists($pdo, 'anpr_pratiche')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $anprSql = "SELECT a.id, a.pratica_code, a.tipo_pratica, a.stato, a.updated_at,
                     $clientDisplayExpression AS cliente,
                     CASE
-                        WHEN a.pratica_code LIKE :start OR a.tipo_pratica LIKE :start OR $clientDisplayExpression LIKE :start THEN 3
-                        WHEN a.pratica_code LIKE :term OR a.tipo_pratica LIKE :term OR $clientDisplayExpression LIKE :term THEN 2
+                        WHEN a.pratica_code LIKE " . $makeParam('start', $likeStart) . " OR a.tipo_pratica LIKE " . $makeParam('start', $likeStart) . " OR $clientDisplayExpression LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN a.pratica_code LIKE " . $makeParam('term', $likeTerm) . " OR a.tipo_pratica LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM anpr_pratiche a
                 LEFT JOIN clienti c ON c.id = a.cliente_id
-                WHERE (a.pratica_code LIKE :term OR a.tipo_pratica LIKE :term OR $clientDisplayExpression LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (a.pratica_code LIKE " . $makeParam('term', $likeTerm) . " OR a.tipo_pratica LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $anprSql .= ' AND c.email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $anprSql .= ' AND c.email = ' . $makeParam('user_email', $userEmail);
             }
             $anprSql .= ' ORDER BY relevance_score DESC, a.updated_at DESC LIMIT :limit';
             $stmt = $pdo->prepare($anprSql);
@@ -1026,18 +1148,25 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && $hasClientScope && (empty($typeFilter) || in_array('cie', $typeFilter, true)) && db_table_exists($pdo, 'cie_prenotazioni')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $cieSql = "SELECT c.id, c.prenotazione_code, c.cittadino_nome, c.cittadino_cognome, c.cittadino_email, c.stato, c.updated_at,
                     CASE
-                        WHEN c.prenotazione_code LIKE :start OR c.cittadino_nome LIKE :start OR c.cittadino_cognome LIKE :start OR c.cittadino_email LIKE :start THEN 3
-                        WHEN c.prenotazione_code LIKE :term OR c.cittadino_nome LIKE :term OR c.cittadino_cognome LIKE :term OR c.cittadino_email LIKE :term THEN 2
+                        WHEN c.prenotazione_code LIKE " . $makeParam('start', $likeStart) . " OR c.cittadino_nome LIKE " . $makeParam('start', $likeStart) . " OR c.cittadino_cognome LIKE " . $makeParam('start', $likeStart) . " OR c.cittadino_email LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN c.prenotazione_code LIKE " . $makeParam('term', $likeTerm) . " OR c.cittadino_nome LIKE " . $makeParam('term', $likeTerm) . " OR c.cittadino_cognome LIKE " . $makeParam('term', $likeTerm) . " OR c.cittadino_email LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM cie_prenotazioni c
-                WHERE (c.prenotazione_code LIKE :term OR c.cittadino_nome LIKE :term OR c.cittadino_cognome LIKE :term OR c.cittadino_email LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (c.prenotazione_code LIKE " . $makeParam('term', $likeTerm) . " OR c.cittadino_nome LIKE " . $makeParam('term', $likeTerm) . " OR c.cittadino_cognome LIKE " . $makeParam('term', $likeTerm) . " OR c.cittadino_email LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $cieSql .= ' AND (c.cittadino_email = :user_email)';
-                $params[':user_email'] = $userEmail;
+                $cieSql .= ' AND (c.cittadino_email = ' . $makeParam('user_email', $userEmail) . ')';
             }
             $cieSql .= ' ORDER BY relevance_score DESC, c.updated_at DESC LIMIT :limit';
             $stmt = $pdo->prepare($cieSql);
@@ -1124,20 +1253,27 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && $hasClientScope && (empty($typeFilter) || in_array('fedelta', $typeFilter, true)) && db_table_exists($pdo, 'fedelta_movimenti')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $fedeltaSql = "SELECT f.id, f.tipo_movimento, f.descrizione, f.punti, f.data_movimento,
                     $clientDisplayExpression AS cliente,
                     CASE
-                        WHEN f.descrizione LIKE :start OR f.tipo_movimento LIKE :start OR $clientDisplayExpression LIKE :start THEN 3
-                        WHEN f.descrizione LIKE :term OR f.tipo_movimento LIKE :term OR $clientDisplayExpression LIKE :term THEN 2
+                        WHEN f.descrizione LIKE " . $makeParam('start', $likeStart) . " OR f.tipo_movimento LIKE " . $makeParam('start', $likeStart) . " OR $clientDisplayExpression LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN f.descrizione LIKE " . $makeParam('term', $likeTerm) . " OR f.tipo_movimento LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM fedelta_movimenti f
                 LEFT JOIN clienti c ON c.id = f.cliente_id
-                WHERE (f.descrizione LIKE :term OR f.tipo_movimento LIKE :term OR $clientDisplayExpression LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (f.descrizione LIKE " . $makeParam('term', $likeTerm) . " OR f.tipo_movimento LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $fedeltaSql .= ' AND c.email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $fedeltaSql .= ' AND c.email = ' . $makeParam('user_email', $userEmail);
             }
             $fedeltaSql .= ' ORDER BY relevance_score DESC, f.data_movimento DESC LIMIT :limit';
             $stmt = $pdo->prepare($fedeltaSql);
@@ -1173,20 +1309,27 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && $hasClientScope && (empty($typeFilter) || in_array('curriculum', $typeFilter, true)) && db_table_exists($pdo, 'curriculum')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $cvSql = "SELECT cv.id, cv.titolo, cv.status, cv.updated_at,
                     $clientDisplayExpression AS cliente,
                     CASE
-                        WHEN cv.titolo LIKE :start OR $clientDisplayExpression LIKE :start THEN 3
-                        WHEN cv.titolo LIKE :term OR $clientDisplayExpression LIKE :term THEN 2
+                        WHEN cv.titolo LIKE " . $makeParam('start', $likeStart) . " OR $clientDisplayExpression LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN cv.titolo LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM curriculum cv
                 LEFT JOIN clienti c ON c.id = cv.cliente_id
-                WHERE (cv.titolo LIKE :term OR $clientDisplayExpression LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (cv.titolo LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $cvSql .= ' AND c.email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $cvSql .= ' AND c.email = ' . $makeParam('user_email', $userEmail);
             }
             $cvSql .= ' ORDER BY relevance_score DESC, cv.updated_at DESC LIMIT :limit';
             $stmt = $pdo->prepare($cvSql);
@@ -1221,20 +1364,27 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && $hasClientScope && (empty($typeFilter) || in_array('spedizione', $typeFilter, true)) && db_table_exists($pdo, 'spedizioni')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $spedSql = "SELECT s.id, s.tipo_spedizione, s.destinatario, s.tracking_number, s.stato, s.updated_at, s.cliente_id,
                     $clientDisplayExpression AS cliente,
                     CASE
-                        WHEN s.destinatario LIKE :start OR s.tracking_number LIKE :start OR s.tipo_spedizione LIKE :start OR $clientDisplayExpression LIKE :start THEN 3
-                        WHEN s.destinatario LIKE :term OR s.tracking_number LIKE :term OR s.tipo_spedizione LIKE :term OR $clientDisplayExpression LIKE :term THEN 2
+                        WHEN s.destinatario LIKE " . $makeParam('start', $likeStart) . " OR s.tracking_number LIKE " . $makeParam('start', $likeStart) . " OR s.tipo_spedizione LIKE " . $makeParam('start', $likeStart) . " OR $clientDisplayExpression LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN s.destinatario LIKE " . $makeParam('term', $likeTerm) . " OR s.tracking_number LIKE " . $makeParam('term', $likeTerm) . " OR s.tipo_spedizione LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM spedizioni s
                 LEFT JOIN clienti c ON c.id = s.cliente_id
-                WHERE (s.destinatario LIKE :term OR s.tracking_number LIKE :term OR s.tipo_spedizione LIKE :term OR $clientDisplayExpression LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (s.destinatario LIKE " . $makeParam('term', $likeTerm) . " OR s.tracking_number LIKE " . $makeParam('term', $likeTerm) . " OR s.tipo_spedizione LIKE " . $makeParam('term', $likeTerm) . " OR $clientDisplayExpression LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $spedSql .= ' AND c.email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $spedSql .= ' AND c.email = ' . $makeParam('user_email', $userEmail);
             }
             $spedSql .= ' ORDER BY relevance_score DESC, s.updated_at DESC LIMIT :limit';
             $stmt = $pdo->prepare($spedSql);
@@ -1270,18 +1420,25 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && $hasClientScope && (empty($typeFilter) || in_array('brt_spedizione', $typeFilter, true)) && db_table_exists($pdo, 'brt_shipments')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $brtSql = "SELECT id, alphanumeric_sender_reference, numeric_sender_reference, consignee_name, consignee_email, status, updated_at,
                     CASE
-                        WHEN alphanumeric_sender_reference LIKE :start OR consignee_name LIKE :start OR consignee_email LIKE :start THEN 3
-                        WHEN alphanumeric_sender_reference LIKE :term OR consignee_name LIKE :term OR consignee_email LIKE :term THEN 2
+                        WHEN alphanumeric_sender_reference LIKE " . $makeParam('start', $likeStart) . " OR consignee_name LIKE " . $makeParam('start', $likeStart) . " OR consignee_email LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN alphanumeric_sender_reference LIKE " . $makeParam('term', $likeTerm) . " OR consignee_name LIKE " . $makeParam('term', $likeTerm) . " OR consignee_email LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM brt_shipments
-                WHERE (alphanumeric_sender_reference LIKE :term OR consignee_name LIKE :term OR consignee_email LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (alphanumeric_sender_reference LIKE " . $makeParam('term', $likeTerm) . " OR consignee_name LIKE " . $makeParam('term', $likeTerm) . " OR consignee_email LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $brtSql .= ' AND consignee_email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $brtSql .= ' AND consignee_email = ' . $makeParam('user_email', $userEmail);
             }
             $brtSql .= ' ORDER BY relevance_score DESC, updated_at DESC LIMIT :limit';
             $stmt = $pdo->prepare($brtSql);
@@ -1318,19 +1475,29 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && (empty($typeFilter) || in_array('brt_manifest', $typeFilter, true)) && db_table_exists($pdo, 'brt_manifests')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $manifestSql = "SELECT id, reference, generated_at, shipments_count,
                     CASE
-                        WHEN reference LIKE :start THEN 3
-                        WHEN reference LIKE :term THEN 2
+                        WHEN reference LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN reference LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM brt_manifests
-                WHERE reference LIKE :term
+                WHERE reference LIKE " . $makeParam('term', $likeTerm) . "
                 ORDER BY relevance_score DESC, generated_at DESC
                 LIMIT :limit";
             $stmt = $pdo->prepare($manifestSql);
-            $stmt->bindValue(':term', $likeTerm, PDO::PARAM_STR);
-            $stmt->bindValue(':start', $likeStart, PDO::PARAM_STR);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_STR);
+            }
             $stmt->bindValue(':limit', min(8, $perTypeLimit), PDO::PARAM_INT);
             $stmt->execute();
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -1359,18 +1526,25 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && $hasClientScope && (empty($typeFilter) || in_array('posta', $typeFilter, true)) && db_table_exists($pdo, 'posta_telematica_messages')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $postaSql = "SELECT id, recipient_email, subject, status, created_at,
                     CASE
-                        WHEN recipient_email LIKE :start OR subject LIKE :start THEN 3
-                        WHEN recipient_email LIKE :term OR subject LIKE :term THEN 2
+                        WHEN recipient_email LIKE " . $makeParam('start', $likeStart) . " OR subject LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN recipient_email LIKE " . $makeParam('term', $likeTerm) . " OR subject LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM posta_telematica_messages
-                WHERE (recipient_email LIKE :term OR subject LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (recipient_email LIKE " . $makeParam('term', $likeTerm) . " OR subject LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $postaSql .= ' AND recipient_email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $postaSql .= ' AND recipient_email = ' . $makeParam('user_email', $userEmail);
             }
             $postaSql .= ' ORDER BY relevance_score DESC, created_at DESC LIMIT :limit';
             $stmt = $pdo->prepare($postaSql);
@@ -1405,19 +1579,29 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && $hasClientScope && (empty($typeFilter) || in_array('telegramma', $typeFilter, true)) && db_table_exists($pdo, 'servizi_telegrammi')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $telegrammiSql = "SELECT id, telegramma_id, riferimento, stato, created_at,
                     CASE
-                        WHEN telegramma_id LIKE :start OR riferimento LIKE :start THEN 3
-                        WHEN telegramma_id LIKE :term OR riferimento LIKE :term THEN 2
+                        WHEN telegramma_id LIKE " . $makeParam('start', $likeStart) . " OR riferimento LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN telegramma_id LIKE " . $makeParam('term', $likeTerm) . " OR riferimento LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM servizi_telegrammi
-                WHERE (telegramma_id LIKE :term OR riferimento LIKE :term)
+                WHERE (telegramma_id LIKE " . $makeParam('term', $likeTerm) . " OR riferimento LIKE " . $makeParam('term', $likeTerm) . ")
                 ORDER BY relevance_score DESC, created_at DESC
                 LIMIT :limit";
             $stmt = $pdo->prepare($telegrammiSql);
-            $stmt->bindValue(':term', $likeTerm, PDO::PARAM_STR);
-            $stmt->bindValue(':start', $likeStart, PDO::PARAM_STR);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_STR);
+            }
             $stmt->bindValue(':limit', $perTypeLimit, PDO::PARAM_INT);
             $stmt->execute();
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -1446,18 +1630,25 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && (empty($typeFilter) || in_array('visura', $typeFilter, true)) && db_table_exists($pdo, 'servizi_visure_cr_pratiche')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $visuraSql = "SELECT id, tipo_visura, stato, ragione_sociale, email, email_aziendale, updated_at,
                     CASE
-                        WHEN ragione_sociale LIKE :start OR email LIKE :start OR email_aziendale LIKE :start THEN 3
-                        WHEN ragione_sociale LIKE :term OR email LIKE :term OR email_aziendale LIKE :term THEN 2
+                        WHEN ragione_sociale LIKE " . $makeParam('start', $likeStart) . " OR email LIKE " . $makeParam('start', $likeStart) . " OR email_aziendale LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN ragione_sociale LIKE " . $makeParam('term', $likeTerm) . " OR email LIKE " . $makeParam('term', $likeTerm) . " OR email_aziendale LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM servizi_visure_cr_pratiche
-                WHERE (ragione_sociale LIKE :term OR email LIKE :term OR email_aziendale LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (ragione_sociale LIKE " . $makeParam('term', $likeTerm) . " OR email LIKE " . $makeParam('term', $likeTerm) . " OR email_aziendale LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $visuraSql .= ' AND (email = :user_email OR email_aziendale = :user_email)';
-                $params[':user_email'] = $userEmail;
+                $visuraSql .= ' AND (email = ' . $makeParam('user_email', $userEmail) . ' OR email_aziendale = ' . $makeParam('user_email', $userEmail) . ')';
             }
             $visuraSql .= ' ORDER BY relevance_score DESC, updated_at DESC LIMIT :limit';
             $stmt = $pdo->prepare($visuraSql);
@@ -1492,18 +1683,25 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && (empty($typeFilter) || in_array('pickup', $typeFilter, true)) && db_table_exists($pdo, 'pickup_packages')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $pickupSql = "SELECT id, tracking, customer_name, customer_email, status, created_at,
                     CASE
-                        WHEN tracking LIKE :start OR customer_name LIKE :start OR customer_email LIKE :start THEN 3
-                        WHEN tracking LIKE :term OR customer_name LIKE :term OR customer_email LIKE :term THEN 2
+                        WHEN tracking LIKE " . $makeParam('start', $likeStart) . " OR customer_name LIKE " . $makeParam('start', $likeStart) . " OR customer_email LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN tracking LIKE " . $makeParam('term', $likeTerm) . " OR customer_name LIKE " . $makeParam('term', $likeTerm) . " OR customer_email LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM pickup_packages
-                WHERE (tracking LIKE :term OR customer_name LIKE :term OR customer_email LIKE :term)";
-            $params = [':term' => $likeTerm, ':start' => $likeStart];
+                WHERE (tracking LIKE " . $makeParam('term', $likeTerm) . " OR customer_name LIKE " . $makeParam('term', $likeTerm) . " OR customer_email LIKE " . $makeParam('term', $likeTerm) . ")";
             if ($isClienteRole && $userEmail !== '') {
-                $pickupSql .= ' AND customer_email = :user_email';
-                $params[':user_email'] = $userEmail;
+                $pickupSql .= ' AND customer_email = ' . $makeParam('user_email', $userEmail);
             }
             $pickupSql .= ' ORDER BY relevance_score DESC, created_at DESC LIMIT :limit';
             $stmt = $pdo->prepare($pickupSql);
@@ -1539,19 +1737,29 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && (empty($typeFilter) || in_array('pickup_report', $typeFilter, true)) && db_table_exists($pdo, 'pickup_customer_reports')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $reportSql = "SELECT id, tracking_code, status, created_at,
                     CASE
-                        WHEN tracking_code LIKE :start THEN 3
-                        WHEN tracking_code LIKE :term THEN 2
+                        WHEN tracking_code LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN tracking_code LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM pickup_customer_reports
-                WHERE tracking_code LIKE :term
+                WHERE tracking_code LIKE " . $makeParam('term', $likeTerm) . "
                 ORDER BY relevance_score DESC, created_at DESC
                 LIMIT :limit";
             $stmt = $pdo->prepare($reportSql);
-            $stmt->bindValue(':term', $likeTerm, PDO::PARAM_STR);
-            $stmt->bindValue(':start', $likeStart, PDO::PARAM_STR);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_STR);
+            }
             $stmt->bindValue(':limit', min(8, $perTypeLimit), PDO::PARAM_INT);
             $stmt->execute();
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -1577,19 +1785,29 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeServices && (empty($typeFilter) || in_array('iliad', $typeFilter, true)) && db_table_exists($pdo, 'iliad_credentials')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $iliadSql = "SELECT id, fibra_id, mobile_id, created_at,
                     CASE
-                        WHEN fibra_id LIKE :start OR mobile_id LIKE :start THEN 3
-                        WHEN fibra_id LIKE :term OR mobile_id LIKE :term THEN 2
+                        WHEN fibra_id LIKE " . $makeParam('start', $likeStart) . " OR mobile_id LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN fibra_id LIKE " . $makeParam('term', $likeTerm) . " OR mobile_id LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM iliad_credentials
-                WHERE (fibra_id LIKE :term OR mobile_id LIKE :term)
+                WHERE (fibra_id LIKE " . $makeParam('term', $likeTerm) . " OR mobile_id LIKE " . $makeParam('term', $likeTerm) . ")
                 ORDER BY relevance_score DESC, created_at DESC
                 LIMIT :limit";
             $stmt = $pdo->prepare($iliadSql);
-            $stmt->bindValue(':term', $likeTerm, PDO::PARAM_STR);
-            $stmt->bindValue(':start', $likeStart, PDO::PARAM_STR);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_STR);
+            }
             $stmt->bindValue(':limit', min(8, $perTypeLimit), PDO::PARAM_INT);
             $stmt->execute();
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -1619,19 +1837,29 @@ function global_search(PDO $pdo, string $term, array $options = []): array
 
     if ($canSeeReports && (empty($typeFilter) || in_array('report', $typeFilter, true)) && db_table_exists($pdo, 'daily_financial_reports')) {
         try {
+            $params = [];
+            $paramIndex = 0;
+            $makeParam = static function (string $prefix, string $value) use (&$params, &$paramIndex): string {
+                $paramIndex++;
+                $name = ':' . $prefix . $paramIndex;
+                $params[$name] = $value;
+                return $name;
+            };
+
             $reportSql = "SELECT id, report_date, total_entrate, total_uscite, saldo, created_at,
                     CASE
-                        WHEN report_date LIKE :start THEN 3
-                        WHEN report_date LIKE :term THEN 2
+                        WHEN report_date LIKE " . $makeParam('start', $likeStart) . " THEN 3
+                        WHEN report_date LIKE " . $makeParam('term', $likeTerm) . " THEN 2
                         ELSE 1
                     END AS relevance_score
                 FROM daily_financial_reports
-                WHERE report_date LIKE :term
+                WHERE report_date LIKE " . $makeParam('term', $likeTerm) . "
                 ORDER BY report_date DESC
                 LIMIT :limit";
             $stmt = $pdo->prepare($reportSql);
-            $stmt->bindValue(':term', $likeTerm, PDO::PARAM_STR);
-            $stmt->bindValue(':start', $likeStart, PDO::PARAM_STR);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_STR);
+            }
             $stmt->bindValue(':limit', min(8, $perTypeLimit), PDO::PARAM_INT);
             $stmt->execute();
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
