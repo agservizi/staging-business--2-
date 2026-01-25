@@ -262,23 +262,16 @@ if ($role === 'Collaboratore') {
                         <span class="topbar-btn-label"><?php echo sanitize_output($username); ?></span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end topbar-dropdown">
-        } catch (error) {
-            console.warn('Impossibile segnare le notifiche come lette', error);
-        }
-    };
-
-    // On page load, if localStorage says hidden, hide immediately (best-effort)
-    try {
-        if (localStorage.getItem('collab_notifications_hidden') === '1') {
-            hideBadge();
-        }
-    } catch (e) {}
-
-    if (markReadButton) {
-        markReadButton.addEventListener('click', () => {
-            hideBadge();
-            markAsRead();
-        });
-    }
-})();
-</script>
+                        <li class="dropdown-header">
+                            <span class="text-muted small">Ruolo</span>
+                            <div class="fw-semibold text-capitalize"><?php echo sanitize_output($role); ?></div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="<?php echo base_url('modules/impostazioni/profile.php'); ?>"><i class="fa-solid fa-id-badge me-2"></i>Profilo</a></li>
+                        <li><a class="dropdown-item" href="<?php echo base_url('logout.php'); ?>"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
