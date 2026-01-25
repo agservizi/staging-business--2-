@@ -274,7 +274,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <span class="text-warning text-uppercase fw-semibold"><?php echo sanitize_output($notification['channel']); ?></span>
                                         <span class="small"><?php echo sanitize_output(format_datetime_locale($notification['created_at'] ?? '')); ?></span>
                                     </div>
-                                    <div class="small text-secondary">Stato: <?php echo sanitize_output(ucfirst($notification['status'] ?? '')); ?></div>
+                                    <div class="small text-secondary">Stato: <?php echo sanitize_output(pickup_notification_status_label($notification['status'] ?? '')); ?></div>
                                     <div class="small mt-2 text-body"><?php echo nl2br(sanitize_output($notification['message'])); ?></div>
                                 </div>
                             <?php endforeach; ?>

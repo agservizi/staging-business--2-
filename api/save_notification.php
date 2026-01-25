@@ -46,7 +46,7 @@ if ($scope === 'role' && !current_user_can('Admin', 'Manager')) {
 try {
     $id = create_notification($pdo, [
         'type' => $type,
-        'title' => $title !== '' ? $title : ucfirst($type),
+        'title' => $title !== '' ? $title : notification_type_label($type),
         'message' => $message,
         'metadata' => $metadata,
         'scope' => $scope,

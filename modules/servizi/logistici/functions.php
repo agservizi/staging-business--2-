@@ -285,6 +285,33 @@ function pickup_status_label(string $status): string
     return PICKUP_STATUS_MAP[$status]['label'] ?? ucfirst(str_replace('_', ' ', $status));
 }
 
+function pickup_notification_status_label(?string $status): string
+{
+    $value = strtolower(trim((string) $status));
+    if ($value === '') {
+        return '';
+    }
+
+    $map = [
+        'inviata' => 'Inviata',
+        'sent' => 'Inviata',
+        'manuale' => 'Manuale',
+        'errore' => 'Errore',
+        'error' => 'Errore',
+        'fallita' => 'Fallita',
+        'failed' => 'Fallita',
+        'pending' => 'In attesa',
+        'queued' => 'In coda',
+        'delivered' => 'Consegnata',
+        'read' => 'Letta',
+        'opened' => 'Aperta',
+        'clicked' => 'Cliccata',
+        'aggiornato' => 'Aggiornato',
+    ];
+
+    return $map[$value] ?? ucfirst(str_replace('_', ' ', $value));
+}
+
 function pickup_current_timestamp(): string
 {
     return (new \DateTimeImmutable('now'))->format('Y-m-d H:i:s');
@@ -2836,7 +2863,7 @@ function send_notification_whatsapp(string $phone, string $message): bool
     $response = curl_exec($ch);
     $error = curl_error($ch);
     $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    $ch = null;
 
     if ($response === false || $error !== '') {
         error_log('Invio WhatsApp fallito: ' . ($error !== '' ? $error : 'risposta vuota'));

@@ -271,7 +271,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 '<div class="list-group-item bg-transparent border-secondary-subtle text-body-secondary"><div class="d-flex justify-content-between"><span class="text-warning text-uppercase fw-semibold">%s</span><span class="small">%s</span></div><div class="small text-secondary">Stato: %s</div><div class="small mt-2 text-body">%s</div><div class="small mt-2 text-secondary">%s</div></div>',
                 sanitize_output(strtoupper($channel)),
                 sanitize_output(format_datetime_locale(date('Y-m-d H:i:s'))),
-                sanitize_output(ucfirst($notificationStatus)),
+                sanitize_output(pickup_notification_status_label($notificationStatus)),
                 nl2br(sanitize_output($message)),
                 sanitize_output('Destinatario: ' . ($meta['recipient'] ?? 'N/D'))
             );
@@ -800,7 +800,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <span class="text-warning text-uppercase fw-semibold"><?php echo sanitize_output($notification['channel']); ?></span>
                                         <span class="small"><?php echo sanitize_output(format_datetime_locale($notification['created_at'] ?? '')); ?></span>
                                     </div>
-                                    <div class="small text-secondary">Stato: <?php echo sanitize_output(ucfirst($notification['status'] ?? '')); ?></div>
+                                    <div class="small text-secondary">Stato: <?php echo sanitize_output(pickup_notification_status_label($notification['status'] ?? '')); ?></div>
                                     <div class="small text-secondary">Tracking #<?php echo sanitize_output($notification['tracking']); ?></div>
                                     <div class="small mt-2 text-body"><?php echo nl2br(sanitize_output($notification['message'])); ?></div>
                                 </div>

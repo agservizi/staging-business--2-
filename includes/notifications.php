@@ -14,6 +14,19 @@ function notification_type_map(): array
     ];
 }
 
+function notification_type_label(string $type): string
+{
+    $map = [
+        'info' => 'Informazione',
+        'success' => 'Successo',
+        'warning' => 'Avviso',
+        'error' => 'Errore',
+        'bug' => 'Bug',
+    ];
+
+    return $map[$type] ?? ucfirst($type);
+}
+
 function normalize_notification_type(?string $type): string
 {
     $value = strtolower(trim((string) $type));
@@ -55,7 +68,7 @@ function create_notification(PDO $pdo, array $payload, int $userId, string $role
 
     $title = trim((string) ($payload['title'] ?? ''));
     if ($title === '') {
-        $title = ucfirst($type);
+        $title = notification_type_label($type);
     }
     $message = trim((string) ($payload['message'] ?? ''));
     if ($message === '') {
