@@ -1,4 +1,30 @@
 /* Telegrammi create layout */
+
+/* Global scrollbar styling (Bootstrap-like) */
+html {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--ag-accent-rgb), 0.35) transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: rgba(var(--ag-accent-rgb), 0.35);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(var(--ag-accent-rgb), 0.55);
+}
 .telegrammi-hero {
     background: linear-gradient(135deg, rgba(var(--ag-accent-rgb), 0.08), rgba(15, 23, 42, 0.02));
     border: 1px solid rgba(var(--ag-accent-rgb), 0.14);
