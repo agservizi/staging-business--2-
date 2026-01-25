@@ -3,6 +3,7 @@ use App\Services\SettingsService;
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
+require_once __DIR__ . '/../../../includes/notifications.php';
 
 require_role('Admin', 'Operatore', 'Manager');
 $pageTitle = 'Nuovo movimento';
@@ -314,6 +315,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 		$paymentId = (int) $pdo->lastInsertId();
 		add_flash('success', 'Movimento registrato correttamente.');
+		$actorRole = (string) ($_SESSION['role'] ?? '');
+		$actorId = (int) ($_SESSION['user_id'] ?? 0);
+		$notification = [
+			'type' => 'success',
+			'title' => 'Nuovo movimento',
+			'message' => sprintf('Creato movimento #%d (%s).', $paymentId, $data['tipo_movimento']),
+			'metadata' => [
+				'entity' => 'entrate_uscite',
+				'id' => $paymentId,
+				'action' => 'create',
+			],
+		];
+		foreach (['Admin', 'Manager'] as $notifyRole) {
+			create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
+		}
 		header('Location: view.php?id=' . $paymentId);
 		exit;
 	}

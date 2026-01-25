@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
+require_once __DIR__ . '/../../../includes/notifications.php';
 
 require_role('Admin', 'Manager');
 
@@ -18,7 +19,7 @@ if ($id <= 0) {
 	exit;
 }
 
-$stmt = $pdo->prepare('SELECT allegato_path FROM entrate_uscite WHERE id = :id');
+$stmt = $pdo->prepare('SELECT allegato_path, tipo_movimento, descrizione FROM entrate_uscite WHERE id = :id');
 $stmt->execute([':id' => $id]);
 $pagamento = $stmt->fetch();
 
@@ -42,6 +43,22 @@ try {
 
 	$pdo->commit();
 	add_flash('success', 'Movimento eliminato correttamente.');
+	$actorRole = (string) ($_SESSION['role'] ?? '');
+	$actorId = (int) ($_SESSION['user_id'] ?? 0);
+	$notification = [
+		'type' => 'warning',
+		'title' => 'Movimento eliminato',
+		'message' => sprintf('Eliminato movimento #%d (%s).', $id, $pagamento['tipo_movimento'] ?? 'N/D'),
+		'metadata' => [
+			'entity' => 'entrate_uscite',
+			'id' => $id,
+			'action' => 'delete',
+			'descrizione' => $pagamento['descrizione'] ?? null,
+		],
+	];
+	foreach (['Admin', 'Manager'] as $notifyRole) {
+		create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
+	}
 } catch (Throwable $e) {
 	$pdo->rollBack();
 	error_log('Errore eliminazione movimento ID ' . $id . ': ' . $e->getMessage());

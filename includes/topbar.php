@@ -46,7 +46,12 @@ if ($role === 'Collaboratore') {
             if ($lastSeenValue) {
                 $decodedSeen = json_decode((string) $lastSeenValue, true);
                 if (is_array($decodedSeen)) {
-                    $collaboratorNotificationsLastStatusSeenAt = isset($decodedSeen['last_status_at']) ? strtotime((string) $decodedSeen['last_status_at']) ?: null : null;
+                    if (isset($decodedSeen['last_status_at'])) {
+                        $statusTimestamp = strtotime((string) $decodedSeen['last_status_at']);
+                        $collaboratorNotificationsLastStatusSeenAt = $statusTimestamp !== false ? $statusTimestamp : null;
+                    } else {
+                        $collaboratorNotificationsLastStatusSeenAt = null;
+                    }
                     $collaboratorNotificationsLastTicketSeenId = isset($decodedSeen['last_ticket_message_id']) ? (int) $decodedSeen['last_ticket_message_id'] : 0;
                 }
             }
@@ -209,60 +214,22 @@ if ($role === 'Collaboratore') {
             </div>
 
             <div class="topbar-actions">
-                <?php if ($role === 'Collaboratore'): ?>
-                    <div class="dropdown me-1">
-                        <button class="btn topbar-btn topbar-btn-icon topbar-btn-icon-compact position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifiche" id="collab-notifications-toggle">
-                            <i class="fa-solid fa-bell" aria-hidden="true"></i>
-                            <?php if ($collaboratorNotificationCount > 0): ?>
-                                <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle" id="collab-notifications-count" aria-label="<?php echo (int) $collaboratorNotificationCount; ?> notifiche"><?php echo (int) $collaboratorNotificationCount; ?></span>
-                                <script>try { localStorage.removeItem('collab_notifications_hidden'); document.cookie = 'collab_notifications_hidden=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax'; } catch (e) {}</script>
-                            <?php endif; ?>
-                        </button>
-                        <div class="dropdown-menu dropdown-menu-end topbar-dropdown" style="min-width: 360px;">
-                            <div class="dropdown-header">
-                                <div class="fw-semibold">Notifiche</div>
-                                <p class="text-muted small mb-0">Cambi di stato (admin) e risposte ticket (ultimi 30 giorni).</p>
-                                <button class="btn btn-sm btn-outline-secondary mt-2" type="button" id="collab-notifications-read">Segna come lette</button>
-                            </div>
-                                                    <script>
-                                                    window.collabNotificationsMeta = {
-                                                        lastStatusSeenAt: <?php echo $collaboratorNotificationsLastStatusSeenAt !== null ? (int) $collaboratorNotificationsLastStatusSeenAt : 'null'; ?>,
-                                                        lastTicketSeenId: <?php echo (int) $collaboratorNotificationsLastTicketSeenId; ?>,
-                                                        latestStatusInBatch: <?php echo $collaboratorNotificationsLatestStatusInBatch ? (int) strtotime($collaboratorNotificationsLatestStatusInBatch) : 'null'; ?>,
-                                                        latestTicketIdInBatch: <?php echo (int) $collaboratorNotificationsLatestTicketIdInBatch; ?>
-                                                    };
-                                                    </script>
-                            <?php if ($collaboratorNotifications): ?>
-                                <?php foreach ($collaboratorNotifications as $notification): ?>
-                                    <?php
-                                        $isTicket = ($notification['type'] ?? '') === 'ticket';
-                                        $iconClass = $isTicket ? 'fa-ticket' : 'fa-arrow-right-arrow-left';
-                                        $iconTone = $isTicket ? 'text-info' : 'text-primary';
-                                        $timestamp = $notification['timestamp'] ?? null;
-                                        $dateLabel = $timestamp ? format_datetime_locale($timestamp) : '';
-                                    ?>
-                                    <a class="dropdown-item" href="<?php echo sanitize_output($notification['url']); ?>">
-                                        <div class="d-flex align-items-start gap-3">
-                                            <div class="<?php echo $iconTone; ?>" aria-hidden="true">
-                                                <i class="fa-solid <?php echo $iconClass; ?>"></i>
-                                            </div>
-                                            <div class="flex-grow-1">
-                                                <div class="fw-semibold text-truncate"><?php echo sanitize_output($notification['title']); ?></div>
-                                                <div class="small text-muted text-truncate">
-                                                    <?php echo sanitize_output($notification['subtitle']); ?><?php echo $dateLabel !== '' ? ' · ' . sanitize_output($dateLabel) : ''; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </a>
-                                <?php endforeach; ?>
-                            <?php elseif ($collaboratorNotificationsError): ?>
-                                <p class="dropdown-item-text text-danger small mb-0 px-3">Errore nel caricare le notifiche.</p>
-                            <?php else: ?>
-                                <p class="dropdown-item-text text-muted small mb-0 px-3">Nessuna notifica recente.</p>
-                            <?php endif; ?>
+                <div class="dropdown me-1">
+                    <button class="btn topbar-btn topbar-btn-icon topbar-btn-icon-compact position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifiche" id="notificationsToggle">
+                        <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                        <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle d-none" id="notificationsBadge" aria-label="Notifiche non lette"></span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end notifications-panel" id="notificationsPanel">
+                        <div class="notifications-header">
+                            <div class="fw-semibold">Notifiche</div>
+                            <button class="btn btn-sm btn-outline-secondary" type="button" id="notificationsMarkAll">Segna tutte come lette</button>
+                        </div>
+                        <div class="notifications-list" id="notificationsList"></div>
+                        <div class="notifications-footer">
+                            <button class="btn btn-sm btn-outline-primary w-100" type="button" id="notificationsLoadMore">Carica altre</button>
                         </div>
                     </div>
-                <?php endif; ?>
+                </div>
                 <?php if ($canSeeDocumentActions): ?>
                     <div class="topbar-quick-actions d-none d-md-flex">
                         <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/servizi/entrate-uscite/create.php'); ?>" aria-label="Registra una nuova entrata o uscita" title="Registra una nuova entrata o uscita" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Registra una nuova entrata o uscita">
@@ -295,74 +262,6 @@ if ($role === 'Collaboratore') {
                         <span class="topbar-btn-label"><?php echo sanitize_output($username); ?></span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end topbar-dropdown">
-                        <li class="dropdown-header">
-                            <span class="text-muted small">Ruolo</span>
-                            <div class="fw-semibold text-capitalize"><?php echo sanitize_output($role); ?></div>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="<?php echo base_url('modules/impostazioni/profile.php'); ?>"><i class="fa-solid fa-id-badge me-2"></i>Profilo</a></li>
-                        <li><a class="dropdown-item" href="<?php echo base_url('logout.php'); ?>"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-</header>
-
-<script>
-(() => {
-    const markReadButton = document.getElementById('collab-notifications-read');
-    const badge = document.getElementById('collab-notifications-count');
-    const csrf = '<?php echo sanitize_output(csrf_token()); ?>';
-    const endpoint = '<?php echo sanitize_output(asset('api/opportunities/collaborator/notifications-read.php')); ?>';
-    const meta = window.collabNotificationsMeta || {};
-
-    const persistSeenCookie = () => {
-        const payload = {
-            last_status_at: meta.latestStatusInBatch || Math.floor(Date.now() / 1000),
-            last_ticket_message_id: meta.latestTicketIdInBatch || 0,
-            last_read_at: Math.floor(Date.now() / 1000),
-        };
-        try {
-            const encoded = btoa(JSON.stringify(payload));
-            document.cookie = `collab_notifications_seen=${encoded}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
-        } catch (e) {
-            // ignore cookie failures
-        }
-    };
-
-    const hideBadge = () => {
-        if (badge) {
-            badge.classList.add('d-none');
-        }
-    };
-
-    const markAsRead = async () => {
-        try {
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrf,
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-                body: JSON.stringify({
-                    action: 'mark_read',
-                    last_status_at: meta.latestStatusInBatch || Math.floor(Date.now() / 1000),
-                    last_ticket_message_id: meta.latestTicketIdInBatch || 0,
-                }),
-            });
-            if (!response.ok) {
-                throw new Error('Errore di rete');
-            }
-            // Persist hide flag client-side to avoid badge flicker on next load
-            try {
-                localStorage.setItem('collab_notifications_hidden', '1');
-                document.cookie = 'collab_notifications_hidden=1; path=/; max-age=' + (60 * 60 * 24 * 7) + '; samesite=lax';
-            } catch (e) {}
-            persistSeenCookie();
-            hideBadge();
         } catch (error) {
             console.warn('Impossibile segnare le notifiche come lette', error);
         }

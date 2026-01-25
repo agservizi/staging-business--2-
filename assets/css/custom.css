@@ -1610,6 +1610,79 @@ body.login-body {
     color: var(--bs-dropdown-link-active-color);
 }
 
+.notifications-panel {
+    min-width: min(420px, 92vw);
+    max-width: 92vw;
+    padding: 0;
+    overflow: hidden;
+}
+
+.notifications-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--ag-border);
+    background: var(--ag-surface-alt);
+}
+
+.notifications-list {
+    max-height: 360px;
+    overflow-y: auto;
+    padding: 0.5rem 0;
+}
+
+.notification-item {
+    padding: 0.75rem 1rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    border-left: 3px solid transparent;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.notification-item + .notification-item {
+    border-top: 1px solid var(--ag-border);
+}
+
+.notification-item.is-unread {
+    background: rgba(var(--ag-accent-rgb), 0.08);
+    border-left-color: var(--ag-accent);
+}
+
+.notification-item-title {
+    font-weight: 600;
+    color: var(--ag-text);
+    margin-bottom: 0.2rem;
+}
+
+.notification-item-message {
+    color: var(--ag-muted);
+    font-size: 0.88rem;
+}
+
+.notification-item-meta {
+    font-size: 0.75rem;
+    color: var(--ag-muted);
+    margin-top: 0.35rem;
+}
+
+.notification-item-suggestions {
+    font-size: 0.78rem;
+    color: var(--ag-text);
+    margin-top: 0.5rem;
+    background: rgba(var(--ag-accent-rgb), 0.08);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    white-space: pre-line;
+}
+
+.notifications-footer {
+    padding: 0.6rem 1rem 0.85rem;
+    border-top: 1px solid var(--ag-border);
+    background: var(--ag-surface);
+}
+
 #app {
     width: 100%;
     min-height: 100vh;

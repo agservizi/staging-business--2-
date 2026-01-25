@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
         error: { className: 'text-bg-danger text-white', icon: 'fa-circle-exclamation' }
     };
 
+    let persistNotification = () => {};
+
     const showToast = (message, type = 'info', options = {}) => {
         if (!toastContainer || typeof bootstrap === 'undefined' || !toastContainer.append) {
             return null;
@@ -95,11 +97,298 @@ document.addEventListener('DOMContentLoaded', () => {
             toastEl.remove();
         });
 
+        if (options.persist !== false) {
+            persistNotification({
+                type,
+                title: options.title,
+                message: safeMessage,
+                metadata: options.metadata,
+                scope: options.scope,
+                role: options.role,
+            });
+        }
+
         return toastInstance;
     };
 
     window.CS = window.CS || {};
     window.CS.showToast = showToast;
+
+    const notificationsToggle = document.getElementById('notificationsToggle');
+    const notificationsBadge = document.getElementById('notificationsBadge');
+    const notificationsList = document.getElementById('notificationsList');
+    const notificationsMarkAll = document.getElementById('notificationsMarkAll');
+    const notificationsLoadMore = document.getElementById('notificationsLoadMore');
+    const notificationState = {
+        items: [],
+        unreadCount: 0,
+        nextCursor: null,
+        loading: false,
+        initialized: false,
+    };
+
+    const notificationEndpoints = {
+        list: `${window.CS?.apiBaseUrl || '/api/'}get_notifications.php`,
+        save: `${window.CS?.apiBaseUrl || '/api/'}save_notification.php`,
+        mark: `${window.CS?.apiBaseUrl || '/api/'}mark_notification.php`,
+        markAll: `${window.CS?.apiBaseUrl || '/api/'}mark_notifications.php`,
+    };
+
+    const setBadgeCount = (count) => {
+        if (!notificationsBadge) {
+            return;
+        }
+        const value = Math.max(0, Number(count) || 0);
+        notificationState.unreadCount = value;
+        if (value === 0) {
+            notificationsBadge.classList.add('d-none');
+            notificationsBadge.textContent = '';
+            return;
+        }
+        notificationsBadge.textContent = String(value);
+        notificationsBadge.classList.remove('d-none');
+    };
+
+    const createNotificationNode = (item) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = `notification-item${item.isRead ? '' : ' is-unread'}`;
+        wrapper.dataset.notificationId = String(item.id);
+
+        const icon = document.createElement('div');
+        icon.className = item.colorClass || 'text-info';
+        icon.innerHTML = `<i class="fa-solid ${item.icon || 'fa-circle-info'}"></i>`;
+
+        const body = document.createElement('div');
+        body.className = 'flex-grow-1';
+
+        const title = document.createElement('div');
+        title.className = 'notification-item-title';
+        title.textContent = item.title || 'Notifica';
+
+        const message = document.createElement('div');
+        message.className = 'notification-item-message';
+        message.textContent = item.message || '';
+
+        const meta = document.createElement('div');
+        meta.className = 'notification-item-meta';
+        meta.textContent = item.createdAtLabel || '';
+
+        body.append(title, message);
+
+        if (item.type === 'bug' && item.metadata && item.metadata.suggestions) {
+            const suggestions = document.createElement('div');
+            suggestions.className = 'notification-item-suggestions';
+            const causes = Array.isArray(item.metadata.suggestions.causes) ? item.metadata.suggestions.causes.join(' • ') : '';
+            const checks = Array.isArray(item.metadata.suggestions.checks) ? item.metadata.suggestions.checks.join(' • ') : '';
+            const fix = item.metadata.suggestions.fix || '';
+            suggestions.textContent = [
+                causes ? `Cause: ${causes}` : '',
+                checks ? `Verifiche: ${checks}` : '',
+                fix ? `Fix: ${fix}` : '',
+            ].filter(Boolean).join('\n');
+            body.append(suggestions);
+        }
+
+        body.append(meta);
+        wrapper.append(icon, body);
+
+        wrapper.addEventListener('click', () => {
+            if (!item.isRead) {
+                markNotificationRead(item.id, wrapper);
+            }
+        });
+
+        return wrapper;
+    };
+
+    const renderNotifications = (items, { append = false } = {}) => {
+        if (!notificationsList) {
+            return;
+        }
+        if (!append) {
+            notificationsList.innerHTML = '';
+        }
+        if (!items || items.length === 0) {
+            if (!append) {
+                const empty = document.createElement('div');
+                empty.className = 'text-muted small px-3 py-4 text-center';
+                empty.textContent = 'Nessuna notifica al momento.';
+                notificationsList.append(empty);
+            }
+            return;
+        }
+        items.forEach((item) => {
+            notificationsList.append(createNotificationNode(item));
+        });
+    };
+
+    const fetchNotifications = async ({ append = false, silent = false } = {}) => {
+        if (notificationState.loading) {
+            return;
+        }
+        notificationState.loading = true;
+        const params = new URLSearchParams();
+        params.set('limit', '10');
+        if (append && notificationState.nextCursor) {
+            params.set('before_id', String(notificationState.nextCursor));
+        }
+        try {
+            const response = await fetch(`${notificationEndpoints.list}?${params.toString()}`, {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (!response.ok) {
+                throw new Error('Fetch failed');
+            }
+            const payload = await response.json();
+            const data = payload.data || {};
+            if (!append) {
+                notificationState.items = data.items || [];
+            } else {
+                notificationState.items = notificationState.items.concat(data.items || []);
+            }
+            notificationState.nextCursor = data.nextCursor || null;
+            setBadgeCount(data.unreadCount || 0);
+            renderNotifications(data.items || [], { append });
+            if (notificationsLoadMore) {
+                notificationsLoadMore.disabled = !data.hasMore;
+                notificationsLoadMore.classList.toggle('d-none', !data.hasMore);
+            }
+            notificationState.initialized = true;
+        } catch (error) {
+            if (!silent && notificationsList && !append) {
+                notificationsList.innerHTML = '<div class="text-danger small px-3 py-4 text-center">Errore nel caricare le notifiche.</div>';
+            }
+        } finally {
+            notificationState.loading = false;
+        }
+    };
+
+    const markNotificationRead = async (id, element) => {
+        const csrf = csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        try {
+            const response = await fetch(notificationEndpoints.mark, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrf || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ id }),
+            });
+            if (!response.ok) {
+                throw new Error('Errore');
+            }
+            const result = await response.json();
+            if (result.success) {
+                const item = notificationState.items.find((n) => n.id === id);
+                if (item) {
+                    item.isRead = true;
+                }
+                if (element) {
+                    element.classList.remove('is-unread');
+                }
+                setBadgeCount(notificationState.unreadCount - 1);
+            }
+        } catch (error) {
+            // ignore
+        }
+    };
+
+    const markAllNotificationsRead = async () => {
+        const csrf = csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        try {
+            const response = await fetch(notificationEndpoints.markAll, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrf || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ action: 'mark_all' }),
+            });
+            if (!response.ok) {
+                throw new Error('Errore');
+            }
+            const result = await response.json();
+            if (result.success) {
+                notificationState.items.forEach((item) => {
+                    item.isRead = true;
+                });
+                document.querySelectorAll('.notification-item.is-unread').forEach((node) => node.classList.remove('is-unread'));
+                setBadgeCount(0);
+            }
+        } catch (error) {
+            // ignore
+        }
+    };
+
+    persistNotification = async ({ type, title, message, metadata, scope, role } = {}) => {
+        if (!message || !notificationEndpoints.save) {
+            return;
+        }
+        const csrf = csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        try {
+            const response = await fetch(notificationEndpoints.save, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrf || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ type, title, message, metadata, scope, role }),
+            });
+            if (!response.ok) {
+                return;
+            }
+            const payload = await response.json();
+            const item = payload.data;
+            if (item) {
+                notificationState.items.unshift(item);
+                if (notificationsList) {
+                    const emptyState = notificationsList.querySelector('.text-muted.small');
+                    if (emptyState) {
+                        emptyState.remove();
+                    }
+                    notificationsList.prepend(createNotificationNode(item));
+                }
+                setBadgeCount(notificationState.unreadCount + 1);
+            }
+        } catch (error) {
+            // ignore
+        }
+    };
+
+    if (notificationsToggle) {
+        notificationsToggle.addEventListener('click', () => {
+            if (!notificationState.initialized) {
+                fetchNotifications();
+            }
+        });
+    }
+
+    notificationsToggle?.addEventListener('show.bs.dropdown', () => {
+        if (!notificationState.initialized) {
+            fetchNotifications();
+        }
+    });
+
+    notificationsMarkAll?.addEventListener('click', (event) => {
+        event.preventDefault();
+        markAllNotificationsRead();
+    });
+
+    notificationsLoadMore?.addEventListener('click', (event) => {
+        event.preventDefault();
+        fetchNotifications({ append: true });
+    });
+
+    setInterval(() => {
+        fetchNotifications({ append: false, silent: true });
+    }, 60000);
 
     if (initialFlashes.length > 0) {
         initialFlashes.forEach((flash, index) => {

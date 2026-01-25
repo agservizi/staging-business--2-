@@ -14,6 +14,11 @@ $activeTheme = $appearanceConfig['theme'] ?? 'navy';
 $themeCatalog = \App\Services\SettingsService::availableThemes();
 $themeAccent = $themeCatalog[$activeTheme]['accent'] ?? '#0b2f6b';
 
+require_once __DIR__ . '/notifications.php';
+if (isset($pdo) && $pdo instanceof PDO && php_sapi_name() !== 'cli') {
+    register_bug_notification_handler($pdo);
+}
+
 $pickupFeedConfig = null;
 $runtimeConfig = [
     'apiBaseUrl' => base_url('api/'),
@@ -94,6 +99,8 @@ if (!headers_sent()) {
     window.CS.apiBaseUrl = <?php echo json_encode($runtimeConfig['apiBaseUrl'], JSON_THROW_ON_ERROR); ?>;
     window.CS.assetsBaseUrl = <?php echo json_encode($runtimeConfig['assetsBaseUrl'], JSON_THROW_ON_ERROR); ?>;
     window.CS.assets = <?php echo json_encode($runtimeConfig['assets'], JSON_THROW_ON_ERROR); ?>;
+    window.CS.userRole = <?php echo json_encode($_SESSION['role'] ?? '', JSON_THROW_ON_ERROR); ?>;
+    window.CS.userId = <?php echo json_encode((int) ($_SESSION['user_id'] ?? 0), JSON_THROW_ON_ERROR); ?>;
     <?php if ($pickupFeedConfig !== null): ?>
     window.CS.pickupReportFeed = <?php echo json_encode($pickupFeedConfig, JSON_THROW_ON_ERROR); ?>;
     <?php endif; ?>

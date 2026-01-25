@@ -6,6 +6,7 @@ use App\Services\SettingsService;
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
+require_once __DIR__ . '/../../../includes/notifications.php';
 require_once __DIR__ . '/functions.php';
 
 require_role('Admin', 'Operatore', 'Manager');
@@ -363,6 +364,21 @@ if ($praticaId <= 0) {
 
             if (!$errors) {
                 add_flash('success', 'Pratica aggiornata correttamente.');
+                $actorRole = (string) ($_SESSION['role'] ?? '');
+                $actorId = (int) ($_SESSION['user_id'] ?? 0);
+                $notification = [
+                    'type' => 'success',
+                    'title' => 'Pratica ACI aggiornata',
+                    'message' => sprintf('Aggiornata pratica ACI #%d (%s).', $praticaId, $data['tipo_pratica']),
+                    'metadata' => [
+                        'entity' => 'servizi_aci_pratiche',
+                        'id' => $praticaId,
+                        'action' => 'update',
+                    ],
+                ];
+                foreach (['Admin', 'Manager'] as $notifyRole) {
+                    create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
+                }
                 header('Location: view.php?id=' . $praticaId);
                 exit;
             }
