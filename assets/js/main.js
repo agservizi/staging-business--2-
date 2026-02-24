@@ -116,15 +116,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const notificationsToggle = document.getElementById('notificationsToggle');
     const notificationsBadge = document.getElementById('notificationsBadge');
+    const notificationsPanel = document.getElementById('notificationsPanel');
     const notificationsList = document.getElementById('notificationsList');
     const notificationsMarkAll = document.getElementById('notificationsMarkAll');
     const notificationsLoadMore = document.getElementById('notificationsLoadMore');
+
+    const parseItemsDataset = (value) => {
+        if (!value) {
+            return [];
+        }
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+            return [];
+        }
+    };
+
+    const parsePositiveInt = (value) => {
+        const parsed = Number.parseInt(String(value || '0'), 10);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    };
+
+    const collaboratorItems = parseItemsDataset(notificationsPanel?.dataset.collabItems || '');
+    const collaboratorUnreadInitial = parsePositiveInt(notificationsPanel?.dataset.collabUnread || 0);
+
     const notificationState = {
         items: [],
         unreadCount: 0,
+        collabItems: collaboratorItems,
+        collabUnreadCount: collaboratorUnreadInitial,
         nextCursor: null,
         loading: false,
         initialized: false,
+        collabReadEndpoint: notificationsPanel?.dataset.collabEndpoint || '',
+        collabLatestStatusAt: parsePositiveInt(notificationsPanel?.dataset.collabLatestStatus || 0),
+        collabLatestTicketMessageId: parsePositiveInt(notificationsPanel?.dataset.collabLatestTicket || 0),
     };
 
     const notificationEndpoints = {
@@ -139,7 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const value = Math.max(0, Number(count) || 0);
-        notificationState.unreadCount = value;
         if (value === 0) {
             notificationsBadge.classList.add('d-none');
             notificationsBadge.textContent = '';
@@ -149,10 +175,94 @@ document.addEventListener('DOMContentLoaded', () => {
         notificationsBadge.classList.remove('d-none');
     };
 
+    const updateBadgeCount = () => {
+        setBadgeCount((notificationState.unreadCount || 0) + (notificationState.collabUnreadCount || 0));
+    };
+
+    const getNotificationUrl = (item) => {
+        if (typeof item?.url === 'string' && item.url.trim() !== '') {
+            return item.url.trim();
+        }
+        const metadata = item?.metadata;
+        if (metadata && typeof metadata === 'object') {
+            if (typeof metadata.url === 'string' && metadata.url.trim() !== '') {
+                return metadata.url.trim();
+            }
+            if (typeof metadata.link === 'string' && metadata.link.trim() !== '') {
+                return metadata.link.trim();
+            }
+        }
+        return '';
+    };
+
+    const getNotificationTimestamp = (item) => {
+        const raw = item?.createdAt || item?.timestamp || '';
+        const timestamp = new Date(raw).getTime();
+        return Number.isFinite(timestamp) ? timestamp : 0;
+    };
+
+    const composeVisibleItems = ({ append = false, incomingItems = [] } = {}) => {
+        if (append) {
+            return incomingItems;
+        }
+        const merged = [...notificationState.collabItems, ...notificationState.items];
+        merged.sort((a, b) => getNotificationTimestamp(b) - getNotificationTimestamp(a));
+        return merged;
+    };
+
+    const markCollaboratorNotificationsRead = async () => {
+        if (notificationState.collabUnreadCount <= 0) {
+            return true;
+        }
+
+        if (!notificationState.collabReadEndpoint) {
+            notificationState.collabUnreadCount = 0;
+            notificationState.collabItems = notificationState.collabItems.map((item) => ({ ...item, isRead: true }));
+            updateBadgeCount();
+            return true;
+        }
+
+        const csrf = csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        try {
+            const response = await fetch(notificationState.collabReadEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrf || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    action: 'mark_read',
+                    last_status_at: notificationState.collabLatestStatusAt || 0,
+                    last_ticket_message_id: notificationState.collabLatestTicketMessageId || 0,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Errore');
+            }
+            const payload = await response.json();
+            if (payload?.success) {
+                notificationState.collabUnreadCount = 0;
+                notificationState.collabItems = notificationState.collabItems.map((item) => ({ ...item, isRead: true }));
+                document.querySelectorAll('.notification-item[data-notification-source="collaborator"]').forEach((node) => {
+                    node.classList.remove('is-unread');
+                });
+                updateBadgeCount();
+                return true;
+            }
+        } catch (error) {
+            // ignore
+        }
+
+        return false;
+    };
+
     const createNotificationNode = (item) => {
         const wrapper = document.createElement('div');
         wrapper.className = `notification-item${item.isRead ? '' : ' is-unread'}`;
         wrapper.dataset.notificationId = String(item.id);
+        wrapper.dataset.notificationSource = item.source || 'system';
 
         const icon = document.createElement('div');
         icon.className = item.colorClass || 'text-info';
@@ -192,9 +302,21 @@ document.addEventListener('DOMContentLoaded', () => {
         body.append(meta);
         wrapper.append(icon, body);
 
-        wrapper.addEventListener('click', () => {
+        wrapper.addEventListener('click', async () => {
+            const targetUrl = getNotificationUrl(item);
+            if (item.source === 'collaborator') {
+                await markCollaboratorNotificationsRead();
+                if (targetUrl !== '') {
+                    window.location.assign(targetUrl);
+                }
+                return;
+            }
+
             if (!item.isRead) {
-                markNotificationRead(item.id, wrapper);
+                await markNotificationRead(item.id, wrapper);
+            }
+            if (targetUrl !== '') {
+                window.location.assign(targetUrl);
             }
         });
 
@@ -248,8 +370,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 notificationState.items = notificationState.items.concat(data.items || []);
             }
             notificationState.nextCursor = data.nextCursor || null;
-            setBadgeCount(data.unreadCount || 0);
-            renderNotifications(data.items || [], { append });
+            notificationState.unreadCount = Math.max(0, Number(data.unreadCount) || 0);
+            updateBadgeCount();
+            renderNotifications(composeVisibleItems({ append, incomingItems: data.items || [] }), { append });
             if (notificationsLoadMore) {
                 notificationsLoadMore.disabled = !data.hasMore;
                 notificationsLoadMore.classList.toggle('d-none', !data.hasMore);
@@ -289,7 +412,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (element) {
                     element.classList.remove('is-unread');
                 }
-                setBadgeCount(notificationState.unreadCount - 1);
+                notificationState.unreadCount = Math.max(0, notificationState.unreadCount - 1);
+                updateBadgeCount();
             }
         } catch (error) {
             // ignore
@@ -298,6 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const markAllNotificationsRead = async () => {
         const csrf = csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        let markedSystemNotifications = false;
         try {
             const response = await fetch(notificationEndpoints.markAll, {
                 method: 'POST',
@@ -314,14 +439,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const result = await response.json();
             if (result.success) {
+                markedSystemNotifications = true;
                 notificationState.items.forEach((item) => {
                     item.isRead = true;
                 });
-                document.querySelectorAll('.notification-item.is-unread').forEach((node) => node.classList.remove('is-unread'));
-                setBadgeCount(0);
+                document.querySelectorAll('.notification-item.is-unread:not([data-notification-source="collaborator"])').forEach((node) => {
+                    node.classList.remove('is-unread');
+                });
+                notificationState.unreadCount = 0;
             }
         } catch (error) {
             // ignore
+        }
+
+        const markedCollaboratorNotifications = await markCollaboratorNotificationsRead();
+        if (markedSystemNotifications || markedCollaboratorNotifications) {
+            updateBadgeCount();
         }
     };
 
@@ -355,7 +488,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     notificationsList.prepend(createNotificationNode(item));
                 }
-                setBadgeCount(notificationState.unreadCount + 1);
+                notificationState.unreadCount += 1;
+                updateBadgeCount();
             }
         } catch (error) {
             // ignore
@@ -385,6 +519,11 @@ document.addEventListener('DOMContentLoaded', () => {
         event.preventDefault();
         fetchNotifications({ append: true });
     });
+
+    updateBadgeCount();
+    if (notificationsToggle) {
+        fetchNotifications({ append: false, silent: true });
+    }
 
     setInterval(() => {
         fetchNotifications({ append: false, silent: true });

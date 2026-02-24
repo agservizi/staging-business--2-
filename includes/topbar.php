@@ -11,7 +11,8 @@ $collaboratorNotificationsLastStatusSeenAt = null;
 $collaboratorNotificationsLastTicketSeenId = 0;
 $collaboratorNotificationsLatestStatusInBatch = null;
 $collaboratorNotificationsLatestTicketIdInBatch = 0;
-    $forceHideCookie = isset($_COOKIE['collab_notifications_hidden']) && $_COOKIE['collab_notifications_hidden'] === '1';
+$collaboratorForceHideActive = false;
+$forceHideCookie = isset($_COOKIE['collab_notifications_hidden']) && $_COOKIE['collab_notifications_hidden'] === '1';
 
 if ($role === 'Collaboratore') {
     $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
@@ -174,6 +175,7 @@ if ($role === 'Collaboratore') {
                 $forceHide = true;
             }
             if ($forceHide || (($latestStatusTs <= $lastStatusCutoff) && ($collaboratorNotificationsLatestTicketIdInBatch <= $collaboratorNotificationsLastTicketSeenId))) {
+                $collaboratorForceHideActive = true;
                 $collaboratorNotificationCount = 0;
                 unset($_SESSION['collab_notifications_force_hide']);
             } else {
@@ -195,6 +197,48 @@ if ($role === 'Collaboratore') {
         }
     }
 }
+
+$collaboratorNotificationsPayload = [];
+$collaboratorNotificationReadEndpoint = '';
+$collaboratorLatestStatusTimestamp = $collaboratorNotificationsLatestStatusInBatch ? (strtotime((string) $collaboratorNotificationsLatestStatusInBatch) ?: 0) : 0;
+if ($role === 'Collaboratore') {
+    $collaboratorNotificationReadEndpoint = base_url('api/opportunities/collaborator/notifications-read.php');
+    $collaboratorNotificationsPayload = array_map(static function (array $item) use (
+        $collaboratorForceHideActive,
+        $collaboratorNotificationsLastStatusSeenAt,
+        $collaboratorNotificationsLastRead,
+        $collaboratorNotificationsLastTicketSeenId
+    ): array {
+        $timestamp = strtotime((string) ($item['timestamp'] ?? '')) ?: 0;
+        $lastStatusCutoff = $collaboratorNotificationsLastStatusSeenAt ?? $collaboratorNotificationsLastRead ?? 0;
+        $lastTicketCutoffTime = $collaboratorNotificationsLastRead;
+        $isUnread = false;
+        if (!$collaboratorForceHideActive) {
+            if (($item['type'] ?? '') === 'ticket') {
+                $id = isset($item['id']) ? (int) $item['id'] : 0;
+                $isUnread = $id > $collaboratorNotificationsLastTicketSeenId
+                    || ($lastTicketCutoffTime !== null && $timestamp > $lastTicketCutoffTime);
+            } else {
+                $isUnread = $lastStatusCutoff === null ? $timestamp > 0 : $timestamp > $lastStatusCutoff;
+            }
+        }
+
+        return [
+            'id' => 'collab-' . ($item['type'] ?? 'item') . '-' . md5((string) (($item['title'] ?? '') . '|' . ($item['timestamp'] ?? '') . '|' . ($item['url'] ?? ''))),
+            'type' => (string) ($item['type'] ?? 'info'),
+            'title' => (string) ($item['title'] ?? 'Notifica'),
+            'message' => (string) ($item['subtitle'] ?? ''),
+            'isRead' => !$isUnread,
+            'createdAt' => (string) ($item['timestamp'] ?? ''),
+            'createdAtLabel' => format_datetime_locale((string) ($item['timestamp'] ?? null)),
+            'url' => (string) ($item['url'] ?? ''),
+            'icon' => (($item['type'] ?? '') === 'ticket') ? 'fa-ticket' : 'fa-briefcase',
+            'colorClass' => (($item['type'] ?? '') === 'ticket') ? 'text-warning' : 'text-primary',
+            'source' => 'collaborator',
+        ];
+    }, $collaboratorNotifications);
+}
+$collaboratorNotificationsJson = htmlspecialchars((string) (json_encode($collaboratorNotificationsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]'), ENT_QUOTES, 'UTF-8');
 
 ?>
 <header class="topbar border-bottom sticky-top">
@@ -234,7 +278,15 @@ if ($role === 'Collaboratore') {
                         <i class="fa-solid fa-bell" aria-hidden="true"></i>
                         <span class="badge rounded-pill bg-danger position-absolute top-0 start-100 translate-middle d-none" id="notificationsBadge" aria-label="Notifiche non lette"></span>
                     </button>
-                    <div class="dropdown-menu dropdown-menu-end notifications-panel" id="notificationsPanel">
+                    <div
+                        class="dropdown-menu dropdown-menu-end notifications-panel"
+                        id="notificationsPanel"
+                        data-collab-items="<?php echo $collaboratorNotificationsJson; ?>"
+                        data-collab-unread="<?php echo (int) $collaboratorNotificationCount; ?>"
+                        data-collab-endpoint="<?php echo sanitize_output($collaboratorNotificationReadEndpoint); ?>"
+                        data-collab-latest-status="<?php echo (int) $collaboratorLatestStatusTimestamp; ?>"
+                        data-collab-latest-ticket="<?php echo (int) $collaboratorNotificationsLatestTicketIdInBatch; ?>"
+                    >
                         <div class="notifications-header">
                             <div class="fw-semibold">Notifiche</div>
                             <button class="btn btn-sm btn-outline-secondary" type="button" id="notificationsMarkAll">Segna tutte come lette</button>
