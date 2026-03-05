@@ -88,6 +88,9 @@ if ($statsRange !== 'today') {
     $exportParams['stats_range'] = $statsRange;
 }
 
+$expectsJsonResponse = str_contains(strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? '')), 'application/json')
+    || strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+
 if (isset($_GET['export'])) {
     $type = $_GET['export'];
     if ($type === 'csv') {
@@ -101,33 +104,54 @@ if (isset($_GET['export'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_valid_csrf();
     $action = $_POST['action'] ?? '';
+    $redirectUrl = 'index.php';
+    $respondError = static function (Throwable $exception, string $context, bool $expectsJsonResponse): void {
+        error_log($context . ': ' . $exception->getMessage());
+        $message = $exception instanceof InvalidArgumentException
+            ? $exception->getMessage()
+            : 'Operazione non riuscita. Riprova.';
+
+        if ($expectsJsonResponse) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'message' => $message,
+            ], JSON_THROW_ON_ERROR);
+        } else {
+            add_flash('danger', $message);
+            header('Location: index.php');
+        }
+        exit;
+    };
 
     if ($action === 'generate_checkin_qr') {
-        header('Content-Type: application/json');
         try {
             $locationId = isset($_POST['location_id']) ? (int) $_POST['location_id'] : 0;
             $qrPath = generate_qr_checkin($locationId > 0 ? $locationId : null);
             if (!$qrPath) {
                 throw new RuntimeException('Impossibile generare il QR di check-in.');
             }
+            $qrUrl = pickup_public_url($qrPath);
 
-            echo json_encode([
-                'success' => true,
-                'qrUrl' => pickup_public_url($qrPath),
-                'message' => 'QR di check-in generato con successo.',
-            ], JSON_THROW_ON_ERROR);
+            if ($expectsJsonResponse) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'qrUrl' => $qrUrl,
+                    'message' => 'QR di check-in generato con successo.',
+                ], JSON_THROW_ON_ERROR);
+            } else {
+                add_flash('success', 'QR di check-in generato con successo: ' . $qrUrl);
+                header('Location: ' . $redirectUrl);
+            }
         } catch (Throwable $exception) {
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'message' => $exception->getMessage(),
-            ], JSON_THROW_ON_ERROR);
+            $respondError($exception, 'Pickup generate_checkin_qr failed', $expectsJsonResponse);
         }
         exit;
     }
 
     if ($action === 'update_status') {
-        header('Content-Type: application/json');
         try {
             $packageId = (int) ($_POST['package_id'] ?? 0);
             $newStatus = (string) ($_POST['status'] ?? '');
@@ -140,43 +164,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'status' => $details['status'],
             ]);
 
-            echo json_encode([
-                'success' => true,
-                'statusKey' => $details['status'],
-                'statusLabel' => pickup_status_label($details['status']),
-                'updatedAt' => format_datetime_locale($details['updated_at'] ?? date('Y-m-d H:i:s')),
-            ], JSON_THROW_ON_ERROR);
+            if ($expectsJsonResponse) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'statusKey' => $details['status'],
+                    'statusLabel' => pickup_status_label($details['status']),
+                    'updatedAt' => format_datetime_locale($details['updated_at'] ?? date('Y-m-d H:i:s')),
+                ], JSON_THROW_ON_ERROR);
+            } else {
+                add_flash('success', 'Stato pacco aggiornato con successo.');
+                header('Location: ' . $redirectUrl);
+            }
         } catch (Throwable $exception) {
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'message' => $exception->getMessage(),
-            ], JSON_THROW_ON_ERROR);
+            $respondError($exception, 'Pickup update_status failed', $expectsJsonResponse);
         }
         exit;
     }
 
     if ($action === 'archive_packages') {
-        header('Content-Type: application/json');
         try {
             $days = isset($_POST['days']) ? max(1, (int) $_POST['days']) : PICKUP_DEFAULT_ARCHIVE_DAYS;
             $count = archive_old_packages($days);
-            echo json_encode([
-                'success' => true,
-                'message' => $count > 0 ? "Archiviati $count pacchi." : 'Nessun pacco da archiviare.',
-            ], JSON_THROW_ON_ERROR);
+            $resultMessage = $count > 0 ? "Archiviati $count pacchi." : 'Nessun pacco da archiviare.';
+
+            if ($expectsJsonResponse) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => $resultMessage,
+                ], JSON_THROW_ON_ERROR);
+            } else {
+                add_flash('success', $resultMessage);
+                header('Location: ' . $redirectUrl);
+            }
         } catch (Throwable $exception) {
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'message' => $exception->getMessage(),
-            ], JSON_THROW_ON_ERROR);
+            $respondError($exception, 'Pickup archive_packages failed', $expectsJsonResponse);
         }
         exit;
     }
 
     if ($action === 'send_notification') {
-        header('Content-Type: application/json');
         try {
             $packageId = (int) ($_POST['package_id'] ?? 0);
             $channel = clean_input($_POST['channel'] ?? '', 16);
@@ -276,20 +304,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sanitize_output('Destinatario: ' . ($meta['recipient'] ?? 'N/D'))
             );
 
-            echo json_encode([
-                'success' => true,
-                'message' => $fallbackUrl ? 'API WhatsApp non configurata: apri WhatsApp per completare l\'invio.' : 'Notifica inviata con successo.',
-                'entryHtml' => $entryHtml,
-                'notificationId' => $logId,
-                'fallbackUrl' => $fallbackUrl,
-                'status' => $notificationStatus,
-            ], JSON_THROW_ON_ERROR);
+            $successMessage = $fallbackUrl
+                ? 'API WhatsApp non configurata: apri WhatsApp per completare l\'invio.'
+                : 'Notifica inviata con successo.';
+
+            if ($expectsJsonResponse) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => $successMessage,
+                    'entryHtml' => $entryHtml,
+                    'notificationId' => $logId,
+                    'fallbackUrl' => $fallbackUrl,
+                    'status' => $notificationStatus,
+                ], JSON_THROW_ON_ERROR);
+            } else {
+                add_flash('success', $successMessage);
+                header('Location: ' . $redirectUrl);
+            }
         } catch (Throwable $exception) {
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'message' => $exception->getMessage(),
-            ], JSON_THROW_ON_ERROR);
+            $respondError($exception, 'Pickup send_notification failed', $expectsJsonResponse);
         }
         exit;
     }

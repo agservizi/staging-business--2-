@@ -51,7 +51,8 @@ if (!$packageId) {
         str_contains($codeLower, 'qr_')
     );
 
-    $extractedId = $looksLikeQr ? pickup_extract_package_id_from_code($codeRaw) : null;
+    $qrPayload = $looksLikeQr ? pickup_extract_qr_payload_from_code($codeRaw) : ['package_id' => null, 'token' => null];
+    $extractedId = (int) ($qrPayload['package_id'] ?? 0);
     if ($extractedId) {
         $packageId = $extractedId;
         $package = get_package_details($packageId);
@@ -81,11 +82,16 @@ try {
             throw new InvalidArgumentException('Codice inserito non valido. Usa il QR o il codice OTP ricevuto.');
         }
 
-        $qrPackageId = pickup_extract_package_id_from_code($codeRaw);
+        $qrPayload = pickup_extract_qr_payload_from_code($codeRaw);
+        $qrPackageId = (int) ($qrPayload['package_id'] ?? 0);
+        $qrToken = trim((string) ($qrPayload['token'] ?? ''));
         if (!$qrPackageId || $qrPackageId !== $packageId) {
             throw new InvalidArgumentException('Codice QR non riconosciuto.');
         }
-        confirm_pickup_with_qr($packageId);
+        if ($qrToken === '') {
+            throw new InvalidArgumentException('QR code non firmato. Usa OTP oppure rigenera il QR.');
+        }
+        confirm_pickup_with_qr_token($packageId, $qrToken);
         add_flash('success', 'Ritiro confermato tramite QR code.');
     }
 
