@@ -2935,6 +2935,47 @@ function generate_qr_checkin(?int $locationId = null, ?string $callbackUrl = nul
     return pickup_relative_path($destPath);
 }
 
+function regenerate_package_qrs(array $filters = [], int $limit = 0): array
+{
+    $queryFilters = array_merge(['archived' => false], $filters);
+    $options = [
+        'order_by' => 'updated_at',
+        'order_dir' => 'DESC',
+    ];
+    if ($limit > 0) {
+        $options['limit'] = $limit;
+    }
+
+    $packages = filter_packages($queryFilters, $options);
+    $updated = 0;
+    $failed = 0;
+
+    foreach ($packages as $package) {
+        $packageId = (int) ($package['id'] ?? 0);
+        if ($packageId <= 0) {
+            continue;
+        }
+
+        try {
+            $path = generate_package_qr($packageId);
+            if ($path !== null && $path !== '') {
+                $updated++;
+            } else {
+                $failed++;
+            }
+        } catch (Throwable $exception) {
+            $failed++;
+            error_log('Rigenerazione QR fallita per pacco ' . $packageId . ': ' . $exception->getMessage());
+        }
+    }
+
+    return [
+        'total' => count($packages),
+        'updated' => $updated,
+        'failed' => $failed,
+    ];
+}
+
 function send_notification_email(string $email, string $subject, string $message, array $options = []): bool
 {
     $email = filter_var($email, FILTER_VALIDATE_EMAIL);

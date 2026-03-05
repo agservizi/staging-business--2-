@@ -204,6 +204,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    if ($action === 'regenerate_qr_tokens') {
+        try {
+            $limit = isset($_POST['limit']) ? max(0, (int) $_POST['limit']) : 0;
+            $result = regenerate_package_qrs([], $limit);
+            $resultMessage = sprintf(
+                'Rigenerazione QR completata: %d aggiornati, %d errori su %d pacchi.',
+                (int) ($result['updated'] ?? 0),
+                (int) ($result['failed'] ?? 0),
+                (int) ($result['total'] ?? 0)
+            );
+
+            if ($expectsJsonResponse) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => $resultMessage,
+                    'result' => $result,
+                ], JSON_THROW_ON_ERROR);
+            } else {
+                add_flash('success', $resultMessage);
+                header('Location: ' . $redirectUrl);
+            }
+        } catch (Throwable $exception) {
+            $respondError($exception, 'Pickup regenerate_qr_tokens failed', $expectsJsonResponse);
+        }
+        exit;
+    }
+
     if ($action === 'send_notification') {
         try {
             $packageId = (int) ($_POST['package_id'] ?? 0);
@@ -686,6 +714,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 </select>
                             </div>
                             <button class="btn btn-outline-warning w-100" type="submit"><i class="fa-solid fa-qrcode me-2"></i>Genera QR</button>
+                        </form>
+                        <form class="mt-2" method="post" action="index.php" onsubmit="return confirm('Rigenerare i QR firmati per tutti i pacchi attivi?');">
+                            <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
+                            <input type="hidden" name="action" value="regenerate_qr_tokens">
+                            <button class="btn btn-sm btn-outline-warning w-100" type="submit">
+                                <i class="fa-solid fa-rotate me-2"></i>Rigenera QR firmati
+                            </button>
                         </form>
                         <div class="mt-3 text-center" data-checkin-qr-output>
                             <div class="text-muted small">Scarica un QR da esporre al punto ritiro.</div>
