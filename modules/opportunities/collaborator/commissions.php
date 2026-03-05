@@ -67,7 +67,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <a class="btn btn-outline-primary" href="<?php echo asset('modules/opportunities/collaborator/index.php'); ?>">
                     <i class="fa-solid fa-arrow-left me-2"></i>Torna al portale
                 </a>
-                <a class="btn btn-outline-secondary d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;" href="<?php echo asset('modules/opportunities/collaborator/commissions-info.php'); ?>" aria-label="Tabella provvigioni">
+                <a class="btn btn-outline-secondary d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;" href="<?php echo asset('modules/opportunities/collaborator/commissions-info.php'); ?>" aria-label="Tabella provvigioni" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-trigger="hover focus" data-bs-title="Tabella provvigioni per gestore e offerta">
                     <i class="fa-solid fa-info"></i>
                 </a>
                 <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/promotions.php'); ?>">
