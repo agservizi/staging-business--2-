@@ -4,6 +4,7 @@ $currentPath = basename(parse_url($currentUri, PHP_URL_PATH) ?? '');
 $role = $_SESSION['role'] ?? '';
 $isPatronato = $role === 'Patronato';
 $isCollaborator = $role === 'Collaboratore';
+$hideCollaboratorIliad = (bool) ($hideCollaboratorIliad ?? false);
 
 if (!function_exists('nav_active')) {
     function nav_active(string $needle, string $currentPath): string
@@ -234,14 +235,16 @@ $appVersion = env('APP_VERSION', '1.0.0');
                         <span class="nav-label">Ticket</span>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/iliad', $currentPath); ?>" href="<?php echo base_url('modules/iliad/index.php'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
-                        <span class="nav-icon" data-color="blue" aria-hidden="true">
-                            <i class="fa-solid fa-key"></i>
-                        </span>
-                        <span class="nav-label">Iliad</span>
-                    </a>
-                </li>
+                <?php if (!$hideCollaboratorIliad): ?>
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/iliad', $currentPath); ?>" href="<?php echo base_url('modules/iliad/index.php'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
+                            <span class="nav-icon" data-color="blue" aria-hidden="true">
+                                <i class="fa-solid fa-key"></i>
+                            </span>
+                            <span class="nav-label">Iliad</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
                 <?php
                     $profileActive = (nav_active('modules/impostazioni/profile.php', $currentPath) === 'active'
                         || nav_active('profile.php', $currentPath) === 'active') ? 'active' : '';

@@ -88,6 +88,7 @@ if ($searchQuery !== '') {
 $advancedFiltersUrl = asset('modules/opportunities/collaborator/list.php');
 
 require_once __DIR__ . '/../../../includes/header.php';
+$hideCollaboratorIliad = true;
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
