@@ -5,6 +5,9 @@ $role = $_SESSION['role'] ?? '';
 $isPatronato = $role === 'Patronato';
 $isCollaborator = $role === 'Collaboratore';
 $hideCollaboratorIliad = (bool) ($hideCollaboratorIliad ?? false);
+if ($isCollaborator && str_contains($currentUri, 'modules/opportunities/collaborator/')) {
+    $hideCollaboratorIliad = true;
+}
 
 if (!function_exists('nav_active')) {
     function nav_active(string $needle, string $currentPath): string
