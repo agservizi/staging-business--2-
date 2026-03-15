@@ -83,13 +83,16 @@
 
         const markerUrl = window.CS?.assets?.leafletMarker ?? resolveAssetUrl('assets/img/leaflet-marker.png');
         const markerRetinaUrl = window.CS?.assets?.leafletMarkerRetina ?? resolveAssetUrl('assets/img/leaflet-marker@2x.png');
+        const shadowUrl = window.CS?.assets?.leafletShadow ?? resolveAssetUrl('assets/img/leaflet-marker-shadow.png');
 
         try {
+            // Evita che Leaflet pre-penda imagePath al nostro URL assoluto
+            L.Icon.Default.imagePath = '';
             L.Icon.Default.mergeOptions({
                 iconUrl: markerUrl,
                 iconRetinaUrl: markerRetinaUrl,
-                shadowUrl: null,
-                shadowRetinaUrl: null,
+                shadowUrl,
+                shadowRetinaUrl: shadowUrl,
             });
         } catch (error) {
             console.warn('Leaflet default icon configuration failed', error);
@@ -218,10 +221,10 @@
         const provinceValue = provinceInput?.value?.trim() || '';
         const countryValue = countryInput?.value?.trim() || '';
 
-        if (zipValue === '' && cityValue === '') {
+        if (zipValue === '' || cityValue === '') {
             root._pudoLastAutoCriteria = null;
             renderResults(root, []);
-            setStatus(root, 'Inserisci almeno CAP o città per cercare un PUDO.', 'warning');
+            setStatus(root, 'Inserisci CAP e città per cercare un PUDO.', 'warning');
             return;
         }
 
@@ -382,8 +385,8 @@
         const provinceValue = provinceInput?.value?.trim() || '';
         const countryValue = countryInput?.value?.trim() || root.dataset.defaultCountry || 'IT';
 
-        if (zipValue === '' && cityValue === '') {
-            setStatus(root, 'Inserisci almeno CAP o città per cercare un PUDO.', 'warning');
+        if (zipValue === '' || cityValue === '') {
+            setStatus(root, 'Inserisci CAP e città per cercare un PUDO.', 'warning');
             return;
         }
 

@@ -526,7 +526,7 @@ class GoogleCalendarService
         }
 
         if (function_exists('base_url')) {
-            $sourceUrl = base_url('modules/servizi/appuntamenti/view.php?id=' . (int) ($appointment['id'] ?? 0));
+            $sourceUrl = appuntamenti_module_url('view', ['id' => (int) ($appointment['id'] ?? 0)]);
             $payload['source'] = [
                 'title' => 'Coresuite Business',
                 'url' => $sourceUrl,

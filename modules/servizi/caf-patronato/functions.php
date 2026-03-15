@@ -1,9 +1,8 @@
 <?php
 declare(strict_types=1);
 
+use App\Services\CAFPatronato\PracticesService;
 use App\Services\SettingsService;
-use DateTimeImmutable;
-use DateTimeZone;
 use Mpdf\Mpdf;
 use Mpdf\MpdfException;
 use Mpdf\Output\Destination;
@@ -13,6 +12,156 @@ const CAF_PATRONATO_UPLOAD_DIR = 'assets/uploads/caf-patronato';
 const CAF_PATRONATO_ENCRYPTION_SUFFIX = '.cafenc';
 const CAF_PATRONATO_ENCRYPTION_HEADER = 'CAFENC1';
 const CAF_PATRONATO_MAX_UPLOAD_SIZE = 12_582_912; // 12 MB
+const CAF_PATRONATO_MAIL_LOG_PATH = __DIR__ . '/../../../logs/patronato_mail.log';
+
+/**
+ * @return array{id:int,user_id:?int,email:string,nome:string,cognome:string,ruolo:string}|null
+ */
+function caf_patronato_primary_operator(?PDO $connection = null, bool $logOnMissing = true): ?array
+{
+    static $cache = null;
+    static $cachedAt = 0;
+
+    if ($cache !== null && (time() - $cachedAt) < 60) {
+        return $cache;
+    }
+
+    $pdoInstance = $connection;
+    if (!$pdoInstance instanceof PDO) {
+        global $pdo;
+        if ($pdo instanceof PDO) {
+            $pdoInstance = $pdo;
+        }
+    }
+
+    if (!$pdoInstance instanceof PDO) {
+        if ($logOnMissing) {
+            error_log('CAF/Patronato: impossibile recuperare l\'operatore Patronato (connessione PDO non disponibile).');
+        }
+        return null;
+    }
+
+    $row = null;
+    try {
+        $stmt = $pdoInstance->prepare('SELECT id, user_id, nome, cognome, email, ruolo FROM utenti_caf_patronato WHERE UPPER(ruolo) LIKE :ruolo AND attivo = 1 AND email IS NOT NULL AND email <> "" ORDER BY updated_at DESC, id DESC LIMIT 1');
+        $stmt->execute([':ruolo' => '%PATRONATO%']);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (Throwable $exception) {
+        error_log('CAF/Patronato: lettura operatore fallita - ' . $exception->getMessage());
+    }
+
+    if (!$row) {
+        $row = caf_patronato_fallback_operator_from_users($pdoInstance, $logOnMissing);
+        if (!$row) {
+            $cache = null;
+            return null;
+        }
+    }
+
+    $email = trim((string) ($row['email'] ?? ''));
+    if ($email === '') {
+        if ($logOnMissing) {
+            error_log('CAF/Patronato: l\'operatore Patronato non ha un indirizzo email valido.');
+        }
+        $cache = null;
+        return null;
+    }
+
+    $cache = [
+        'id' => (int) $row['id'],
+        'user_id' => isset($row['user_id']) ? (int) $row['user_id'] : null,
+        'nome' => (string) ($row['nome'] ?? ''),
+        'cognome' => (string) ($row['cognome'] ?? ''),
+        'email' => $email,
+        'ruolo' => (string) ($row['ruolo'] ?? ''),
+        'source' => (string) ($row['source'] ?? 'operators'),
+    ];
+    $cachedAt = time();
+
+    return $cache;
+}
+
+function caf_patronato_fallback_operator_from_users(PDO $pdo, bool $logOnMissing = true): ?array
+{
+    try {
+        $stmt = $pdo->prepare('SELECT id, nome, cognome, email, ruolo FROM users WHERE UPPER(ruolo) LIKE :ruolo AND email IS NOT NULL AND email <> "" ORDER BY updated_at DESC, id DESC LIMIT 1');
+        $stmt->execute([':ruolo' => '%PATRONATO%']);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    } catch (Throwable $exception) {
+        if ($logOnMissing) {
+            error_log('CAF/Patronato fallback utenti: ' . $exception->getMessage());
+        }
+        return null;
+    }
+
+    if (!$row) {
+        if ($logOnMissing) {
+            error_log('CAF/Patronato: nessun utente con ruolo Patronato disponibile per fallback.');
+        }
+        return null;
+    }
+
+    $email = trim((string) ($row['email'] ?? ''));
+    if ($email === '') {
+        if ($logOnMissing) {
+            error_log('CAF/Patronato fallback utenti: indirizzo email mancante.');
+        }
+        return null;
+    }
+
+    return [
+        'id' => (int) $row['id'],
+        'user_id' => (int) $row['id'],
+        'nome' => (string) ($row['nome'] ?? ''),
+        'cognome' => (string) ($row['cognome'] ?? ''),
+        'email' => $email,
+        'ruolo' => 'Patronato',
+        'source' => 'users',
+    ];
+}
+
+function getPatronatoOperatorEmail(?PDO $connection = null): ?string
+{
+    $operator = caf_patronato_primary_operator($connection, false);
+    if (!$operator) {
+        return null;
+    }
+
+    $email = trim($operator['email']);
+    return $email !== '' ? $email : null;
+}
+
+function caf_patronato_log_mail_event(string $type, string $recipient, bool $success, array $context = []): void
+{
+    $logPath = CAF_PATRONATO_MAIL_LOG_PATH;
+    $logDir = dirname($logPath);
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0775, true);
+    }
+
+    $payload = $context;
+    $payload['status'] = $success ? 'success' : 'failure';
+    if (!isset($payload['recipient'])) {
+        $payload['recipient'] = $recipient;
+    }
+
+    $meta = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($meta === false) {
+        $meta = '{}';
+    }
+
+    $line = sprintf(
+        '[%s][%s][%s] %s %s%s',
+        date('c'),
+        strtoupper($type),
+        $success ? 'OK' : 'KO',
+        $recipient !== '' ? $recipient : '<nessuno>',
+        $meta,
+        PHP_EOL
+    );
+
+    @file_put_contents($logPath, $line, FILE_APPEND);
+}
 
 function caf_patronato_generate_standard_filename(?string $servizio, ?string $nominativo): ?string
 {
@@ -175,7 +324,7 @@ function caf_patronato_decrypt_file(string $absolutePath): string
 function caf_patronato_build_download_url(string $source, int $id): string
 {
     $normalizedSource = 'document';
-    return base_url('modules/servizi/caf-patronato/download.php?source=' . $normalizedSource . '&id=' . $id);
+    return caf_patronato_module_url('download', ['source' => $normalizedSource, 'id' => $id]);
 }
 
 /**
@@ -526,9 +675,13 @@ function caf_patronato_priority_label(?int $priority): string
 
 function caf_patronato_notification_recipient(): string
 {
-    $recipient = env('CAF_PATRONATO_NOTIFICATION_EMAIL', 'cafpatronato@newprojectmobile.it');
-    $trimmed = is_string($recipient) ? trim($recipient) : '';
-    return $trimmed !== '' ? $trimmed : 'cafpatronato@newprojectmobile.it';
+    $email = getPatronatoOperatorEmail();
+    if ($email === null || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        error_log('CAF/Patronato: destinatario notifiche non disponibile.');
+        return '';
+    }
+
+    return $email;
 }
 
 function caf_patronato_allowed_mime_types(): array
@@ -1006,15 +1159,22 @@ function caf_patronato_log_action(PDO $pdo, string $action, string $details): vo
     }
 }
 
-function caf_patronato_send_notification(array $pratica, bool $isUpdate = false): bool
+function caf_patronato_send_notification(array $pratica, bool $isUpdate = false, ?string $overrideEmail = null): bool
 {
-    $recipient = caf_patronato_notification_recipient();
+    $recipient = $overrideEmail !== null ? trim($overrideEmail) : caf_patronato_notification_recipient();
+    $practiceId = (int) ($pratica['id'] ?? 0);
+    $practiceCode = (string) ($pratica['pratica_code'] ?? caf_patronato_build_code($practiceId, (string) ($pratica['tipo_pratica'] ?? 'CAF'), (string) ($pratica['created_at'] ?? '')));
     if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+        caf_patronato_log_mail_event('operator_notification', $recipient ?? '', false, [
+            'practice_id' => (string) $practiceId,
+            'practice_code' => $practiceCode,
+            'reason' => 'invalid_recipient',
+        ]);
         return false;
     }
 
     $subject = $isUpdate ? 'Aggiornamento pratica CAF/Patronato ' : 'Nuova pratica CAF/Patronato ';
-    $subject .= $pratica['pratica_code'] ?? caf_patronato_build_code((int) ($pratica['id'] ?? 0), (string) ($pratica['tipo_pratica'] ?? 'CAF'), (string) ($pratica['created_at'] ?? ''));
+    $subject .= $practiceCode;
 
     $detailsRows = [
         'Codice pratica' => (string) ($pratica['pratica_code'] ?? ''),
@@ -1043,17 +1203,55 @@ function caf_patronato_send_notification(array $pratica, bool $isUpdate = false)
     $body .= $noteHtml;
 
     if (!function_exists('render_mail_template') || !function_exists('send_system_mail')) {
+        caf_patronato_log_mail_event('operator_notification', $recipient, false, [
+            'practice_id' => (string) $practiceId,
+            'practice_code' => $practiceCode,
+            'reason' => 'mailer_unavailable',
+        ]);
         return false;
     }
 
     $htmlBody = render_mail_template('Pratica CAF & Patronato', $body);
-    return send_system_mail($recipient, $subject, $htmlBody);
+    $sent = send_system_mail($recipient, $subject, $htmlBody);
+    caf_patronato_log_mail_event('operator_notification', $recipient, (bool) $sent, [
+        'practice_id' => (string) $practiceId,
+        'practice_code' => $practiceCode,
+        'context' => $isUpdate ? 'update' : 'creation',
+    ]);
+
+    return $sent;
 }
 
-function caf_patronato_sync_legacy_pratica(PDO $pdo, array $payload, int $cafPraticaId, ?string $praticaCode, array $attachments, int $userId): ?int
+function caf_patronato_sync_legacy_pratica(PDO $pdo, array $payload, int $cafPraticaId, ?string $praticaCode, array $attachments, int $userId, ?array $operator = null): ?int
 {
     if ($cafPraticaId <= 0) {
         return null;
+    }
+
+    $operatorId = null;
+    $operatorEmail = null;
+    if (is_array($operator)) {
+        $operatorId = isset($operator['id']) ? (int) $operator['id'] : null;
+        $operatorEmail = isset($operator['email']) ? trim((string) $operator['email']) : null;
+
+        // Se l'operatore proviene dal fallback utenti (source = users), non esiste la FK in utenti_caf_patronato: non impostiamo id_utente_caf_patronato
+        $operatorSource = isset($operator['source']) ? strtolower((string) $operator['source']) : '';
+        if ($operatorSource !== '' && $operatorSource !== 'operators' && $operatorSource !== 'utenti_caf_patronato') {
+            $operatorId = null;
+        }
+
+        // Verifica che l'id esista davvero in utenti_caf_patronato, altrimenti annulla per evitare FK error
+        if ($operatorId !== null) {
+            $checkStmt = $pdo->prepare('SELECT id FROM utenti_caf_patronato WHERE id = :id');
+            if ($checkStmt) {
+                $checkStmt->execute([':id' => $operatorId]);
+                if ($checkStmt->fetchColumn() === false) {
+                    $operatorId = null;
+                }
+            } else {
+                $operatorId = null;
+            }
+        }
     }
 
     $adminId = $userId > 0 ? $userId : null;
@@ -1119,6 +1317,8 @@ function caf_patronato_sync_legacy_pratica(PDO $pdo, array $payload, int $cafPra
         'telefono' => $telefono,
         'email' => $email,
         'codice_fiscale' => $cf,
+        'operator_id' => $operatorId,
+        'operator_email' => $operatorEmail,
     ];
     $metadata = array_filter($metadata, static fn($value) => $value !== null && $value !== '');
 
@@ -1162,7 +1362,7 @@ function caf_patronato_sync_legacy_pratica(PDO $pdo, array $payload, int $cafPra
             NOW(),
             NOW(),
             :id_admin,
-            NULL,
+            :id_operatore,
             :allegati,
             :note,
             :metadati,
@@ -1180,6 +1380,7 @@ function caf_patronato_sync_legacy_pratica(PDO $pdo, array $payload, int $cafPra
         ':categoria' => $categoria,
         ':stato' => $statusCode,
         ':id_admin' => $adminId,
+        ':id_operatore' => $operatorId ?: null,
         ':allegati' => $attachmentsJson,
         ':note' => $note !== '' ? $note : null,
         ':metadati' => $metadataJson,
@@ -1261,6 +1462,14 @@ function caf_patronato_sync_legacy_pratica(PDO $pdo, array $payload, int $cafPra
         } catch (Throwable $exception) {
             error_log('CAF/Patronato legacy event log failed: ' . $exception->getMessage());
         }
+    }
+
+    try {
+        $rootPath = function_exists('project_root_path') ? project_root_path() : dirname(__DIR__, 3);
+        $service = new PracticesService($pdo, $rootPath);
+        $service->ensureFinancialMovementForPractice($legacyId);
+    } catch (Throwable $exception) {
+        error_log('CAF/Patronato movement sync failed: ' . $exception->getMessage());
     }
 
     return $legacyId;

@@ -12,14 +12,14 @@ require_role('Admin', 'Operatore', 'Manager');
 $bookingId = (int) ($_GET['id'] ?? 0);
 if ($bookingId <= 0) {
     add_flash('warning', 'Prenotazione CIE non valida.');
-    header('Location: index.php');
+    header('Location: ' . cie_module_url('index'));
     exit;
 }
 
 $booking = cie_fetch_booking($pdo, $bookingId);
 if ($booking === null) {
     add_flash('warning', 'Prenotazione CIE non trovata.');
-    header('Location: index.php');
+    header('Location: ' . cie_module_url('index'));
     exit;
 }
 
@@ -44,10 +44,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </p>
             </div>
             <div class="toolbar-actions d-flex gap-2 align-items-start">
-                <a class="btn btn-outline-light" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Indietro</a>
-                <a class="btn btn-outline-warning" href="open_portal.php?id=<?php echo (int) $booking['id']; ?>" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square me-2"></i>Portale ministeriale</a>
+                <a class="btn btn-outline-light" href="<?php echo sanitize_output(cie_module_url('index')); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Indietro</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(cie_module_url('open_portal', ['id' => (int) $booking['id']])); ?>" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square me-2"></i>Portale ministeriale</a>
                 <?php if ($canSendEmail): ?>
-                    <form class="d-inline" method="post" action="send-email.php">
+                    <form class="d-inline" method="post" action="<?php echo sanitize_output(cie_module_url('send-email')); ?>">
                         <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                         <input type="hidden" name="id" value="<?php echo (int) $booking['id']; ?>">
                         <input type="hidden" name="type" value="summary">
@@ -58,7 +58,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <i class="fa-solid fa-paper-plane me-2"></i>Email non disponibile
                     </button>
                 <?php endif; ?>
-                <a class="btn btn-outline-warning" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(cie_module_url('create')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
             </div>
         </div>
         <div class="row g-4">

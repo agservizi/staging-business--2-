@@ -8,13 +8,17 @@ require_role('Admin', 'Manager');
 $pageTitle = 'Gestione utenti';
 $csrfToken = csrf_token();
 
-$allowedRoles = ['Admin', 'Manager', 'Operatore', 'Patronato', 'Cliente'];
+$allowedRoles = ['Admin', 'Manager', 'Operatore', 'Patronato', 'Cliente', 'Collaboratore'];
 $roleLabels = [
     'Admin' => 'Amministratore',
     'Manager' => 'Manager',
     'Operatore' => 'Operatore',
     'Patronato' => 'Operatore Patronato',
+    'Operatore Patronato' => 'Operatore Patronato',
+    'Operatore_Patronato' => 'Operatore Patronato',
+    'patronato' => 'Operatore Patronato',
     'Cliente' => 'Cliente',
+    'Collaboratore' => 'Collaboratore',
 ];
 $createData = ['first_name' => '', 'last_name' => '', 'username' => '', 'email' => '', 'role' => 'Operatore'];
 $createErrors = [];
@@ -134,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         add_flash('warning', 'Impossibile inviare l\'email di benvenuto. Consegna manualmente le credenziali al nuovo utente.');
                     }
 
-                    header('Location: users.php');
+                    header('Location: ' . impostazioni_module_url('users'));
                     exit;
                 } catch (Throwable $e) {
                     error_log('User creation failed: ' . $e->getMessage());
@@ -160,13 +164,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($userId <= 0) {
                 add_flash('danger', 'Utente non valido.');
-                header('Location: users.php');
+                header('Location: ' . impostazioni_module_url('users'));
                 exit;
             }
 
             if (!in_array($data['role'], $allowedRoles, true)) {
                 add_flash('danger', 'Ruolo selezionato non valido.');
-                header('Location: users.php');
+                header('Location: ' . impostazioni_module_url('users'));
                 exit;
             }
 
@@ -175,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $currentUser = $userStmt->fetch();
             if (!$currentUser) {
                 add_flash('danger', 'Utente non trovato.');
-                header('Location: users.php');
+                header('Location: ' . impostazioni_module_url('users'));
                 exit;
             }
 
@@ -224,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($updateErrors as $error) {
                     add_flash('danger', $error);
                 }
-                header('Location: users.php');
+                header('Location: ' . impostazioni_module_url('users'));
                 exit;
             }
 
@@ -265,20 +269,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             add_flash('success', 'Profilo utente aggiornato con successo.');
-            header('Location: users.php');
+            header('Location: ' . impostazioni_module_url('users'));
             exit;
 
         case 'delete':
             $userId = (int)($_POST['user_id'] ?? 0);
             if ($userId <= 0) {
                 add_flash('danger', 'Seleziona un utente valido da eliminare.');
-                header('Location: users.php');
+                header('Location: ' . impostazioni_module_url('users'));
                 exit;
             }
 
             if ($userId === (int)($_SESSION['user_id'] ?? 0)) {
                 add_flash('danger', 'Non puoi eliminare il tuo account attivo.');
-                header('Location: users.php');
+                header('Location: ' . impostazioni_module_url('users'));
                 exit;
             }
 
@@ -287,7 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userToDelete = $userStmt->fetch();
             if (!$userToDelete) {
                 add_flash('danger', 'Utente già rimosso o inesistente.');
-                header('Location: users.php');
+                header('Location: ' . impostazioni_module_url('users'));
                 exit;
             }
 
@@ -295,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $adminCount = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE ruolo = 'Admin'")->fetchColumn();
                 if ($adminCount <= 1) {
                     add_flash('danger', 'Non è possibile eliminare l\'ultimo amministratore.');
-                    header('Location: users.php');
+                    header('Location: ' . impostazioni_module_url('users'));
                     exit;
                 }
             }
@@ -313,14 +317,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             add_flash('success', 'Utente eliminato correttamente.');
-            header('Location: users.php');
+            header('Location: ' . impostazioni_module_url('users'));
             exit;
 
         case 'resend_credentials':
             $userId = (int)($_POST['user_id'] ?? 0);
             if ($userId <= 0) {
                 add_flash('danger', 'Seleziona un utente valido.');
-                header('Location: users.php');
+                header('Location: ' . impostazioni_module_url('users'));
                 exit;
             }
 
@@ -330,7 +334,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (!$targetUser) {
                 add_flash('danger', 'Utente non trovato.');
-                header('Location: users.php');
+                header('Location: ' . impostazioni_module_url('users'));
                 exit;
             }
 
@@ -394,12 +398,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 add_flash('warning', 'Email non inviata. Comunica manualmente la nuova password: ' . $newPassword);
             }
 
-            header('Location: users.php');
+            header('Location: ' . impostazioni_module_url('users'));
             exit;
 
         default:
             add_flash('danger', 'Azione non riconosciuta.');
-            header('Location: users.php');
+            header('Location: ' . impostazioni_module_url('users'));
             exit;
     }
 }
@@ -419,7 +423,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Crea, aggiorna ed elimina gli account del team.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-soft-accent" href="index.php"><i class="fa-solid fa-gear me-2"></i>Torna alle impostazioni</a>
+                <a class="btn btn-soft-accent" href="<?php echo impostazioni_module_url('index'); ?>"><i class="fa-solid fa-gear me-2"></i>Torna alle impostazioni</a>
             </div>
         </div>
         <div class="row g-4">
@@ -506,7 +510,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <td><?php echo sanitize_output(format_user_display_name($user['username'], $user['email'], $user['nome'], $user['cognome'])); ?></td>
                                         <td><?php echo sanitize_output($user['username']); ?></td>
                                         <td><?php echo sanitize_output($user['email']); ?></td>
-                                        <td><span class="badge ag-badge"><?php echo sanitize_output($roleLabels[$user['ruolo']] ?? $user['ruolo']); ?></span></td>
+                                        <?php $roleKey = $user['ruolo']; ?>
+                                        <td><span class="badge ag-badge"><?php echo sanitize_output($roleLabels[$roleKey] ?? $roleLabels[ucfirst(strtolower((string) $roleKey))] ?? $roleKey); ?></span></td>
                                         <td><?php echo $user['last_login_at'] ? sanitize_output(date('d/m/Y H:i', strtotime($user['last_login_at']))) : '—'; ?></td>
                                         <td><?php echo sanitize_output(format_datetime($user['created_at'])); ?></td>
                                         <td class="text-end">

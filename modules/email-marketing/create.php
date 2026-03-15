@@ -232,7 +232,7 @@ if ($emailTablesReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             add_flash('success', 'Campagna creata. Puoi completarla e inviarla dalla schermata di dettaglio.');
-            header('Location: view.php?id=' . $campaignId);
+            header('Location: ' . email_marketing_module_url('view', ['id' => $campaignId]));
             exit;
         } catch (PDOException $exception) {
             error_log('Email campaign create failed: ' . $exception->getMessage());
@@ -253,7 +253,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Imposta contenuto, mittente e destinatari. Potrai inviare test e programmare l'invio in seguito.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-light" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
+                <a class="btn btn-outline-light" href="<?php echo email_marketing_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
             </div>
         </div>
 

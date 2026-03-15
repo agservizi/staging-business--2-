@@ -1,4 +1,5 @@
 <?php
+use App\Services\Opportunities\OpportunityService;
 use App\Services\SettingsService;
 
 require_once __DIR__ . '/../../includes/auth.php';
@@ -121,45 +122,44 @@ if (!function_exists('settings_build_service_form')) {
     }
 }
 
-$vatCountries = [
-    'AT' => 'Austria',
-    'BE' => 'Belgio',
-    'BG' => 'Bulgaria',
-    'HR' => 'Croazia',
-    'CY' => 'Cipro',
-    'CZ' => 'Repubblica Ceca',
-    'DK' => 'Danimarca',
-    'EE' => 'Estonia',
-    'FI' => 'Finlandia',
-    'FR' => 'Francia',
-    'DE' => 'Germania',
-    'GR' => 'Grecia',
-    'HU' => 'Ungheria',
-    'IE' => 'Irlanda',
-    'IT' => 'Italia',
-    'LV' => 'Lettonia',
-    'LT' => 'Lituania',
-    'LU' => 'Lussemburgo',
-    'MT' => 'Malta',
-    'NL' => 'Paesi Bassi',
-    'PL' => 'Polonia',
-    'PT' => 'Portogallo',
-    'RO' => 'Romania',
-    'SK' => 'Slovacchia',
-    'SI' => 'Slovenia',
-    'ES' => 'Spagna',
-    'SE' => 'Svezia',
-    'XI' => 'Irlanda del Nord',
+$projectRoot = realpath(__DIR__ . '/../../') ?: __DIR__ . '/../../';
+$settingsService = new SettingsService($pdo, $projectRoot);
+$appearanceConfig = get_ui_theme_config($pdo);
+$themeOptions = SettingsService::availableThemes();
+$portalBrtPricingForm = $settingsService->getPortalBrtPricingFormConfig();
+$portalBrtZonesMeta = [
+    'italy' => ['label' => 'Italia', 'description' => 'Spedizioni nazionali'],
+    'europe' => ['label' => 'Europa', 'description' => 'Spedizioni UE/extra-UE'],
+    'swiss' => ['label' => 'Svizzera', 'description' => 'Spedizioni CH con documenti doganali'],
 ];
+if (!isset($portalBrtPricingForm['zones']) || !is_array($portalBrtPricingForm['zones'])) {
+    $portalBrtPricingForm = [
+        'zones' => [
+            'italy' => array_merge(['currency' => 'EUR', 'tiers' => []], $portalBrtPricingForm),
+            'europe' => ['currency' => 'EUR', 'tiers' => []],
+            'swiss' => ['currency' => 'EUR', 'tiers' => []],
+        ],
+    ];
+}
+// Assicura sempre la presenza delle tre zone attese
+foreach (['italy', 'europe', 'swiss'] as $zoneKey) {
+    if (!isset($portalBrtPricingForm['zones'][$zoneKey]) || !is_array($portalBrtPricingForm['zones'][$zoneKey])) {
+        $portalBrtPricingForm['zones'][$zoneKey] = ['currency' => 'EUR', 'tiers' => []];
+    }
+    if (!isset($portalBrtPricingForm['zones'][$zoneKey]['tiers']) || !is_array($portalBrtPricingForm['zones'][$zoneKey]['tiers'])) {
+        $portalBrtPricingForm['zones'][$zoneKey]['tiers'] = [];
+    }
+}
 
+// Configurazione azienda e liste di supporto
 $companyDefaults = [
-    'ragione_sociale' => 'Coresuite Business SRL',
-    'indirizzo' => 'Via Plinio 72',
-    'cap' => '20129',
-    'citta' => 'Milano',
-    'provincia' => 'MI',
-    'telefono' => '+39 02 1234567',
-    'email' => 'info@coresuitebusiness.com',
+    'ragione_sociale' => '',
+    'indirizzo' => '',
+    'cap' => '',
+    'citta' => '',
+    'provincia' => '',
+    'telefono' => '',
+    'email' => '',
     'pec' => '',
     'sdi' => '',
     'vat_country' => 'IT',
@@ -168,27 +168,83 @@ $companyDefaults = [
     'note' => '',
     'company_logo' => '',
 ];
-
-$projectRoot = realpath(__DIR__ . '/../../') ?: __DIR__ . '/../../';
-$settingsService = new SettingsService($pdo, $projectRoot);
-
 $companyConfig = $settingsService->fetchCompanySettings($companyDefaults);
+$vatCountries = [
+    'IT' => 'Italia', 'AT' => 'Austria', 'BE' => 'Belgio', 'BG' => 'Bulgaria', 'HR' => 'Croazia',
+    'CY' => 'Cipro', 'CZ' => 'Repubblica Ceca', 'DK' => 'Danimarca', 'EE' => 'Estonia', 'FI' => 'Finlandia',
+    'FR' => 'Francia', 'DE' => 'Germania', 'GR' => 'Grecia', 'HU' => 'Ungheria', 'IE' => 'Irlanda',
+    'LV' => 'Lettonia', 'LT' => 'Lituania', 'LU' => 'Lussemburgo', 'MT' => 'Malta', 'NL' => 'Paesi Bassi',
+    'PL' => 'Polonia', 'PT' => 'Portogallo', 'RO' => 'Romania', 'SK' => 'Slovacchia', 'SI' => 'Slovenia',
+    'ES' => 'Spagna', 'SE' => 'Svezia', 'CH' => 'Svizzera', 'GB' => 'Regno Unito', 'NO' => 'Norvegia',
+    'SM' => 'San Marino', 'LI' => 'Liechtenstein', 'MC' => 'Monaco', 'AD' => 'Andorra', 'BA' => 'Bosnia ed Erzegovina',
+    'RS' => 'Serbia', 'ME' => 'Montenegro', 'AL' => 'Albania', 'TR' => 'Turchia', 'UA' => 'Ucraina',
+];
+
+// Configurazioni varie
+$emailMarketingConfig = $settingsService->getEmailMarketingSettings();
 $movementDescriptions = $settingsService->getMovementDescriptions();
 $appointmentTypes = $settingsService->getAppointmentTypes();
 $appointmentStatuses = $settingsService->getAppointmentStatuses();
-$appearanceConfig = $settingsService->getAppearanceSettings();
-$themeOptions = SettingsService::availableThemes();
-$emailMarketingConfig = $settingsService->getEmailMarketingSettings();
-$portalBrtPricingForm = $settingsService->getPortalBrtPricingFormConfig();
-$cafPatronatoTypes = $settingsService->getCafPatronatoTypes();
-$cafPatronatoStatuses = $settingsService->getCafPatronatoStatuses();
-$cafPatronatoServices = $settingsService->getCafPatronatoServices();
-$cafPatronatoTypesForm = $cafPatronatoTypes;
-$cafPatronatoStatusesForm = $cafPatronatoStatuses;
-$cafPatronatoServicesForm = settings_build_service_form($cafPatronatoTypes, $cafPatronatoServices);
+$aciTypes = $settingsService->getAciTypes();
+$aciStatuses = $settingsService->getAciStatuses();
+$aciPricing = $settingsService->getAciPricing($aciTypes);
+$expressModuleSettings = $settingsService->getExpressModuleSettings();
+$servicePricing = $settingsService->getServicePricing();
 
-$cafPatronatoServiceSuggestions = $settingsService->suggestCafPatronatoServices();
-$cafPatronatoServiceSuggestions = settings_filter_service_suggestions($cafPatronatoServices, $cafPatronatoServiceSuggestions);
+$opportunityService = new OpportunityService($pdo);
+$opportunityStatuses = [];
+$opportunityStatusPreview = [];
+$opportunityProvidersByCategory = [];
+$opportunityCategoryLabels = [
+    'telefonia' => 'Telefonia',
+    'luce' => 'Luce',
+    'gas' => 'Gas',
+    'paytv' => 'Pay TV',
+];
+$opportunityCategorySummary = [];
+$opportunityCardSummary = [
+    'statuses' => 0,
+    'providers' => 0,
+    'offers' => 0,
+];
+
+try {
+    $opportunityStatuses = $opportunityService->listStatusesDetailed();
+} catch (Throwable $exception) {
+    error_log('Impostazioni: impossibile recuperare gli stati opportunity - ' . $exception->getMessage());
+    $opportunityStatuses = [];
+}
+
+try {
+    $opportunityProvidersByCategory = $opportunityService->listProvidersWithOffers(null, true);
+} catch (Throwable $exception) {
+    error_log('Impostazioni: impossibile recuperare gestori/ offerte opportunity - ' . $exception->getMessage());
+    $opportunityProvidersByCategory = [];
+}
+
+$opportunityCardSummary['statuses'] = count($opportunityStatuses);
+foreach ($opportunityProvidersByCategory as $categoryProviders) {
+    $opportunityCardSummary['providers'] += count($categoryProviders);
+    foreach ($categoryProviders as $providerData) {
+        $opportunityCardSummary['offers'] += count($providerData['offers'] ?? []);
+    }
+}
+
+$opportunityStatusPreview = array_slice($opportunityStatuses, 0, 5);
+
+foreach ($opportunityCategoryLabels as $categoryKey => $categoryLabel) {
+    $providers = $opportunityProvidersByCategory[$categoryKey] ?? [];
+    $offers = 0;
+    foreach ($providers as $providerData) {
+        $offers += count($providerData['offers'] ?? []);
+    }
+    $opportunityCategorySummary[] = [
+        'key' => $categoryKey,
+        'label' => $categoryLabel,
+        'providers' => count($providers),
+        'offers' => $offers,
+    ];
+}
 
 $backupPerPage = 10;
 $backupPage = max(1, (int) ($_GET['page_backup'] ?? 1));
@@ -273,7 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             add_flash('success', 'Dati aziendali aggiornati con successo.');
-            header('Location: index.php');
+            header('Location: ' . impostazioni_module_url('index'));
             exit;
         }
 
@@ -297,7 +353,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $result = $settingsService->generateBackup((int) ($_SESSION['user_id'] ?? 0));
         if ($result['success']) {
             add_flash('success', 'Backup generato correttamente: ' . $result['file']);
-            header('Location: index.php');
+            header('Location: ' . impostazioni_module_url('index'));
             exit;
         }
 
@@ -319,7 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($result['success']) {
             add_flash('success', 'Backup eliminato correttamente.');
-            header('Location: index.php?page_backup=' . $backupPage);
+            header('Location: ' . impostazioni_module_url('index', ['page_backup' => $backupPage]));
             exit;
         }
 
@@ -333,7 +389,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result['success']) {
             $removed = (int) ($result['removed'] ?? 0);
             add_flash('success', $removed > 0 ? sprintf('%d backup eliminati.', $removed) : 'Nessun backup da eliminare.');
-            header('Location: index.php?page_backup=' . $backupPage);
+            header('Location: ' . impostazioni_module_url('index', ['page_backup' => $backupPage]));
             exit;
         }
 
@@ -356,7 +412,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Tema interfaccia aggiornato con successo.');
-            header('Location: index.php#appearance-settings');
+            header('Location: ' . impostazioni_module_url('index') . '#appearance-settings');
             exit;
         }
 
@@ -394,7 +450,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($result['success']) {
             add_flash('success', 'Impostazioni email marketing aggiornate con successo.');
-            header('Location: index.php#email-marketing-settings');
+            header('Location: ' . impostazioni_module_url('index') . '#email-marketing-settings');
             exit;
         }
 
@@ -402,6 +458,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $alerts[] = ['type' => 'danger', 'text' => $error];
         }
     }
+
 
     if ($action === 'email_marketing_test') {
         require_once __DIR__ . '/../../includes/mailer.php';
@@ -428,7 +485,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($sent) {
                 add_flash('success', 'Email di test inviata a ' . $testEmail . '.');
-                header('Location: index.php#email-marketing-tools');
+                header('Location: ' . impostazioni_module_url('index') . '#email-marketing-tools');
                 exit;
             }
 
@@ -457,7 +514,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             add_flash('success', 'Descrizioni movimenti aggiornate con successo.');
-            header('Location: index.php#movement-descriptions');
+            header('Location: ' . impostazioni_module_url('index') . '#movement-descriptions');
             exit;
         }
 
@@ -498,7 +555,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             add_flash('success', 'Tipologie appuntamenti aggiornate con successo.');
-            header('Location: index.php#appointment-types');
+            header('Location: ' . impostazioni_module_url('index') . '#appointment-types');
             exit;
         }
 
@@ -556,7 +613,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             add_flash('success', 'Stati appuntamenti aggiornati con successo.');
-            header('Location: index.php#appointment-statuses');
+            header('Location: ' . impostazioni_module_url('index') . '#appointment-statuses');
             exit;
         }
 
@@ -578,6 +635,148 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'success' => false,
                 'errors' => $result['errors'],
                 'data' => $appointmentStatuses,
+            ]);
+            exit;
+        }
+    }
+
+    if ($action === 'aci_types') {
+        $typesRaw = (string) ($_POST['aci_types_list'] ?? '');
+        $typesList = array_filter(array_map('trim', preg_split('/\r?\n/', $typesRaw) ?: []));
+
+        $result = $settingsService->saveAciTypes($typesList, $currentUserId);
+        if ($result['success']) {
+            if ($isAjax) {
+                $updatedTypes = $result['types'] ?? $settingsService->getAciTypes();
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Tipologie ACI aggiornate con successo.',
+                    'data' => ['types' => array_values($updatedTypes)],
+                ]);
+                exit;
+            }
+            add_flash('success', 'Tipologie ACI aggiornate con successo.');
+            header('Location: ' . impostazioni_module_url('index') . '#aci-types');
+            exit;
+        }
+
+        foreach ($result['errors'] as $error) {
+            $alerts[] = ['type' => 'danger', 'text' => $error];
+        }
+
+        if (isset($result['types']) && is_array($result['types'])) {
+            $aciTypes = $result['types'];
+        } else {
+            $aciTypes = array_values($typesList);
+        }
+        if ($isAjax) {
+            http_response_code(422);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'errors' => $result['errors'],
+                'data' => ['types' => $aciTypes],
+            ]);
+            exit;
+        }
+    }
+
+    if ($action === 'aci_statuses') {
+        $statusesRaw = (string) ($_POST['aci_statuses_list'] ?? '');
+        $statusesList = array_filter(array_map('trim', preg_split('/\r?\n/', $statusesRaw) ?: []));
+
+        $result = $settingsService->saveAciStatuses($statusesList, $currentUserId);
+        if ($result['success']) {
+            if ($isAjax) {
+                $updatedStatuses = $result['statuses'] ?? $settingsService->getAciStatuses();
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Stati ACI aggiornati con successo.',
+                    'data' => ['statuses' => array_values($updatedStatuses)],
+                ]);
+                exit;
+            }
+            add_flash('success', 'Stati ACI aggiornati con successo.');
+            header('Location: ' . impostazioni_module_url('index') . '#aci-statuses');
+            exit;
+        }
+
+        foreach ($result['errors'] as $error) {
+            $alerts[] = ['type' => 'danger', 'text' => $error];
+        }
+
+        if (isset($result['statuses']) && is_array($result['statuses'])) {
+            $aciStatuses = $result['statuses'];
+        } else {
+            $aciStatuses = array_values($statusesList);
+        }
+        if ($isAjax) {
+            http_response_code(422);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'errors' => $result['errors'],
+                'data' => ['statuses' => $aciStatuses],
+            ]);
+            exit;
+        }
+    }
+
+    if ($action === 'aci_pricing') {
+        $pricingPayload = $_POST['aci_pricing'] ?? [];
+        $pricingList = [];
+        if (is_array($pricingPayload)) {
+            foreach ($pricingPayload as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $name = trim((string) ($item['name'] ?? ''));
+                if ($name === '') {
+                    continue;
+                }
+                $priceRaw = $item['price'] ?? null;
+                $price = null;
+                if ($priceRaw !== null && $priceRaw !== '') {
+                    $price = (float) str_replace(',', '.', (string) $priceRaw);
+                }
+                $pricingList[] = [
+                    'name' => $name,
+                    'price' => $price,
+                ];
+            }
+        }
+
+        $result = $settingsService->saveAciPricing($pricingList, $currentUserId);
+        if ($result['success']) {
+            $aciPricing = $result['pricing'] ?? $settingsService->getAciPricing($aciTypes);
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Costi predefiniti ACI aggiornati con successo.',
+                    'data' => ['pricing' => $aciPricing],
+                ]);
+                exit;
+            }
+            add_flash('success', 'Costi predefiniti ACI aggiornati con successo.');
+            header('Location: ' . impostazioni_module_url('index') . '#aci-pricing');
+            exit;
+        }
+
+        foreach ($result['errors'] as $error) {
+            $alerts[] = ['type' => 'danger', 'text' => $error];
+        }
+
+        $aciPricing = $settingsService->getAciPricing($aciTypes);
+        if ($isAjax) {
+            http_response_code(422);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'errors' => $result['errors'],
+                'data' => ['pricing' => $aciPricing],
             ]);
             exit;
         }
@@ -606,7 +805,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Tipologie CAF & Patronato aggiornate con successo.');
-            header('Location: index.php#caf-patronato-types');
+            header('Location: ' . impostazioni_module_url('index') . '#caf-patronato-types');
             exit;
         }
 
@@ -651,7 +850,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Stati pratiche CAF & Patronato aggiornati con successo.');
-            header('Location: index.php#caf-patronato-statuses');
+            header('Location: ' . impostazioni_module_url('index') . '#caf-patronato-statuses');
             exit;
         }
 
@@ -697,7 +896,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Servizi richiesti aggiornati con successo.');
-            header('Location: index.php#caf-patronato-services');
+            header('Location: ' . impostazioni_module_url('index') . '#caf-patronato-services');
             exit;
         }
 
@@ -735,7 +934,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Servizi richiesti importati dalle pratiche.');
-            header('Location: index.php#caf-patronato-services');
+            header('Location: ' . impostazioni_module_url('index') . '#caf-patronato-services');
             exit;
         }
 
@@ -756,17 +955,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'portal_brt_pricing') {
-        $tiersPayload = $_POST['tiers'] ?? [];
+        $zonesPayload = isset($_POST['zones']) && is_array($_POST['zones']) ? $_POST['zones'] : [];
         $result = $settingsService->savePortalBrtPricing([
-            'currency' => $_POST['currency'] ?? '',
-            'tiers' => is_array($tiersPayload) ? $tiersPayload : [],
+            'zones' => $zonesPayload,
         ], $currentUserId);
 
         $portalBrtPricingForm = $result['config'];
 
         if ($result['success']) {
             add_flash('success', 'Tariffe BRT aggiornate con successo.');
-            header('Location: index.php#portal-brt-pricing');
+            header('Location: ' . impostazioni_module_url('index') . '#portal-brt-pricing');
             exit;
         }
 
@@ -774,6 +972,137 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $alerts[] = ['type' => 'danger', 'text' => $error];
         }
     }
+
+    if ($action === 'service_pricing') {
+        $pricingPayload = $_POST['pricing'] ?? [];
+        $pricingList = [];
+        if (is_array($pricingPayload)) {
+            foreach ($pricingPayload as $item) {
+                if (is_array($item) && !empty(trim($item['name'] ?? ''))) {
+                    $pricingList[] = [
+                        'name' => trim($item['name']),
+                        'cost_reseller' => (float) ($item['cost_reseller'] ?? 0),
+                        'cost_customer' => (float) ($item['cost_customer'] ?? 0),
+                    ];
+                }
+            }
+        }
+
+        try {
+            $result = $settingsService->saveServicePricing($pricingList, $currentUserId);
+        } catch (Throwable $exception) {
+            error_log('Errore salvataggio listini: ' . $exception->getMessage());
+            $result = ['success' => false, 'errors' => ['Errore interno del server. Controlla i log per dettagli.']];
+        }
+
+        if ($result['success']) {
+            $servicePricing = $result['pricing'];
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Listini servizi e prodotti aggiornati con successo.',
+                    'data' => ['pricing' => $servicePricing],
+                ]);
+                exit;
+            }
+            add_flash('success', 'Listini servizi e prodotti aggiornati con successo.');
+            header('Location: ' . impostazioni_module_url('index') . '#service-pricing');
+            exit;
+        }
+
+        foreach ($result['errors'] as $error) {
+            $alerts[] = ['type' => 'danger', 'text' => $error];
+        }
+
+        if (isset($result['pricing']) && is_array($result['pricing'])) {
+            $servicePricing = $result['pricing'];
+        }
+        if ($isAjax) {
+            http_response_code(422);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'errors' => $result['errors'],
+                'data' => ['pricing' => $servicePricing],
+            ]);
+            exit;
+        }
+    }
+
+    if ($action === 'express_module_settings') {
+        $paymentMethodsPayload = preg_split('/\r\n|\r|\n/', (string) ($_POST['payment_methods_text'] ?? '')) ?: [];
+
+        try {
+            $result = $settingsService->saveExpressModuleSettings([
+                'default_vat' => $_POST['default_vat'] ?? 22,
+                'stock_alert_threshold' => $_POST['stock_alert_threshold'] ?? 10,
+                'payment_methods' => $paymentMethodsPayload,
+                'default_payment_method' => $_POST['default_payment_method'] ?? '',
+                'allow_negative_margin' => isset($_POST['allow_negative_margin']) ? 1 : 0,
+            ], $currentUserId);
+        } catch (Throwable $exception) {
+            error_log('Errore salvataggio impostazioni Express: ' . $exception->getMessage());
+            $result = ['success' => false, 'errors' => ['Errore interno del server. Controlla i log per dettagli.']];
+        }
+
+        if ($result['success']) {
+            $expressModuleSettings = $result['settings'];
+            add_flash('success', 'Impostazioni modulo Express aggiornate con successo.');
+            header('Location: ' . impostazioni_module_url('index') . '#express-module-settings');
+            exit;
+        }
+
+        foreach ($result['errors'] as $error) {
+            $alerts[] = ['type' => 'danger', 'text' => $error];
+        }
+
+        if (isset($result['settings']) && is_array($result['settings'])) {
+            $expressModuleSettings = $result['settings'];
+        }
+    }
+}
+
+// Assicura che i dati ACI siano valorizzati anche su richieste GET
+if (!isset($aciTypes)) {
+    $aciTypes = $settingsService->getAciTypes();
+}
+
+if (!isset($aciStatuses)) {
+    $aciStatuses = $settingsService->getAciStatuses();
+}
+
+if (!isset($aciPricing)) {
+    $aciPricing = $settingsService->getAciPricing($aciTypes);
+}
+
+// Assicura che i dati CAF/Patronato siano valorizzati anche su richieste GET
+if (!isset($cafPatronatoTypes)) {
+    $cafPatronatoTypes = $settingsService->getCafPatronatoTypes();
+}
+
+if (!isset($cafPatronatoTypesForm)) {
+    $cafPatronatoTypesForm = $cafPatronatoTypes;
+}
+
+if (!isset($cafPatronatoStatuses)) {
+    $cafPatronatoStatuses = $settingsService->getCafPatronatoStatuses();
+}
+
+if (!isset($cafPatronatoStatusesForm)) {
+    $cafPatronatoStatusesForm = $cafPatronatoStatuses;
+}
+
+if (!isset($cafPatronatoServices)) {
+    $cafPatronatoServices = $settingsService->getCafPatronatoServices();
+}
+
+if (!isset($cafPatronatoServicesForm)) {
+    $cafPatronatoServicesForm = settings_build_service_form($cafPatronatoTypes, $cafPatronatoServices);
+}
+
+if (!isset($cafPatronatoServiceSuggestions)) {
+    $cafPatronatoServiceSuggestions = settings_filter_service_suggestions($cafPatronatoServices, $settingsService->suggestCafPatronatoServices());
 }
 
 $lastTypeRow = $cafPatronatoTypesForm ? end($cafPatronatoTypesForm) : null;
@@ -849,8 +1178,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Configura utenti, azienda, backup e preferenze.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-soft-accent" href="logs.php"><i class="fa-solid fa-scroll me-2"></i>Registro attività</a>
-                <a class="btn btn-warning" href="users.php"><i class="fa-solid fa-users-gear me-2"></i>Gestione utenti</a>
+                <a class="btn btn-soft-accent" href="<?php echo impostazioni_module_url('logs'); ?>"><i class="fa-solid fa-scroll me-2"></i>Registro attività</a>
+                <a class="btn btn-warning" href="<?php echo impostazioni_module_url('users'); ?>"><i class="fa-solid fa-users-gear me-2"></i>Gestione utenti</a>
+                <a class="btn btn-outline-danger" href="<?php echo impostazioni_module_url('system-health'); ?>"><i class="fa-solid fa-heart-pulse me-2"></i>Diagnostica sistema</a>
             </div>
         </div>
         <?php foreach ($alerts as $alert): ?>
@@ -866,10 +1196,16 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <button class="nav-link" data-section-target="appearance" type="button">Aspetto / Backup</button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" data-section-target="privacy" type="button">Privacy / Cookie</button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="movements" type="button">Descrizioni</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="appointments" type="button">Appuntamenti</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-section-target="aci" type="button">Pratiche ACI</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="caf-patronato" type="button">CAF &amp; Patronato</button>
@@ -879,6 +1215,15 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="email-marketing" type="button">Email marketing</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-section-target="opportunities" type="button">Opportunity</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-section-target="express" type="button">Express Telefonia</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-section-target="pricing" type="button">Listini</button>
             </li>
             <li class="nav-item ms-auto" role="presentation">
                 <button class="nav-link" data-section-target="logs" type="button">Log attività</button>
@@ -1062,6 +1407,44 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </div>
                 </div>
             </div>
+            <div class="col-12" data-section="privacy">
+                <div class="card ag-card" id="cs-consent-card">
+                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <h5 class="card-title mb-0">Privacy e cookie</h5>
+                            <p class="text-muted mb-0">Stato CMP e log eventi lato client (max 50 per sessione).</p>
+                        </div>
+                        <a href="#" class="small" data-cs-toggle-debug>Debug</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="border rounded-3 p-3 bg-light h-100">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted text-uppercase small fw-semibold">Consenso</span>
+                                        <span class="badge bg-secondary" data-cs-updated>—</span>
+                                    </div>
+                                    <div class="d-grid gap-2" data-cs-state>
+                                        <div class="placeholder-glow">
+                                            <span class="placeholder col-6"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="border rounded-3 p-3 bg-light h-100 d-flex flex-column">
+                                    <div class="small text-muted mb-2" data-cs-log-status>Ultimi eventi CMP (max 50). Se vuoto, apri una pagina con il banner cookie e ricarica.</div>
+                                    <div class="flex-grow-1 overflow-auto" style="max-height: 260px;" data-cs-log>
+                                        <div class="placeholder-glow">
+                                            <span class="placeholder col-8"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="col-12 col-xl-6" data-section="backup">
                 <div class="card ag-card h-100">
                     <div class="card-header bg-transparent border-0">
@@ -1147,14 +1530,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             $backupQuery = $_GET;
                                             unset($backupQuery['export']);
                                             $backupQuery['page_backup'] = max(1, $backupPage - 1);
-                                            $prevBackupUrl = 'index.php?' . http_build_query($backupQuery);
+                                            $prevBackupUrl = impostazioni_module_url('index', $backupQuery);
                                         ?>
                                         <li class="page-item <?php echo $backupPage <= 1 ? 'disabled' : ''; ?>">
                                             <a class="page-link" href="<?php echo sanitize_output($prevBackupUrl); ?>" aria-label="Precedente">&laquo;</a>
                                         </li>
                                         <?php for ($page = 1; $page <= $backupPages; $page++):
                                             $backupQuery['page_backup'] = $page;
-                                            $backupPageUrl = 'index.php?' . http_build_query($backupQuery);
+                                            $backupPageUrl = impostazioni_module_url('index', $backupQuery);
                                         ?>
                                             <li class="page-item <?php echo $page === $backupPage ? 'active' : ''; ?>">
                                                 <a class="page-link" href="<?php echo sanitize_output($backupPageUrl); ?>"><?php echo $page; ?></a>
@@ -1162,7 +1545,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <?php endfor; ?>
                                         <?php
                                             $backupQuery['page_backup'] = min($backupPages, $backupPage + 1);
-                                            $nextBackupUrl = 'index.php?' . http_build_query($backupQuery);
+                                            $nextBackupUrl = impostazioni_module_url('index', $backupQuery);
                                         ?>
                                         <li class="page-item <?php echo $backupPage >= $backupPages ? 'disabled' : ''; ?>">
                                             <a class="page-link" href="<?php echo sanitize_output($nextBackupUrl); ?>" aria-label="Successivo">&raquo;</a>
@@ -1325,6 +1708,92 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </div>
                             <div class="text-end mt-4">
                                 <button class="btn btn-warning" type="submit"><i class="fa-solid fa-save me-2"></i>Salva stati</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-6" data-section="aci">
+                <div class="card ag-card h-100" id="aci-types">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Tipologie pratiche ACI</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Definisci le tipologie disponibili per le pratiche ACI. Verranno proposte nei moduli di creazione e modifica.</p>
+                        <form method="post" data-ajax="settings" data-ajax-section="aci-types">
+                            <input type="hidden" name="action" value="aci_types">
+                            <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                            <label class="form-label" for="aci_types_list">Una tipologia per riga (max 60 caratteri).</label>
+                            <textarea class="form-control" id="aci_types_list" name="aci_types_list" rows="6" placeholder="Passaggio proprietà&#10;Radiazione&#10;Duplicato documenti"><?php echo sanitize_output(implode("\n", $aciTypes)); ?></textarea>
+                            <div class="form-text">L'elenco è deduplicato automaticamente e mantiene l'ordine indicato.</div>
+                            <div class="text-end mt-4">
+                                <button class="btn btn-warning" type="submit"><i class="fa-solid fa-save me-2"></i>Salva tipologie</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xl-6" data-section="aci">
+                <div class="card ag-card h-100" id="aci-statuses">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Stati pratiche ACI</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Personalizza gli stati disponibili per le pratiche ACI. Verranno proposti per filtri e aggiornamenti.</p>
+                        <form method="post" data-ajax="settings" data-ajax-section="aci-statuses">
+                            <input type="hidden" name="action" value="aci_statuses">
+                            <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                            <label class="form-label" for="aci_statuses_list">Uno stato per riga (max 40 caratteri).</label>
+                            <textarea class="form-control" id="aci_statuses_list" name="aci_statuses_list" rows="6" placeholder="Aperta&#10;Documenti richiesti&#10;In lavorazione"><?php echo sanitize_output(implode("\n", $aciStatuses)); ?></textarea>
+                            <div class="form-text">Gli stati vengono deduplicati automaticamente e mantenuti nell'ordine inserito.</div>
+                            <div class="text-end mt-4">
+                                <button class="btn btn-warning" type="submit"><i class="fa-solid fa-save me-2"></i>Salva stati</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12" data-section="aci">
+                <div class="card ag-card" id="aci-pricing">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Costi predefiniti ACI</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Imposta un costo predefinito per ogni tipologia ACI. Verrà proposto automaticamente in fase di creazione.</p>
+                        <form method="post" data-ajax="settings" data-ajax-section="aci-pricing">
+                            <input type="hidden" name="action" value="aci_pricing">
+                            <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-sm align-middle mb-3">
+                                    <thead>
+                                        <tr>
+                                            <th>Tipologia</th>
+                                            <th style="width: 200px;">Costo predefinito (€)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($aciPricing as $index => $item): ?>
+                                            <?php
+                                                $name = (string) ($item['name'] ?? '');
+                                                $priceValue = '';
+                                                if (isset($item['price']) && $item['price'] !== null && $item['price'] !== '') {
+                                                    $priceValue = number_format((float) $item['price'], 2, '.', '');
+                                                }
+                                            ?>
+                                            <tr>
+                                                <td>
+                                                    <input class="form-control form-control-sm" name="aci_pricing[<?php echo (int) $index; ?>][name]" value="<?php echo sanitize_output($name); ?>" readonly>
+                                                </td>
+                                                <td>
+                                                    <input class="form-control form-control-sm" name="aci_pricing[<?php echo (int) $index; ?>][price]" value="<?php echo sanitize_output($priceValue); ?>" inputmode="decimal" placeholder="0.00">
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="text-end">
+                                <button class="btn btn-warning" type="submit"><i class="fa-solid fa-save me-2"></i>Salva costi</button>
                             </div>
                         </form>
                     </div>
@@ -1532,52 +2001,102 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <h5 class="card-title mb-0">Tariffe spedizioni BRT (portale clienti)</h5>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted mb-3">Configura gli scaglioni progressivi per peso e volume visualizzati nel portale clienti. I limiti lasciati vuoti indicano "senza limite" per quel parametro.</p>
+                        <p class="text-muted mb-3">Configura gli scaglioni progressivi per peso e volume visualizzati nel portale clienti, distinti per area (Italia, Europa, Svizzera). I limiti lasciati vuoti indicano "senza limite" per quel parametro.</p>
                         <form method="post" class="portal-brt-pricing-form">
                             <input type="hidden" name="action" value="portal_brt_pricing">
                             <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-                            <div class="row g-3 align-items-end">
-                                <div class="col-auto">
-                                    <label class="form-label" for="portal_brt_currency">Valuta *</label>
-                                    <input class="form-control text-uppercase" id="portal_brt_currency" name="currency" value="<?php echo sanitize_output($portalBrtPricingForm['currency'] ?? 'EUR'); ?>" maxlength="3" pattern="[A-Za-z]{3}" title="Inserisci il codice valuta ISO a tre lettere (es. EUR)">
-                                    <div class="form-text">Codice ISO 4217 (es. EUR, USD).</div>
-                                </div>
-                            </div>
-                            <div class="table-responsive mt-3">
-                                <table class="table table-dark table-sm align-middle mb-0" id="portalBrtPricingTable">
-                                    <thead>
-                                        <tr>
-                                            <th style="width: 60px;">#</th>
-                                            <th>Etichetta</th>
-                                            <th style="width: 160px;">Peso max (kg)</th>
-                                            <th style="width: 170px;">Volume max (m³)</th>
-                                            <th style="width: 150px;">Prezzo</th>
-                                            <th style="width: 70px;" class="text-end">Azioni</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="portalBrtPricingRows">
-                                        <?php foreach ($portalBrtPricingForm['tiers'] as $index => $tier): ?>
-                                            <tr data-index="<?php echo (int) $index; ?>">
-                                                <td class="text-muted small portal-brt-tier-index">#<?php echo (int) ($index + 1); ?></td>
+
+                            <?php foreach ($portalBrtZonesMeta as $zoneKey => $zoneMeta): ?>
+                                <?php $zoneData = $portalBrtPricingForm['zones'][$zoneKey] ?? ['currency' => 'EUR', 'tiers' => [['label' => '', 'max_weight' => '', 'max_volume' => '', 'price' => '']]]; ?>
+                                <div class="card ag-card mb-3" data-portal-brt-pricing-zone="<?php echo sanitize_output($zoneKey); ?>">
+                                    <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                        <div>
+                                            <h6 class="mb-0">Listino <?php echo sanitize_output($zoneMeta['label']); ?></h6>
+                                            <p class="text-muted small mb-0"><?php echo sanitize_output($zoneMeta['description']); ?></p>
+                                        </div>
+                                        <div class="d-flex align-items-end gap-2">
+                                            <div>
+                                                <label class="form-label mb-1" for="portal_brt_currency_<?php echo sanitize_output($zoneKey); ?>">Valuta *</label>
+                                                <input class="form-control form-control-sm text-uppercase" id="portal_brt_currency_<?php echo sanitize_output($zoneKey); ?>" data-portal-brt-currency name="zones[<?php echo sanitize_output($zoneKey); ?>][currency]" value="<?php echo sanitize_output($zoneData['currency'] ?? 'EUR'); ?>" maxlength="3" pattern="[A-Za-z]{3}" title="Inserisci il codice valuta ISO a tre lettere (es. EUR)">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body pt-2">
+                                        <div class="table-responsive">
+                                            <table class="table table-dark table-sm align-middle mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 60px;">#</th>
+                                                        <th>Etichetta</th>
+                                                        <th style="width: 160px;">Peso max (kg)</th>
+                                                        <th style="width: 170px;">Volume max (m³)</th>
+                                                        <th style="width: 150px;">Prezzo</th>
+                                                        <th style="width: 70px;" class="text-end">Azioni</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody data-portal-brt-rows>
+                                                    <?php foreach ($zoneData['tiers'] as $index => $tier): ?>
+                                                        <tr data-index="<?php echo (int) $index; ?>">
+                                                            <td class="text-muted small portal-brt-tier-index">#<?php echo (int) ($index + 1); ?></td>
+                                                            <td>
+                                                                <input class="form-control form-control-sm" name="zones[<?php echo sanitize_output($zoneKey); ?>][tiers][<?php echo (int) $index; ?>][label]" data-field="label" maxlength="60" value="<?php echo sanitize_output($tier['label'] ?? ''); ?>" placeholder="Es. Fino a 10 kg">
+                                                            </td>
+                                                            <td>
+                                                                <div class="input-group input-group-sm">
+                                                                    <input class="form-control" name="zones[<?php echo sanitize_output($zoneKey); ?>][tiers][<?php echo (int) $index; ?>][max_weight]" data-field="max_weight" value="<?php echo sanitize_output($tier['max_weight'] ?? ''); ?>" inputmode="decimal" placeholder="es. 10.5">
+                                                                    <span class="input-group-text">kg</span>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div class="input-group input-group-sm">
+                                                                    <input class="form-control" name="zones[<?php echo sanitize_output($zoneKey); ?>][tiers][<?php echo (int) $index; ?>][max_volume]" data-field="max_volume" value="<?php echo sanitize_output($tier['max_volume'] ?? ''); ?>" inputmode="decimal" placeholder="es. 0.08">
+                                                                    <span class="input-group-text">m³</span>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div class="input-group input-group-sm">
+                                                                    <span class="input-group-text portal-brt-currency-label"><?php echo sanitize_output($zoneData['currency'] ?? 'EUR'); ?></span>
+                                                                    <input class="form-control" name="zones[<?php echo sanitize_output($zoneKey); ?>][tiers][<?php echo (int) $index; ?>][price]" data-field="price" value="<?php echo sanitize_output($tier['price'] ?? ''); ?>" inputmode="decimal" placeholder="es. 4.99">
+                                                                </div>
+                                                            </td>
+                                                            <td class="text-end">
+                                                                <button class="btn btn-icon btn-soft-danger btn-sm portal-brt-remove-tier" type="button" title="Rimuovi scaglione">
+                                                                    <i class="fa-solid fa-trash"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+                                            <button class="btn btn-soft-accent btn-sm" type="button" data-portal-brt-add-tier>
+                                                <i class="fa-solid fa-plus me-2"></i>Aggiungi scaglione
+                                            </button>
+                                        </div>
+                                        <p class="text-muted small mt-3 mb-0">Gli scaglioni devono essere ordinati in modo crescente. Lasciare vuoti peso e/o volume rende lo scaglione senza limite per quel valore.</p>
+                                        <template data-portal-brt-template>
+                                            <tr data-index="__INDEX__">
+                                                <td class="text-muted small portal-brt-tier-index">#__NUM__</td>
                                                 <td>
-                                                    <input class="form-control form-control-sm" name="tiers[<?php echo (int) $index; ?>][label]" data-field="label" maxlength="60" value="<?php echo sanitize_output($tier['label'] ?? ''); ?>" placeholder="Es. Fino a 10 kg">
+                                                    <input class="form-control form-control-sm" data-field="label" maxlength="60" placeholder="Es. Fino a 10 kg">
                                                 </td>
                                                 <td>
                                                     <div class="input-group input-group-sm">
-                                                        <input class="form-control" name="tiers[<?php echo (int) $index; ?>][max_weight]" data-field="max_weight" value="<?php echo sanitize_output($tier['max_weight'] ?? ''); ?>" inputmode="decimal" placeholder="es. 10.5">
+                                                        <input class="form-control" data-field="max_weight" inputmode="decimal" placeholder="es. 10.5">
                                                         <span class="input-group-text">kg</span>
                                                     </div>
                                                 </td>
                                                 <td>
                                                     <div class="input-group input-group-sm">
-                                                        <input class="form-control" name="tiers[<?php echo (int) $index; ?>][max_volume]" data-field="max_volume" value="<?php echo sanitize_output($tier['max_volume'] ?? ''); ?>" inputmode="decimal" placeholder="es. 0.08">
+                                                        <input class="form-control" data-field="max_volume" inputmode="decimal" placeholder="es. 0.08">
                                                         <span class="input-group-text">m³</span>
                                                     </div>
                                                 </td>
                                                 <td>
                                                     <div class="input-group input-group-sm">
-                                                        <span class="input-group-text portal-brt-currency-label"><?php echo sanitize_output($portalBrtPricingForm['currency'] ?? 'EUR'); ?></span>
-                                                        <input class="form-control" name="tiers[<?php echo (int) $index; ?>][price]" data-field="price" value="<?php echo sanitize_output($tier['price'] ?? ''); ?>" inputmode="decimal" placeholder="es. 4.99">
+                                                        <span class="input-group-text portal-brt-currency-label"><?php echo sanitize_output($zoneData['currency'] ?? 'EUR'); ?></span>
+                                                        <input class="form-control" data-field="price" inputmode="decimal" placeholder="es. 4.99">
                                                     </div>
                                                 </td>
                                                 <td class="text-end">
@@ -1586,50 +2105,16 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     </button>
                                                 </td>
                                             </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
-                                <button class="btn btn-soft-accent btn-sm" type="button" id="addPortalBrtTier">
-                                    <i class="fa-solid fa-plus me-2"></i>Aggiungi scaglione
-                                </button>
+                                        </template>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+
+                            <div class="d-flex align-items-center justify-content-end flex-wrap gap-2 mt-3">
                                 <button class="btn btn-warning" type="submit">
                                     <i class="fa-solid fa-save me-2"></i>Salva tariffe
                                 </button>
                             </div>
-                            <p class="text-muted small mt-3 mb-0">Gli scaglioni devono essere ordinati in modo crescente. Lasciare vuoti peso e/o volume rende lo scaglione senza limite per quel valore.</p>
-                            <template id="portalBrtTierTemplate">
-                                <tr data-index="__INDEX__">
-                                    <td class="text-muted small portal-brt-tier-index">#__NUM__</td>
-                                    <td>
-                                        <input class="form-control form-control-sm" data-field="label" maxlength="60" placeholder="Es. Fino a 10 kg">
-                                    </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <input class="form-control" data-field="max_weight" inputmode="decimal" placeholder="es. 10.5">
-                                            <span class="input-group-text">kg</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <input class="form-control" data-field="max_volume" inputmode="decimal" placeholder="es. 0.08">
-                                            <span class="input-group-text">m³</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text portal-brt-currency-label"><?php echo sanitize_output($portalBrtPricingForm['currency'] ?? 'EUR'); ?></span>
-                                            <input class="form-control" data-field="price" inputmode="decimal" placeholder="es. 4.99">
-                                        </div>
-                                    </td>
-                                    <td class="text-end">
-                                        <button class="btn btn-icon btn-soft-danger btn-sm portal-brt-remove-tier" type="button" title="Rimuovi scaglione">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            </template>
                         </form>
                     </div>
                 </div>
@@ -1742,6 +2227,231 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </div>
                 </div>
             </div>
+            <div class="col-12 col-xxl-7" data-section="opportunities">
+                <div class="card ag-card h-100" id="opportunity-settings-card">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Modulo Opportunity</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-4">Controlla lo stato del workflow commerciale e raggiungi in un click la configurazione completa di stati, gestori e offerte.</p>
+                        <div class="row g-3">
+                            <div class="col-12 col-lg-6">
+                                <div class="border rounded-3 p-3 h-100 bg-body-secondary">
+                                    <h6 class="fw-semibold mb-3">Workflow attuale</h6>
+                                    <?php if ($opportunityStatusPreview): ?>
+                                        <ul class="list-unstyled mb-0">
+                                            <?php foreach ($opportunityStatusPreview as $status): ?>
+                                                <li class="d-flex justify-content-between align-items-center py-2 border-bottom border-light-subtle">
+                                                    <div>
+                                                        <strong class="d-block"><?php echo sanitize_output($status['label']); ?></strong>
+                                                        <small class="text-muted">Codice: <?php echo sanitize_output($status['code']); ?></small>
+                                                    </div>
+                                                    <span class="badge bg-light text-dark text-uppercase small"><?php echo sanitize_output($status['color']); ?></span>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                        <?php if (count($opportunityStatuses) > count($opportunityStatusPreview)): ?>
+                                            <p class="text-muted small mt-2 mb-0">Altri <?php echo (int) (count($opportunityStatuses) - count($opportunityStatusPreview)); ?> stati configurati.</p>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <p class="text-muted mb-0">Nessuno stato configurato. Aggiungili dalle impostazioni dedicate.</p>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <div class="border rounded-3 p-3 h-100 bg-body-secondary">
+                                    <h6 class="fw-semibold mb-3">Gestori e offerte</h6>
+                                    <?php if ($opportunityCategorySummary): ?>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm align-middle mb-0">
+                                                <tbody>
+                                                    <?php foreach ($opportunityCategorySummary as $category): ?>
+                                                        <tr>
+                                                            <td class="text-uppercase text-muted small"><?php echo sanitize_output($category['label']); ?></td>
+                                                            <td>
+                                                                <strong><?php echo (int) $category['providers']; ?></strong>
+                                                                <small class="text-muted">gestori</small>
+                                                            </td>
+                                                            <td>
+                                                                <strong><?php echo (int) $category['offers']; ?></strong>
+                                                                <small class="text-muted">offerte</small>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    <?php else: ?>
+                                        <p class="text-muted mb-0">Nessun gestore configurato al momento.</p>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php
+                            $opportunityMetricsLabels = [
+                                'statuses' => 'Stati disponibili',
+                                'providers' => 'Gestori',
+                                'offers' => 'Offerte',
+                            ];
+                        ?>
+                        <div class="row g-3 mt-1">
+                            <?php foreach ($opportunityMetricsLabels as $metricKey => $metricLabel): ?>
+                                <div class="col-12 col-md-4">
+                                    <div class="border rounded-3 px-3 py-3 h-100 bg-body-secondary">
+                                        <p class="text-muted text-uppercase small mb-1"><?php echo sanitize_output($metricLabel); ?></p>
+                                        <strong class="fs-4">
+                                            <?php echo sanitize_output(number_format((int) ($opportunityCardSummary[$metricKey] ?? 0), 0, ',', '.')); ?>
+                                        </strong>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="d-flex flex-column flex-md-row gap-2 mt-4">
+                            <a class="btn btn-warning flex-grow-1" href="<?php echo asset('modules/opportunities/settings.php'); ?>">
+                                <i class="fa-solid fa-sliders me-2"></i>Gestisci impostazioni
+                            </a>
+                            <a class="btn btn-outline-secondary flex-grow-1" href="<?php echo asset('modules/opportunities/index.php'); ?>">
+                                <i class="fa-solid fa-diagram-project me-2"></i>Apri pipeline
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12" data-section="pricing">
+                <div class="card ag-card h-100" id="service-pricing">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Listini servizi e prodotti</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">Configura i costi al rivenditore e al cliente per servizi e prodotti. Il guadagno viene calcolato automaticamente.</p>
+                        <form method="post">
+                            <input type="hidden" name="action" value="service_pricing">
+                            <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-sm align-middle mb-3" id="servicePricingTable">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 60px;">#</th>
+                                            <th>Nome servizio/prodotto</th>
+                                            <th style="width: 180px;">Costo al rivenditore (€)</th>
+                                            <th style="width: 180px;">Costo al cliente (€)</th>
+                                            <th style="width: 150px;">Guadagno (€)</th>
+                                            <th style="width: 70px;" class="text-end">Azioni</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="servicePricingRows">
+                                        <?php
+                                        $servicePricing = $servicePricing ?? [];
+                                        foreach ($servicePricing as $index => $item): ?>
+                                            <tr data-index="<?php echo (int) $index; ?>">
+                                                <td class="text-muted small">#<?php echo (int) ($index + 1); ?></td>
+                                                <td>
+                                                    <input class="form-control form-control-sm" name="pricing[<?php echo (int) $index; ?>][name]" maxlength="100" value="<?php echo sanitize_output($item['name'] ?? ''); ?>" placeholder="Es. Consulenza fiscale">
+                                                </td>
+                                                <td>
+                                                    <input class="form-control form-control-sm text-end" name="pricing[<?php echo (int) $index; ?>][cost_reseller]" type="number" min="0" step="0.01" value="<?php echo sanitize_output($item['cost_reseller'] ?? ''); ?>" placeholder="0.00">
+                                                </td>
+                                                <td>
+                                                    <input class="form-control form-control-sm text-end" name="pricing[<?php echo (int) $index; ?>][cost_customer]" type="number" min="0" step="0.01" value="<?php echo sanitize_output($item['cost_customer'] ?? ''); ?>" placeholder="0.00">
+                                                </td>
+                                                <td>
+                                                    <input class="form-control form-control-sm text-end" name="pricing[<?php echo (int) $index; ?>][profit]" readonly value="<?php echo sanitize_output(number_format(($item['cost_customer'] ?? 0) - ($item['cost_reseller'] ?? 0), 2)); ?>">
+                                                </td>
+                                                <td class="text-end">
+                                                    <button class="btn btn-icon btn-soft-danger btn-sm remove-pricing-row" type="button" title="Rimuovi riga">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+                                <button class="btn btn-soft-accent btn-sm" type="button" id="addPricingRow">
+                                    <i class="fa-solid fa-plus me-2"></i>Aggiungi riga
+                                </button>
+                                <button class="btn btn-warning" type="submit">
+                                    <i class="fa-solid fa-save me-2"></i>Salva listini
+                                </button>
+                            </div>
+                        </form>
+                        <template id="pricingRowTemplate">
+                            <tr data-index="__INDEX__">
+                                <td class="text-muted small">#__NUM__</td>
+                                <td>
+                                    <input class="form-control form-control-sm" name="pricing[__INDEX__][name]" maxlength="100" placeholder="Es. Consulenza fiscale">
+                                </td>
+                                <td>
+                                    <input class="form-control form-control-sm text-end" name="pricing[__INDEX__][cost_reseller]" type="number" min="0" step="0.01" placeholder="0.00">
+                                </td>
+                                <td>
+                                    <input class="form-control form-control-sm text-end" name="pricing[__INDEX__][cost_customer]" type="number" min="0" step="0.01" placeholder="0.00">
+                                </td>
+                                <td>
+                                    <input class="form-control form-control-sm text-end" name="pricing[__INDEX__][profit]" readonly value="0.00">
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-icon btn-soft-danger btn-sm remove-pricing-row" type="button" title="Rimuovi riga">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xxl-5" data-section="express">
+                <div class="card ag-card h-100" id="express-module-settings">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Modulo Express Telefonia</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">Parametri locali per il modulo nativo single-tenant dedicato a stock ICCID e vendite telefonia.</p>
+                        <form method="post">
+                            <input type="hidden" name="action" value="express_module_settings">
+                            <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label" for="express_default_vat">IVA predefinita</label>
+                                    <input class="form-control" id="express_default_vat" name="default_vat" type="number" min="0" max="100" step="0.01" value="<?php echo sanitize_output(number_format((float) ($expressModuleSettings['default_vat'] ?? 22), 2, '.', '')); ?>">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="express_stock_alert_threshold">Soglia alert stock</label>
+                                    <input class="form-control" id="express_stock_alert_threshold" name="stock_alert_threshold" type="number" min="1" max="500" step="1" value="<?php echo (int) ($expressModuleSettings['stock_alert_threshold'] ?? 10); ?>">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="express_default_payment_method">Metodo predefinito</label>
+                                    <select class="form-select" id="express_default_payment_method" name="default_payment_method">
+                                        <?php foreach (($expressModuleSettings['payment_methods'] ?? []) as $method): ?>
+                                            <option value="<?php echo sanitize_output((string) $method); ?>"<?php echo $method === ($expressModuleSettings['default_payment_method'] ?? '') ? ' selected' : ''; ?>><?php echo sanitize_output((string) $method); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="express_payment_methods_text">Metodi di pagamento disponibili</label>
+                                    <textarea class="form-control" id="express_payment_methods_text" name="payment_methods_text" rows="5" placeholder="Un metodo per riga"><?php echo sanitize_output(implode("\n", $expressModuleSettings['payment_methods'] ?? [])); ?></textarea>
+                                    <div class="form-text">Inserisci un metodo per riga. Il modulo vendite userà questo elenco per il form di registrazione.</div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" id="express_allow_negative_margin" name="allow_negative_margin" type="checkbox" value="1"<?php echo !empty($expressModuleSettings['allow_negative_margin']) ? ' checked' : ''; ?>>
+                                        <label class="form-check-label" for="express_allow_negative_margin">Consenti margine negativo nelle vendite manuali</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 d-flex gap-2 flex-wrap">
+                                <button class="btn btn-warning" type="submit">
+                                    <i class="fa-solid fa-save me-2"></i>Salva impostazioni Express
+                                </button>
+                                <a class="btn btn-outline-secondary" href="<?php echo express_module_url('index'); ?>">
+                                    <i class="fa-solid fa-up-right-from-square me-2"></i>Apri modulo
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="card ag-card mt-4" data-section="logs">
             <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -1751,7 +2461,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         $logsExportQuery = $_GET;
                         unset($logsExportQuery['export']);
                         $logsExportQuery['export'] = 'logs';
-                        $logsExportUrl = 'index.php?' . http_build_query($logsExportQuery);
+                        $logsExportUrl = impostazioni_module_url('index', $logsExportQuery);
                     ?>
                     <a class="btn btn-soft-accent btn-sm" href="<?php echo sanitize_output($logsExportUrl); ?>">
                         <i class="fa-solid fa-file-csv me-1"></i>Esporta CSV
@@ -1815,7 +2525,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 $logsQuery = $_GET;
                                 unset($logsQuery['export']);
                                 $logsQuery['page_log'] = max(1, $logPage - 1);
-                                $prevLogsUrl = 'index.php?' . http_build_query($logsQuery);
+                                $prevLogsUrl = impostazioni_module_url('index', $logsQuery);
                                 $windowSize = 5;
                                 $halfWindow = (int) floor($windowSize / 2);
                                 $startPage = max(1, $logPage - $halfWindow);
@@ -1829,7 +2539,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </li>
                             <?php if ($startPage > 1):
                                 $logsQuery['page_log'] = 1;
-                                $firstPageUrl = 'index.php?' . http_build_query($logsQuery);
+                                $firstPageUrl = impostazioni_module_url('index', $logsQuery);
                             ?>
                                 <li class="page-item">
                                     <a class="page-link" href="<?php echo sanitize_output($firstPageUrl); ?>">1</a>
@@ -1840,7 +2550,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <?php endif; ?>
                             <?php for ($page = $startPage; $page <= $endPage; $page++):
                                 $logsQuery['page_log'] = $page;
-                                $logsPageUrl = 'index.php?' . http_build_query($logsQuery);
+                                $logsPageUrl = impostazioni_module_url('index', $logsQuery);
                             ?>
                                 <li class="page-item <?php echo $page === $logPage ? 'active' : ''; ?>">
                                     <a class="page-link" href="<?php echo sanitize_output($logsPageUrl); ?>"><?php echo $page; ?></a>
@@ -1851,7 +2561,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     <li class="page-item disabled"><span class="page-link">…</span></li>
                                 <?php endif;
                                 $logsQuery['page_log'] = $logPages;
-                                $lastPageUrl = 'index.php?' . http_build_query($logsQuery);
+                                $lastPageUrl = impostazioni_module_url('index', $logsQuery);
                             ?>
                                 <li class="page-item">
                                     <a class="page-link" href="<?php echo sanitize_output($lastPageUrl); ?>"><?php echo $logPages; ?></a>
@@ -1859,7 +2569,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <?php endif; ?>
                             <?php
                                 $logsQuery['page_log'] = min($logPages, $logPage + 1);
-                                $nextLogsUrl = 'index.php?' . http_build_query($logsQuery);
+                                $nextLogsUrl = impostazioni_module_url('index', $logsQuery);
                             ?>
                             <li class="page-item <?php echo $logPage >= $logPages ? 'disabled' : ''; ?>">
                                 <a class="page-link" href="<?php echo sanitize_output($nextLogsUrl); ?>" aria-label="Successivo">&raquo;</a>
@@ -1982,6 +2692,116 @@ document.addEventListener('DOMContentLoaded', function () {
 
     reindexRows();
     updateCurrencyLabels();
+});
+
+// Service Pricing Table Management
+document.addEventListener('DOMContentLoaded', function () {
+    const pricingTableBody = document.getElementById('servicePricingRows');
+    const addPricingButton = document.getElementById('addPricingRow');
+    const pricingTemplate = document.getElementById('pricingRowTemplate');
+
+    if (!pricingTableBody || !addPricingButton || !pricingTemplate) {
+        return;
+    }
+
+    const reindexPricingRows = () => {
+        const rows = pricingTableBody.querySelectorAll('tr');
+        rows.forEach((row, index) => {
+            row.setAttribute('data-index', String(index));
+            const indexCell = row.querySelector('td:first-child');
+            if (indexCell) {
+                indexCell.textContent = '#' + (index + 1);
+            }
+            row.querySelectorAll('input').forEach((input) => {
+                const name = input.getAttribute('name');
+                if (name) {
+                    input.setAttribute('name', name.replace(/\[__INDEX__\]/g, '[' + index + ']'));
+                }
+            });
+        });
+
+        const removeButtons = pricingTableBody.querySelectorAll('.remove-pricing-row');
+        const disableRemoval = rows.length <= 1;
+        removeButtons.forEach((button) => {
+            button.disabled = disableRemoval;
+        });
+    };
+
+    const clonePricingTemplateRow = () => {
+        let clone = null;
+        if ('content' in pricingTemplate && pricingTemplate.content) {
+            const firstChild = pricingTemplate.content.firstElementChild;
+            clone = firstChild ? firstChild.cloneNode(true) : null;
+        } else {
+            const container = document.createElement('tbody');
+            container.innerHTML = pricingTemplate.innerHTML.trim();
+            clone = container.firstElementChild;
+        }
+
+        if (!clone) {
+            return null;
+        }
+
+        clone.querySelectorAll('input').forEach((input) => {
+            input.value = '';
+        });
+
+        return clone;
+    };
+
+    const calculateProfit = (row) => {
+        const costReseller = parseFloat(row.querySelector('input[name*="[cost_reseller]"]').value) || 0;
+        const costCustomer = parseFloat(row.querySelector('input[name*="[cost_customer]"]').value) || 0;
+        const profitField = row.querySelector('input[name*="[profit]"]');
+        if (profitField) {
+            profitField.value = (costCustomer - costReseller).toFixed(2);
+        }
+    };
+
+    addPricingButton.addEventListener('click', () => {
+        const newRow = clonePricingTemplateRow();
+        if (!newRow) {
+            return;
+        }
+        pricingTableBody.appendChild(newRow);
+        reindexPricingRows();
+    });
+
+    pricingTableBody.addEventListener('click', (event) => {
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        const button = target ? target.closest('.remove-pricing-row') : null;
+        if (!button) {
+            return;
+        }
+        const row = button.closest('tr');
+        if (!row) {
+            return;
+        }
+        if (pricingTableBody.querySelectorAll('tr').length <= 1) {
+            return;
+        }
+        row.remove();
+        reindexPricingRows();
+    });
+
+    pricingTableBody.addEventListener('input', (event) => {
+        const target = event.target instanceof HTMLInputElement ? event.target : null;
+        if (!target) {
+            return;
+        }
+        const row = target.closest('tr');
+        if (!row) {
+            return;
+        }
+        calculateProfit(row);
+    });
+
+    // Initial calculation for existing rows
+    pricingTableBody.querySelectorAll('tr').forEach((row) => {
+        calculateProfit(row);
+    });
+
+    reindexPricingRows();
 });
 </script>
 <script>
@@ -2508,6 +3328,39 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     }
 
+                    if (section === 'aci-types' && Array.isArray(data.types)) {
+                        const textarea = form.querySelector('#aci_types_list');
+                        if (textarea) {
+                            textarea.value = data.types.join('\n');
+                        }
+                    }
+
+                    if (section === 'aci-statuses' && Array.isArray(data.statuses)) {
+                        const textarea = form.querySelector('#aci_statuses_list');
+                        if (textarea) {
+                            textarea.value = data.statuses.join('\n');
+                        }
+                    }
+
+                    if (section === 'aci-pricing' && Array.isArray(data.pricing)) {
+                        const rows = form.querySelectorAll('tbody tr');
+                        data.pricing.forEach((item, index) => {
+                            const row = rows[index];
+                            if (!row) return;
+                            const nameField = row.querySelector('input[name*="[name]"]');
+                            const priceField = row.querySelector('input[name*="[price]"]');
+                            if (nameField && typeof item.name === 'string') {
+                                nameField.value = item.name;
+                            }
+                            if (priceField) {
+                                const price = item.price !== null && item.price !== undefined && item.price !== ''
+                                    ? Number(item.price).toFixed(2)
+                                    : '';
+                                priceField.value = price;
+                            }
+                        });
+                    }
+
                     if (section === 'caf-patronato-types' && Array.isArray(data)) {
                         renderCafPatronatoTypes(form, data);
                     }
@@ -2561,6 +3414,36 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (select && typeof data.confirmation === 'string') {
                                 select.value = data.confirmation;
                             }
+                        }
+                        if (section === 'aci-types' && Array.isArray(data.types)) {
+                            const textarea = form.querySelector('#aci_types_list');
+                            if (textarea) {
+                                textarea.value = data.types.join('\n');
+                            }
+                        }
+                        if (section === 'aci-statuses' && Array.isArray(data.statuses)) {
+                            const textarea = form.querySelector('#aci_statuses_list');
+                            if (textarea) {
+                                textarea.value = data.statuses.join('\n');
+                            }
+                        }
+                        if (section === 'aci-pricing' && Array.isArray(data.pricing)) {
+                            const rows = form.querySelectorAll('tbody tr');
+                            data.pricing.forEach((item, index) => {
+                                const row = rows[index];
+                                if (!row) return;
+                                const nameField = row.querySelector('input[name*="[name]"]');
+                                const priceField = row.querySelector('input[name*="[price]"]');
+                                if (nameField && typeof item.name === 'string') {
+                                    nameField.value = item.name;
+                                }
+                                if (priceField) {
+                                    const price = item.price !== null && item.price !== undefined && item.price !== ''
+                                        ? Number(item.price).toFixed(2)
+                                        : '';
+                                    priceField.value = price;
+                                }
+                            });
                         }
                         if (section === 'caf-patronato-types' && Array.isArray(data)) {
                             renderCafPatronatoTypes(form, data);
@@ -2633,5 +3516,99 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+</script>
+<script>
+    (function() {
+        const card = document.getElementById('cs-consent-card');
+        if (!card) return;
+
+        const stateEl = card.querySelector('[data-cs-state]');
+        const updatedEl = card.querySelector('[data-cs-updated]');
+        const logEl = card.querySelector('[data-cs-log]');
+        const toggleDebug = card.querySelector('[data-cs-toggle-debug]');
+        const logStatus = card.querySelector('[data-cs-log-status]');
+
+        const setStatus = (text) => {
+            if (logStatus) {
+                logStatus.textContent = text;
+            }
+        };
+
+        const formatTs = (ts) => {
+            if (!ts) return 'Mai';
+            const d = new Date(ts);
+            if (Number.isNaN(d.getTime())) return '—';
+            return d.toLocaleString();
+        };
+
+        const renderState = () => {
+            const s = (window.CSConsent && window.CSConsent.state) || {};
+            const rows = [
+                { key: 'Necessari', val: true },
+                { key: 'Preferenze', val: !!s.preferences },
+                { key: 'Statistici', val: !!s.statistics },
+                { key: 'Marketing', val: !!s.marketing },
+            ];
+            stateEl.innerHTML = rows.map(r => `
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>${r.key}</span>
+                    <span class="badge ${r.val ? 'bg-success' : 'bg-secondary'}">${r.val ? 'Attivo' : 'Disattivo'}</span>
+                </div>
+            `).join('');
+            updatedEl.textContent = formatTs(s.updatedAt);
+        };
+
+        const renderLog = () => {
+            const entries = (window.CSConsent && window.CSConsent.getLog && window.CSConsent.getLog()) || [];
+            if (!entries.length) {
+                setStatus('Nessun evento in questa sessione. Apri una pagina con il banner cookie e ricarica.');
+                logEl.innerHTML = '<div class="text-muted">Nessun evento registrato in questa sessione.</div>';
+                return;
+            }
+            setStatus('Ultimi eventi CMP (max 50).');
+            logEl.innerHTML = entries.slice().reverse().map((entry) => {
+                const time = formatTs(entry.ts);
+                const payload = JSON.stringify(entry.args);
+                return `<div class="mb-2"><div class="small text-muted">${time}</div><code class="small d-block">${payload}</code></div>`;
+            }).join('');
+        };
+
+        const toggle = (event) => {
+            event.preventDefault();
+            if (!window.CSConsent) return;
+            const next = !window.CSConsent.debug;
+            window.CSConsent.debug = next;
+            if (window.CSConsent.setDebug) window.CSConsent.setDebug(next);
+            try { localStorage.setItem('cs-consent-debug', next ? '1' : '0'); } catch (e) {}
+            toggleDebug.textContent = next ? 'Debug attivo' : 'Debug';
+        };
+
+        const hydrate = () => {
+            if (!window.CSConsent) return false;
+            setStatus('Ultimi eventi CMP (max 50).');
+            renderState();
+            renderLog();
+            if (toggleDebug) toggleDebug.addEventListener('click', toggle);
+            window.CSConsent.onChange(() => {
+                renderState();
+                renderLog();
+            });
+            return true;
+        };
+
+        if (!hydrate()) {
+            let attempts = 0;
+            const timer = setInterval(() => {
+                attempts += 1;
+                if (hydrate() || attempts > 10) {
+                    clearInterval(timer);
+                    if (!window.CSConsent) {
+                        logEl.innerHTML = '<div class="text-danger">CMP non disponibile su questa pagina.</div>';
+                        setStatus('CMP non disponibile qui. Apri una pagina con il banner attivo e torna su questa scheda.');
+                    }
+                }
+            }, 150);
+        }
+    })();
 </script>
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

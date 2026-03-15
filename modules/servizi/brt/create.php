@@ -202,7 +202,7 @@ try {
     $departureDepot = $config->getDepartureDepot();
 } catch (BrtException $exception) {
     add_flash('warning', $exception->getMessage());
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }
 
@@ -564,6 +564,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // Determina network e pricing condition coerenti con la nazione di destinazione
+    $networkAlias = 'ITALIA';
+    $networkCode = 'I';
+    if ($data['consignee_country'] === 'CH') {
+        $networkAlias = 'SWISS';
+        $networkCode = 'S';
+    } elseif ($data['consignee_country'] !== 'IT') {
+        $networkAlias = 'EUROPE';
+        $networkCode = 'E';
+    }
+    $pricingConditionToUse = $config->getPricingConditionCode($networkAlias) ?? $config->getPricingConditionCode();
+
     if (!$errors) {
         $createData = [
             'senderCustomerCode' => $senderCustomerCode,
@@ -586,6 +598,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'notes' => $data['notes'],
             'isLabelRequired' => $data['is_label_required'] === '1' ? 1 : 0,
             'pudoId' => $data['pudo_id'],
+            'network' => $networkCode,
+            'pricingConditionCode' => $pricingConditionToUse,
         ];
 
         if ($serviceCodeToUse !== '') {
@@ -641,6 +655,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'required_for_country' => $isCustomsRequired,
                     'form' => $customsForm,
                     'payload' => $customsPayload,
+                ],
+                'network' => [
+                    'alias' => $networkAlias,
+                    'code' => $networkCode,
+                    'pricing_condition' => $pricingConditionToUse,
                 ],
                 'service' => [
                     'code' => $serviceCodeToUse !== '' ? $serviceCodeToUse : null,
@@ -719,7 +738,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $_SESSION[$referenceSessionKey] = brt_next_numeric_reference($senderCustomerCode, (int) $data['numeric_sender_reference']);
 
-            header('Location: index.php');
+            header('Location: ' . brt_module_url('index'));
             exit;
             } catch (BrtException $exception) {
                 $message = $exception->getMessage();
@@ -791,6 +810,8 @@ if ($canAttemptQuote) {
         'dimensionLengthCM' => $lengthCm,
         'dimensionDepthCM' => $depthCm,
         'dimensionHeightCM' => $heightCm,
+        'network' => $networkCode,
+        'pricingConditionCode' => $pricingConditionToUse,
     ];
 
     if ($computedVolumetricWeight !== null && $computedVolumetricWeight > 0) {
@@ -852,12 +873,23 @@ $extraScripts = ($extraScripts ?? []);
 $extraScripts[] = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 $extraScripts[] = asset('modules/servizi/brt/js/pudo-map.js');
 $extraScripts[] = asset('modules/servizi/brt/js/recipients.js');
+$extraScripts[] = asset('assets/js/cie-istat-lookup.js');
 $extraScripts[] = asset('modules/servizi/brt/js/cap-lookup.js');
 $extraScripts[] = asset('modules/servizi/brt/js/customs.js');
+
+$istatDatasetUrl = asset('customer-portal/assets/data/comuni.json');
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
+<script>
+window.CIEIstatLookupConfig = Object.assign({}, window.CIEIstatLookupConfig, {
+    datasetUrl: '<?php echo sanitize_output($istatDatasetUrl); ?>',
+    fallbackUrl: 'https://raw.githubusercontent.com/matteocontrini/comuni-json/master/comuni.json',
+    maxResults: 12,
+    minChars: 2
+});
+</script>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
@@ -867,7 +899,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Compila i dati del destinatario e genera l'etichetta con riferimento mittente progressivo.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Torna alle spedizioni</a>
+                <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Torna alle spedizioni</a>
             </div>
         </div>
 
@@ -1352,7 +1384,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <div class="mt-4 d-flex flex-wrap gap-2">
                                 <button class="btn btn-primary" type="submit" name="intent" value="create"><i class="fa-solid fa-truck-fast me-2"></i>Crea spedizione</button>
                                 <button class="btn btn-outline-primary" type="submit" name="intent" value="quote"><i class="fa-solid fa-coins me-2"></i>Calcola costo</button>
-                                <a class="btn btn-outline-secondary" href="index.php">Annulla</a>
+                                <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('index'); ?>">Annulla</a>
                             </div>
                         </form>
                     </div>
@@ -1686,6 +1718,129 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     }
                 });
             }
+        });
+        </script>
+        <div class="modal fade" tabindex="-1" role="dialog" aria-modal="true" aria-hidden="true" data-confirm-modal hidden>
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Conferma creazione spedizione</h5>
+                        <button class="btn-close" type="button" aria-label="Chiudi" data-confirm-close></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Confermi che tutti i dati inseriti sono corretti? Premi <strong>Conferma e crea</strong> per procedere oppure <strong>Annulla</strong> per rivedere le informazioni.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline-secondary" type="button" data-confirm-cancel>Annulla</button>
+                        <button class="btn btn-primary" type="button" data-confirm-accept>Conferma e crea</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade" data-confirm-modal-backdrop hidden></div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.querySelector('form[method="post"]');
+            const modal = document.querySelector('[data-confirm-modal]');
+            const modalBackdrop = document.querySelector('[data-confirm-modal-backdrop]');
+            const confirmButton = modal ? modal.querySelector('[data-confirm-accept]') : null;
+            const cancelButtons = modal ? modal.querySelectorAll('[data-confirm-cancel], [data-confirm-close]') : [];
+            let pendingIntent = null;
+            let lastSubmitter = null;
+            let bypassConfirmation = false;
+
+            if (!form || !modal || !confirmButton) {
+                return;
+            }
+
+            const updatePendingIntent = (submitter) => {
+                if (submitter && submitter.name === 'intent') {
+                    pendingIntent = submitter.value || null;
+                }
+            };
+
+            form.querySelectorAll('button[name="intent"]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    pendingIntent = button.value || null;
+                    lastSubmitter = button;
+                });
+            });
+
+            const ensureIntentHiddenInput = () => {
+                let hiddenInput = form.querySelector('input[name="intent"][data-confirm-hidden]');
+                if (!hiddenInput) {
+                    hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'intent';
+                    hiddenInput.dataset.confirmHidden = 'true';
+                    form.appendChild(hiddenInput);
+                }
+                hiddenInput.value = 'create';
+            };
+
+            const openModal = () => {
+                modal.removeAttribute('hidden');
+                modal.style.display = 'block';
+                modal.classList.add('show');
+                document.body.classList.add('modal-open');
+                if (modalBackdrop) {
+                    modalBackdrop.removeAttribute('hidden');
+                    modalBackdrop.style.display = 'block';
+                    modalBackdrop.classList.add('show');
+                }
+                const focusTarget = confirmButton;
+                if (focusTarget) {
+                    focusTarget.focus();
+                }
+            };
+
+            const closeModal = () => {
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+                modal.setAttribute('hidden', 'hidden');
+                document.body.classList.remove('modal-open');
+                if (modalBackdrop) {
+                    modalBackdrop.classList.remove('show');
+                    modalBackdrop.style.display = 'none';
+                    modalBackdrop.setAttribute('hidden', 'hidden');
+                }
+            };
+
+            const handleCancellation = () => {
+                closeModal();
+            };
+
+            cancelButtons.forEach((button) => {
+                button.addEventListener('click', handleCancellation);
+            });
+            if (modalBackdrop) {
+                modalBackdrop.addEventListener('click', handleCancellation);
+            }
+
+            confirmButton.addEventListener('click', () => {
+                bypassConfirmation = true;
+                closeModal();
+                if (typeof form.requestSubmit === 'function' && lastSubmitter) {
+                    form.requestSubmit(lastSubmitter);
+                } else {
+                    ensureIntentHiddenInput();
+                    form.submit();
+                }
+            });
+
+            form.addEventListener('submit', (event) => {
+                const submitter = event.submitter || lastSubmitter;
+                updatePendingIntent(submitter);
+                if (bypassConfirmation) {
+                    bypassConfirmation = false;
+                    return;
+                }
+                if (pendingIntent !== 'create') {
+                    return;
+                }
+                event.preventDefault();
+                openModal();
+            });
         });
         </script>
     </main>

@@ -9,7 +9,7 @@ $csrfToken = csrf_token();
 
 $documentId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($documentId <= 0) {
-    header('Location: index.php');
+    header('Location: ' . documenti_module_url('index'));
     exit;
 }
 
@@ -23,7 +23,7 @@ $document = $documentStmt->fetch();
 
 if (!$document) {
     add_flash('warning', 'Documento non trovato.');
-    header('Location: index.php');
+    header('Location: ' . documenti_module_url('index'));
     exit;
 }
 
@@ -146,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $pdo->commit();
                 add_flash('success', 'Dati aggiornati.');
-                header('Location: view.php?id=' . $documentId);
+                header('Location: ' . documenti_module_url('view', ['id' => $documentId]));
                 exit;
             } catch (Throwable $e) {
                 $pdo->rollBack();
@@ -161,10 +161,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             add_flash('danger', 'Seleziona un file da caricare.');
         } else {
             $file = $_FILES['nuova_versione'];
-            $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-            $allowed = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'rar', 'jpg', 'jpeg', 'png'];
-            if (!in_array($extension, $allowed, true)) {
-                add_flash('danger', 'Formato non supportato per la versione.');
+            $maxBytes = (int) env('DOCUMENT_UPLOAD_MAX_BYTES', 10 * 1024 * 1024);
+            $allowedExt = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'zip', 'rar', 'jpg', 'jpeg', 'png'];
+            $allowedMime = [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/zip',
+                'application/vnd.rar',
+                'image/jpeg',
+                'image/png',
+            ];
+            $validation = validate_uploaded_file($file, $allowedMime, $allowedExt, $maxBytes);
+            if (!$validation['ok']) {
+                add_flash('danger', $validation['error'] ?? 'Caricamento non valido.');
             } else {
                 $pdo->beginTransaction();
                 try {
@@ -177,10 +189,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         mkdir($uploadDir, 0775, true);
                     }
 
-                    $safeName = sanitize_filename($file['name']);
+                    $safeName = $validation['safe_name'];
                     $versionName = sprintf('v%d_%s', $versionNumber, $safeName);
                     $destination = $uploadDir . '/' . $versionName;
-                    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+                    if (!move_uploaded_file($validation['tmp_path'], $destination)) {
                         throw new RuntimeException('Salvataggio file non riuscito.');
                     }
 
@@ -191,8 +203,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ':versione' => $versionNumber,
                         ':file_name' => $safeName,
                         ':file_path' => 'assets/uploads/documenti/' . $documentId . '/' . $versionName,
-                        ':mime_type' => mime_content_type($destination) ?: 'application/octet-stream',
-                        ':file_size' => filesize($destination),
+                        ':mime_type' => $validation['mime'] ?? (mime_content_type($destination) ?: 'application/octet-stream'),
+                        ':file_size' => $validation['size'] ?? filesize($destination),
                         ':uploaded_by' => $_SESSION['user_id'],
                     ]);
 
@@ -209,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $pdo->commit();
                     add_flash('success', 'Nuova versione caricata.');
-                    header('Location: view.php?id=' . $documentId);
+                    header('Location: ' . documenti_module_url('view', ['id' => $documentId]));
                     exit;
                 } catch (Throwable $e) {
                     $pdo->rollBack();
@@ -238,9 +250,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         <div class="page-toolbar mb-4">
             <h1 class="h3 mb-0"><?php echo sanitize_output($document['titolo']); ?></h1>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-light" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Archivio</a>
+                <a class="btn btn-outline-light" href="<?php echo documenti_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Archivio</a>
                 <?php if ($versions): ?>
-                    <a class="btn btn-warning text-dark" href="download.php?version=<?php echo (int) $versions[0]['id']; ?>"><i class="fa-solid fa-cloud-arrow-down me-2"></i>Scarica ultima</a>
+                    <a class="btn btn-warning text-dark" href="<?php echo documenti_module_url('download', ['version' => (int) $versions[0]['id']]); ?>"><i class="fa-solid fa-cloud-arrow-down me-2"></i>Scarica ultima</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -338,7 +350,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             <td><?php echo sanitize_output($version['autore'] ?? 'Sconosciuto'); ?></td>
                                             <td><?php echo sanitize_output(format_datetime($version['created_at'])); ?></td>
                                             <td class="text-end">
-                                                <a class="btn btn-sm btn-outline-light" href="download.php?version=<?php echo (int) $version['id']; ?>"><i class="fa-solid fa-download"></i></a>
+                                                <a class="btn btn-sm btn-outline-light" href="<?php echo documenti_module_url('download', ['version' => (int) $version['id']]); ?>"><i class="fa-solid fa-download"></i></a>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>

@@ -94,13 +94,7 @@ function pickup_public_url(?string $path): string
         return $path;
     }
 
-    $normalized = '/' . ltrim($path, '/');
-    $baseUrl = rtrim(env('APP_URL', ''), '/');
-    if ($baseUrl === '') {
-        return $normalized;
-    }
-
-    return $baseUrl . $normalized;
+    return base_url(ltrim($path, '/'));
 }
 
 function pickup_fetch_qr_image(string $targetUrl): ?string
@@ -229,6 +223,141 @@ function pickup_extract_package_id_from_code(string $value): ?int
     return null;
 }
 
+function pickup_base64url_encode(string $value): string
+{
+    return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+}
+
+function pickup_base64url_decode(string $value): string|false
+{
+    $remainder = strlen($value) % 4;
+    if ($remainder > 0) {
+        $value .= str_repeat('=', 4 - $remainder);
+    }
+
+    return base64_decode(strtr($value, '-_', '+/'), true);
+}
+
+function pickup_qr_signing_secret(): string
+{
+    $secret = trim((string) env('PICKUP_QR_SIGNING_KEY', ''));
+    if ($secret !== '') {
+        return $secret;
+    }
+
+    $appKey = trim((string) env('APP_KEY', ''));
+    if ($appKey === '') {
+        throw new RuntimeException('Chiave firma QR non configurata.');
+    }
+
+    if (str_starts_with($appKey, 'base64:')) {
+        $decoded = base64_decode(substr($appKey, 7), true);
+        if ($decoded !== false && $decoded !== '') {
+            return $decoded;
+        }
+    }
+
+    return $appKey;
+}
+
+function pickup_create_qr_token(int $packageId, ?int $ttlSeconds = null): string
+{
+    $packageId = max(1, $packageId);
+    $ttlSeconds = $ttlSeconds ?? (int) env('PICKUP_QR_TOKEN_TTL', 2592000);
+    if ($ttlSeconds <= 0) {
+        $ttlSeconds = 2592000;
+    }
+
+    $payload = [
+        'pid' => $packageId,
+        'exp' => time() + $ttlSeconds,
+        'v' => 1,
+    ];
+
+    $json = json_encode($payload, JSON_THROW_ON_ERROR);
+    $payloadEncoded = pickup_base64url_encode($json);
+    $signature = hash_hmac('sha256', $payloadEncoded, pickup_qr_signing_secret(), true);
+    $signatureEncoded = pickup_base64url_encode($signature);
+
+    return $payloadEncoded . '.' . $signatureEncoded;
+}
+
+function pickup_validate_qr_token(int $packageId, string $token): bool
+{
+    $token = trim($token);
+    if ($token === '' || !str_contains($token, '.')) {
+        return false;
+    }
+
+    [$payloadEncoded, $signatureEncoded] = explode('.', $token, 2);
+    if ($payloadEncoded === '' || $signatureEncoded === '') {
+        return false;
+    }
+
+    $providedSignature = pickup_base64url_decode($signatureEncoded);
+    if ($providedSignature === false) {
+        return false;
+    }
+
+    $expectedSignature = hash_hmac('sha256', $payloadEncoded, pickup_qr_signing_secret(), true);
+    if (!hash_equals($expectedSignature, $providedSignature)) {
+        return false;
+    }
+
+    $payloadJson = pickup_base64url_decode($payloadEncoded);
+    if ($payloadJson === false) {
+        return false;
+    }
+
+    $payload = json_decode($payloadJson, true);
+    if (!is_array($payload)) {
+        return false;
+    }
+
+    $pid = (int) ($payload['pid'] ?? 0);
+    $exp = (int) ($payload['exp'] ?? 0);
+    if ($pid <= 0 || $exp <= 0) {
+        return false;
+    }
+
+    if ($pid !== $packageId) {
+        return false;
+    }
+
+    return $exp >= time();
+}
+
+function pickup_extract_qr_payload_from_code(string $value): array
+{
+    $value = trim($value);
+    if ($value === '') {
+        return ['package_id' => null, 'token' => null];
+    }
+
+    $packageId = pickup_extract_package_id_from_code($value);
+    $token = null;
+
+    $url = $value;
+    if (!preg_match('#^https?://#i', $url)) {
+        $baseUrl = rtrim((string) env('APP_URL', ''), '/');
+        if ($baseUrl !== '') {
+            $url = $baseUrl . '/' . ltrim($url, '/');
+        }
+    }
+
+    $parsed = parse_url($url);
+    if ($parsed && !empty($parsed['query'])) {
+        $params = [];
+        parse_str($parsed['query'], $params);
+        $tokenCandidate = trim((string) ($params['qr_token'] ?? $params['qrt'] ?? ''));
+        if ($tokenCandidate !== '') {
+            $token = $tokenCandidate;
+        }
+    }
+
+    return ['package_id' => $packageId, 'token' => $token];
+}
+
 function pickup_random_numeric_code(int $length = 6): string
 {
     $length = max(4, min($length, 10));
@@ -289,6 +418,33 @@ function pickup_statuses(): array
 function pickup_status_label(string $status): string
 {
     return PICKUP_STATUS_MAP[$status]['label'] ?? ucfirst(str_replace('_', ' ', $status));
+}
+
+function pickup_notification_status_label(?string $status): string
+{
+    $value = strtolower(trim((string) $status));
+    if ($value === '') {
+        return '';
+    }
+
+    $map = [
+        'inviata' => 'Inviata',
+        'sent' => 'Inviata',
+        'manuale' => 'Manuale',
+        'errore' => 'Errore',
+        'error' => 'Errore',
+        'fallita' => 'Fallita',
+        'failed' => 'Fallita',
+        'pending' => 'In attesa',
+        'queued' => 'In coda',
+        'delivered' => 'Consegnata',
+        'read' => 'Letta',
+        'opened' => 'Aperta',
+        'clicked' => 'Cliccata',
+        'aggiornato' => 'Aggiornato',
+    ];
+
+    return $map[$value] ?? ucfirst(str_replace('_', ' ', $value));
 }
 
 function pickup_current_timestamp(): string
@@ -2246,6 +2402,15 @@ function confirm_pickup_with_qr(int $packageId): array
     ];
 }
 
+function confirm_pickup_with_qr_token(int $packageId, string $qrToken): array
+{
+    if (!pickup_validate_qr_token($packageId, $qrToken)) {
+        throw new InvalidArgumentException('QR code non valido o scaduto.');
+    }
+
+    return confirm_pickup_with_qr($packageId);
+}
+
 function check_storage_expiration(int $graceDays = PICKUP_DEFAULT_STORAGE_GRACE_DAYS, array $options = []): array
 {
     $graceDays = $graceDays > 0 ? $graceDays : PICKUP_DEFAULT_STORAGE_GRACE_DAYS;
@@ -2452,12 +2617,15 @@ function generate_package_qr(int $packageId, ?string $targetUrl = null): ?string
         throw new RuntimeException('Pacco non trovato.');
     }
 
-    $baseUrl = $targetUrl ?? rtrim(env('APP_URL', ''), '/');
+    $baseUrl = $targetUrl ?? rtrim((string) env('APP_URL', ''), '/');
     if ($baseUrl === '') {
-        $baseUrl = '/modules/servizi/logistici/view.php?id=' . $packageId;
+        $baseUrl = '/modules/servizi/logistici/view?id=' . $packageId;
     } elseif (!str_contains($baseUrl, (string) $packageId)) {
-        $baseUrl .= '/modules/servizi/logistici/view.php?id=' . $packageId;
+        $baseUrl .= '/modules/servizi/logistici/view?id=' . $packageId;
     }
+
+    $separator = str_contains($baseUrl, '?') ? '&' : '?';
+    $baseUrl .= $separator . 'qr_token=' . rawurlencode(pickup_create_qr_token($packageId));
 
     pickup_ensure_directory(PICKUP_QR_DIR);
 
@@ -2649,11 +2817,17 @@ function get_dashboard_counters(?int $locationId = null): array
     $inStorage = $countQuery('in_giacenza');
     $expired = $countQuery('in_giacenza_scaduto');
 
-    $todayParams = $params;
-    $todayCondition = $condition . ' AND status = :status AND DATE(updated_at) = CURDATE()';
+    $todayStart = (new \DateTimeImmutable('today'))->format('Y-m-d 00:00:00');
+    $todayEnd = (new \DateTimeImmutable('today'))->format('Y-m-d 23:59:59');
+    $todayParams = array_merge($params, [
+        ':status' => 'ritirato',
+        ':today_start' => $todayStart,
+        ':today_end' => $todayEnd,
+    ]);
+    $todayCondition = $condition . ' AND status = :status AND updated_at BETWEEN :today_start AND :today_end';
     $sqlToday = 'SELECT COUNT(*) FROM pickup_packages WHERE ' . $todayCondition;
     $stmtToday = $pdo->prepare($sqlToday);
-    $stmtToday->execute(array_merge($todayParams, [':status' => 'ritirato']));
+    $stmtToday->execute($todayParams);
     $pickedToday = (int) $stmtToday->fetchColumn();
 
     return [
@@ -2736,7 +2910,7 @@ function generate_qr_checkin(?int $locationId = null, ?string $callbackUrl = nul
 {
     $baseUrl = $callbackUrl ?? rtrim(env('APP_URL', ''), '/');
     if ($baseUrl === '') {
-        $baseUrl = '/modules/servizi/logistici/index.php';
+        $baseUrl = '/modules/servizi/logistici/index';
     }
 
     if ($locationId) {
@@ -2759,6 +2933,47 @@ function generate_qr_checkin(?int $locationId = null, ?string $callbackUrl = nul
     }
 
     return pickup_relative_path($destPath);
+}
+
+function regenerate_package_qrs(array $filters = [], int $limit = 0): array
+{
+    $queryFilters = array_merge(['archived' => false], $filters);
+    $options = [
+        'order_by' => 'updated_at',
+        'order_dir' => 'DESC',
+    ];
+    if ($limit > 0) {
+        $options['limit'] = $limit;
+    }
+
+    $packages = filter_packages($queryFilters, $options);
+    $updated = 0;
+    $failed = 0;
+
+    foreach ($packages as $package) {
+        $packageId = (int) ($package['id'] ?? 0);
+        if ($packageId <= 0) {
+            continue;
+        }
+
+        try {
+            $path = generate_package_qr($packageId);
+            if ($path !== null && $path !== '') {
+                $updated++;
+            } else {
+                $failed++;
+            }
+        } catch (Throwable $exception) {
+            $failed++;
+            error_log('Rigenerazione QR fallita per pacco ' . $packageId . ': ' . $exception->getMessage());
+        }
+    }
+
+    return [
+        'total' => count($packages),
+        'updated' => $updated,
+        'failed' => $failed,
+    ];
 }
 
 function send_notification_email(string $email, string $subject, string $message, array $options = []): bool
@@ -2842,7 +3057,7 @@ function send_notification_whatsapp(string $phone, string $message): bool
     $response = curl_exec($ch);
     $error = curl_error($ch);
     $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    $ch = null;
 
     if ($response === false || $error !== '') {
         error_log('Invio WhatsApp fallito: ' . ($error !== '' ? $error : 'risposta vuota'));

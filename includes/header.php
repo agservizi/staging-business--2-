@@ -2,6 +2,7 @@
 if (!isset($pageTitle)) {
     $pageTitle = 'Coresuite Business';
 }
+$cookiebotId = env('COOKIEBOT_ID');
 $csrfToken = csrf_token();
 $flashMessages = get_flashes();
 $themePdo = null;
@@ -13,6 +14,11 @@ $activeTheme = $appearanceConfig['theme'] ?? 'navy';
 $themeCatalog = \App\Services\SettingsService::availableThemes();
 $themeAccent = $themeCatalog[$activeTheme]['accent'] ?? '#0b2f6b';
 
+require_once __DIR__ . '/notifications.php';
+if (isset($pdo) && $pdo instanceof PDO && php_sapi_name() !== 'cli') {
+    register_bug_notification_handler($pdo);
+}
+
 $pickupFeedConfig = null;
 $runtimeConfig = [
     'apiBaseUrl' => base_url('api/'),
@@ -20,6 +26,7 @@ $runtimeConfig = [
     'assets' => [
         'leafletMarker' => 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
         'leafletMarkerRetina' => 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        'leafletShadow' => 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     ],
 ];
 if (isset($pdo) && $pdo instanceof PDO && current_user_can('Admin', 'Operatore', 'Manager')) {
@@ -38,6 +45,26 @@ if (isset($pdo) && $pdo instanceof PDO && current_user_can('Admin', 'Operatore',
         error_log('Pickup report feed bootstrap failed: ' . $exception->getMessage());
     }
 }
+
+if (!headers_sent()) {
+    header('X-Frame-Options: SAMEORIGIN');
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Strict-Transport-Security: max-age=63072000; includeSubDomains; preload');
+    $cspReportEndpoint = base_url('api/csp-report.php');
+    $csp = [
+        "default-src 'self' data: blob: https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com https://code.jquery.com https://cdn.jsdelivr.net https://code.highcharts.com https://acrobatservices.adobe.com https://documentcloud.adobe.com",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com https://code.jquery.com https://cdn.jsdelivr.net https://code.highcharts.com https://acrobatservices.adobe.com",
+        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com https://cdn.jsdelivr.net https://code.highcharts.com https://documentcloud.adobe.com",
+        "img-src 'self' data: blob: https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com https://cdn.jsdelivr.net https://code.highcharts.com https://documentcloud.adobe.com",
+        "font-src 'self' data: https://cdnjs.cloudflare.com",
+        "connect-src 'self' https://cdn.datatables.net https://unpkg.com https://code.jquery.com https://cdn.jsdelivr.net https://code.highcharts.com https://acrobatservices.adobe.com https://documentcloud.adobe.com",
+        "frame-src 'self' blob: https://acrobatservices.adobe.com https://documentcloud.adobe.com",
+        "frame-ancestors 'self'",
+        "report-uri {$cspReportEndpoint}"
+    ];
+    header('Content-Security-Policy: ' . implode('; ', $csp));
+}
 ?>
 <!DOCTYPE html>
 <html lang="it" data-bs-theme="light" data-ui-theme="<?php echo sanitize_output($activeTheme); ?>">
@@ -48,17 +75,21 @@ if (isset($pdo) && $pdo instanceof PDO && current_user_can('Admin', 'Operatore',
     <meta name="theme-color" content="<?php echo sanitize_output($themeAccent); ?>">
     <title><?php echo sanitize_output($pageTitle); ?> | Coresuite Business</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' ry='3' fill='%230b2f6b'/%3E%3Ctext x='8' y='11' font-family='Arial' font-size='7' font-weight='bold' text-anchor='middle' fill='white'%3ECB%3C/text%3E%3C/svg%3E">
+    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' ry='3' fill='%230b2f6b'/%3E%3Ctext x='8' y='11' font-family='Arial' font-size='7' font-weight='bold' text-anchor='middle' fill='white'%3ECB%3C/text%3E%3C/svg%3E">
     <link href="<?php echo asset('assets/vendor/bootstrap/css/bootstrap.min.css'); ?>" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" referrerpolicy="no-referrer" />
     <link href="https://cdn.datatables.net/v/bs5/dt-1.13.8/datatables.min.css" rel="stylesheet">
     <link href="<?php echo asset('assets/css/custom.css'); ?>" rel="stylesheet">
+    <link href="<?php echo asset('assets/css/cookie-consent.css'); ?>" rel="stylesheet">
     <?php if (!empty($extraStyles) && is_array($extraStyles)): ?>
         <?php foreach ($extraStyles as $styleAsset): ?>
             <link href="<?php echo sanitize_output($styleAsset); ?>" rel="stylesheet">
         <?php endforeach; ?>
     <?php endif; ?>
+    <script src="<?php echo asset('assets/js/cookie-consent.js'); ?>" defer></script>
 </head>
 <body class="layout-wrapper">
+<a class="skip-link" href="#main-content">Salta al contenuto</a>
 <div id="app" class="d-flex">
 <?php if ($flashMessages): ?>
     <script>
@@ -70,6 +101,8 @@ if (isset($pdo) && $pdo instanceof PDO && current_user_can('Admin', 'Operatore',
     window.CS.apiBaseUrl = <?php echo json_encode($runtimeConfig['apiBaseUrl'], JSON_THROW_ON_ERROR); ?>;
     window.CS.assetsBaseUrl = <?php echo json_encode($runtimeConfig['assetsBaseUrl'], JSON_THROW_ON_ERROR); ?>;
     window.CS.assets = <?php echo json_encode($runtimeConfig['assets'], JSON_THROW_ON_ERROR); ?>;
+    window.CS.userRole = <?php echo json_encode($_SESSION['role'] ?? '', JSON_THROW_ON_ERROR); ?>;
+    window.CS.userId = <?php echo json_encode((int) ($_SESSION['user_id'] ?? 0), JSON_THROW_ON_ERROR); ?>;
     <?php if ($pickupFeedConfig !== null): ?>
     window.CS.pickupReportFeed = <?php echo json_encode($pickupFeedConfig, JSON_THROW_ON_ERROR); ?>;
     <?php endif; ?>

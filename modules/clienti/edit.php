@@ -2,13 +2,14 @@
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/db_connect.php';
 require_once __DIR__ . '/../../includes/helpers.php';
+require_once __DIR__ . '/../../includes/notifications.php';
 
 require_role('Admin', 'Operatore');
 $pageTitle = 'Modifica cliente';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
-    header('Location: index.php');
+    header('Location: ' . clienti_module_url('index'));
     exit;
 }
 
@@ -17,7 +18,7 @@ $stmt->execute([':id' => $id]);
 $client = $stmt->fetch();
 
 if (!$client) {
-    header('Location: index.php?notfound=1');
+    header('Location: ' . clienti_module_url('index', ['notfound' => 1]));
     exit;
 }
 
@@ -98,7 +99,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         add_flash('success', 'Cliente aggiornato con successo.');
-        header('Location: view.php?id=' . $id);
+        $actorRole = (string) ($_SESSION['role'] ?? '');
+        $actorId = (int) ($_SESSION['user_id'] ?? 0);
+        $notification = [
+            'type' => 'success',
+            'title' => 'Cliente aggiornato',
+            'message' => sprintf('Aggiornato cliente #%d (%s).', $id, $logLabel),
+            'metadata' => [
+                'entity' => 'clienti',
+                'id' => $id,
+                'action' => 'update',
+            ],
+        ];
+        foreach (['Admin', 'Manager'] as $notifyRole) {
+            create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
+        }
+        header('Location: ' . clienti_module_url('view', ['id' => $id]));
         exit;
     }
 }
@@ -110,7 +126,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <?php require_once __DIR__ . '/../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="mb-4">
-            <a class="btn btn-outline-warning" href="view.php?id=<?php echo $id; ?>"><i class="fa-solid fa-arrow-left"></i> Dettaglio cliente</a>
+            <a class="btn btn-outline-warning" href="<?php echo clienti_module_url('view', ['id' => $id]); ?>"><i class="fa-solid fa-arrow-left"></i> Dettaglio cliente</a>
         </div>
         <div class="card ag-card">
             <div class="card-header bg-transparent border-0">
@@ -159,7 +175,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         </div>
                     </div>
                     <div class="d-flex justify-content-end gap-2 mt-4">
-                        <a class="btn btn-secondary" href="view.php?id=<?php echo $id; ?>">Annulla</a>
+                        <a class="btn btn-secondary" href="<?php echo clienti_module_url('view', ['id' => $id]); ?>">Annulla</a>
                         <button class="btn btn-warning text-dark" type="submit">Salva modifiche</button>
                     </div>
                 </form>

@@ -13,7 +13,7 @@ require_once __DIR__ . '/../../../includes/helpers.php';
 require_role('Admin', 'Operatore', 'Manager');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: ' . telegrammi_module_url('index'));
     exit;
 }
 
@@ -22,7 +22,7 @@ require_valid_csrf();
 $tokenValue = env('UFFICIO_POSTALE_TOKEN') ?? env('UFFICIO_POSTALE_SANDBOX_TOKEN') ?? '';
 if (trim((string) $tokenValue) === '') {
     add_flash('warning', 'Configura il token Ufficio Postale per poter sincronizzare gli invii.');
-    header('Location: index.php');
+    header('Location: ' . telegrammi_module_url('index'));
     exit;
 }
 
@@ -46,14 +46,14 @@ try {
             ? 'Telegramma ' . $telegrammaId . ' sincronizzato correttamente.'
             : 'Nessun dato aggiornato per il telegramma ' . $telegrammaId . '.';
         add_flash('success', $message);
-        header('Location: view.php?id=' . urlencode($telegrammaId));
+        header('Location: ' . telegrammi_module_url('view', ['id' => $telegrammaId]));
         exit;
     }
 
     $response = $client->listTelegram();
     if (!isset($response['data']) || !$response['data']) {
         add_flash('info', 'Nessun telegramma disponibile da sincronizzare in questo momento.');
-        header('Location: index.php');
+        header('Location: ' . telegrammi_module_url('index'));
         exit;
     }
 
@@ -66,11 +66,11 @@ try {
         add_flash('success', 'Sincronizzazione completata: ' . $count . ' telegrammi aggiornati.');
     }
 
-    header('Location: index.php');
+    header('Location: ' . telegrammi_module_url('index'));
     exit;
 } catch (Throwable $exception) {
     error_log('Telegrammi sync error: ' . $exception->getMessage());
     add_flash('danger', 'Sincronizzazione fallita: ' . $exception->getMessage());
-    header('Location: index.php');
+    header('Location: ' . telegrammi_module_url('index'));
     exit;
 }

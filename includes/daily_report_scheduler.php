@@ -98,11 +98,10 @@ if (!function_exists('maybe_generate_daily_financial_reports')) {
                 try {
                     $result = $service->generateForDate($currentDate);
                     $processedDate = $currentDate;
-                    $logLine = sprintf('%s | report=%s | saldo=%0.2f | file=%s',
+                    $logLine = sprintf('%s | report=%s | saldo=%0.2f | pdf=on-demand',
                         (new DateTimeImmutable('now'))->format('Y-m-d H:i:s'),
                         $formatted,
-                        $result['saldo'],
-                        $result['filePath']
+                        $result['saldo']
                     );
                     file_put_contents($logPath, $logLine . PHP_EOL, FILE_APPEND | LOCK_EX);
                 } catch (Throwable $generationException) {

@@ -80,6 +80,10 @@ function send_system_mail(string $to, string $subject, string $htmlBody, array $
         $replyToAddress = $fromAddress;
     }
 
+    if ($channel === 'pec') {
+        return send_mail_via_smtp_pec($to, $subject, $htmlBody, $preparedAttachments, $options);
+    }
+
     if ($apiKey !== '') {
         $resendChannel = $channel === 'marketing' ? 'resend_marketing' : 'resend';
         $resendResult = send_mail_via_resend($apiKey, $fromAddress, $fromName, $replyToAddress, $to, $subject, $htmlBody, $preparedAttachments, $metadata, $resendChannel);
@@ -89,6 +93,92 @@ function send_system_mail(string $to, string $subject, string $htmlBody, array $
     }
 
     return send_mail_via_php_mail($fromAddress, $fromName, $replyToAddress, $to, $subject, $htmlBody, $preparedAttachments);
+}
+
+function send_mail_via_smtp_pec(string $to, string $subject, string $htmlBody, array $attachments = [], array $options = []): bool
+{
+    $autoload = __DIR__ . '/../vendor/autoload.php';
+    if (!class_exists('\PHPMailer\PHPMailer\PHPMailer') && is_file($autoload)) {
+        require_once $autoload;
+    }
+
+    if (!class_exists('\PHPMailer\PHPMailer\PHPMailer')) {
+        log_mail_failure('pec', $to, $subject, 'PHPMailer non disponibile. Esegui composer install.');
+        return false;
+    }
+
+    $host = trim((string) env('PEC_SMTP_HOST', ''));
+    $port = (int) env('PEC_SMTP_PORT', 465);
+    $username = trim((string) env('PEC_SMTP_USERNAME', ''));
+    $password = (string) env('PEC_SMTP_PASSWORD', '');
+    $encryption = strtolower(trim((string) env('PEC_SMTP_ENCRYPTION', 'ssl')));
+    $fromAddress = trim((string) env('PEC_FROM_ADDRESS', $username));
+    $fromName = trim((string) env('PEC_FROM_NAME', env('MAIL_FROM_NAME', 'Coresuite Business')));
+    $replyTo = trim((string) env('PEC_REPLY_TO', $fromAddress));
+    $verifySsl = filter_var(env('PEC_SMTP_VERIFY_SSL', 'true'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) !== false;
+
+    if ($host === '' || $fromAddress === '' || $username === '' || $password === '') {
+        log_mail_failure('pec', $to, $subject, 'Configurazione PEC SMTP incompleta.');
+        return false;
+    }
+
+    try {
+        $mailerClass = '\\PHPMailer\\PHPMailer\\PHPMailer';
+        $mail = new $mailerClass(true);
+        $mail->isSMTP();
+        $mail->Host = $host;
+        $mail->Port = $port;
+        $mail->SMTPAuth = true;
+        $mail->Username = $username;
+        $mail->Password = $password;
+        if ($encryption === 'tls' || $encryption === 'starttls') {
+            $mail->SMTPSecure = (string) constant($mailerClass . '::ENCRYPTION_STARTTLS');
+        } elseif ($encryption === 'ssl') {
+            $mail->SMTPSecure = (string) constant($mailerClass . '::ENCRYPTION_SMTPS');
+        } else {
+            $mail->SMTPSecure = '';
+            $mail->SMTPAutoTLS = false;
+        }
+
+        if (!$verifySsl) {
+            $mail->SMTPOptions = [
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true,
+                ],
+            ];
+        }
+
+        $mail->CharSet = 'UTF-8';
+        $mail->setFrom($fromAddress, $fromName !== '' ? $fromName : $fromAddress);
+        if ($replyTo !== '') {
+            $mail->addReplyTo($replyTo);
+        }
+        $mail->addAddress($to);
+        $mail->Subject = $subject;
+        if (!empty($options['message_id'])) {
+            $mail->MessageID = (string) $options['message_id'];
+        }
+
+        $mail->isHTML(true);
+        $mail->Body = $htmlBody;
+
+        foreach ($attachments as $attachment) {
+            $name = $attachment['name'] ?? 'allegato';
+            $content = $attachment['content'] ?? '';
+            $mime = $attachment['mime'] ?? 'application/octet-stream';
+            if ($content !== '') {
+                $mail->addStringAttachment($content, $name, 'base64', $mime);
+            }
+        }
+
+        $mail->send();
+        return true;
+    } catch (\Throwable $exception) {
+        log_mail_failure('pec', $to, $subject, 'Errore SMTP PEC: ' . $exception->getMessage());
+        return false;
+    }
 }
 
 function send_mail_via_resend(string $apiKey, string $fromAddress, string $fromName, string $replyTo, string $to, string $subject, string $htmlBody, array $attachments = [], array $metadata = [], string $logChannel = 'resend'): bool
@@ -238,8 +328,10 @@ function send_mail_via_php_mail(string $fromAddress, string $fromName, string $r
 
 function log_mail_failure(string $channel, string $recipient, string $subject, string $message): void
 {
+    $GLOBALS['last_mail_error'] = $message;
     $logDir = __DIR__ . '/../backups';
     if (!is_dir($logDir) && !mkdir($logDir, 0775, true) && !is_dir($logDir)) {
+        error_log(sprintf('[%s][%s] Mail fallita verso %s (oggetto: %s) - %s', date('c'), strtoupper($channel), $recipient, $subject, $message));
         return;
     }
 
@@ -254,6 +346,15 @@ function log_mail_failure(string $channel, string $recipient, string $subject, s
     );
 
     file_put_contents($logDir . '/email.log', $logMessage, FILE_APPEND);
+}
+
+function get_last_mail_error(): ?string
+{
+    $value = $GLOBALS['last_mail_error'] ?? null;
+    if (is_string($value) && trim($value) !== '') {
+        return $value;
+    }
+    return null;
 }
 
 function render_mail_template(string $title, string $content): string
@@ -281,6 +382,153 @@ function render_mail_template(string $title, string $content): string
 </body>
 </html>
 HTML;
+}
+
+function send_opportunity_confirmation_email(array $payload): bool
+{
+    $customerEmail = trim((string) ($payload['customer_email'] ?? ''));
+    if ($customerEmail === '') {
+        return false;
+    }
+
+    $category = (string) ($payload['category'] ?? '');
+    $code = (string) ($payload['code'] ?? '');
+    $categoryLabel = match ($category) {
+        'telefonia' => 'contratto telefonico',
+        'luce' => 'fornitura luce',
+        'gas' => 'fornitura gas',
+        default => 'richiesta',
+    };
+
+    $customerName = trim(
+        sprintf(
+            '%s %s',
+            (string) ($payload['customer_first_name'] ?? ''),
+            (string) ($payload['customer_last_name'] ?? '')
+        )
+    );
+
+    $providerLabel = (string) ($payload['provider_label'] ?? 'gestore selezionato');
+    $offerLabel = (string) ($payload['offer_label'] ?? 'offerta dedicata');
+
+    $escape = static fn (string $value): string => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+
+    $primaryText = $code !== ''
+        ? sprintf('Codice richiesta %s', $code)
+        : 'Richiesta registrata';
+
+    $content = <<<HTML
+        <p style="font-size: 16px; margin-top: 0;">Ciao {$escape($customerName)}.</p>
+        <p style="margin-bottom: 16px;">Abbiamo ricevuto la tua richiesta per {$escape($categoryLabel)} con il gestore <strong>{$escape($providerLabel)}</strong> e l'offerta <strong>{$escape($offerLabel)}</strong>. I nostri operatori stanno verificando i dati inviati.</p>
+        <div style="background: #0b2f6b; color: #fff; padding: 18px 24px; border-radius: 12px; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85;">{$escape($categoryLabel)}</p>
+            <p style="margin: 4px 0 0; font-size: 24px; font-weight: 600;">{$escape($primaryText)}</p>
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+            <div style="flex: 1 1 160px; min-width: 140px; background: #eef4ff; border-radius: 12px; padding: 16px;">
+                <p style="margin: 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #4b6cb7;">Step 1</p>
+                <p style="margin: 4px 0 0; font-size: 15px; font-weight: 600; color: #1c2534;">Verifica documenti</p>
+                <p style="margin: 6px 0 0; font-size: 13px; color: #4d5a6d;">Confermeremo i dati identificativi e i consensi caricati.</p>
+            </div>
+            <div style="flex: 1 1 160px; min-width: 140px; background: #fef6e7; border-radius: 12px; padding: 16px;">
+                <p style="margin: 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #bb6b00;">Step 2</p>
+                <p style="margin: 4px 0 0; font-size: 15px; font-weight: 600; color: #1c2534;">Firma OTP</p>
+                <p style="margin: 6px 0 0; font-size: 13px; color: #4d5a6d;">Riceverai email/SMS dal gestore per la firma digitale.</p>
+            </div>
+            <div style="flex: 1 1 160px; min-width: 140px; background: #eafaf0; border-radius: 12px; padding: 16px;">
+                <p style="margin: 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #0f7b3d;">Step 3</p>
+                <p style="margin: 4px 0 0; font-size: 15px; font-weight: 600; color: #1c2534;">Attivazione</p>
+                <p style="margin: 6px 0 0; font-size: 13px; color: #4d5a6d;">Una volta firmato il contratto, riceverai la conferma attivazione.</p>
+            </div>
+        </div>
+        <p style="margin-bottom: 16px;">Ricorda che ogni email o SMS di conferma inviato dai gestori ha validità di <strong>6 ore</strong>. Trascorso questo tempo senza firma, la richiesta viene annullata automaticamente e dovrà essere ripresentata.</p>
+        <p style="margin-bottom: 16px;">Per qualsiasi dubbio puoi rispondere a questa comunicazione o contattare il nostro supporto indicando il codice <strong>{$escape($code)}</strong>.</p>
+        <p style="margin-bottom: 0;">Grazie per aver scelto Coresuite Business.</p>
+    HTML;
+
+    $subject = $code !== ''
+        ? sprintf('Richiesta %s ricevuta (%s)', $categoryLabel, $code)
+        : sprintf('Richiesta %s ricevuta', $categoryLabel);
+
+    $htmlBody = render_mail_template($subject, $content);
+
+    return send_system_mail($customerEmail, $subject, $htmlBody, [
+        'metadata' => array_filter([
+            'opportunity_code' => $code,
+            'opportunity_category' => $category,
+        ]),
+    ]);
+}
+
+function send_opportunity_status_update_email(array $payload): bool
+{
+    $recipient = trim((string) ($payload['collaborator_email'] ?? ''));
+    if ($recipient === '') {
+        return false;
+    }
+
+    $collaboratorName = trim((string) ($payload['collaborator_name'] ?? ''));
+    $code = (string) ($payload['code'] ?? '');
+    $category = (string) ($payload['category'] ?? '');
+    $statusLabel = (string) ($payload['status_label'] ?? '');
+    $statusCode = (string) ($payload['status_code'] ?? '');
+    $statusDisplay = $statusLabel !== '' ? $statusLabel : ($statusCode !== '' ? strtoupper($statusCode) : 'Aggiornamento stato');
+    $customerName = trim(
+        sprintf(
+            '%s %s',
+            (string) ($payload['customer_first_name'] ?? ''),
+            (string) ($payload['customer_last_name'] ?? '')
+        )
+    );
+    $adminNotes = trim((string) ($payload['admin_notes'] ?? ''));
+    $updatedAt = $payload['updated_at'] ?? null;
+
+    $categoryLabel = match ($category) {
+        'telefonia' => 'Telefonia',
+        'luce' => 'Luce',
+        'gas' => 'Gas',
+        default => 'Opportunity',
+    };
+
+    $escape = static fn (string $value): string => htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    $timestampLabel = '';
+    if ($updatedAt) {
+        $timestampLabel = function_exists('format_datetime_locale')
+            ? format_datetime_locale($updatedAt)
+            : date('d/m/Y H:i', strtotime((string) $updatedAt));
+    }
+
+    $notesBlock = '';
+    if ($adminNotes !== '') {
+        $notesBlock = '<p style="margin: 0; font-size: 13px; color: #0f172a;">Nota interna:</p>' .
+            '<blockquote style="margin: 8px 0 0; padding: 12px 16px; background: #f8fafc; border-left: 4px solid #0b2f6b; border-radius: 8px; color: #1e293b;">' . $escape($adminNotes) . '</blockquote>';
+    }
+
+    $content = <<<HTML
+        <p style="font-size: 16px; margin-top: 0;">Ciao {$escape($collaboratorName ?: 'collega')}.</p>
+        <p style="margin-bottom: 16px;">Abbiamo aggiornato lo stato della opportunity {$escape($code !== '' ? ('#' . $code) : '')} per il cliente <strong>{$escape($customerName ?: '—')}</strong>.</p>
+        <div style="background: #0b2f6b; color: #fff; padding: 18px 24px; border-radius: 12px; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.85;">{$escape($categoryLabel)}</p>
+            <p style="margin: 4px 0 0; font-size: 24px; font-weight: 600;">{$escape($statusDisplay)}</p>
+            <p style="margin: 6px 0 0; font-size: 13px; color: rgba(255,255,255,0.8);">Aggiornato {$escape($timestampLabel ?: 'ora')}</p>
+        </div>
+        {$notesBlock}
+        <p style="margin: 20px 0 0;">Per ulteriori modifiche puoi accedere all'area Opportunity e completare gli step richiesti.</p>
+    HTML;
+
+    $subject = $code !== ''
+        ? sprintf('Opportunity %s aggiornata (%s)', $code, $statusDisplay)
+        : sprintf('Opportunity aggiornata (%s)', $statusDisplay);
+
+    $htmlBody = render_mail_template($subject, $content);
+
+    return send_system_mail($recipient, $subject, $htmlBody, [
+        'metadata' => array_filter([
+            'opportunity_code' => $code,
+            'opportunity_category' => $category,
+            'opportunity_status' => $statusCode ?: $statusLabel,
+        ]),
+    ]);
 }
 
 /**

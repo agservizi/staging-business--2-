@@ -13,7 +13,7 @@ require_role('Admin', 'Operatore', 'Manager');
 $telegrammaId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 if ($telegrammaId === '') {
     add_flash('warning', 'Specifica un telegramma da visualizzare.');
-    header('Location: index.php');
+    header('Location: ' . telegrammi_module_url('index'));
     exit;
 }
 
@@ -25,13 +25,13 @@ try {
     $record = $service->findByTelegrammaId($telegrammaId);
     if ($record === null) {
         add_flash('warning', 'Telegramma non trovato.');
-        header('Location: index.php');
+        header('Location: ' . telegrammi_module_url('index'));
         exit;
     }
     $logs = $service->logs((int) $record['id']);
 } catch (Throwable $exception) {
     add_flash('danger', 'Impossibile recuperare il telegramma: ' . $exception->getMessage());
-    header('Location: index.php');
+    header('Location: ' . telegrammi_module_url('index'));
     exit;
 }
 
@@ -81,17 +81,17 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Verifica i metadati, il testo inviato e lo stato di consegna sincronizzato.</p>
             </div>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
-                <a href="index.php" class="btn btn-outline-secondary">
+                <a href="<?php echo sanitize_output(telegrammi_module_url('index')); ?>" class="btn btn-outline-secondary">
                     <i class="fa-solid fa-arrow-left-long me-2"></i>Elenco telegrammi
                 </a>
-                <form action="sync.php" method="post" class="d-inline" autocomplete="off">
+                <form action="<?php echo sanitize_output(telegrammi_module_url('sync')); ?>" method="post" class="d-inline" autocomplete="off">
                     <input type="hidden" name="_token" value="<?php echo csrf_token(); ?>">
                     <input type="hidden" name="telegramma_id" value="<?php echo sanitize_output($telegrammaId); ?>">
                     <button type="submit" class="btn btn-outline-primary">
                         <i class="fa-solid fa-rotate me-2"></i>Sincronizza
                     </button>
                 </form>
-                <form action="confirm.php" method="post" class="d-inline">
+                <form action="<?php echo sanitize_output(telegrammi_module_url('confirm')); ?>" method="post" class="d-inline">
                     <input type="hidden" name="_token" value="<?php echo csrf_token(); ?>">
                     <input type="hidden" name="telegramma_id" value="<?php echo sanitize_output($telegrammaId); ?>">
                     <input type="hidden" name="confirmed" value="<?php echo $confirmed ? '0' : '1'; ?>">
@@ -258,7 +258,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                     <div class="card-body">
                         <p class="text-muted small">Collega il telegramma alla scheda di un cliente per visualizzarlo all'interno dei report e nella scheda cliente.</p>
-                        <form action="assign_client.php" method="post" class="row g-3" autocomplete="off">
+                        <form action="<?php echo sanitize_output(telegrammi_module_url('assign_client')); ?>" method="post" class="row g-3" autocomplete="off">
                             <input type="hidden" name="_token" value="<?php echo csrf_token(); ?>">
                             <input type="hidden" name="telegramma_pk" value="<?php echo (int) $record['id']; ?>">
                             <input type="hidden" name="redirect_id" value="<?php echo sanitize_output($telegrammaId); ?>">

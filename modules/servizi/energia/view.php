@@ -12,14 +12,14 @@ require_role('Admin', 'Operatore', 'Manager');
 $contractId = (int) ($_GET['id'] ?? 0);
 if ($contractId <= 0) {
     add_flash('warning', 'Contratto energia non valido.');
-    header('Location: index.php');
+    header('Location: ' . energia_module_url('index'));
     exit;
 }
 
 $contract = energia_fetch_contract($pdo, $contractId);
 if ($contract === null) {
     add_flash('warning', 'Contratto energia non trovato.');
-    header('Location: index.php');
+    header('Location: ' . energia_module_url('index'));
     exit;
 }
 
@@ -32,20 +32,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action !== 'upload_extra_documents') {
         add_flash('warning', 'Azione non supportata.');
-        header('Location: view.php?id=' . $contractId);
+        header('Location: ' . energia_module_url('view', ['id' => $contractId]));
         exit;
     }
 
     if (!$canUploadExtra) {
         add_flash('warning', 'Non è possibile allegare documenti aggiuntivi per questa operazione.');
-        header('Location: view.php?id=' . $contractId);
+        header('Location: ' . energia_module_url('view', ['id' => $contractId]));
         exit;
     }
 
     $uploads = energia_normalize_uploads($_FILES['extra_files'] ?? null);
     if (!$uploads) {
         add_flash('warning', 'Seleziona almeno un file da allegare.');
-        header('Location: view.php?id=' . $contractId . '#extra-docs');
+        header('Location: ' . energia_module_url('view', ['id' => $contractId]) . '#extra-docs');
         exit;
     }
 
@@ -54,18 +54,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($uploads as $upload) {
         if ($upload['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($upload['tmp_name'])) {
             add_flash('warning', 'Errore nel caricamento di uno degli allegati.');
-            header('Location: view.php?id=' . $contractId . '#extra-docs');
+            header('Location: ' . energia_module_url('view', ['id' => $contractId]) . '#extra-docs');
             exit;
         }
         if ($upload['size'] > ENERGIA_MAX_UPLOAD_SIZE) {
             add_flash('warning', 'Ogni allegato deve essere inferiore a 15 MB.');
-            header('Location: view.php?id=' . $contractId . '#extra-docs');
+            header('Location: ' . energia_module_url('view', ['id' => $contractId]) . '#extra-docs');
             exit;
         }
         $mime = energia_detect_mime($upload['tmp_name']);
         if (!isset($allowedMimes[$mime])) {
             add_flash('warning', 'Formato file non supportato. Usa PDF o immagini (JPG/PNG).');
-            header('Location: view.php?id=' . $contractId . '#extra-docs');
+            header('Location: ' . energia_module_url('view', ['id' => $contractId]) . '#extra-docs');
             exit;
         }
         $processedUploads[] = [
@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         error_log('Energia extra attachments upload failed: ' . $exception->getMessage());
         add_flash('warning', 'Errore durante il caricamento degli allegati.');
-        header('Location: view.php?id=' . $contractId . '#extra-docs');
+        header('Location: ' . energia_module_url('view', ['id' => $contractId]) . '#extra-docs');
         exit;
     }
 
@@ -182,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     energia_log_action($pdo, 'Documenti aggiuntivi', 'Caricati documenti aggiuntivi per contratto #' . $contractId);
 
     add_flash($mailSent ? 'success' : 'warning', $mailSent ? 'Documenti aggiuntivi inviati correttamente.' : 'Documenti caricati ma impossibile inviare l\'email.');
-    header('Location: view.php?id=' . $contractId . '#extra-docs');
+    header('Location: ' . energia_module_url('view', ['id' => $contractId]) . '#extra-docs');
     exit;
 }
 
@@ -200,14 +200,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Richiesta per <?php echo sanitize_output($contract['nominativo'] ?? ''); ?>.</p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Indietro</a>
-                <form method="post" action="index.php" class="d-inline">
+                <a class="btn btn-outline-warning" href="<?php echo energia_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Indietro</a>
+                <form method="post" action="<?php echo energia_module_url('index'); ?>" class="d-inline">
                     <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                     <input type="hidden" name="id" value="<?php echo (int) $contract['id']; ?>">
                     <input type="hidden" name="action" value="send_email">
                     <button class="btn btn-outline-warning" type="submit" <?php echo !empty($contract['email_sent_at']) ? 'disabled' : ''; ?>><i class="fa-solid fa-paper-plane me-2"></i>Invia email</button>
                 </form>
-                <form method="post" action="index.php" class="d-inline">
+                <form method="post" action="<?php echo energia_module_url('index'); ?>" class="d-inline">
                     <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                     <input type="hidden" name="id" value="<?php echo (int) $contract['id']; ?>">
                     <input type="hidden" name="action" value="send_reminder">

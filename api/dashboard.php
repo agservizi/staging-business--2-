@@ -31,7 +31,6 @@ $response = [
                 'Appuntamenti',
                 'Contratti energia',
                 'Pratiche ANPR',
-                'Visure catastali',
                 'Progetti web',
                 'Programma Fedeltà',
                 'Curriculum',
@@ -40,11 +39,22 @@ $response = [
                 'Email marketing',
                 'Email inviate',
             ],
-            'values' => [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'values' => [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         ],
     ],
     'tickets' => [],
     'reminders' => [],
+    'opportunities' => [
+        'totals' => [
+            'total' => 0,
+            'active' => 0,
+            'won' => 0,
+            'lost' => 0,
+        ],
+        'statusBreakdown' => [],
+        'latest' => [],
+        'todo' => [],
+    ],
 ];
 
 $statusConfig = get_appointment_status_config($pdo);
@@ -106,18 +116,19 @@ try {
 
     $response['stats']['anprInProgress'] = (int) $pdo->query("SELECT COUNT(*) FROM anpr_pratiche WHERE stato = 'In lavorazione'")->fetchColumn();
 
-    $ticketStmt = $pdo->prepare('SELECT id, titolo, stato, created_at FROM ticket ORDER BY created_at DESC LIMIT 5');
+    $ticketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, updated_at FROM tickets ORDER BY updated_at DESC LIMIT 5");
     $ticketStmt->execute();
-    $tickets = $ticketStmt->fetchAll();
-    $response['tickets'] = array_map(static function ($ticket) {
+    $tickets = $ticketStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $response['tickets'] = array_map(static function (array $ticket): array {
         return [
             'id' => (int) $ticket['id'],
-            'title' => $ticket['titolo'],
-            'status' => $ticket['stato'],
-            'createdAt' => $ticket['created_at'],
+            'code' => $ticket['codice'] ?? null,
+            'subject' => $ticket['subject'] ?? null,
+            'status' => $ticket['status'] ?? null,
+            'createdAt' => $ticket['created_at'] ?? null,
         ];
     }, $tickets);
-    $response['stats']['openTickets'] = count($tickets);
+    $response['stats']['openTickets'] = (int) $pdo->query("SELECT COUNT(*) FROM tickets WHERE status NOT IN ('RESOLVED','CLOSED','ARCHIVED')")->fetchColumn();
 
     $revenueChartStmt = $pdo->prepare("SELECT DATE_FORMAT(DATE(COALESCE(data_pagamento, updated_at, created_at)), '%Y-%m') AS month_key,
            SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END) AS totale
@@ -149,7 +160,6 @@ try {
         'servizi_appuntamenti' => 0,
         'energia_contratti' => 0,
         'anpr_pratiche' => 0,
-        'servizi_visure' => 0,
         'servizi_web_progetti' => 0,
         'fedelta_movimenti' => 0,
         'curriculum' => 0,
@@ -210,21 +220,27 @@ try {
                 'icon' => 'fa-envelope-open-text',
                 'title' => 'Campagna email da seguire',
                 'detail' => sprintf('%s (%s). %s.', $pendingCampaign['name'] ?: ('Campagna #' . $pendingCampaign['id']), $statusLabel, $scheduleInfo),
-                'url' => base_url('modules/email-marketing/view.php?id=' . (int) $pendingCampaign['id']),
+                'url' => email_marketing_module_url('view', ['id' => (int) $pendingCampaign['id']]),
             ];
         }
     } catch (PDOException $emailReminderException) {
         error_log('Dashboard API email campaign reminder failed: ' . $emailReminderException->getMessage());
     }
 
-    $oldestTicketStmt = $pdo->prepare("SELECT id, titolo, created_at FROM ticket WHERE stato IN ('Aperto', 'In corso') ORDER BY created_at ASC LIMIT 1");
+    $oldestTicketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, COALESCE(last_message_at, created_at) AS reference_date
+        FROM tickets
+        WHERE status IN ('OPEN','IN_PROGRESS','WAITING_CLIENT','WAITING_PARTNER')
+        ORDER BY reference_date ASC
+        LIMIT 1");
     $oldestTicketStmt->execute();
     if ($oldestTicket = $oldestTicketStmt->fetch()) {
+        $ticketCode = $oldestTicket['codice'] ?? $oldestTicket['id'];
+        $ticketSubject = trim((string) ($oldestTicket['subject'] ?? 'Ticket ' . $ticketCode));
         $reminders[] = [
             'icon' => 'fa-life-ring',
             'title' => 'Ticket da prendere in carico',
-            'detail' => sprintf('Ticket #%d aperto il %s.', $oldestTicket['id'], format_datetime($oldestTicket['created_at'] ?? '')),
-            'url' => base_url('modules/ticket/view.php?id=' . $oldestTicket['id']),
+            'detail' => sprintf('Ticket #%s · %s aperto il %s.', $ticketCode, $ticketSubject, format_datetime($oldestTicket['created_at'] ?? '')),
+            'url' => ticket_module_url('view', ['id' => (int) $oldestTicket['id']]),
         ];
     }
 
@@ -241,8 +257,99 @@ try {
                 strtoupper($pendingMovimento['stato'] ?? ''),
                 $pendingMovimento['data_scadenza'] ? format_datetime($pendingMovimento['data_scadenza'], 'd/m/Y') : 'N/D'
             ),
-            'url' => base_url('modules/servizi/entrate-uscite/view.php?id=' . $pendingMovimento['id']),
+            'url' => entrate_uscite_module_url('view', ['id' => (int) $pendingMovimento['id']]),
         ];
+    }
+
+    $opStatusStmt = $pdo->query(
+        "SELECT o.status_code, s.label, s.color, s.ordering, COUNT(*) AS total
+         FROM opportunities o
+         LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+         GROUP BY o.status_code, s.label, s.color, s.ordering
+         ORDER BY s.ordering, s.label"
+    );
+
+    if ($opStatusStmt) {
+        while ($row = $opStatusStmt->fetch(PDO::FETCH_ASSOC)) {
+            $count = (int) ($row['total'] ?? 0);
+            $code = (string) ($row['status_code'] ?? '');
+            $response['opportunities']['statusBreakdown'][] = [
+                'code' => $code,
+                'label' => (string) ($row['label'] ?? $code),
+                'color' => (string) ($row['color'] ?? 'secondary'),
+                'total' => $count,
+            ];
+            $response['opportunities']['totals']['total'] += $count;
+            if ($code === 'attivato') {
+                $response['opportunities']['totals']['won'] += $count;
+            }
+            if ($code === 'annullato') {
+                $response['opportunities']['totals']['lost'] += $count;
+            }
+        }
+    }
+
+    $response['opportunities']['totals']['active'] = max(0, $response['opportunities']['totals']['total'] - $response['opportunities']['totals']['won'] - $response['opportunities']['totals']['lost']);
+
+    $opLatestStmt = $pdo->query(
+        "SELECT o.id, o.code, o.category, o.status_code,
+                COALESCE(s.label, o.status_code) AS status_label,
+                s.color AS status_color,
+                o.provider_label,
+                o.customer_first_name,
+                o.customer_last_name,
+                COALESCE(o.last_status_change, o.updated_at, o.created_at) AS reference_date
+         FROM opportunities o
+         LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+         ORDER BY reference_date DESC
+         LIMIT 5"
+    );
+
+    if ($opLatestStmt) {
+        $response['opportunities']['latest'] = array_map(static function (array $row): array {
+            return [
+                'id' => isset($row['id']) ? (int) $row['id'] : null,
+                'code' => $row['code'] ?? null,
+                'statusCode' => $row['status_code'] ?? null,
+                'statusLabel' => $row['status_label'] ?? null,
+                'statusColor' => $row['status_color'] ?? null,
+                'providerLabel' => $row['provider_label'] ?? null,
+                'customerName' => trim((string) ($row['customer_first_name'] ?? '') . ' ' . (string) ($row['customer_last_name'] ?? '')) ?: null,
+                'category' => $row['category'] ?? null,
+                'referenceDate' => $row['reference_date'] ?? null,
+            ];
+        }, $opLatestStmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
+    }
+
+    $opTodoStmt = $pdo->query(
+        "SELECT o.id, o.code, o.category, o.status_code,
+                COALESCE(s.label, o.status_code) AS status_label,
+                s.color AS status_color,
+                o.provider_label,
+                o.customer_first_name,
+                o.customer_last_name,
+                COALESCE(o.last_status_change, o.updated_at, o.created_at) AS reference_date
+         FROM opportunities o
+         LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+         WHERE o.status_code NOT IN ('attivato','annullato')
+         ORDER BY reference_date ASC
+         LIMIT 5"
+    );
+
+    if ($opTodoStmt) {
+        $response['opportunities']['todo'] = array_map(static function (array $row): array {
+            return [
+                'id' => isset($row['id']) ? (int) $row['id'] : null,
+                'code' => $row['code'] ?? null,
+                'statusCode' => $row['status_code'] ?? null,
+                'statusLabel' => $row['status_label'] ?? null,
+                'statusColor' => $row['status_color'] ?? null,
+                'providerLabel' => $row['provider_label'] ?? null,
+                'customerName' => trim((string) ($row['customer_first_name'] ?? '') . ' ' . (string) ($row['customer_last_name'] ?? '')) ?: null,
+                'category' => $row['category'] ?? null,
+                'referenceDate' => $row['reference_date'] ?? null,
+            ];
+        }, $opTodoStmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
     }
 
     $response['reminders'] = $reminders;

@@ -238,14 +238,14 @@ function build_preview_html(array $campaign, array $recipient, array $template =
 
 $campaignId = (int) ($_GET['id'] ?? 0);
 if ($campaignId <= 0) {
-    header('Location: index.php');
+    header('Location: ' . email_marketing_module_url('index'));
     exit;
 }
 
 $emailTablesReady = email_marketing_tables_ready($pdo);
 if (!$emailTablesReady) {
     add_flash('warning', 'Completa la migrazione email marketing prima di accedere al dettaglio campagna.');
-    header('Location: index.php');
+    header('Location: ' . email_marketing_module_url('index'));
     exit;
 }
 
@@ -255,7 +255,7 @@ $unsubscribeBaseUrl = rtrim((string) ($emailMarketingConfig['unsubscribe_base_ur
 $campaign = load_campaign($pdo, $campaignId);
 if (!$campaign) {
     add_flash('warning', 'Campagna non trovata.');
-    header('Location: index.php');
+    header('Location: ' . email_marketing_module_url('index'));
     exit;
 }
 
@@ -528,7 +528,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Stato: <?php echo campaign_status_badge($campaign['status'] ?? 'draft'); ?> • Destinatari stimati: <?php echo number_format($audienceCount); ?></p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-light" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
+                <a class="btn btn-outline-light" href="<?php echo email_marketing_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
             </div>
         </div>
 

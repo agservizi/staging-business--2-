@@ -134,12 +134,10 @@ final class UfficioPostaleClient
         $response = curl_exec($handle);
         if ($response === false) {
             $error = curl_error($handle) ?: 'Errore sconosciuto';
-            curl_close($handle);
             throw new RuntimeException('Richiesta Ufficio Postale fallita: ' . $error);
         }
 
         $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
-        curl_close($handle);
 
         $decoded = null;
         if ($response !== '') {

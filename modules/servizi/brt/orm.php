@@ -34,7 +34,7 @@ try {
     $defaultCustomer = $config->getSenderCustomerCode();
 } catch (BrtException $exception) {
     add_flash('warning', $exception->getMessage());
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }
 
@@ -399,7 +399,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             add_flash('warning', 'Aggiornamento completato ma impossibile sincronizzare lo stato remoto: ' . $syncWarning);
                         }
 
-                        header('Location: orm.php');
+                        header('Location: ' . brt_module_url('orm'));
                         exit;
                     } catch (BrtException $exception) {
                         if ($editingRequestId !== null && $editingRequestId > 0) {
@@ -421,7 +421,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             add_flash('success', 'Ordine di ritiro creato correttamente.');
                         }
 
-                        header('Location: orm.php');
+                        header('Location: ' . brt_module_url('orm'));
                         exit;
                     } catch (BrtException $exception) {
                         $errors[] = $exception->getMessage();
@@ -450,7 +450,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        header('Location: orm.php');
+        header('Location: ' . brt_module_url('orm'));
         exit;
     } elseif ($action === 'cancel_orm') {
         $requestId = (int) ($_POST['request_id'] ?? 0);
@@ -491,7 +491,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 add_flash('warning', 'Errore durante la cancellazione: ' . $exception->getMessage());
             }
         }
-        header('Location: orm.php');
+        header('Location: ' . brt_module_url('orm'));
         exit;
     }
 }
@@ -510,7 +510,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Crea e gestisci le richieste ORM tramite API BRT Pickup.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Torna alle spedizioni</a>
+                <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Torna alle spedizioni</a>
             </div>
         </div>
 
@@ -554,7 +554,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <i class="fa-solid fa-truck-ramp-box me-2 mt-1"></i>
                             <div>
                                 <strong>Richiesta precompilata</strong> dalla spedizione
-                                <a href="view.php?id=<?php echo (int) $prefillShipment['id']; ?>" class="alert-link">#<?php echo (int) $prefillShipment['id']; ?></a>
+                                <a href="<?php echo brt_module_url('view', ['id' => (int) $prefillShipment['id']]); ?>" class="alert-link">#<?php echo (int) $prefillShipment['id']; ?></a>
                                 verso <?php echo sanitize_output($prefillShipment['consignee_name'] ?? ''); ?>.
                                 <div class="small text-muted">
                                     Riferimento mittente: <?php echo sanitize_output((string) ($prefillShipment['numeric_sender_reference'] ?? 'N/D')); ?>
@@ -727,7 +727,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <i class="fa-solid <?php echo $isEditing ? 'fa-pen-to-square' : 'fa-truck-ramp-box'; ?> me-2"></i>
                             <?php echo $isEditing ? 'Aggiorna prenotazione ORM' : 'Invia richiesta ORM'; ?>
                         </button>
-                        <a class="btn btn-outline-secondary" href="<?php echo $isEditing ? 'orm.php' : 'index.php'; ?>">Annulla</a>
+                        <a class="btn btn-outline-secondary" href="<?php echo $isEditing ? brt_module_url('orm') : brt_module_url('index'); ?>">Annulla</a>
                     </div>
                 </form>
             </div>
@@ -800,12 +800,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <td class="text-end">
                                             <div class="d-inline-flex gap-1">
                                                 <?php if (!empty($orm['reservation_number']) && !in_array(strtolower((string) $orm['status']), ['cancelled', 'cancel_failed'], true)): ?>
-                                                    <a class="btn btn-icon btn-soft-primary btn-sm" href="orm.php?edit=<?php echo (int) $orm['id']; ?>" title="Modifica prenotazione">
+                                                    <a class="btn btn-icon btn-soft-primary btn-sm" href="<?php echo brt_module_url('orm', ['edit' => (int) $orm['id']]); ?>" title="Modifica prenotazione">
                                                         <i class="fa-solid fa-pen-to-square"></i>
                                                     </a>
                                                 <?php endif; ?>
 
-                                                <a class="btn btn-icon btn-soft-secondary btn-sm" href="orm.php?duplicate=<?php echo (int) $orm['id']; ?>" title="Duplica richiesta">
+                                                <a class="btn btn-icon btn-soft-secondary btn-sm" href="<?php echo brt_module_url('orm', ['duplicate' => (int) $orm['id']]); ?>" title="Duplica richiesta">
                                                     <i class="fa-solid fa-clone"></i>
                                                 </a>
 

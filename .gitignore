@@ -4,6 +4,11 @@ assets/uploads/*
 !assets/uploads/branding/
 assets/uploads/branding/*
 !assets/uploads/branding/sidebar-logo.png
+cache/*
+!cache/.gitkeep
+storage/*
+!storage/.gitkeep
+!storage/tmp/anncsu.sqlite
 /vendor/
 node_modules/
 .idea/
@@ -13,3 +18,5 @@ node_modules/
 .env.*
 customer-portal/cache/
 docs/
+uploads/*
+!uploads/.gitignore

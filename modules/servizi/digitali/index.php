@@ -44,7 +44,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Monitoraggio dei movimenti punti tra accumulo e riscatti.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo movimento</a>
+                <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(digitali_module_url('create')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo movimento</a>
             </div>
         </div>
         <div class="row g-3 mb-4">
@@ -114,13 +114,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <td><?php echo sanitize_output(format_datetime_locale($movement['data_movimento'])); ?></td>
                                     <td class="text-end">
                                         <div class="d-inline-flex align-items-center justify-content-end gap-2 flex-wrap">
-                                            <a class="btn btn-icon btn-soft-accent btn-sm" href="view.php?id=<?php echo (int) $movement['id']; ?>" title="Dettagli">
+                                            <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(digitali_module_url('view', ['id' => (int) $movement['id']])); ?>" title="Dettagli">
                                                 <i class="fa-solid fa-eye"></i>
                                             </a>
-                                            <a class="btn btn-icon btn-soft-accent btn-sm" href="edit.php?id=<?php echo (int) $movement['id']; ?>" title="Modifica">
+                                            <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(digitali_module_url('edit', ['id' => (int) $movement['id']])); ?>" title="Modifica">
                                                 <i class="fa-solid fa-pen"></i>
                                             </a>
-                                            <form method="post" action="delete.php" onsubmit="return confirm('Confermi eliminazione del movimento?');">
+                                            <form method="post" action="<?php echo sanitize_output(digitali_module_url('delete')); ?>" onsubmit="return confirm('Confermi eliminazione del movimento?');">
                                                 <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                 <input type="hidden" name="id" value="<?php echo (int) $movement['id']; ?>">
                                                 <button class="btn btn-icon btn-soft-danger btn-sm" type="submit" title="Elimina">

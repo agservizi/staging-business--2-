@@ -31,26 +31,107 @@ function redirect_by_role(string $role): void
         case 'Admin':
         case 'Operatore':
         case 'Manager':
-            header('Location: dashboard.php');
+            header('Location: ' . dashboard_url());
             break;
         case 'Patronato':
-            header('Location: modules/servizi/caf-patronato/index.php');
+            header('Location: ' . caf_patronato_module_url('index'));
             break;
         case 'Cliente':
-            header('Location: dashboard.php?view=cliente');
+            header('Location: ' . dashboard_url(['view' => 'cliente']));
             break;
         default:
-            header('Location: dashboard.php');
+            header('Location: ' . dashboard_url());
     }
 }
 
-function sanitize_output(?string $value): string
+function dashboard_url(array $query = []): string
+{
+    $url = base_url('dashboard');
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function login_url(array $query = []): string
+{
+    $url = base_url();
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function forgot_password_url(array $query = []): string
+{
+    $url = base_url('forgot_password');
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function reset_password_url(array $query = []): string
+{
+    $url = base_url('reset_password');
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function logout_url(array $query = []): string
+{
+    $url = base_url('logout');
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function mfa_setup_url(array $query = []): string
+{
+    $url = base_url('mfa-setup');
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function mfa_verify_url(array $query = []): string
+{
+    $url = base_url('mfa-verify');
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function sanitize_output(string|int|float|bool|null $value): string
 {
     if ($value === null) {
         return '';
     }
 
-    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    if (is_bool($value)) {
+        $value = $value ? '1' : '0';
+    }
+
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
 function format_currency(?float $amount): string
@@ -61,19 +142,96 @@ function format_currency(?float $amount): string
     return '€ ' . number_format($amount, 2, ',', '.');
 }
 
+function app_base_path(): string
+{
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $docRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: '';
+    $projectRoot = realpath(__DIR__ . '/..') ?: __DIR__ . '/..';
+
+    $docRoot = rtrim(str_replace('\\', '/', $docRoot), '/');
+    $projectRoot = rtrim(str_replace('\\', '/', $projectRoot), '/');
+
+    if ($docRoot !== '' && str_starts_with($projectRoot, $docRoot)) {
+        $relative = trim(substr($projectRoot, strlen($docRoot)), '/');
+        $cached = $relative === '' ? '' : '/' . $relative;
+        return $cached;
+    }
+
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    $scriptName = str_replace('\\', '/', $scriptName);
+    if ($scriptName !== '') {
+        $dir = trim(dirname($scriptName), '/');
+        if ($dir !== '') {
+            $segments = explode('/', $dir);
+            $baseSegments = [];
+            foreach ($segments as $segment) {
+                if ($segment === '' || $segment === 'modules' || $segment === 'api' || $segment === 'customer-portal') {
+                    break;
+                }
+                $baseSegments[] = $segment;
+            }
+            if ($baseSegments !== []) {
+                $cached = '/' . implode('/', $baseSegments);
+                return $cached;
+            }
+        }
+    }
+
+    $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+    if ($requestUri !== '') {
+        $path = parse_url($requestUri, PHP_URL_PATH) ?: '';
+        $path = str_replace('\\', '/', $path);
+        if ($path !== '') {
+            $candidates = ['/modules/', '/api/', '/customer-portal/', '/dashboard', '/index.php'];
+            $positions = [];
+            foreach ($candidates as $needle) {
+                $pos = strpos($path, $needle);
+                if ($pos !== false) {
+                    $positions[] = $pos;
+                }
+            }
+            if ($positions !== []) {
+                $cut = min($positions);
+                $base = rtrim(substr($path, 0, $cut), '/');
+                if ($base !== '') {
+                    $cached = $base;
+                    return $cached;
+                }
+            }
+
+        }
+    }
+
+    $cached = '';
+    return $cached;
+}
+
 function base_url(string $path = ''): string
 {
     static $cached;
     if ($cached === null) {
         $currentHost = $_SERVER['HTTP_HOST'] ?? null;
         $appUrl = env('APP_URL');
+        $strictAppUrl = filter_var(env('APP_URL_STRICT', false), FILTER_VALIDATE_BOOL);
+
         if ($appUrl) {
             $appUrl = rtrim($appUrl, '/');
             $appHost = parse_url($appUrl, PHP_URL_HOST);
-            $strictAppUrl = filter_var(env('APP_URL_STRICT', false), FILTER_VALIDATE_BOOL);
 
             if ($currentHost && $appHost && strcasecmp((string) $appHost, (string) $currentHost) !== 0 && !$strictAppUrl) {
                 $appUrl = null;
+            } else {
+                $appPath = parse_url($appUrl, PHP_URL_PATH) ?: '';
+                if (($appPath === '' || $appPath === '/') && !$strictAppUrl) {
+                    $basePath = app_base_path();
+                    if ($basePath !== '') {
+                        $appUrl .= $basePath;
+                    }
+                }
             }
         }
 
@@ -82,27 +240,582 @@ function base_url(string $path = ''): string
         } else {
             $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
             $host = $currentHost ?: 'localhost';
-            $docRoot = realpath($_SERVER['DOCUMENT_ROOT'] ?? '') ?: '';
-            $projectRoot = realpath(__DIR__ . '/..') ?: '';
-            $basePath = '';
-
-            if ($docRoot !== '' && $projectRoot !== '' && strncmp($projectRoot, $docRoot, strlen($docRoot)) === 0) {
-                $relative = str_replace('\\', '/', substr($projectRoot, strlen($docRoot)));
-                $basePath = '/' . ltrim($relative, '/');
-                if ($basePath === '/') {
-                    $basePath = '';
-                }
-            } else {
-                $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
-                $basePath = $scriptDir && $scriptDir !== '.' ? $scriptDir : '';
-            }
-
+            $basePath = app_base_path();
             $cached = rtrim($scheme . '://' . $host . $basePath, '/');
         }
     }
 
     $path = ltrim($path, '/');
     return $cached . ($path !== '' ? '/' . $path : '');
+}
+
+function clienti_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/clienti' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function ticket_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/ticket' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function documenti_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/documenti' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function report_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/report' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function impostazioni_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/impostazioni' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function email_marketing_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/email-marketing' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function opportunities_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/opportunities' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function opportunities_collaborator_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/opportunities/collaborator' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function opportunities_promotions_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/opportunities/promotions' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function iliad_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/iliad' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function entrate_uscite_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/entrate-uscite' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function appuntamenti_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/appuntamenti' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function energia_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/energia' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function aci_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/aci' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function fedelta_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/fedelta' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function brt_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/brt' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function curriculum_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/curriculum' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function posta_telematica_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/posta-telematica' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function telegrammi_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/telegrammi' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function logistici_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/logistici' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function visure_cr_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/visure-cr' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function cie_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/cie' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function digitali_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/digitali' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function anpr_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/anpr' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function caf_patronato_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/caf-patronato' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function ricariche_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/ricariche' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+if (!function_exists('render_module_hub_styles')) {
+    function render_module_hub_styles(): void
+    {
+        static $printed = false;
+
+        if ($printed) {
+            return;
+        }
+
+        $printed = true;
+        echo <<<'HTML'
+<style>
+    .module-hub-toolbar {
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        padding: 1.5rem 1.75rem;
+        overflow: hidden;
+        border: 1px solid rgba(58, 123, 213, 0.14);
+        border-radius: 1.5rem;
+        background:
+            radial-gradient(circle at top left, rgba(58, 123, 213, 0.16), transparent 34%),
+            radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 26%),
+            linear-gradient(135deg, rgba(255,255,255,0.99), rgba(248,250,252,0.96));
+        box-shadow: 0 22px 48px rgba(15, 23, 42, 0.06);
+    }
+
+    .module-hub-toolbar::after {
+        content: '';
+        position: absolute;
+        inset: auto -8% -42% auto;
+        width: 280px;
+        height: 280px;
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(59, 130, 246, 0.08), transparent 65%);
+        pointer-events: none;
+    }
+
+    .module-hub-toolbar .h3,
+    .module-hub-toolbar h1 {
+        color: #0f172a;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.4rem;
+    }
+
+    .module-hub-toolbar p {
+        max-width: 72ch;
+        margin-bottom: 0;
+        color: #64748b !important;
+    }
+
+    .module-hub-toolbar .toolbar-actions,
+    .module-hub-toolbar .d-flex {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+    }
+
+    .module-hub-panel {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 1.3rem;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.05);
+        overflow: hidden;
+    }
+
+    .module-hub-panel .card-header {
+        padding: 1.3rem 1.5rem 0;
+        background: transparent;
+        border-bottom: 0;
+    }
+
+    .module-hub-panel .card-body {
+        padding: 1.35rem 1.5rem;
+    }
+
+    .module-hub-toolbar + .row.g-4.mb-4 .card.ag-card,
+    .module-hub-toolbar + .row.g-4 .card.ag-card.shadow-sm,
+    .dashboard-hero,
+    .hero-kpi,
+    .stat-card {
+        border: 1px solid rgba(15, 23, 42, 0.08) !important;
+        border-radius: 1.15rem !important;
+        background: rgba(255, 255, 255, 0.88) !important;
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05) !important;
+    }
+
+    .dashboard-hero {
+        overflow: hidden;
+        background:
+            radial-gradient(circle at top left, rgba(58, 123, 213, 0.16), transparent 34%),
+            radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 26%),
+            #fff !important;
+        border-color: rgba(58, 123, 213, 0.14) !important;
+    }
+
+    .dashboard-hero .card-body,
+    .module-hub-toolbar + .row.g-4 .card.ag-card.shadow-sm .card-body {
+        padding: 1.25rem 1.35rem;
+    }
+
+    .hero-kpi-grid,
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 1rem;
+    }
+
+    .hero-kpi,
+    .stat-card {
+        padding: 1rem 1.1rem !important;
+    }
+
+    .hero-kpi-label,
+    .stat-card-title {
+        display: block;
+        margin-bottom: 0.35rem;
+        color: #64748b;
+        font-size: 0.76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+
+    .hero-kpi-value,
+    .stat-card-value,
+    .module-hub-toolbar + .row.g-4 .display-6 {
+        display: block;
+        color: #0f172a !important;
+        font-size: 1.7rem !important;
+        line-height: 1;
+        font-weight: 800 !important;
+    }
+
+    .hero-subtitle,
+    .hero-copy .text-muted {
+        color: #64748b !important;
+    }
+
+    .module-hub-panel .form-label {
+        color: #475569;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .module-hub-table-card-body {
+        padding: 1.25rem 1.25rem 1.4rem !important;
+    }
+
+    .module-hub-table-card-body .table-responsive {
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+
+    .module-hub-table {
+        --bs-table-bg: transparent;
+        --bs-table-hover-bg: rgba(37, 99, 235, 0.04);
+        margin-bottom: 0;
+    }
+
+    .module-hub-table thead th {
+        border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+        color: #64748b;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .module-hub-table td {
+        padding-top: 0.95rem;
+        padding-bottom: 0.95rem;
+        border-color: rgba(15, 23, 42, 0.06);
+        vertical-align: middle;
+    }
+
+    .module-hub-table-card-body .dt-container .dt-layout-row:not(.dt-layout-table) {
+        margin: 0;
+        padding-inline: 0.15rem;
+    }
+
+    .module-hub-table-card-body .dt-container .dt-layout-row:first-child {
+        padding-bottom: 1rem;
+    }
+
+    .module-hub-table-card-body .dt-container .dt-layout-row:last-child {
+        padding-top: 1rem;
+    }
+
+    .module-hub-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .module-hub-kpi {
+        padding: 1rem 1.1rem;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 1.15rem;
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
+    }
+
+    .module-hub-kpi-label {
+        display: block;
+        margin-bottom: 0.35rem;
+        color: #64748b;
+        font-size: 0.76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+
+    .module-hub-kpi-value {
+        display: block;
+        color: #0f172a;
+        font-size: 1.7rem;
+        line-height: 1;
+        font-weight: 800;
+    }
+
+    .module-hub-kpi-note {
+        display: block;
+        margin-top: 0.45rem;
+        color: #64748b;
+        font-size: 0.85rem;
+    }
+
+    @media (max-width: 767.98px) {
+        .module-hub-toolbar {
+            padding: 1.2rem;
+        }
+
+        .module-hub-panel .card-header,
+        .module-hub-panel .card-body,
+        .module-hub-table-card-body {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+    }
+</style>
+HTML;
+    }
 }
 
 function public_path(string $path = ''): string
@@ -112,6 +825,30 @@ function public_path(string $path = ''): string
         $base = __DIR__ . '/..';
     }
     return rtrim($base, '/') . '/' . ltrim(str_replace('\\', '/', $path), '/');
+}
+
+function wants_json_response(): bool
+{
+    if (defined('AUTH_JSON') || defined('CSRF_JSON')) {
+        return true;
+    }
+
+    $requestedWith = strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''));
+    if ($requestedWith === 'xmlhttprequest') {
+        return true;
+    }
+
+    $accept = strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? ''));
+    if ($accept !== '' && str_contains($accept, 'application/json')) {
+        return true;
+    }
+
+    $contentType = strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? ''));
+    if ($contentType !== '' && str_contains($contentType, 'application/json')) {
+        return true;
+    }
+
+    return false;
 }
 
 function project_root_path(): string
@@ -338,6 +1075,95 @@ function asset(string $path): string
     return base_url($relative) . '?v=' . $timestamp;
 }
 
+function ai_assistant_enabled(): bool
+{
+    static $cached;
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $flag = filter_var(env('AI_THINKING_ASSISTANT_ENABLED', true), FILTER_VALIDATE_BOOL);
+    $cached = $flag;
+
+    return $cached;
+}
+
+/**
+ * @return array{title:string,path:string,section:string,description:string,slug:string}
+ */
+function ai_assistant_page_context(): array
+{
+    $script = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
+    $path = '/' . ltrim($script, '/');
+    $normalized = trim(str_replace('.php', '', $path), '/');
+    $segments = $normalized === '' ? [] : explode('/', $normalized);
+    $defaultTitle = $GLOBALS['pageTitle'] ?? '';
+    $defaultSection = 'Dashboard';
+    $defaultDescription = 'Panoramica generale sul controllo operativo di Coresuite Business.';
+
+    $map = [
+        'dashboard' => ['Dashboard', 'Monitora KPI, pipeline e anomalie generali.'],
+        'modules/clienti' => ['Clienti', 'Gestisci anagrafiche, opportunità e contratti dei clienti.'],
+        'modules/servizi' => ['Servizi', 'Coordina erogazioni, logistics e follow-up dei servizi.'],
+        'modules/report' => ['Reportistica', 'Analizza trend e scarica report operativi/finanziari.'],
+        'modules/ticket' => ['Ticket', 'Gestisci richieste di assistenza e SLA.'],
+        'modules/email-marketing' => ['Email marketing', 'Programma e analizza campagne marketing.'],
+        'modules/documenti' => ['Documenti', 'Archivia e condividi documentazione ufficiale.'],
+        'modules/impostazioni' => ['Impostazioni', 'Configura utenti, permessi e parametri di sistema.'],
+        'customer-portal' => ['Customer portal', 'Supporta i clienti finali nelle operazioni self-service.'],
+        'tools' => ['Tools', 'Utility amministrative e script di manutenzione.'],
+    ];
+
+    $section = $defaultSection;
+    $description = $defaultDescription;
+    foreach ($map as $needle => $info) {
+        $needle = trim($needle, '/');
+        if ($needle === '') {
+            continue;
+        }
+        if ($normalized === '' && $needle === 'dashboard') {
+            [$section, $description] = $info;
+            break;
+        }
+        if ($needle !== '' && str_starts_with($normalized, $needle)) {
+            [$section, $description] = $info;
+            break;
+        }
+    }
+
+    $slug = $normalized !== '' ? str_replace('/', '-', $normalized) : 'dashboard';
+    $title = trim((string) $defaultTitle) !== '' ? (string) $defaultTitle : ucfirst(str_replace('-', ' ', $slug));
+
+    return [
+        'title' => $title,
+        'path' => $path,
+        'section' => $section,
+        'description' => $description,
+        'slug' => $slug,
+    ];
+}
+
+/**
+ * @return array{enabled:bool,endpoint?:string,defaultPeriod?:string,user?:array{name:string,role:string}}
+ */
+function ai_assistant_frontend_config(): array
+{
+    $config = ['enabled' => ai_assistant_enabled()];
+    if (!$config['enabled']) {
+        return $config;
+    }
+
+    $config['endpoint'] = base_url('api/ai/advisor.php');
+    $config['defaultPeriod'] = 'last30';
+    $config['user'] = [
+        'name' => current_user_display_name(),
+        'role' => (string) ($_SESSION['role'] ?? ''),
+    ];
+    $config['page'] = ai_assistant_page_context();
+
+    return $config;
+}
+
 function format_datetime(?string $value, string $format = 'd/m/Y H:i'): string
 {
     if ($value === null || $value === '') {
@@ -464,8 +1290,8 @@ function require_valid_csrf(): void
     }
 
     $sessionToken = $_SESSION['__csrf'] ?? null;
+    $cookieToken = $_COOKIE['XSRF-TOKEN'] ?? null;
     if (!is_string($sessionToken) || $sessionToken === '') {
-        $cookieToken = $_COOKIE['XSRF-TOKEN'] ?? null;
         if (is_string($cookieToken) && $cookieToken !== '') {
             $_SESSION['__csrf'] = $cookieToken;
             $sessionToken = $cookieToken;
@@ -474,11 +1300,33 @@ function require_valid_csrf(): void
 
     if (!is_string($sessionToken) || $sessionToken === '' || $providedToken === '') {
         http_response_code(419);
+        if (wants_json_response()) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Token CSRF non valido.',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
         exit('Token CSRF non valido.');
     }
 
     if (!hash_equals($sessionToken, $providedToken)) {
+        // Allinea la sessione se il token inviato combacia con il cookie XSRF (es. sessione rigenerata)
+        if (is_string($cookieToken) && $cookieToken !== '' && hash_equals($cookieToken, $providedToken)) {
+            $_SESSION['__csrf'] = $cookieToken;
+            return;
+        }
+
         http_response_code(419);
+        if (wants_json_response()) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Token CSRF non valido.',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
         exit('Token CSRF non valido.');
     }
 }
@@ -507,6 +1355,95 @@ function sanitize_filename(string $filename): string
     return $clean ?: bin2hex(random_bytes(8));
 }
 
+/**
+ * Emit minimal CORS headers for a whitelist of origins.
+ *
+ * @param array<int,string> $allowedOrigins Full origin strings (e.g. https://example.com)
+ * @param array<int,string> $methods Allowed HTTP methods
+ * @param array<int,string> $headers Allowed request headers
+ * @param int $maxAge Seconds to cache the preflight
+ * @param bool $allowCredentials Whether to allow credentials
+ * @return bool True if origin was allowed
+ */
+function allow_cors(array $allowedOrigins, array $methods = ['GET'], array $headers = ['Content-Type'], int $maxAge = 86400, bool $allowCredentials = false): bool
+{
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $allowed = $origin !== '' && in_array($origin, $allowedOrigins, true);
+
+    if ($allowed) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Vary: Origin');
+        if ($allowCredentials) {
+            header('Access-Control-Allow-Credentials: true');
+        }
+    }
+
+    header('Access-Control-Allow-Methods: ' . implode(', ', $methods));
+    header('Access-Control-Allow-Headers: ' . implode(', ', $headers));
+    header('Access-Control-Max-Age: ' . $maxAge);
+
+    return $allowed;
+}
+
+/**
+ * Validate an uploaded file against size, extension, and MIME whitelist.
+ *
+ * @param array $file Upload entry from $_FILES
+ * @param array<int,string> $allowedMime Whitelisted MIME types
+ * @param array<int,string> $allowedExtensions Whitelisted lowercase extensions (without dot)
+ * @param int $maxBytes Maximum allowed size in bytes
+ * @return array{ok:bool,error?:string,safe_name?:string,mime?:string,size?:int,tmp_path?:string}
+ */
+function validate_uploaded_file(array $file, array $allowedMime, array $allowedExtensions, int $maxBytes): array
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        return ['ok' => false, 'error' => 'Caricamento non riuscito.'];
+    }
+
+    $tmpPath = $file['tmp_name'] ?? '';
+    if ($tmpPath === '' || !is_uploaded_file($tmpPath)) {
+        return ['ok' => false, 'error' => 'File non valido.'];
+    }
+
+    $size = (int) ($file['size'] ?? 0);
+    if ($size <= 0) {
+        return ['ok' => false, 'error' => 'File vuoto.'];
+    }
+
+    if ($size > $maxBytes) {
+        $maxMb = round($maxBytes / 1048576, 1);
+        return ['ok' => false, 'error' => 'File troppo grande (max ' . $maxMb . ' MB).'];
+    }
+
+    $ext = strtolower((string) pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+    if ($ext === '' || !in_array($ext, $allowedExtensions, true)) {
+        return ['ok' => false, 'error' => 'Estensione non ammessa.'];
+    }
+
+    $detected = 'application/octet-stream';
+    if (function_exists('finfo_open')) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        if ($finfo) {
+            $detected = finfo_file($finfo, $tmpPath) ?: $detected;
+            finfo_close($finfo);
+        }
+    } elseif (function_exists('mime_content_type')) {
+        $detected = mime_content_type($tmpPath) ?: $detected;
+    }
+
+    if (!in_array($detected, $allowedMime, true)) {
+        return ['ok' => false, 'error' => 'Tipo di file non permesso.'];
+    }
+
+    return [
+        'ok' => true,
+        'safe_name' => sanitize_filename((string) $file['name']),
+        'mime' => $detected,
+        'size' => $size,
+        'tmp_path' => $tmpPath,
+    ];
+}
+
 function current_user_can(string ...$roles): bool
 {
     if (!isset($_SESSION['role'])) {
@@ -530,7 +1467,10 @@ function current_user_has_capability(string ...$capabilities): bool
         return true;
     }
 
-    $role = $_SESSION['role'];
+    $role = trim((string) $_SESSION['role']);
+    if ($role === '') {
+        return false;
+    }
 
     return App\Auth\Authorization::roleAllows($role, ...$capabilities);
 }
@@ -538,7 +1478,7 @@ function current_user_has_capability(string ...$capabilities): bool
 function require_capability(string ...$capabilities): void
 {
     if (!current_user_has_capability(...$capabilities)) {
-        header('Location: dashboard.php');
+        header('Location: ' . dashboard_url());
         exit;
     }
 }

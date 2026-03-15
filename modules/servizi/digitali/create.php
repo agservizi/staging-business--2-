@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->commit();
 
             add_flash('success', 'Movimento fedeltà registrato correttamente.');
-            header('Location: index.php?created=1');
+            header('Location: ' . digitali_module_url('index', ['created' => 1]));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -131,7 +131,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Programma fedeltà</a>
+            <a class="btn btn-outline-warning" href="<?php echo sanitize_output(digitali_module_url('index')); ?>"><i class="fa-solid fa-arrow-left"></i> Programma fedeltà</a>
             <div class="text-end">
                 <div class="text-muted small text-uppercase">Totale punti attivi</div>
                 <div class="fs-4 fw-semibold"><?php echo number_format($totalPoints, 0, ',', '.'); ?> pt</div>
@@ -190,7 +190,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                     </div>
                     <div class="d-flex justify-content-end gap-2 mt-4">
-                        <a class="btn btn-secondary" href="index.php">Annulla</a>
+                        <a class="btn btn-secondary" href="<?php echo sanitize_output(digitali_module_url('index')); ?>">Annulla</a>
                         <button class="btn btn-warning text-dark" type="submit">Registra movimento</button>
                     </div>
                 </form>

@@ -12,14 +12,14 @@ $pageTitle = 'Gestione certificato ANPR';
 $praticaId = (int) ($_GET['id'] ?? ($_POST['id'] ?? 0));
 if ($praticaId <= 0) {
     add_flash('warning', 'Pratica non valida.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
 $pratica = anpr_fetch_pratica($pdo, $praticaId);
 if (!$pratica) {
     add_flash('warning', 'Pratica non trovata.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log('ANPR certificate removal failed: ' . $exception->getMessage());
             add_flash('warning', 'Impossibile rimuovere il certificato.');
         }
-        header('Location: view_request.php?id=' . $praticaId);
+        header('Location: ' . anpr_module_url('view_request', ['id' => $praticaId]));
         exit;
     }
 
@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->commit();
             anpr_log_action($pdo, 'Certificato aggiornato', 'Aggiornato certificato per ' . ($pratica['pratica_code'] ?? 'pratica ' . $praticaId));
             add_flash('success', 'Certificato caricato correttamente.');
-            header('Location: view_request.php?id=' . $praticaId);
+            header('Location: ' . anpr_module_url('view_request', ['id' => $praticaId]));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -112,7 +112,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <a class="btn btn-outline-warning" href="https://www.anagrafenazionale.interno.it/servizi-al-cittadino/" target="_blank" rel="noopener">
                     <i class="fa-solid fa-up-right-from-square me-2"></i>Portale ANPR
                 </a>
-                <a class="btn btn-outline-warning" href="view_request.php?id=<?php echo $praticaId; ?>"><i class="fa-solid fa-arrow-left me-2"></i>Dettagli pratica</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('view_request', ['id' => $praticaId])); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Dettagli pratica</a>
             </div>
         </div>
         <?php if ($errors): ?>
@@ -136,7 +136,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <small class="text-muted">Carica un file PDF, dimensione massima 15 MB. Conserva una copia anche sul repository di backup interno.</small>
                     </div>
                     <div class="col-12 d-flex justify-content-end gap-2">
-                        <a class="btn btn-outline-warning" href="view_request.php?id=<?php echo $praticaId; ?>">Annulla</a>
+                        <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('view_request', ['id' => $praticaId])); ?>">Annulla</a>
                         <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-file-arrow-up me-2"></i>Carica certificato</button>
                     </div>
                 </form>

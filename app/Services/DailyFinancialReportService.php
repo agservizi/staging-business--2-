@@ -15,17 +15,15 @@ class DailyFinancialReportService
 
     private PDO $pdo;
     private string $rootPath;
-    private string $storagePath;
 
     public function __construct(PDO $pdo, string $rootPath)
     {
         $this->pdo = $pdo;
         $this->rootPath = rtrim($rootPath, DIRECTORY_SEPARATOR);
-        $this->storagePath = $this->rootPath . DIRECTORY_SEPARATOR . 'backups' . DIRECTORY_SEPARATOR . 'daily-reports';
     }
 
     /**
-     * @return array{reportDate:string,filePath:string,totalEntrate:float,totalUscite:float,saldo:float}
+     * @return array{reportDate:string,totalEntrate:float,totalUscite:float,saldo:float,totalMargine:float}
      */
     public function generateForDate(DateTimeImmutable $date): array
     {
@@ -33,18 +31,25 @@ class DailyFinancialReportService
         $movements = $this->fetchMovementsForDate($reportDate);
         $totals = $this->calculateTotals($movements);
 
-        $relativePath = $this->storePdf($date, $movements, $totals['entrate'], $totals['uscite'], $totals['saldo']);
-
-        $this->persistReportRecord($reportDate, $relativePath, $totals['entrate'], $totals['uscite'], $totals['saldo']);
-        $this->logGeneration($reportDate, $relativePath, $totals['entrate'], $totals['uscite'], $totals['saldo']);
+        $this->persistReportRecord($reportDate, $totals['entrate'], $totals['uscite'], $totals['saldo']);
+        $this->logGeneration($reportDate, $totals['entrate'], $totals['uscite'], $totals['saldo']);
 
         return [
             'reportDate' => $reportDate,
-            'filePath' => $relativePath,
             'totalEntrate' => $totals['entrate'],
             'totalUscite' => $totals['uscite'],
             'saldo' => $totals['saldo'],
+            'totalMargine' => $totals['margine'],
         ];
+    }
+
+    public function renderPdfContent(DateTimeImmutable $date): string
+    {
+        $reportDate = $date->format('Y-m-d');
+        $movements = $this->fetchMovementsForDate($reportDate);
+        $totals = $this->calculateTotals($movements);
+
+        return $this->buildPdfContent($date, $movements, $totals['entrate'], $totals['uscite'], $totals['saldo'], $totals['margine']);
     }
 
     /**
@@ -57,9 +62,12 @@ SELECT eu.id,
        eu.tipo_movimento,
        eu.descrizione,
        eu.riferimento,
-       eu.metodo,
-       eu.stato,
-       eu.importo,
+    eu.metodo,
+    eu.stato,
+    eu.importo,
+    eu.listino_costo_rivenditore,
+    eu.listino_costo_cliente,
+    eu.listino_margine,
        eu.data_pagamento,
        eu.data_scadenza,
        eu.created_at,
@@ -82,12 +90,13 @@ SQL;
 
     /**
      * @param array<int, array<string, mixed>> $rows
-     * @return array{entrate:float,uscite:float,saldo:float}
+     * @return array{entrate:float,uscite:float,saldo:float,margine:float}
      */
     private function calculateTotals(array $rows): array
     {
         $entrate = 0.0;
         $uscite = 0.0;
+        $margine = 0.0;
 
         foreach ($rows as $row) {
             $amount = (float) ($row['importo'] ?? 0);
@@ -95,6 +104,11 @@ SQL;
                 $uscite += $amount;
             } else {
                 $entrate += $amount;
+            }
+
+            $marginValue = $row['listino_margine'] ?? null;
+            if ($marginValue !== null && $marginValue !== '') {
+                $margine += (float) $marginValue;
             }
         }
 
@@ -104,20 +118,19 @@ SQL;
             'entrate' => round($entrate, 2),
             'uscite' => round($uscite, 2),
             'saldo' => round($saldo, 2),
+            'margine' => round($margine, 2),
         ];
     }
 
     /**
      * @param array<int, array<string, mixed>> $movements
      */
-    private function storePdf(DateTimeImmutable $date, array $movements, float $entrate, float $uscite, float $saldo): string
+    private function buildPdfContent(DateTimeImmutable $date, array $movements, float $entrate, float $uscite, float $saldo, float $margine): string
     {
-        $this->ensureStorageDirectory();
-
         $pdf = $this->createPdfInstance();
-    $pdf->SetMargins(15.0, 15.0, 15.0);
-    $pdf->SetAutoPageBreak(true, 20.0);
-    $pdf->AddPage('L');
+        $pdf->SetMargins(12.0, 12.0, 12.0);
+        $pdf->SetAutoPageBreak(true, 18.0);
+        $pdf->AddPage('L');
 
         $pdf->SetTextColor(11, 47, 107);
     $pdf->SetFont('DejaVu Sans', 'B', 18);
@@ -129,16 +142,91 @@ SQL;
         $pdf->Cell(0, 7, $this->pdfText('Generato il: ' . (new DateTimeImmutable('now'))->format('d/m/Y H:i')), 0, 1, 'L');
         $pdf->Ln(4);
 
+        $pageWidth = null;
+        if (method_exists($pdf, 'GetPageWidth')) {
+            $pageWidth = (float) $pdf->GetPageWidth();
+        } elseif (property_exists($pdf, 'w')) {
+            $pageWidth = (float) $pdf->w;
+        }
+        $usableWidth = ($pageWidth ?? 297.0) - $pdf->lMargin - $pdf->rMargin;
         $columns = [
-            ['width' => 22.0, 'title' => 'Data', 'align' => 'L'],
-            ['width' => 32.0, 'title' => 'Cliente', 'align' => 'L'],
-            ['width' => 18.0, 'title' => 'Tipo', 'align' => 'L'],
-            ['width' => 52.0, 'title' => 'Descrizione', 'align' => 'L'],
-            ['width' => 24.0, 'title' => 'Riferimento', 'align' => 'L'],
-            ['width' => 20.0, 'title' => 'Metodo', 'align' => 'L'],
-            ['width' => 12.0, 'title' => 'Stato', 'align' => 'L'],
-            ['width' => 24.0, 'title' => 'Importo', 'align' => 'R'],
+            [
+                'ratio' => 0.09,
+                'title' => 'Data',
+                'align' => 'L',
+                'value' => fn(array $item): string => $this->formatDateTime($item['data_riferimento'] ?? ''),
+            ],
+            [
+                'ratio' => 0.17,
+                'title' => 'Cliente',
+                'align' => 'L',
+                'value' => fn(array $item): string => $this->buildClientName($item),
+                'fit' => true,
+            ],
+            [
+                'ratio' => 0.06,
+                'title' => 'Tipo',
+                'align' => 'L',
+                'value' => fn(array $item): string => (string) ($item['tipo_movimento'] ?? ''),
+            ],
+            [
+                'ratio' => 0.19,
+                'title' => 'Descrizione',
+                'align' => 'L',
+                'value' => fn(array $item): string => (string) ($item['descrizione'] ?? ''),
+                'fit' => true,
+            ],
+            [
+                'ratio' => 0.09,
+                'title' => 'Riferimento',
+                'align' => 'L',
+                'value' => fn(array $item): string => (string) ($item['riferimento'] ?? ''),
+                'fit' => true,
+            ],
+            [
+                'ratio' => 0.07,
+                'title' => 'Metodo',
+                'align' => 'L',
+                'value' => fn(array $item): string => (string) ($item['metodo'] ?? ''),
+                'fit' => true,
+            ],
+            [
+                'ratio' => 0.05,
+                'title' => 'Stato',
+                'align' => 'L',
+                'value' => fn(array $item): string => (string) ($item['stato'] ?? ''),
+                'fit' => true,
+            ],
+            [
+                'ratio' => 0.09,
+                'title' => 'Costo riv.',
+                'align' => 'R',
+                'value' => fn(array $item): string => $this->formatNullableCurrency($item['listino_costo_rivenditore'] ?? null),
+            ],
+            [
+                'ratio' => 0.09,
+                'title' => 'Costo cliente',
+                'align' => 'R',
+                'value' => fn(array $item): string => $this->formatNullableCurrency($item['listino_costo_cliente'] ?? null),
+            ],
+            [
+                'ratio' => 0.05,
+                'title' => 'Margine',
+                'align' => 'R',
+                'value' => fn(array $item): string => $this->formatNullableCurrency($item['listino_margine'] ?? null),
+            ],
+            [
+                'ratio' => 0.05,
+                'title' => 'Importo',
+                'align' => 'R',
+                'value' => fn(array $item): string => $this->formatCurrency((float) ($item['importo'] ?? 0)),
+            ],
         ];
+
+        foreach ($columns as &$column) {
+            $column['width'] = round($usableWidth * (float) $column['ratio'], 2);
+        }
+        unset($column);
 
     $pdf->SetFont('DejaVu Sans', 'B', 10);
         $pdf->SetFillColor(11, 47, 107);
@@ -155,14 +243,15 @@ SQL;
             $pdf->Cell(array_sum(array_column($columns, 'width')), 10, $this->pdfText('Nessun movimento registrato per la giornata.'), 1, 1, 'C');
         } else {
             foreach ($movements as $item) {
-                $pdf->Cell($columns[0]['width'], 7, $this->pdfText($this->formatDateTime($item['data_riferimento'] ?? '')), 1, 0, $columns[0]['align']);
-                $pdf->Cell($columns[1]['width'], 7, $this->pdfText($this->trimText($this->buildClientName($item), 24)), 1, 0, $columns[1]['align']);
-                $pdf->Cell($columns[2]['width'], 7, $this->pdfText((string) ($item['tipo_movimento'] ?? '')), 1, 0, $columns[2]['align']);
-                $pdf->Cell($columns[3]['width'], 7, $this->pdfText($this->trimText((string) ($item['descrizione'] ?? ''), 36)), 1, 0, $columns[3]['align']);
-                $pdf->Cell($columns[4]['width'], 7, $this->pdfText($this->trimText((string) ($item['riferimento'] ?? ''), 18)), 1, 0, $columns[4]['align']);
-                $pdf->Cell($columns[5]['width'], 7, $this->pdfText($this->trimText((string) ($item['metodo'] ?? ''), 16)), 1, 0, $columns[5]['align']);
-                $pdf->Cell($columns[6]['width'], 7, $this->pdfText($this->trimText((string) ($item['stato'] ?? ''), 12)), 1, 0, $columns[6]['align']);
-                $pdf->Cell($columns[7]['width'], 7, $this->pdfText($this->formatCurrency((float) ($item['importo'] ?? 0))), 1, 0, $columns[7]['align']);
+                foreach ($columns as $column) {
+                    /** @var callable|null $valueCallback */
+                    $valueCallback = $column['value'] ?? null;
+                    $cellValue = $valueCallback ? $valueCallback($item) : '';
+                    if (!empty($column['fit'])) {
+                        $cellValue = $this->fitTextToWidth($pdf, $cellValue, (float) $column['width']);
+                    }
+                    $pdf->Cell($column['width'], 7, $this->pdfText($cellValue), 1, 0, $column['align']);
+                }
                 $pdf->Ln();
             }
         }
@@ -179,6 +268,17 @@ SQL;
         $pdf->Cell(40, 7, $this->pdfText($this->formatCurrency($uscite)), 0, 1, 'L');
 
     $pdf->SetFont('DejaVu Sans', 'B', 11);
+        $pdf->Cell(60, 7, $this->pdfText('Totale Margine'), 0, 0, 'L');
+        if ($margine >= 0) {
+            $pdf->SetTextColor(21, 87, 36);
+        } else {
+            $pdf->SetTextColor(114, 28, 36);
+        }
+    $pdf->SetFont('DejaVu Sans', '', 11);
+        $pdf->Cell(40, 7, $this->pdfText($this->formatCurrency($margine)), 0, 1, 'L');
+        $pdf->SetTextColor(28, 37, 52);
+
+    $pdf->SetFont('DejaVu Sans', 'B', 11);
         $pdf->Cell(60, 7, $this->pdfText('Saldo'), 0, 0, 'L');
         if ($saldo >= 0) {
             $pdf->SetTextColor(21, 87, 36);
@@ -189,18 +289,7 @@ SQL;
         $pdf->Cell(40, 7, $this->pdfText($this->formatCurrency($saldo)), 0, 1, 'L');
         $pdf->SetTextColor(28, 37, 52);
 
-        $fileName = sprintf('report_finanziario_%s.pdf', $date->format('Ymd'));
-        $fullPath = $this->storagePath . DIRECTORY_SEPARATOR . $fileName;
-    $pdf->Output($fullPath, 'F');
-
-        return 'backups/daily-reports/' . $fileName;
-    }
-
-    private function ensureStorageDirectory(): void
-    {
-        if (!is_dir($this->storagePath) && !mkdir($this->storagePath, 0775, true) && !is_dir($this->storagePath)) {
-            throw new RuntimeException('Impossibile creare la cartella dei report giornalieri.');
-        }
+        return $pdf->Output('', 'S');
     }
     
     private function createPdfInstance(): object
@@ -214,36 +303,34 @@ SQL;
         $instance = new $className([
             'format' => 'A4',
             'orientation' => 'L',
-            'margin_left' => 15,
-            'margin_right' => 15,
-            'margin_top' => 15,
-            'margin_bottom' => 20,
+            'margin_left' => 12,
+            'margin_right' => 12,
+            'margin_top' => 12,
+            'margin_bottom' => 18,
         ]);
 
         return $instance;
     }
 
-    private function persistReportRecord(string $reportDate, string $filePath, float $entrate, float $uscite, float $saldo): void
+    private function persistReportRecord(string $reportDate, float $entrate, float $uscite, float $saldo): void
     {
         $stmt = $this->pdo->prepare('INSERT INTO daily_financial_reports (report_date, total_entrate, total_uscite, saldo, file_path, generated_at)
-            VALUES (:report_date, :entrate, :uscite, :saldo, :file_path, NOW())
-            ON DUPLICATE KEY UPDATE total_entrate = VALUES(total_entrate), total_uscite = VALUES(total_uscite), saldo = VALUES(saldo), file_path = VALUES(file_path), generated_at = VALUES(generated_at)');
+            VALUES (:report_date, :entrate, :uscite, :saldo, NULL, NOW())
+            ON DUPLICATE KEY UPDATE total_entrate = VALUES(total_entrate), total_uscite = VALUES(total_uscite), saldo = VALUES(saldo), generated_at = VALUES(generated_at)');
 
         $stmt->execute([
             ':report_date' => $reportDate,
             ':entrate' => $entrate,
             ':uscite' => $uscite,
             ':saldo' => $saldo,
-            ':file_path' => $filePath,
         ]);
     }
 
-    private function logGeneration(string $reportDate, string $filePath, float $entrate, float $uscite, float $saldo): void
+    private function logGeneration(string $reportDate, float $entrate, float $uscite, float $saldo): void
     {
         try {
             $payload = json_encode([
                 'report_date' => $reportDate,
-                'file_path' => $filePath,
                 'total_entrate' => $entrate,
                 'total_uscite' => $uscite,
                 'saldo' => $saldo,
@@ -280,6 +367,51 @@ SQL;
     {
         $formatted = number_format($value, 2, ',', '.');
         return '€ ' . $formatted;
+    }
+
+    private function formatNullableCurrency($value): string
+    {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+
+        return $this->formatCurrency((float) $value);
+    }
+
+    private function fitTextToWidth(object $pdf, string $value, float $width): string
+    {
+        $text = trim($value);
+        if ($text === '') {
+            return '';
+        }
+
+        $availableWidth = max(1.0, $width - 1.5);
+        if (!method_exists($pdf, 'GetStringWidth')) {
+            $maxChars = (int) max(1, floor($availableWidth / 2.4));
+            return $this->trimText($text, max(2, $maxChars));
+        }
+
+        if ($pdf->GetStringWidth($text) <= $availableWidth) {
+            return $text;
+        }
+
+        $ellipsis = '…';
+        $low = 1;
+        $high = mb_strlen($text, 'UTF-8');
+        $best = '';
+
+        while ($low <= $high) {
+            $mid = (int) floor(($low + $high) / 2);
+            $candidate = rtrim(mb_substr($text, 0, $mid, 'UTF-8')) . $ellipsis;
+            if ($pdf->GetStringWidth($candidate) <= $availableWidth) {
+                $best = $candidate;
+                $low = $mid + 1;
+            } else {
+                $high = $mid - 1;
+            }
+        }
+
+        return $best !== '' ? $best : mb_substr($text, 0, 1, 'UTF-8') . $ellipsis;
     }
 
     private function formatDateTime(?string $value): string

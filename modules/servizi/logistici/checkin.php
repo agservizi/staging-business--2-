@@ -8,7 +8,7 @@ require_once __DIR__ . '/../../../includes/helpers.php';
 require_role('Admin', 'Operatore', 'Manager');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: ' . logistici_module_url('index'));
     exit;
 }
 
@@ -27,7 +27,7 @@ $codeLower = strtolower($codeRaw);
 
 if ($tracking === '' && $codeRaw === '') {
     add_flash('danger', 'Inserisci il tracking o il codice per procedere al ritiro.');
-    header('Location: index.php');
+    header('Location: ' . logistici_module_url('index'));
     exit;
 }
 
@@ -51,7 +51,8 @@ if (!$packageId) {
         str_contains($codeLower, 'qr_')
     );
 
-    $extractedId = $looksLikeQr ? pickup_extract_package_id_from_code($codeRaw) : null;
+    $qrPayload = $looksLikeQr ? pickup_extract_qr_payload_from_code($codeRaw) : ['package_id' => null, 'token' => null];
+    $extractedId = (int) ($qrPayload['package_id'] ?? 0);
     if ($extractedId) {
         $packageId = $extractedId;
         $package = get_package_details($packageId);
@@ -60,7 +61,7 @@ if (!$packageId) {
 
 if (!$packageId || !$package) {
     add_flash('danger', 'Pacco non trovato per i dati forniti.');
-    header('Location: index.php');
+    header('Location: ' . logistici_module_url('index'));
     exit;
 }
 
@@ -81,18 +82,23 @@ try {
             throw new InvalidArgumentException('Codice inserito non valido. Usa il QR o il codice OTP ricevuto.');
         }
 
-        $qrPackageId = pickup_extract_package_id_from_code($codeRaw);
+        $qrPayload = pickup_extract_qr_payload_from_code($codeRaw);
+        $qrPackageId = (int) ($qrPayload['package_id'] ?? 0);
+        $qrToken = trim((string) ($qrPayload['token'] ?? ''));
         if (!$qrPackageId || $qrPackageId !== $packageId) {
             throw new InvalidArgumentException('Codice QR non riconosciuto.');
         }
-        confirm_pickup_with_qr($packageId);
+        if ($qrToken === '') {
+            throw new InvalidArgumentException('QR code non firmato. Usa OTP oppure rigenera il QR.');
+        }
+        confirm_pickup_with_qr_token($packageId, $qrToken);
         add_flash('success', 'Ritiro confermato tramite QR code.');
     }
 
-    header('Location: view.php?id=' . $packageId);
+    header('Location: ' . logistici_module_url('view', ['id' => $packageId]));
     exit;
 } catch (Throwable $exception) {
     add_flash('danger', $exception->getMessage());
-    header('Location: index.php');
+    header('Location: ' . logistici_module_url('index'));
     exit;
 }

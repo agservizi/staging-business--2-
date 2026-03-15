@@ -10,7 +10,7 @@ use Throwable;
 require_role('Admin', 'Operatore', 'Manager');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: ' . appuntamenti_module_url('index'));
     exit;
 }
     require_valid_csrf();
@@ -20,7 +20,7 @@ $force = isset($_POST['force']) && $_POST['force'] === '1';
 
 if ($id <= 0) {
     add_flash('warning', 'Appuntamento non valido.');
-    header('Location: index.php');
+    header('Location: ' . appuntamenti_module_url('index'));
     exit;
 }
 
@@ -41,5 +41,5 @@ try {
     add_flash('warning', 'Invio promemoria non riuscito: ' . $exception->getMessage());
 }
 
-header('Location: view.php?id=' . $id);
+header('Location: ' . appuntamenti_module_url('view', ['id' => $id]));
 exit;

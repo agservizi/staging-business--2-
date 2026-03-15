@@ -7,6 +7,20 @@ require_once __DIR__ . '/env.php';
 load_env(__DIR__ . '/../.env');
 configure_timezone();
 
+try {
+    require_env(['DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD']);
+} catch (RuntimeException $missingEnv) {
+    http_response_code(500);
+    error_log($missingEnv->getMessage());
+    $debug = filter_var(env('APP_DEBUG', false), FILTER_VALIDATE_BOOL);
+    $message = 'Configurazione ambiente non valida. Contatta l\'amministratore.';
+    if ($debug) {
+        $message .= '<br><pre>' . htmlspecialchars($missingEnv->getMessage(), ENT_QUOTES, 'UTF-8') . '</pre>';
+    }
+    echo $message;
+    exit;
+}
+
 $database = [
     'host' => env('DB_HOST'),
     'port' => env('DB_PORT'),
@@ -73,14 +87,3 @@ if ($dbTimezonePreference !== null && $dbTimezonePreference !== '') {
         }
     }
 }
-
-require_once __DIR__ . '/appointment_scheduler.php';
-maybe_dispatch_appointment_reminders($pdo);
-require_once __DIR__ . '/daily_report_scheduler.php';
-maybe_generate_daily_financial_reports($pdo);
-require_once __DIR__ . '/energia_reminder_scheduler.php';
-maybe_send_energia_reminders($pdo);
-require_once __DIR__ . '/telegrammi_sync_scheduler.php';
-maybe_sync_telegrammi($pdo);
-require_once __DIR__ . '/brt_tracking_scheduler.php';
-maybe_refresh_brt_tracking($pdo);

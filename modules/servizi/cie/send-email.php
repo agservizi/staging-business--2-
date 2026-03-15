@@ -11,7 +11,7 @@ require_once __DIR__ . '/functions.php';
 require_role('Admin', 'Operatore', 'Manager');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: ' . cie_module_url('index'));
     exit;
 }
 
@@ -22,21 +22,21 @@ $type = isset($_POST['type']) ? trim((string) $_POST['type']) : 'summary';
 
 if ($bookingId <= 0) {
     add_flash('warning', 'Prenotazione CIE non valida.');
-    header('Location: index.php');
+    header('Location: ' . cie_module_url('index'));
     exit;
 }
 
 $booking = cie_fetch_booking($pdo, $bookingId);
 if ($booking === null) {
     add_flash('warning', 'Prenotazione CIE non trovata.');
-    header('Location: index.php');
+    header('Location: ' . cie_module_url('index'));
     exit;
 }
 
 $email = trim((string) ($booking['cittadino_email'] ?? ''));
 if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
     add_flash('warning', 'Aggiungi un indirizzo email valido per il cittadino prima di inviare il riepilogo.');
-    header('Location: view.php?id=' . $bookingId);
+    header('Location: ' . cie_module_url('view', ['id' => $bookingId]));
     exit;
 }
 
@@ -54,5 +54,5 @@ if ($sent) {
     cie_log_action($pdo, 'Invio email prenotazione', 'Invio ' . $label . ' non riuscito per prenotazione #' . $bookingId);
 }
 
-header('Location: view.php?id=' . $bookingId);
+header('Location: ' . cie_module_url('view', ['id' => $bookingId]));
 exit;

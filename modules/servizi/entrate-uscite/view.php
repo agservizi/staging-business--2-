@@ -8,7 +8,7 @@ $pageTitle = 'Dettaglio movimento';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
-	header('Location: index.php');
+	header('Location: ' . entrate_uscite_module_url('index'));
 	exit;
 }
 
@@ -17,7 +17,7 @@ $stmt->execute([':id' => $id]);
 $pagamento = $stmt->fetch();
 
 if (!$pagamento) {
-	header('Location: index.php?notfound=1');
+	header('Location: ' . entrate_uscite_module_url('index', ['notfound' => 1]));
 	exit;
 }
 
@@ -39,17 +39,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 	<?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
 	<main class="content-wrapper">
 		<div class="d-flex justify-content-between align-items-center mb-4">
-			<a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Elenco movimenti</a>
+			<a class="btn btn-outline-warning" href="<?php echo entrate_uscite_module_url('index'); ?>"><i class="fa-solid fa-arrow-left"></i> Elenco movimenti</a>
 			<div class="d-flex gap-2">
 				<?php if ($puoModificare): ?>
-					<a class="btn btn-warning text-dark" href="edit.php?id=<?php echo $id; ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
+					<a class="btn btn-success" href="<?php echo entrate_uscite_module_url('create'); ?>"><i class="fa-solid fa-plus"></i> Nuova entrata/uscita</a>
+					<a class="btn btn-warning text-dark" href="<?php echo entrate_uscite_module_url('edit', ['id' => $id]); ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
 				<?php endif; ?>
 				<?php if ($puoEliminare): ?>
-					<form method="post" action="delete.php" onsubmit="return confirm('Eliminare definitivamente questo movimento?');">
-						<input type="hidden" name="id" value="<?php echo $id; ?>">
-						<input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-						<button class="btn btn-outline-danger" type="submit"><i class="fa-solid fa-trash"></i> Elimina</button>
-					</form>
+					<button class="btn btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteMovementModal">
+						<i class="fa-solid fa-trash"></i> Elimina
+					</button>
 				<?php endif; ?>
 			</div>
 		</div>
@@ -66,6 +65,17 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 							<dd class="col-sm-8"><?php echo sanitize_output($etichettaCliente); ?></dd>
 							<dt class="col-sm-4 text-muted">Descrizione</dt>
 							<dd class="col-sm-8"><?php echo sanitize_output($pagamento['descrizione']); ?></dd>
+							<?php if (!empty($pagamento['listino_voce']) || $pagamento['listino_costo_rivenditore'] !== null || $pagamento['listino_costo_cliente'] !== null): ?>
+								<dt class="col-sm-4 text-muted">Listino collegato</dt>
+								<dd class="col-sm-8">
+									<strong><?php echo sanitize_output($pagamento['listino_voce'] ?: 'Voce non più disponibile'); ?></strong>
+									<ul class="list-unstyled small mb-0">
+										<li>Costo rivenditore: <?php echo $pagamento['listino_costo_rivenditore'] !== null ? sanitize_output(format_currency((float) $pagamento['listino_costo_rivenditore'])) : '—'; ?></li>
+										<li>Costo cliente suggerito: <?php echo $pagamento['listino_costo_cliente'] !== null ? sanitize_output(format_currency((float) $pagamento['listino_costo_cliente'])) : '—'; ?></li>
+										<li>Margine registrato: <?php echo $pagamento['listino_margine'] !== null ? sanitize_output(format_currency((float) $pagamento['listino_margine'])) : '—'; ?></li>
+									</ul>
+								</dd>
+							<?php endif; ?>
 							<dt class="col-sm-4 text-muted">Tipo movimento</dt>
 							<dd class="col-sm-8">
 								<?php
@@ -138,4 +148,30 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 		</div>
 	</main>
 </div>
+
+<?php if ($puoEliminare): ?>
+	<div class="modal fade" id="deleteMovementModal" tabindex="-1" aria-labelledby="deleteMovementModalLabel" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="deleteMovementModalLabel">Elimina movimento</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+				</div>
+				<div class="modal-body">
+					Confermi l'eliminazione definitiva di questo movimento? L'azione non è reversibile.
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+					<form method="post" action="<?php echo entrate_uscite_module_url('delete'); ?>" class="d-inline">
+						<input type="hidden" name="id" value="<?php echo $id; ?>">
+						<input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+						<button class="btn btn-danger" type="submit">
+							<i class="fa-solid fa-trash"></i> Elimina definitivamente
+						</button>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+<?php endif; ?>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

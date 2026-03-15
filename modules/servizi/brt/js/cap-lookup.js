@@ -3,6 +3,9 @@
 
     const DATA_URL = 'https://raw.githubusercontent.com/matteocontrini/comuni-json/master/comuni.json';
     const ZIP_REGEX = /^\d{5}$/;
+    const hasIstatLookup = typeof window.CIEIstatLookup !== 'undefined'
+        && window.CIEIstatLookup !== null
+        && typeof window.CIEIstatLookup.findByCap === 'function';
 
     let capIndex = null;
     let loadPromise = null;
@@ -83,6 +86,27 @@
                 throw error;
             });
         return loadPromise;
+    }
+
+    function resolveMatchesFromIstat(cap) {
+        if (!hasIstatLookup) {
+            return Promise.resolve([]);
+        }
+        return window.CIEIstatLookup.findByCap(cap)
+            .then(function (entries) {
+                if (!Array.isArray(entries)) {
+                    return [];
+                }
+                return entries.map(function (entry) {
+                    return {
+                        city: entry.nome || '',
+                        province: entry.sigla || ''
+                    };
+                });
+            })
+            .catch(function () {
+                return [];
+            });
     }
 
     function setupCapLookup() {
@@ -202,13 +226,21 @@
                 return;
             }
 
-            loadCapIndex()
-                .then(function (index) {
-                    if (!index) {
+            resolveMatchesFromIstat(rawValue)
+                .then(function (istatMatches) {
+                    if (istatMatches.length) {
+                        applyMatches(rawValue, istatMatches);
+                        fillProvinceByCityValue();
+                        return null;
+                    }
+                    return loadCapIndex();
+                })
+                .then(function (fallbackIndex) {
+                    if (!fallbackIndex) {
                         return;
                     }
-                    const matches = index[rawValue] || [];
-                    applyMatches(rawValue, matches);
+                    const fallbackMatches = fallbackIndex[rawValue] || [];
+                    applyMatches(rawValue, fallbackMatches);
                     fillProvinceByCityValue();
                 })
                 .catch(function () {

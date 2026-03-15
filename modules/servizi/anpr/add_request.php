@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             anpr_log_action($pdo, 'Pratica creata', 'Creata pratica ANPR ' . $praticaCode);
             add_flash('success', 'Pratica creata correttamente. Codice: ' . $praticaCode . '.');
-            header('Location: index.php');
+            header('Location: ' . anpr_module_url('index'));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -175,7 +175,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <a class="btn btn-outline-warning" href="https://www.anagrafenazionale.interno.it/servizi-al-cittadino/" target="_blank" rel="noopener">
                     <i class="fa-solid fa-up-right-from-square me-2"></i>Portale ANPR
                 </a>
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Indietro</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('index')); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Indietro</a>
             </div>
         </div>
         <?php if ($errors): ?>
@@ -248,7 +248,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <small class="text-muted">Facoltativo. Dimensione massima 15 MB. Caricare solo dopo l’estrazione dal portale ANPR.</small>
                     </div>
                     <div class="col-12 d-flex justify-content-end gap-2">
-                        <a class="btn btn-outline-warning" href="index.php">Annulla</a>
+                        <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('index')); ?>">Annulla</a>
                         <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Salva pratica</button>
                     </div>
                 </form>

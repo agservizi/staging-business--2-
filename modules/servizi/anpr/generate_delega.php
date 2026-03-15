@@ -10,7 +10,7 @@ require_role('Admin', 'Operatore', 'Manager');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     add_flash('warning', 'Metodo non consentito.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
@@ -21,20 +21,20 @@ $action = (string) ($_POST['action'] ?? 'generate');
 
 if ($praticaId <= 0) {
     add_flash('warning', 'Pratica non valida.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
 $pratica = anpr_fetch_pratica($pdo, $praticaId);
 if (!$pratica) {
     add_flash('warning', 'Pratica non trovata.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
 if (!anpr_can_generate_delega($pratica)) {
     add_flash('warning', 'Questa tipologia non supporta la generazione automatica della delega.');
-    header('Location: view_request.php?id=' . $praticaId);
+    header('Location: ' . anpr_module_url('view_request', ['id' => $praticaId]));
     exit;
 }
 
@@ -49,5 +49,5 @@ try {
     add_flash('warning', 'Impossibile generare la delega automatica.');
 }
 
-header('Location: view_request.php?id=' . $praticaId);
+header('Location: ' . anpr_module_url('view_request', ['id' => $praticaId]));
 exit;

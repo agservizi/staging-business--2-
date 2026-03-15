@@ -1,5 +1,5 @@
 ALTER TABLE users
-    MODIFY ruolo ENUM('Admin','Manager','Operatore','Patronato','Cliente') NOT NULL DEFAULT 'Operatore';
+  MODIFY ruolo ENUM('Admin','Manager','Operatore','Patronato','Cliente','Collaboratore') NOT NULL DEFAULT 'Operatore';
 
 UPDATE users
 SET ruolo = 'Patronato'

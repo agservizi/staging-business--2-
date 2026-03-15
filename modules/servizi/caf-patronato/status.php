@@ -15,7 +15,7 @@ require_role('Admin', 'Operatore', 'Manager', 'Patronato');
 $practiceId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($practiceId <= 0) {
     add_flash('warning', 'Pratica non trovata.');
-    header('Location: index.php');
+    header('Location: ' . caf_patronato_module_url('index'));
     exit;
 }
 
@@ -26,7 +26,7 @@ $canCreatePractices = in_array($currentRole, ['Admin', 'Manager', 'Operatore'], 
 $canManagePractices = $isPatronatoUser || $canCreatePractices;
 $canViewAll = $canManageServices || $canManagePractices;
 $useLegacyCreate = $canCreatePractices;
-$createPracticeUrl = base_url('modules/servizi/caf-patronato/create.php');
+$createPracticeUrl = caf_patronato_module_url('create');
 $apiBaseUrl = base_url('api/caf-patronato/index.php');
 
 try {
@@ -35,7 +35,7 @@ try {
 } catch (Throwable $exception) {
     error_log('CAF/Patronato bootstrap failed: ' . $exception->getMessage());
     add_flash('danger', 'Modulo CAF & Patronato temporaneamente non disponibile.');
-    header('Location: index.php');
+    header('Location: ' . caf_patronato_module_url('index'));
     exit;
 }
 
@@ -51,7 +51,7 @@ try {
     $practice = $service->getPractice($practiceId, $canViewAll, $operatorId);
 } catch (RuntimeException $exception) {
     add_flash('warning', 'Pratica non trovata oppure accesso non consentito.');
-    header('Location: index.php');
+    header('Location: ' . caf_patronato_module_url('index'));
     exit;
 }
 
@@ -129,10 +129,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Aggiorna lo stato della pratica e carica il documento elaborato.</p>
             </div>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
-                <a class="btn btn-outline-secondary" href="view.php?id=<?php echo $practiceId; ?>">
+                <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(caf_patronato_module_url('view', ['id' => $practiceId])); ?>">
                     <i class="fa-solid fa-eye me-2"></i>Vedi pratica
                 </a>
-                <a class="btn btn-outline-warning" href="index.php">
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(caf_patronato_module_url('index')); ?>">
                     <i class="fa-solid fa-arrow-left me-2"></i>Torna all'elenco
                 </a>
             </div>

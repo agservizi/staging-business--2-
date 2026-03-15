@@ -10,7 +10,7 @@ require_role('Admin');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     add_flash('warning', 'Metodo non consentito.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
@@ -19,14 +19,14 @@ require_valid_csrf();
 $praticaId = (int) ($_POST['id'] ?? 0);
 if ($praticaId <= 0) {
     add_flash('warning', 'Pratica non valida.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
 $pratica = anpr_fetch_pratica($pdo, $praticaId);
 if (!$pratica) {
     add_flash('warning', 'Pratica non trovata o già rimossa.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
@@ -60,5 +60,5 @@ try {
     add_flash('warning', 'Impossibile eliminare la pratica.');
 }
 
-header('Location: index.php');
+header('Location: ' . anpr_module_url('index'));
 exit;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/pickup_service.php';
+require_once __DIR__ . '/includes/express_service.php';
 
 if (!CustomerAuth::isAuthenticated()) {
     header('Location: login.php');
@@ -19,6 +20,9 @@ $recentPackages = $pickupService->getCustomerPackages($customerId, ['limit' => 5
 $recentNotifications = $pickupService->getCustomerNotifications($customerId, ['limit' => 5, 'unread_only' => false]);
 $unreadNotifications = $pickupService->getCustomerNotifications($customerId, ['limit' => 5, 'unread_only' => true]);
 $pendingReports = $pickupService->getCustomerReports($customerId, ['status' => 'reported']);
+$expressPortalService = new ExpressPortalService();
+$expressBusinessCustomer = $expressPortalService->resolveBusinessCustomer((array) $customer);
+$expressStats = $expressBusinessCustomer ? $expressPortalService->getDashboardData((int) $expressBusinessCustomer['id']) : null;
 
 $pageTitle = 'Dashboard';
 ?>
@@ -162,6 +166,64 @@ $pageTitle = 'Dashboard';
                 </div>
                 </div>
             </section>
+
+            <?php if ($expressBusinessCustomer && $expressStats): ?>
+                <section class="card ag-card dashboard-card portal-actions">
+                    <div class="card-header border-0 pb-0">
+                        <div class="dashboard-panel-header">
+                            <div>
+                                <h2 class="dashboard-panel-title">Area Express</h2>
+                                <p class="dashboard-panel-subtitle mb-0">Telefonia, pagamenti e richieste collegate al tuo profilo cliente</p>
+                            </div>
+                            <a class="btn btn-sm btn-outline-primary" href="express-dashboard.php">Apri area Express</a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-sm-6 col-lg-3">
+                                <article class="dashboard-metric h-100">
+                                    <div class="dashboard-metric-icon bg-danger-subtle text-danger"><i class="fa-solid fa-sim-card"></i></div>
+                                    <div class="dashboard-metric-body">
+                                        <span class="dashboard-metric-label">Attivazioni</span>
+                                        <span class="dashboard-metric-value"><?= number_format((int) $expressStats['sales_count'], 0, ',', '.') ?></span>
+                                        <p class="dashboard-metric-text">Servizi e vendite registrate nel modulo Express.</p>
+                                    </div>
+                                </article>
+                            </div>
+                            <div class="col-sm-6 col-lg-3">
+                                <article class="dashboard-metric h-100">
+                                    <div class="dashboard-metric-icon bg-success-subtle text-success"><i class="fa-solid fa-euro-sign"></i></div>
+                                    <div class="dashboard-metric-body">
+                                        <span class="dashboard-metric-label">Speso totale</span>
+                                        <span class="dashboard-metric-value">€ <?= number_format((float) $expressStats['revenue'], 2, ',', '.') ?></span>
+                                        <p class="dashboard-metric-text">Valore cumulato delle vendite completate.</p>
+                                    </div>
+                                </article>
+                            </div>
+                            <div class="col-sm-6 col-lg-3">
+                                <article class="dashboard-metric h-100">
+                                    <div class="dashboard-metric-icon bg-warning-subtle text-warning"><i class="fa-solid fa-wallet"></i></div>
+                                    <div class="dashboard-metric-body">
+                                        <span class="dashboard-metric-label">Pagamenti</span>
+                                        <span class="dashboard-metric-value"><?= number_format((int) $expressStats['payments_count'], 0, ',', '.') ?></span>
+                                        <p class="dashboard-metric-text">Movimenti contabili collegati alle tue pratiche Express.</p>
+                                    </div>
+                                </article>
+                            </div>
+                            <div class="col-sm-6 col-lg-3">
+                                <article class="dashboard-metric h-100">
+                                    <div class="dashboard-metric-icon bg-info-subtle text-info"><i class="fa-solid fa-headset"></i></div>
+                                    <div class="dashboard-metric-body">
+                                        <span class="dashboard-metric-label">Richieste aperte</span>
+                                        <span class="dashboard-metric-value"><?= number_format((int) $expressStats['requests_open'], 0, ',', '.') ?></span>
+                                        <p class="dashboard-metric-text">Ticket e richieste in lavorazione dal team.</p>
+                                    </div>
+                                </article>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            <?php endif; ?>
 
             <section class="card ag-card dashboard-card portal-metrics">
                 <div class="card-header border-0 pb-0">

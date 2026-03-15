@@ -4,8 +4,13 @@ require_once __DIR__ . '/includes/db_connect.php';
 require_once __DIR__ . '/includes/helpers.php';
 
 $currentRole = $_SESSION['role'] ?? '';
+if ($currentRole === 'Collaboratore') {
+    header('Location: ' . opportunities_collaborator_url('index'));
+    exit;
+}
+
 if ($currentRole === 'Patronato') {
-    header('Location: ' . base_url('modules/servizi/caf-patronato/index.php'));
+    header('Location: ' . caf_patronato_module_url('index'));
     exit;
 }
 
@@ -36,6 +41,7 @@ $charts = [
     'revenue' => [
         'labels' => [],
         'values' => [],
+        'margins' => [],
     ],
     'services' => [
         'labels' => [
@@ -43,7 +49,6 @@ $charts = [
             'Appuntamenti',
             'Contratti energia',
             'Pratiche ANPR',
-            'Visure catastali',
             'Progetti web',
             'Programma Fedeltà',
             'Curriculum',
@@ -52,7 +57,7 @@ $charts = [
             'Email marketing',
             'Email inviate',
         ],
-        'values' => [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        'values' => [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     ],
 ];
 
@@ -64,6 +69,20 @@ $recentShipments = [];
 $topFinanceClients = [];
 $dueSoonMovements = [];
 $scheduledCampaigns = [];
+$serviceBreakdown = [];
+$serviceBreakdownTop = [];
+$serviceBreakdownTotal = 0;
+$opportunityWidget = [
+    'totals' => [
+        'total' => 0,
+        'active' => 0,
+        'won' => 0,
+        'lost' => 0,
+    ],
+    'status_breakdown' => [],
+    'latest' => [],
+    'todo' => [],
+];
 
 try {
     $stats['totalClients'] = (int) $pdo->query('SELECT COUNT(*) FROM clienti')->fetchColumn();
@@ -106,12 +125,13 @@ try {
 
     $stats['anprInProgress'] = (int) $pdo->query("SELECT COUNT(*) FROM anpr_pratiche WHERE stato = 'In lavorazione'")->fetchColumn();
 
-    $ticketStmt = $pdo->prepare("SELECT id, titolo, stato, created_at FROM ticket ORDER BY created_at DESC LIMIT 5");
+    $ticketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, updated_at FROM tickets ORDER BY updated_at DESC LIMIT 5");
     $ticketStmt->execute();
-    $stats['openTickets'] = $ticketStmt->fetchAll();
+    $stats['openTickets'] = $ticketStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     $revenueChartStmt = $pdo->prepare("SELECT DATE_FORMAT(DATE(COALESCE(data_pagamento, updated_at, created_at)), '%Y-%m') AS month_key,
-           SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END) AS totale
+           SUM(CASE WHEN tipo_movimento = 'Entrata' THEN importo ELSE -importo END) AS totale,
+           SUM(CASE WHEN tipo_movimento = 'Entrata' THEN COALESCE(listino_margine, 0) ELSE 0 END) AS margine_totale
         FROM entrate_uscite
         WHERE stato = 'Completato'
           AND DATE(COALESCE(data_pagamento, updated_at, created_at)) >= DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH), '%Y-%m-01')
@@ -120,18 +140,23 @@ try {
     $revenueChartStmt->execute();
 
     $monthlyRevenue = [];
+    $monthlyMargins = [];
     while ($row = $revenueChartStmt->fetch(PDO::FETCH_ASSOC)) {
-        $monthlyRevenue[$row['month_key']] = (float) $row['totale'];
+        $monthKey = $row['month_key'];
+        $monthlyRevenue[$monthKey] = (float) $row['totale'];
+        $monthlyMargins[$monthKey] = isset($row['margine_totale']) ? (float) $row['margine_totale'] : 0.0;
     }
 
     $charts['revenue']['labels'] = [];
     $charts['revenue']['values'] = [];
+    $charts['revenue']['margins'] = [];
     $startMonth = (new DateTimeImmutable('first day of this month'))->modify('-5 months');
     $monthCursor = $startMonth;
     for ($i = 0; $i < 6; $i++) {
         $monthKey = $monthCursor->format('Y-m');
         $charts['revenue']['labels'][] = format_month_label($monthCursor);
         $charts['revenue']['values'][] = $monthlyRevenue[$monthKey] ?? 0.0;
+        $charts['revenue']['margins'][] = $monthlyMargins[$monthKey] ?? 0.0;
         $monthCursor = $monthCursor->modify('+1 month');
     }
 
@@ -140,7 +165,6 @@ try {
         'servizi_appuntamenti' => 0,
         'energia_contratti' => 0,
         'anpr_pratiche' => 0,
-        'servizi_visure' => 0,
         'servizi_web_progetti' => 0,
         'fedelta_movimenti' => 0,
         'curriculum' => 0,
@@ -178,6 +202,24 @@ try {
     }
 
     $charts['services']['values'] = array_values($serviceTotals);
+
+    $serviceBreakdown = [];
+    $serviceBreakdownTotal = array_sum($charts['services']['values']);
+    foreach ($charts['services']['labels'] as $index => $label) {
+        $value = $charts['services']['values'][$index] ?? 0;
+        $percentage = $serviceBreakdownTotal > 0 ? ($value / $serviceBreakdownTotal) * 100 : 0;
+        $serviceBreakdown[] = [
+            'label' => $label,
+            'value' => $value,
+            'percentage' => $percentage,
+        ];
+    }
+
+    $serviceBreakdownTop = $serviceBreakdown;
+    usort($serviceBreakdownTop, static function (array $a, array $b): int {
+        return $b['value'] <=> $a['value'];
+    });
+    $serviceBreakdownTop = array_slice($serviceBreakdownTop, 0, 5);
 
     try {
         $latestMovementsStmt = $pdo->query("SELECT id, descrizione, tipo_movimento, importo, stato, cliente_id, COALESCE(data_pagamento, data_scadenza, updated_at, created_at) AS movimento_data FROM entrate_uscite ORDER BY COALESCE(data_pagamento, updated_at, created_at) DESC LIMIT 6");
@@ -218,7 +260,20 @@ try {
     }
 
     try {
-        $topClientsSql = "SELECT c.id, COALESCE(NULLIF(c.ragione_sociale, ''), CONCAT(c.nome, ' ', c.cognome)) AS cliente_nome, SUM(CASE WHEN eu.tipo_movimento = 'Entrata' THEN eu.importo ELSE 0 END) AS totale_entrate, SUM(CASE WHEN eu.tipo_movimento = 'Uscita' THEN eu.importo ELSE 0 END) AS totale_uscite FROM entrate_uscite eu LEFT JOIN clienti c ON c.id = eu.cliente_id WHERE eu.cliente_id IS NOT NULL AND YEAR(COALESCE(eu.data_pagamento, eu.created_at)) = YEAR(CURRENT_DATE) GROUP BY c.id, cliente_nome ORDER BY (totale_entrate - totale_uscite) DESC LIMIT 5";
+        $topClientsSql = "SELECT ranked.* FROM (
+                SELECT 
+                    c.id,
+                    COALESCE(NULLIF(c.ragione_sociale, ''), CONCAT(c.nome, ' ', c.cognome)) AS cliente_nome,
+                    SUM(CASE WHEN eu.tipo_movimento = 'Entrata' THEN eu.importo ELSE 0 END) AS totale_entrate,
+                    SUM(CASE WHEN eu.tipo_movimento = 'Uscita' THEN eu.importo ELSE 0 END) AS totale_uscite
+                FROM entrate_uscite eu
+                LEFT JOIN clienti c ON c.id = eu.cliente_id
+                WHERE eu.cliente_id IS NOT NULL
+                  AND YEAR(COALESCE(eu.data_pagamento, eu.created_at)) = YEAR(CURRENT_DATE)
+                GROUP BY c.id, cliente_nome
+            ) AS ranked
+            ORDER BY (ranked.totale_entrate - ranked.totale_uscite) DESC
+            LIMIT 5";
         $topClientsStmt = $pdo->prepare($topClientsSql);
         $topClientsStmt->execute();
         $topFinanceClients = $topClientsStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -257,21 +312,27 @@ try {
                 'icon' => 'fa-envelope-open-text',
                 'title' => 'Campagna email da seguire',
                 'detail' => sprintf('%s (%s). %s.', $pendingCampaign['name'] ?: ('Campagna #' . $pendingCampaign['id']), $statusLabel, $scheduleInfo),
-                'url' => base_url('modules/email-marketing/view.php?id=' . (int) $pendingCampaign['id']),
+                'url' => email_marketing_module_url('view', ['id' => (int) $pendingCampaign['id']]),
             ];
         }
     } catch (PDOException $emailReminderException) {
         error_log('Dashboard email marketing reminder failed: ' . $emailReminderException->getMessage());
     }
 
-    $oldestTicketStmt = $pdo->prepare("SELECT id, titolo, created_at FROM ticket WHERE stato IN ('Aperto', 'In corso') ORDER BY created_at ASC LIMIT 1");
+    $oldestTicketStmt = $pdo->prepare("SELECT id, codice, subject, status, created_at, COALESCE(last_message_at, created_at) AS reference_date
+        FROM tickets
+        WHERE status IN ('OPEN','IN_PROGRESS','WAITING_CLIENT','WAITING_PARTNER')
+        ORDER BY reference_date ASC
+        LIMIT 1");
     $oldestTicketStmt->execute();
     if ($oldestTicket = $oldestTicketStmt->fetch()) {
+        $ticketCode = $oldestTicket['codice'] ?? $oldestTicket['id'];
+        $ticketSubject = trim((string) ($oldestTicket['subject'] ?? 'Ticket ' . $ticketCode));
         $reminders[] = [
             'icon' => 'fa-life-ring',
             'title' => 'Ticket da prendere in carico',
-            'detail' => sprintf('Ticket #%d aperto il %s.', $oldestTicket['id'], format_datetime($oldestTicket['created_at'] ?? '')),
-            'url' => base_url('modules/ticket/view.php?id=' . $oldestTicket['id']),
+            'detail' => sprintf('Ticket #%s · %s aperto il %s.', $ticketCode, $ticketSubject, format_datetime($oldestTicket['created_at'] ?? '')),
+            'url' => ticket_module_url('view', ['id' => (int) $oldestTicket['id']]),
         ];
     }
 
@@ -288,8 +349,71 @@ try {
                 strtoupper($pendingMovimento['stato'] ?? ''),
                 $pendingMovimento['data_scadenza'] ? format_datetime($pendingMovimento['data_scadenza'], 'd/m/Y') : 'N/D'
             ),
-            'url' => base_url('modules/servizi/entrate-uscite/view.php?id=' . $pendingMovimento['id']),
+            'url' => entrate_uscite_module_url('view', ['id' => (int) $pendingMovimento['id']]),
         ];
+    }
+
+    $statusStmt = $pdo->query(
+        "SELECT o.status_code, s.label, s.color, s.ordering, COUNT(*) AS total
+         FROM opportunities o
+         LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+         GROUP BY o.status_code, s.label, s.color, s.ordering
+         ORDER BY s.ordering, s.label"
+    );
+    if ($statusStmt) {
+        while ($row = $statusStmt->fetch(PDO::FETCH_ASSOC)) {
+            $count = (int) ($row['total'] ?? 0);
+            $code = (string) ($row['status_code'] ?? '');
+            $opportunityWidget['status_breakdown'][] = [
+                'code' => $code,
+                'label' => (string) ($row['label'] ?? $code),
+                'color' => (string) ($row['color'] ?? 'secondary'),
+                'total' => $count,
+            ];
+            $opportunityWidget['totals']['total'] += $count;
+            if ($code === 'attivato') {
+                $opportunityWidget['totals']['won'] += $count;
+            }
+            if ($code === 'annullato') {
+                $opportunityWidget['totals']['lost'] += $count;
+            }
+        }
+    }
+    $opportunityWidget['totals']['active'] = max(0, $opportunityWidget['totals']['total'] - $opportunityWidget['totals']['won'] - $opportunityWidget['totals']['lost']);
+
+    $latestOpStmt = $pdo->query(
+        "SELECT o.id, o.code, o.category, o.status_code,
+                COALESCE(s.label, o.status_code) AS status_label,
+                s.color AS status_color,
+                o.provider_label,
+                o.customer_first_name,
+                o.customer_last_name,
+                COALESCE(o.last_status_change, o.updated_at, o.created_at) AS reference_date
+         FROM opportunities o
+         LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+         ORDER BY reference_date DESC
+         LIMIT 5"
+    );
+    if ($latestOpStmt) {
+        $opportunityWidget['latest'] = $latestOpStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    $todoOpStmt = $pdo->query(
+        "SELECT o.id, o.code, o.category, o.status_code,
+                COALESCE(s.label, o.status_code) AS status_label,
+                s.color AS status_color,
+                o.provider_label,
+                o.customer_first_name,
+                o.customer_last_name,
+                COALESCE(o.last_status_change, o.updated_at, o.created_at) AS reference_date
+         FROM opportunities o
+         LEFT JOIN opportunity_statuses s ON s.code = o.status_code
+         WHERE o.status_code NOT IN ('attivato','annullato')
+         ORDER BY reference_date ASC
+         LIMIT 5"
+    );
+    if ($todoOpStmt) {
+        $opportunityWidget['todo'] = $todoOpStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 } catch (PDOException $e) {
     error_log('Dashboard query failed: ' . $e->getMessage());
@@ -301,6 +425,202 @@ require_once __DIR__ . '/includes/sidebar.php';
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once __DIR__ . '/includes/topbar.php'; ?>
     <main class="content-wrapper" data-dashboard-root data-dashboard-endpoint="api/dashboard.php" data-refresh-interval="60000">
+            <style>
+                .chart-card-body {
+                    min-height: 220px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .chart-canvas {
+                    max-height: 180px;
+                    width: 100%;
+                }
+                .revenue-chart-canvas {
+                    max-height: 320px;
+                }
+                .service-chart-canvas {
+                    max-height: 320px;
+                }
+                .services-card-body {
+                    justify-content: space-between;
+                    align-items: stretch;
+                    gap: 1.5rem;
+                }
+                .services-card-body .service-chart-column {
+                    flex: 0 0 48%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .services-card-body .service-details-column {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: flex-start;
+                    gap: 0.75rem;
+                }
+                .service-breakdown-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.75rem;
+                }
+                .service-breakdown-item {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding-bottom: 0.35rem;
+                    border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+                }
+                .service-breakdown-item:last-child {
+                    border-bottom: none;
+                    padding-bottom: 0;
+                }
+                .opportunity-status-list {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.5rem;
+                }
+                .opportunity-status-pill {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.5rem 0.75rem;
+                    border-radius: 999px;
+                    border: 1px solid rgba(0, 0, 0, 0.06);
+                    background: rgba(0, 0, 0, 0.02);
+                }
+                .opportunity-status-pill .count {
+                    padding: 0.15rem 0.55rem;
+                    border-radius: 999px;
+                    background: rgba(255, 255, 255, 0.8);
+                    font-weight: 600;
+                }
+                .opportunity-totals {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.75rem;
+                }
+                .opportunity-total-box {
+                    flex: 1 1 160px;
+                    min-width: 160px;
+                    padding: 0.85rem 1rem;
+                    border-radius: 0.75rem;
+                    border: 1px solid rgba(0, 0, 0, 0.06);
+                    background: #f8f9fb;
+                }
+                .opportunity-total-box .value {
+                    font-weight: 700;
+                    font-size: 1.35rem;
+                }
+                .opportunity-progress {
+                    display: flex;
+                    height: 14px;
+                    border-radius: 999px;
+                    overflow: hidden;
+                    background: rgba(0, 0, 0, 0.05);
+                    border: 1px solid rgba(0, 0, 0, 0.05);
+                    box-sizing: border-box;
+                }
+                .opportunity-progress-labels {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 11px;
+                    color: #6c757d;
+                    margin-bottom: 4px;
+                    padding: 0 2px;
+                }
+                .opportunity-progress .segment {
+                    display: block;
+                    height: 100%;
+                    position: relative;
+                }
+                .opportunity-progress .segment span {
+                    position: absolute;
+                    inset: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: #0b2f6b;
+                }
+                .opportunity-layout-row {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 1.5rem;
+                    align-items: stretch;
+                }
+                .opportunity-chart-column {
+                    flex: 0 0 360px;
+                    max-width: 420px;
+                    min-width: 300px;
+                }
+                .opportunity-lists-column {
+                    flex: 1;
+                    min-width: 320px;
+                    padding-left: 1.5rem;
+                    border-left: 1px solid rgba(0, 0, 0, 0.08);
+                }
+                .opportunity-lists-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+                    gap: 1.5rem;
+                    align-items: start;
+                }
+                .opportunity-list-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 0.5rem;
+                }
+                .opportunity-list-actions {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-end;
+                    gap: 0.6rem;
+                }
+                .opportunity-tabs .nav-link {
+                    border: none;
+                    background: transparent;
+                    color: #6c757d;
+                    padding: 0.35rem 0.75rem;
+                    border-radius: 0.5rem;
+                }
+                .opportunity-tabs .nav-link.active {
+                    background: #0b2f6b;
+                    color: #fff;
+                }
+                .opportunity-chart-wrap {
+                    min-height: 320px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                @media (max-width: 1199.98px) {
+                    .opportunity-chart-column {
+                        flex: 1 1 100%;
+                        max-width: none;
+                    }
+                }
+                @media (max-width: 991.98px) {
+                    .opportunity-lists-column {
+                        padding-left: 0;
+                        border-left: none;
+                        border-top: 1px solid rgba(0, 0, 0, 0.08);
+                        padding-top: 1rem;
+                    }
+                }
+                @media (max-width: 991.98px) {
+                    .services-card-body {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+                    .services-card-body .service-chart-column {
+                        flex: 1 1 auto;
+                    }
+                }
+            </style>
         <?php if ($view === 'cliente' && $_SESSION['role'] === 'Cliente'): ?>
             <div class="row g-4 mb-4">
                 <div class="col-12">
@@ -416,6 +736,198 @@ require_once __DIR__ . '/includes/sidebar.php';
                 </div>
             </div>
 
+            <div class="row g-4 mb-4" data-opportunities-widget>
+                <div class="col-12 col-xl-5">
+                    <div class="card ag-card h-100">
+                        <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div>
+                                <h5 class="card-title mb-0">Opportunity pipeline</h5>
+                                <small class="text-muted">Avanzamento e KPI</small>
+                            </div>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo opportunities_module_url('index'); ?>">Apri</a>
+                        </div>
+                        <div class="card-body">
+                            <?php
+                                $totalOps = max(1, (int) ($opportunityWidget['totals']['total'] ?? 0));
+                                $activePercent = round(((int) ($opportunityWidget['totals']['active'] ?? 0)) / $totalOps * 100);
+                                $wonPercent = round(((int) ($opportunityWidget['totals']['won'] ?? 0)) / $totalOps * 100);
+                                $lostPercent = round(((int) ($opportunityWidget['totals']['lost'] ?? 0)) / $totalOps * 100);
+                            ?>
+                            <p class="text-uppercase small text-muted mb-2">Avanzamento pipeline</p>
+                            <div class="opportunity-progress-labels" aria-hidden="true">
+                                <span>0%</span>
+                                <span>100%</span>
+                            </div>
+                            <div class="opportunity-progress mb-2" aria-label="Avanzamento opportunity">
+                                <span class="segment bg-primary text-white" data-progress="active" style="width: <?php echo $activePercent; ?>%" title="In lavorazione: <?php echo $activePercent; ?>%">
+                                    <span><?php echo $activePercent; ?>%</span>
+                                </span>
+                                <span class="segment bg-success text-white" data-progress="won" style="width: <?php echo $wonPercent; ?>%" title="Attivate: <?php echo $wonPercent; ?>%">
+                                    <span><?php echo $wonPercent; ?>%</span>
+                                </span>
+                                <span class="segment bg-danger text-white" data-progress="lost" style="width: <?php echo $lostPercent; ?>%" title="Annullate: <?php echo $lostPercent; ?>%">
+                                    <span><?php echo $lostPercent; ?>%</span>
+                                </span>
+                            </div>
+                            <div class="opportunity-status-list mb-3" id="opportunityStatusList">
+                                <?php if ($opportunityWidget['status_breakdown']): ?>
+                                    <?php foreach ($opportunityWidget['status_breakdown'] as $status): ?>
+                                        <?php
+                                            $colorToBootstrap = [
+                                                'warning' => 'bg-warning text-dark',
+                                                'info' => 'bg-primary text-white',
+                                                'primary' => 'bg-primary',
+                                                'danger' => 'bg-danger',
+                                                'success' => 'bg-success',
+                                            ];
+                                            $pillClass = $colorToBootstrap[$status['color']] ?? 'bg-secondary';
+                                        ?>
+                                        <span class="opportunity-status-pill <?php echo $pillClass; ?>">
+                                            <span class="fw-semibold"><?php echo sanitize_output($status['label']); ?></span>
+                                            <span class="count"><?php echo number_format((int) $status['total']); ?></span>
+                                        </span>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <span class="text-muted small">Nessuna opportunity registrata.</span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="opportunity-totals">
+                                <div class="opportunity-total-box">
+                                    <p class="text-uppercase small text-muted mb-1">Totali</p>
+                                    <div class="value" data-opportunity-total="total"><?php echo number_format($opportunityWidget['totals']['total']); ?></div>
+                                    <small class="text-muted">Complessive</small>
+                                </div>
+                                <div class="opportunity-total-box">
+                                    <p class="text-uppercase small text-muted mb-1">In lavorazione</p>
+                                    <div class="value" data-opportunity-total="active"><?php echo number_format($opportunityWidget['totals']['active']); ?></div>
+                                    <small class="text-muted">Da completare</small>
+                                </div>
+                                <div class="opportunity-total-box">
+                                    <p class="text-uppercase small text-muted mb-1">Attivate</p>
+                                    <div class="value" data-opportunity-total="won"><?php echo number_format($opportunityWidget['totals']['won']); ?></div>
+                                    <small class="text-muted">Completate</small>
+                                </div>
+                                <div class="opportunity-total-box">
+                                    <p class="text-uppercase small text-muted mb-1">Annullate</p>
+                                    <div class="value" data-opportunity-total="lost"><?php echo number_format($opportunityWidget['totals']['lost']); ?></div>
+                                    <small class="text-muted">Respinte/annullate</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-xl-7">
+                    <div class="card ag-card h-100">
+                        <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div>
+                                <h5 class="card-title mb-0">Opportunity pipeline</h5>
+                                <small class="text-muted">Stati e ultime attività</small>
+                            </div>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo opportunities_module_url('index'); ?>">Apri</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="opportunity-layout-row">
+                                <div class="opportunity-chart-column">
+                                    <div class="opportunity-chart-wrap service-chart-column">
+                                        <canvas id="opportunityStatusChart" class="chart-canvas service-chart-canvas" height="320"></canvas>
+                                    </div>
+                                </div>
+                                <div class="opportunity-lists-column">
+                                    <div class="opportunity-lists-grid">
+                                        <div>
+                                            <div class="opportunity-list-header">
+                                                <h6 class="mb-0 text-uppercase text-muted small">Ultime</h6>
+                                                <span class="badge ag-badge text-uppercase" id="opportunityLatestBadge">Ultime <?php echo number_format(count($opportunityWidget['latest'])); ?></span>
+                                            </div>
+                                            <div class="list-group list-group-flush" id="opportunityLatestList">
+                                                <?php if ($opportunityWidget['latest']): ?>
+                                                    <?php foreach ($opportunityWidget['latest'] as $opportunityItem): ?>
+                                                        <?php
+                                                            $statusColorMap = [
+                                                                'warning' => 'bg-warning text-dark',
+                                                                'info' => 'bg-primary text-white',
+                                                                'primary' => 'bg-primary',
+                                                                'danger' => 'bg-danger',
+                                                                'success' => 'bg-success',
+                                                            ];
+                                                            $badgeClass = $statusColorMap[$opportunityItem['status_color'] ?? ''] ?? 'bg-secondary';
+                                                            $customerName = trim(($opportunityItem['customer_first_name'] ?? '') . ' ' . ($opportunityItem['customer_last_name'] ?? '')) ?: 'Cliente non indicato';
+                                                            $providerLabel = $opportunityItem['provider_label'] ?? 'Gestore non indicato';
+                                                            $codeLabel = $opportunityItem['code'] ?? ('OP-' . ($opportunityItem['id'] ?? ''));
+                                                            $referenceDate = $opportunityItem['reference_date'] ?? null;
+                                                        ?>
+                                                        <div class="list-group-item px-0">
+                                                            <div class="d-flex align-items-start justify-content-between gap-3">
+                                                                <div>
+                                                                    <div class="fw-semibold">#<?php echo sanitize_output($codeLabel); ?></div>
+                                                                    <small class="text-muted"><?php echo sanitize_output($providerLabel); ?> · <?php echo sanitize_output($customerName); ?></small>
+                                                                    <div class="text-muted small"><?php echo $referenceDate ? sanitize_output(format_datetime_locale($referenceDate)) : 'Data non disponibile'; ?></div>
+                                                                </div>
+                                                                <div class="text-end opportunity-list-actions">
+                                                                    <span class="badge <?php echo $badgeClass; ?> text-uppercase"><?php echo sanitize_output($opportunityItem['status_label'] ?? $opportunityItem['status_code'] ?? ''); ?></span>
+                                                                    <div>
+                                                                        <a class="btn btn-sm btn-outline-warning" href="<?php echo opportunities_module_url('detail', ['id' => (int) ($opportunityItem['id'] ?? 0)]); ?>">Apri</a>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                <?php else: ?>
+                                                    <div class="list-group-item px-0 text-muted">Nessuna opportunity recente.</div>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="opportunity-list-header">
+                                                <h6 class="mb-0 text-uppercase text-muted small">Da fare</h6>
+                                                <span class="badge ag-badge text-uppercase" id="opportunityTodoBadge">Da fare <?php echo number_format(count($opportunityWidget['todo'])); ?></span>
+                                            </div>
+                                            <div class="list-group list-group-flush" id="opportunityTodoList">
+                                                <?php if ($opportunityWidget['todo']): ?>
+                                                    <?php foreach ($opportunityWidget['todo'] as $opportunityItem): ?>
+                                                        <?php
+                                                            $statusColorMap = [
+                                                                'warning' => 'bg-warning text-dark',
+                                                                'info' => 'bg-primary text-white',
+                                                                'primary' => 'bg-primary',
+                                                                'danger' => 'bg-danger',
+                                                                'success' => 'bg-success',
+                                                            ];
+                                                            $badgeClass = $statusColorMap[$opportunityItem['status_color'] ?? ''] ?? 'bg-secondary';
+                                                            $customerName = trim(($opportunityItem['customer_first_name'] ?? '') . ' ' . ($opportunityItem['customer_last_name'] ?? '')) ?: 'Cliente non indicato';
+                                                            $providerLabel = $opportunityItem['provider_label'] ?? 'Gestore non indicato';
+                                                            $codeLabel = $opportunityItem['code'] ?? ('OP-' . ($opportunityItem['id'] ?? ''));
+                                                            $referenceDate = $opportunityItem['reference_date'] ?? null;
+                                                        ?>
+                                                        <div class="list-group-item px-0">
+                                                            <div class="d-flex align-items-start justify-content-between gap-3">
+                                                                <div>
+                                                                    <div class="fw-semibold">#<?php echo sanitize_output($codeLabel); ?></div>
+                                                                    <small class="text-muted"><?php echo sanitize_output($providerLabel); ?> · <?php echo sanitize_output($customerName); ?></small>
+                                                                    <div class="text-muted small"><?php echo $referenceDate ? sanitize_output(format_datetime_locale($referenceDate)) : 'Data non disponibile'; ?></div>
+                                                                </div>
+                                                                <div class="text-end opportunity-list-actions">
+                                                                    <span class="badge <?php echo $badgeClass; ?> text-uppercase"><?php echo sanitize_output($opportunityItem['status_label'] ?? $opportunityItem['status_code'] ?? ''); ?></span>
+                                                                    <div>
+                                                                        <a class="btn btn-sm btn-outline-warning" href="<?php echo opportunities_module_url('detail', ['id' => (int) ($opportunityItem['id'] ?? 0)]); ?>">Apri</a>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                <?php else: ?>
+                                                    <div class="list-group-item px-0 text-muted">Nessuna opportunity aperta da lavorare.</div>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="row g-4 mb-4">
                 <div class="col-12 col-xl-6">
                     <div class="card ag-card h-100">
@@ -423,8 +935,8 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <h5 class="card-title mb-0">Trend Entrate/Uscite</h5>
                             <span class="text-muted small">Ultimi 6 mesi</span>
                         </div>
-                        <div class="card-body">
-                            <canvas id="chartRevenue" height="180"></canvas>
+                        <div class="card-body chart-card-body">
+                            <canvas id="chartRevenue" class="chart-canvas revenue-chart-canvas" height="320"></canvas>
                         </div>
                     </div>
                 </div>
@@ -434,8 +946,31 @@ require_once __DIR__ . '/includes/sidebar.php';
                             <h5 class="card-title mb-0">Ripartizione servizi</h5>
                             <span class="text-muted small">Pratiche per tipologia</span>
                         </div>
-                        <div class="card-body">
-                            <canvas id="chartServices" height="200"></canvas>
+                        <div class="card-body chart-card-body services-card-body">
+                            <div class="service-chart-column">
+                                <canvas id="chartServices" class="chart-canvas service-chart-canvas" height="320"></canvas>
+                            </div>
+                            <div class="service-details-column">
+                                <p class="text-muted text-uppercase small mb-1">Totale pratiche monitorate</p>
+                                <div class="h3 mb-3 fw-semibold"><?php echo number_format($serviceBreakdownTotal); ?></div>
+                                <?php if (!empty($serviceBreakdownTop)): ?>
+                                    <div class="service-breakdown-list">
+                                        <?php foreach ($serviceBreakdownTop as $serviceItem): ?>
+                                            <div class="service-breakdown-item">
+                                                <div>
+                                                    <div class="fw-semibold"><?php echo sanitize_output($serviceItem['label']); ?></div>
+                                                    <small class="text-muted"><?php echo number_format($serviceItem['percentage'], 1, ',', '.'); ?>% del totale</small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <span class="badge bg-light text-dark"><?php echo number_format($serviceItem['value']); ?></span>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <p class="text-muted mb-0">Nessun dato disponibile.</p>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -446,7 +981,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Movimenti recenti</h5>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/servizi/entrate-uscite/index.php">Gestisci</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo entrate_uscite_module_url('index'); ?>">Gestisci</a>
                         </div>
                         <div class="card-body">
                             <?php if ($latestMovements): ?>
@@ -488,7 +1023,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Prossimi appuntamenti</h5>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/servizi/appuntamenti/index.php">Agenda</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo appuntamenti_module_url('index'); ?>">Agenda</a>
                         </div>
                         <div class="card-body">
                             <?php if ($upcomingAppointmentsList): ?>
@@ -522,7 +1057,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Spedizioni BRT recenti</h5>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/servizi/brt/index.php">Dettagli</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo brt_module_url('index'); ?>">Dettagli</a>
                         </div>
                         <div class="card-body">
                             <?php if ($recentShipments): ?>
@@ -573,7 +1108,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Scadenze contabili (7 giorni)</h5>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/servizi/entrate-uscite/index.php">Situazione</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo entrate_uscite_module_url('index'); ?>">Situazione</a>
                         </div>
                         <div class="card-body">
                             <?php if ($dueSoonMovements): ?>
@@ -595,7 +1130,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                                 </div>
                                                 <div class="text-end">
                                                     <span class="fw-semibold <?php echo $isIncome ? 'text-success' : 'text-danger'; ?>"><?php echo sanitize_output($amountLabel); ?></span>
-                                                    <div><a class="link-warning small" href="modules/servizi/entrate-uscite/view.php?id=<?php echo (int) $movement['id']; ?>">Apri</a></div>
+                                                    <div><a class="link-warning small" href="<?php echo entrate_uscite_module_url('view', ['id' => (int) $movement['id']]); ?>">Apri</a></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -611,7 +1146,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Campagne email programmate</h5>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/email-marketing/index.php">Pianifica</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo email_marketing_module_url('index'); ?>">Pianifica</a>
                         </div>
                         <div class="card-body">
                             <?php if ($scheduledCampaigns): ?>
@@ -631,7 +1166,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                                 </div>
                                                 <div class="text-end">
                                                     <span class="badge ag-badge text-uppercase"><?php echo sanitize_output($statusLabel); ?></span>
-                                                    <div><a class="link-warning small" href="modules/email-marketing/view.php?id=<?php echo (int) $campaign['id']; ?>">Dettagli</a></div>
+                                                    <div><a class="link-warning small" href="<?php echo email_marketing_module_url('view', ['id' => (int) $campaign['id']]); ?>">Dettagli</a></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -653,15 +1188,14 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Ticket in evidenza</h5>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/ticket/index.php">Vedi tutti</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo ticket_module_url('index'); ?>">Vedi tutti</a>
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle mb-0" data-dashboard-table="tickets">
                                     <thead>
                                         <tr>
-                                            <th>ID</th>
-                                            <th>Titolo</th>
+                                            <th>Ticket</th>
                                             <th>Stato</th>
                                             <th>Aperto il</th>
                                             <th></th>
@@ -670,13 +1204,22 @@ require_once __DIR__ . '/includes/sidebar.php';
                                     <tbody id="dashboardTicketsBody">
                                         <?php if ($stats['openTickets']): ?>
                                             <?php foreach ($stats['openTickets'] as $ticket): ?>
-                                                <?php $ticketDate = $ticket['created_at'] ?? null; ?>
+                                                <?php
+                                                    $ticketDate = $ticket['created_at'] ?? null;
+                                                    $ticketCode = $ticket['codice'] ?? $ticket['id'];
+                                                    $ticketSubject = trim((string) ($ticket['subject'] ?? ''));
+                                                    if ($ticketSubject === '') {
+                                                        $ticketSubject = 'Ticket #' . $ticketCode;
+                                                    }
+                                                ?>
                                                 <tr>
-                                                    <td>#<?php echo sanitize_output($ticket['id']); ?></td>
-                                                    <td><?php echo sanitize_output($ticket['titolo']); ?></td>
-                                                    <td><span class="badge ag-badge text-uppercase"><?php echo sanitize_output($ticket['stato']); ?></span></td>
+                                                    <td>
+                                                        <div class="fw-semibold">#<?php echo sanitize_output($ticketCode); ?></div>
+                                                        <small class="text-muted"><?php echo sanitize_output($ticketSubject); ?></small>
+                                                    </td>
+                                                    <td><span class="badge ag-badge text-uppercase"><?php echo sanitize_output($ticket['status']); ?></span></td>
                                                     <td><?php echo sanitize_output($ticketDate ? format_datetime($ticketDate, 'd/m/Y') : 'N/D'); ?></td>
-                                                    <td class="text-end"><a class="btn btn-sm btn-outline-warning" href="modules/ticket/view.php?id=<?php echo (int) $ticket['id']; ?>">Apri</a></td>
+                                                    <td class="text-end"><a class="btn btn-sm btn-outline-warning" href="<?php echo ticket_module_url('view', ['id' => (int) $ticket['id']]); ?>">Apri</a></td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
@@ -695,7 +1238,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                         <div class="card ag-card flex-fill">
                             <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                                 <h5 class="card-title mb-0">Attività prioritarie</h5>
-                                <a class="btn btn-sm btn-link text-decoration-none" href="modules/servizi/entrate-uscite/index.php">
+                                <a class="btn btn-sm btn-link text-decoration-none" href="<?php echo entrate_uscite_module_url('index'); ?>">
                                     <i class="fa-solid fa-list-check me-1"></i>Vai alla sezione
                                 </a>
                             </div>
@@ -750,7 +1293,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                                     ?>
                                                     <tr>
                                                         <td>
-                                                            <a class="link-warning" href="modules/clienti/view.php?id=<?php echo (int) $client['id']; ?>"><?php echo sanitize_output($clientName); ?></a>
+                                                            <a class="link-warning" href="<?php echo clienti_module_url('view', ['id' => (int) $client['id']]); ?>"><?php echo sanitize_output($clientName); ?></a>
                                                         </td>
                                                         <td class="text-end text-success"><?php echo sanitize_output(format_currency($entrate)); ?></td>
                                                         <td class="text-end text-danger"><?php echo sanitize_output(format_currency($uscite)); ?></td>
@@ -777,6 +1320,11 @@ require_once __DIR__ . '/includes/sidebar.php';
     const accentColor = (rootStyle.getPropertyValue('--ag-accent') || '#0b2f6b').trim() || '#0b2f6b';
     const accentRgb = (rootStyle.getPropertyValue('--ag-accent-rgb') || '11, 47, 107').trim() || '11, 47, 107';
     const accentAlpha = (alpha) => `rgba(${accentRgb}, ${alpha})`;
+
+    const euroFormatter = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 });
+    const formatEuro = (value) => euroFormatter.format(Number.isFinite(value) ? value : 0);
+
+    const revenueChartMargins = <?php echo json_encode($charts['revenue']['margins'], JSON_THROW_ON_ERROR); ?>;
 
     const revenueChartData = {
         labels: <?php echo json_encode($charts['revenue']['labels'], JSON_THROW_ON_ERROR); ?>,
@@ -821,11 +1369,26 @@ require_once __DIR__ . '/includes/sidebar.php';
                 type: 'line',
                 data: revenueChartData,
                 options: {
-                    plugins: { legend: { display: false } },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `Saldo: ${formatEuro(context.parsed.y ?? context.parsed)}`,
+                                afterBody: (items) => {
+                                    if (!items || !items.length) {
+                                        return '';
+                                    }
+                                    const index = items[0].dataIndex;
+                                    const marginValue = revenueChartMargins[index] ?? 0;
+                                    return `Margine: ${formatEuro(marginValue)}`;
+                                }
+                            }
+                        },
+                    },
                     scales: {
                         y: {
                             ticks: {
-                                callback: (value) => `€ ${value.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`
+                                callback: (value) => formatEuro(value)
                             }
                         }
                     }

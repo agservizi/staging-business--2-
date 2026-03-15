@@ -13,11 +13,16 @@ class SettingsService
     private const MOVEMENT_DESCRIPTIONS_KEY = 'entrate_uscite_descrizioni';
     private const APPOINTMENT_STATUSES_KEY = 'servizi_appuntamenti_statuses';
     private const APPOINTMENT_TYPES_KEY = 'servizi_appuntamenti_tipologie';
+    private const ACI_TYPES_KEY = 'servizi_aci_tipologie';
+    private const ACI_STATUSES_KEY = 'servizi_aci_stati';
+    private const ACI_PRICING_KEY = 'servizi_aci_costi';
     private const CAF_PATRONATO_TYPES_KEY = 'caf_patronato_tipologie';
     private const CAF_PATRONATO_STATUSES_KEY = 'caf_patronato_stati';
     private const CAF_PATRONATO_SERVICES_KEY = 'caf_patronato_servizi';
     private const UI_THEME_KEY = 'ui_theme';
     private const EMAIL_MARKETING_SETTINGS_KEY = 'email_marketing_settings';
+    private const SERVICE_PRICING_KEY = 'service_pricing';
+    private const EXPRESS_MODULE_SETTINGS_KEY = 'servizi_express_settings';
     public const PORTAL_BRT_PRICING_KEY = 'portal_brt_pricing';
     public const CAF_PATRONATO_STATUS_CATEGORIES = [
         'pending' => 'Da lavorare / In attesa',
@@ -281,6 +286,37 @@ class SettingsService
     }
 
     /**
+     * @return array<int, string>
+     */
+    public static function defaultAciTypes(): array
+    {
+        return [
+            'Passaggio proprietà',
+            'Radiazione',
+            'Duplicato documenti',
+            'Immatricolazione',
+            'Reimmatricolazione',
+            'Perdita possesso',
+            'Visura PRA',
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function defaultAciStatuses(): array
+    {
+        return [
+            'Aperta',
+            'Documenti richiesti',
+            'In lavorazione',
+            'Inviata',
+            'Completata',
+            'Annullata',
+        ];
+    }
+
+    /**
      * @return array<int, array{key:string,label:string,prefix:string}>
      */
     public static function defaultCafPatronatoTypes(): array
@@ -525,6 +561,84 @@ class SettingsService
             }
         } catch (Throwable $exception) {
             error_log('Appointment types fetch failed: ' . $exception->getMessage());
+        }
+
+        return $defaults;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getAciTypes(): array
+    {
+        $defaults = self::defaultAciTypes();
+
+        try {
+            $stmt = $this->pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :chiave LIMIT 1');
+            $stmt->execute([':chiave' => self::ACI_TYPES_KEY]);
+            $value = $stmt->fetchColumn();
+
+            if ($value === false || $value === null || $value === '') {
+                return $defaults;
+            }
+
+            $decoded = json_decode((string) $value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $list = [];
+                if (isset($decoded['types']) && is_array($decoded['types'])) {
+                    $list = $decoded['types'];
+                } elseif ($this->isSequentialArray($decoded)) {
+                    $list = $decoded;
+                }
+
+                if ($list) {
+                    $types = $this->enforceListLength($this->sanitizeStatusList($list), 60);
+                    if ($types) {
+                        return $types;
+                    }
+                }
+            }
+        } catch (Throwable $exception) {
+            error_log('ACI types fetch failed: ' . $exception->getMessage());
+        }
+
+        return $defaults;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getAciStatuses(): array
+    {
+        $defaults = self::defaultAciStatuses();
+
+        try {
+            $stmt = $this->pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :chiave LIMIT 1');
+            $stmt->execute([':chiave' => self::ACI_STATUSES_KEY]);
+            $value = $stmt->fetchColumn();
+
+            if ($value === false || $value === null || $value === '') {
+                return $defaults;
+            }
+
+            $decoded = json_decode((string) $value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $list = [];
+                if (isset($decoded['statuses']) && is_array($decoded['statuses'])) {
+                    $list = $decoded['statuses'];
+                } elseif ($this->isSequentialArray($decoded)) {
+                    $list = $decoded;
+                }
+
+                if ($list) {
+                    $statuses = $this->enforceListLength($this->sanitizeStatusList($list), 40);
+                    if ($statuses) {
+                        return $statuses;
+                    }
+                }
+            }
+        } catch (Throwable $exception) {
+            error_log('ACI statuses fetch failed: ' . $exception->getMessage());
         }
 
         return $defaults;
@@ -992,6 +1106,136 @@ class SettingsService
     }
 
     /**
+     * @param array<int, string> $types
+     * @return array{success:bool,errors:array<int,string>,types:array<int,string>}
+     */
+    public function saveAciTypes(array $types, int $userId): array
+    {
+        $types = $this->sanitizeStatusList($types);
+        $errors = [];
+        $hadInput = !empty($types);
+
+        if (!$hadInput) {
+            $errors[] = 'Inserisci almeno una tipologia ACI.';
+        }
+
+        $enforcedTypes = $this->enforceListLength($types, 60);
+        if (count($enforcedTypes) !== count($types)) {
+            $errors[] = 'Le tipologie ACI non possono superare i 60 caratteri.';
+        }
+
+        $types = $enforcedTypes;
+
+        if (!$types && $hadInput) {
+            $errors[] = 'Inserisci almeno una tipologia ACI valida.';
+        }
+
+        if ($errors) {
+            return [
+                'success' => false,
+                'errors' => array_values(array_unique($errors)),
+                'types' => array_values($types),
+            ];
+        }
+
+        $payload = json_encode(['types' => array_values($types)], JSON_UNESCAPED_UNICODE);
+        if ($payload === false) {
+            return [
+                'success' => false,
+                'errors' => ['Impossibile serializzare le tipologie ACI.'],
+                'types' => array_values($types),
+            ];
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                'INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore)
+                 ON DUPLICATE KEY UPDATE valore = VALUES(valore)'
+            );
+            $stmt->execute([
+                ':chiave' => self::ACI_TYPES_KEY,
+                ':valore' => $payload,
+            ]);
+
+            $this->logActivity($userId, 'Aggiornamento tipologie ACI', ['types' => array_values($types)]);
+
+            return ['success' => true, 'errors' => [], 'types' => array_values($types)];
+        } catch (Throwable $exception) {
+            error_log('ACI types save failed: ' . $exception->getMessage());
+            return [
+                'success' => false,
+                'errors' => ['Impossibile salvare le tipologie ACI.'],
+                'types' => array_values($types),
+            ];
+        }
+    }
+
+    /**
+     * @param array<int, string> $statuses
+     * @return array{success:bool,errors:array<int,string>,statuses:array<int,string>}
+     */
+    public function saveAciStatuses(array $statuses, int $userId): array
+    {
+        $statuses = $this->sanitizeStatusList($statuses);
+        $errors = [];
+        $hadInput = !empty($statuses);
+
+        if (!$hadInput) {
+            $errors[] = 'Inserisci almeno uno stato ACI.';
+        }
+
+        $enforcedStatuses = $this->enforceListLength($statuses, 40);
+        if (count($enforcedStatuses) !== count($statuses)) {
+            $errors[] = 'Gli stati ACI non possono superare i 40 caratteri.';
+        }
+
+        $statuses = $enforcedStatuses;
+
+        if (!$statuses && $hadInput) {
+            $errors[] = 'Inserisci almeno uno stato ACI valido.';
+        }
+
+        if ($errors) {
+            return [
+                'success' => false,
+                'errors' => array_values(array_unique($errors)),
+                'statuses' => array_values($statuses),
+            ];
+        }
+
+        $payload = json_encode(['statuses' => array_values($statuses)], JSON_UNESCAPED_UNICODE);
+        if ($payload === false) {
+            return [
+                'success' => false,
+                'errors' => ['Impossibile serializzare gli stati ACI.'],
+                'statuses' => array_values($statuses),
+            ];
+        }
+
+        try {
+            $stmt = $this->pdo->prepare(
+                'INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore)
+                 ON DUPLICATE KEY UPDATE valore = VALUES(valore)'
+            );
+            $stmt->execute([
+                ':chiave' => self::ACI_STATUSES_KEY,
+                ':valore' => $payload,
+            ]);
+
+            $this->logActivity($userId, 'Aggiornamento stati ACI', ['statuses' => array_values($statuses)]);
+
+            return ['success' => true, 'errors' => [], 'statuses' => array_values($statuses)];
+        } catch (Throwable $exception) {
+            error_log('ACI statuses save failed: ' . $exception->getMessage());
+            return [
+                'success' => false,
+                'errors' => ['Impossibile salvare gli stati ACI.'],
+                'statuses' => array_values($statuses),
+            ];
+        }
+    }
+
+    /**
      * @param array<int, array{key?:string,label?:string,prefix?:string}> $types
      * @return array{success:bool,errors:array<int,string>,config:array<int,array{key:string,label:string,prefix:string}>}
      */
@@ -1112,7 +1356,6 @@ class SettingsService
 
         $input = $services;
         if (!$this->isAssociativeArray($input)) {
-            // Backward compatibility: treat as global list assigned to CAF
             $input = ['CAF' => $services];
         }
 
@@ -2006,6 +2249,23 @@ class SettingsService
         return $filtered;
     }
 
+    /**
+     * @param array<int, string> $values
+     * @return array<int, string>
+     */
+    private function enforceListLength(array $values, int $maxLength): array
+    {
+        $filtered = [];
+
+        foreach ($values as $value) {
+            if (mb_strlen($value) <= $maxLength) {
+                $filtered[] = $value;
+            }
+        }
+
+        return $filtered;
+    }
+
     private function isSequentialArray(array $array): bool
     {
         if (function_exists('array_is_list')) {
@@ -2635,6 +2895,10 @@ class SettingsService
 
     private function logActivity(int $userId, string $action, array $payload): void
     {
+        if ($userId <= 0) {
+            return;
+        }
+
         try {
             $filtered = array_filter(
                 $payload,
@@ -2671,20 +2935,6 @@ class SettingsService
         return number_format($value, $index === 0 ? 0 : 2) . ' ' . $units[$index];
     }
 
-    /**
-     * @param array<string, mixed> $config
-     * @return array{
-     *     sender_name:string,
-     *     sender_email:string,
-     *     reply_to_email:string,
-     *     resend_api_key:string,
-     *     unsubscribe_base_url:string,
-     *     webhook_secret:string,
-     *     test_address:string,
-     *     has_resend_api_key:bool,
-     *     resend_api_key_hint:string
-     * }
-     */
     private function formatEmailMarketingSettings(array $config, bool $maskSecrets = true): array
     {
         $defaults = [
@@ -2746,5 +2996,393 @@ class SettingsService
         }
 
         return str_repeat('*', $length - 4) . substr($secret, -4);
+    }
+
+    /**
+     * @param array<int, string>|null $types
+     * @return array<int, array{name: string, price: float|null}>
+     */
+    public function getAciPricing(?array $types = null): array
+    {
+        $types = $types ?? $this->getAciTypes();
+        $types = $this->sanitizeStatusList($types);
+
+        if (!$types) {
+            return [];
+        }
+
+        $priceMap = [];
+
+        try {
+            $stmt = $this->pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :chiave LIMIT 1');
+            $stmt->execute([':chiave' => self::ACI_PRICING_KEY]);
+            $value = $stmt->fetchColumn();
+
+            if ($value !== false && $value !== null && $value !== '') {
+                $decoded = json_decode((string) $value, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    if ($this->isSequentialArray($decoded)) {
+                        foreach ($decoded as $item) {
+                            if (!is_array($item)) {
+                                continue;
+                            }
+                            $name = trim((string) ($item['name'] ?? ''));
+                            if ($name === '') {
+                                continue;
+                            }
+                            $rawPrice = $item['price'] ?? null;
+                            $price = null;
+                            if ($rawPrice !== null && $rawPrice !== '') {
+                                $price = (float) $rawPrice;
+                            }
+                            $priceMap[mb_strtolower($name, 'UTF-8')] = $price;
+                        }
+                    } else {
+                        foreach ($decoded as $key => $rawPrice) {
+                            if (!is_string($key)) {
+                                continue;
+                            }
+                            $name = trim($key);
+                            if ($name === '') {
+                                continue;
+                            }
+                            $price = null;
+                            if ($rawPrice !== null && $rawPrice !== '') {
+                                $price = (float) $rawPrice;
+                            }
+                            $priceMap[mb_strtolower($name, 'UTF-8')] = $price;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable $exception) {
+            error_log('SettingsService::getAciPricing - ' . $exception->getMessage());
+        }
+
+        $pricing = [];
+        foreach ($types as $type) {
+            $key = mb_strtolower($type, 'UTF-8');
+            $pricing[] = [
+                'name' => $type,
+                'price' => array_key_exists($key, $priceMap) ? $priceMap[$key] : null,
+            ];
+        }
+
+        return $pricing;
+    }
+
+    /**
+     * @param array<int, array{name?: string, price?: float|null}> $pricing
+     * @return array{success: bool, errors: array<int, string>, pricing?: array<int, array{name: string, price: float|null}>}
+     */
+    public function saveAciPricing(array $pricing, int $userId): array
+    {
+        $errors = [];
+        $types = $this->sanitizeStatusList($this->getAciTypes());
+        $allowed = [];
+        foreach ($types as $type) {
+            $allowed[mb_strtolower($type, 'UTF-8')] = $type;
+        }
+
+        $priceMap = [];
+        foreach ($pricing as $index => $item) {
+            if (!is_array($item)) {
+                $errors[] = 'Elemento ' . ($index + 1) . ' non valido.';
+                continue;
+            }
+
+            $rawName = trim((string) ($item['name'] ?? ''));
+            if ($rawName === '') {
+                continue;
+            }
+
+            $lookup = mb_strtolower($rawName, 'UTF-8');
+            if (!isset($allowed[$lookup])) {
+                $errors[] = "Tipologia ACI non valida: " . $rawName . ".";
+                continue;
+            }
+
+            $priceRaw = $item['price'] ?? null;
+            $price = null;
+            if ($priceRaw !== null && $priceRaw !== '') {
+                $price = (float) $priceRaw;
+                if ($price < 0) {
+                    $errors[] = "Costo predefinito per '" . $allowed[$lookup] . "' non può essere negativo.";
+                    continue;
+                }
+            }
+
+            $priceMap[$lookup] = $price;
+        }
+
+        if ($errors) {
+            return ['success' => false, 'errors' => $errors];
+        }
+
+        $normalizedPricing = [];
+        foreach ($types as $type) {
+            $key = mb_strtolower($type, 'UTF-8');
+            $normalizedPricing[] = [
+                'name' => $type,
+                'price' => array_key_exists($key, $priceMap) ? $priceMap[$key] : null,
+            ];
+        }
+
+        try {
+            $stmt = $this->pdo->prepare('INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore) ON DUPLICATE KEY UPDATE valore = VALUES(valore)');
+            $stmt->execute([
+                ':chiave' => self::ACI_PRICING_KEY,
+                ':valore' => json_encode($normalizedPricing, JSON_UNESCAPED_UNICODE),
+            ]);
+
+            $this->logActivity($userId, 'Aggiornamento costi predefiniti ACI', ['count' => count($normalizedPricing)]);
+
+            return ['success' => true, 'errors' => [], 'pricing' => $normalizedPricing];
+        } catch (Throwable $exception) {
+            error_log('SettingsService::saveAciPricing - ' . $exception->getMessage());
+            return ['success' => false, 'errors' => ['Errore interno del server.']];
+        }
+    }
+
+    /**
+     * @return array<int, array{name: string, cost_reseller: float, cost_customer: float}>
+     */
+    public function getServicePricing(): array
+    {
+        try {
+            $stmt = $this->pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :chiave LIMIT 1');
+            $stmt->execute([':chiave' => self::SERVICE_PRICING_KEY]);
+            $value = $stmt->fetchColumn();
+
+            if ($value === false || $value === null || $value === '') {
+                return [];
+            }
+
+            $decoded = json_decode((string) $value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $pricing = [];
+                foreach ($decoded as $item) {
+                    if (is_array($item) && isset($item['name']) && isset($item['cost_reseller']) && isset($item['cost_customer'])) {
+                        $pricing[] = [
+                            'name' => trim((string) $item['name']),
+                            'cost_reseller' => (float) $item['cost_reseller'],
+                            'cost_customer' => (float) $item['cost_customer'],
+                        ];
+                    }
+                }
+                return $pricing;
+            }
+        } catch (Throwable $exception) {
+            error_log('SettingsService::getServicePricing - ' . $exception->getMessage());
+        }
+
+        return [];
+    }
+
+    /**
+     * @return array{default_vat: float, stock_alert_threshold: int, payment_methods: array<int, string>, default_payment_method: string, allow_negative_margin: bool}
+     */
+    public function getExpressModuleSettings(): array
+    {
+        $defaults = [
+            'default_vat' => 22.0,
+            'stock_alert_threshold' => 10,
+            'payment_methods' => ['Contanti', 'Carta', 'POS', 'Bonifico'],
+            'default_payment_method' => 'Contanti',
+            'allow_negative_margin' => false,
+        ];
+
+        try {
+            $stmt = $this->pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :chiave LIMIT 1');
+            $stmt->execute([':chiave' => self::EXPRESS_MODULE_SETTINGS_KEY]);
+            $value = $stmt->fetchColumn();
+
+            if ($value === false || $value === null || $value === '') {
+                return $defaults;
+            }
+
+            $decoded = json_decode((string) $value, true);
+            if (!is_array($decoded)) {
+                return $defaults;
+            }
+
+            $paymentMethods = [];
+            foreach (($decoded['payment_methods'] ?? []) as $method) {
+                $method = trim((string) $method);
+                if ($method !== '' && !in_array($method, $paymentMethods, true)) {
+                    $paymentMethods[] = $method;
+                }
+            }
+
+            if ($paymentMethods === []) {
+                $paymentMethods = $defaults['payment_methods'];
+            }
+
+            $settings = [
+                'default_vat' => isset($decoded['default_vat']) ? (float) $decoded['default_vat'] : $defaults['default_vat'],
+                'stock_alert_threshold' => isset($decoded['stock_alert_threshold']) ? max(1, (int) $decoded['stock_alert_threshold']) : $defaults['stock_alert_threshold'],
+                'payment_methods' => $paymentMethods,
+                'default_payment_method' => trim((string) ($decoded['default_payment_method'] ?? $defaults['default_payment_method'])),
+                'allow_negative_margin' => !empty($decoded['allow_negative_margin']),
+            ];
+
+            if (!in_array($settings['default_payment_method'], $paymentMethods, true)) {
+                $settings['default_payment_method'] = $paymentMethods[0];
+            }
+
+            return $settings;
+        } catch (Throwable $exception) {
+            error_log('SettingsService::getExpressModuleSettings - ' . $exception->getMessage());
+            return $defaults;
+        }
+    }
+
+    /**
+     * @param array{default_vat?: mixed, stock_alert_threshold?: mixed, payment_methods?: array<int, mixed>, default_payment_method?: mixed, allow_negative_margin?: mixed} $settings
+     * @return array{success: bool, errors: array<int, string>, settings?: array{default_vat: float, stock_alert_threshold: int, payment_methods: array<int, string>, default_payment_method: string, allow_negative_margin: bool}}
+     */
+    public function saveExpressModuleSettings(array $settings, int $userId): array
+    {
+        $errors = [];
+
+        $defaultVat = round((float) ($settings['default_vat'] ?? 22), 2);
+        if ($defaultVat < 0 || $defaultVat > 100) {
+            $errors[] = 'L\'aliquota IVA predefinita deve essere compresa tra 0 e 100.';
+        }
+
+        $threshold = (int) ($settings['stock_alert_threshold'] ?? 10);
+        if ($threshold < 1 || $threshold > 500) {
+            $errors[] = 'La soglia di alert magazzino deve essere compresa tra 1 e 500.';
+        }
+
+        $paymentMethods = [];
+        foreach (($settings['payment_methods'] ?? []) as $method) {
+            $method = trim((string) $method);
+            if ($method === '') {
+                continue;
+            }
+            if (mb_strlen($method, 'UTF-8') > 60) {
+                $errors[] = 'Un metodo di pagamento supera i 60 caratteri consentiti.';
+                continue;
+            }
+            if (!in_array($method, $paymentMethods, true)) {
+                $paymentMethods[] = $method;
+            }
+        }
+
+        if ($paymentMethods === []) {
+            $errors[] = 'Inserisci almeno un metodo di pagamento valido per il modulo Express.';
+        }
+
+        $defaultPaymentMethod = trim((string) ($settings['default_payment_method'] ?? ''));
+        if ($defaultPaymentMethod === '' && $paymentMethods !== []) {
+            $defaultPaymentMethod = $paymentMethods[0];
+        }
+        if ($defaultPaymentMethod !== '' && !in_array($defaultPaymentMethod, $paymentMethods, true)) {
+            $errors[] = 'Il metodo di pagamento predefinito deve essere incluso nell\'elenco dei metodi disponibili.';
+        }
+
+        if ($errors) {
+            return ['success' => false, 'errors' => $errors];
+        }
+
+        $normalized = [
+            'default_vat' => $defaultVat,
+            'stock_alert_threshold' => $threshold,
+            'payment_methods' => $paymentMethods,
+            'default_payment_method' => $defaultPaymentMethod,
+            'allow_negative_margin' => !empty($settings['allow_negative_margin']),
+        ];
+
+        try {
+            $stmt = $this->pdo->prepare('INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore) ON DUPLICATE KEY UPDATE valore = VALUES(valore)');
+            $stmt->execute([
+                ':chiave' => self::EXPRESS_MODULE_SETTINGS_KEY,
+                ':valore' => json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ]);
+
+            $this->logActivity($userId, 'Aggiornamento impostazioni modulo Express', [
+                'default_vat' => $normalized['default_vat'],
+                'stock_alert_threshold' => $normalized['stock_alert_threshold'],
+                'payment_methods_count' => count($normalized['payment_methods']),
+                'default_payment_method' => $normalized['default_payment_method'],
+                'allow_negative_margin' => $normalized['allow_negative_margin'],
+            ]);
+
+            return ['success' => true, 'errors' => [], 'settings' => $normalized];
+        } catch (Throwable $exception) {
+            error_log('SettingsService::saveExpressModuleSettings - ' . $exception->getMessage());
+            return ['success' => false, 'errors' => ['Errore interno del server.']];
+        }
+    }
+
+    /**
+     * @param array<int, array{name: string, cost_reseller: float, cost_customer: float}> $pricing
+     * @param int $userId
+     * @return array{success: bool, errors: array<int, string>, pricing?: array<int, array{name: string, cost_reseller: float, cost_customer: float}>}
+     */
+    public function saveServicePricing(array $pricing, int $userId): array
+    {
+        $errors = [];
+
+        // Validate input
+        $validatedPricing = [];
+        foreach ($pricing as $index => $item) {
+            if (!is_array($item)) {
+                $errors[] = "Elemento " . ($index + 1) . " non valido.";
+                continue;
+            }
+
+            $name = trim((string) ($item['name'] ?? ''));
+            $costReseller = (float) ($item['cost_reseller'] ?? 0);
+            $costCustomer = (float) ($item['cost_customer'] ?? 0);
+
+            if ($name === '') {
+                $errors[] = "Nome servizio/prodotto " . ($index + 1) . " non può essere vuoto.";
+                continue;
+            }
+
+            if ($costReseller < 0) {
+                $errors[] = "Costo al rivenditore per '" . $name . "' non può essere negativo.";
+                continue;
+            }
+
+            if ($costCustomer < 0) {
+                $errors[] = "Costo al cliente per '" . $name . "' non può essere negativo.";
+                continue;
+            }
+
+            $validatedPricing[] = [
+                'name' => $name,
+                'cost_reseller' => $costReseller,
+                'cost_customer' => $costCustomer,
+            ];
+        }
+
+        if ($errors) {
+            return ['success' => false, 'errors' => $errors];
+        }
+
+        try {
+            $this->pdo->beginTransaction();
+
+            // Save to database
+            $stmt = $this->pdo->prepare('INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore) ON DUPLICATE KEY UPDATE valore = VALUES(valore)');
+            $stmt->execute([
+                ':chiave' => self::SERVICE_PRICING_KEY,
+                ':valore' => json_encode($validatedPricing),
+            ]);
+
+            // Log activity
+            $this->logActivity($userId, 'Aggiornamento listini servizi e prodotti', ['count' => count($validatedPricing)]);
+
+            $this->pdo->commit();
+
+            return ['success' => true, 'pricing' => $validatedPricing];
+        } catch (Throwable $exception) {
+            $this->pdo->rollBack();
+            error_log('SettingsService::saveServicePricing - ' . $exception->getMessage());
+            return ['success' => false, 'errors' => ['Errore interno del server.']];
+        }
     }
 }

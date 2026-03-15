@@ -70,6 +70,29 @@ if (!function_exists('env')) {
     }
 }
 
+if (!function_exists('require_env')) {
+    /**
+     * Require a set of env keys to be present (non-empty), otherwise throw.
+     *
+     * @param array<int,string> $keys
+     * @throws RuntimeException
+     */
+    function require_env(array $keys): void
+    {
+        $missing = [];
+        foreach ($keys as $key) {
+            $value = env($key);
+            if ($value === null || $value === '') {
+                $missing[] = $key;
+            }
+        }
+
+        if ($missing !== []) {
+            throw new RuntimeException('Missing required environment variables: ' . implode(', ', $missing));
+        }
+    }
+}
+
 if (!function_exists('configure_timezone')) {
     function configure_timezone(): void
     {

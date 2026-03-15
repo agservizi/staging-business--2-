@@ -12,7 +12,7 @@ require_once __DIR__ . '/../../../includes/helpers.php';
 require_role('Admin', 'Operatore', 'Manager');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: create.php');
+    header('Location: ' . telegrammi_module_url('create'));
     exit;
 }
 
@@ -21,7 +21,7 @@ require_valid_csrf();
 $tokenValue = env('UFFICIO_POSTALE_TOKEN') ?? env('UFFICIO_POSTALE_SANDBOX_TOKEN') ?? '';
 if (trim((string) $tokenValue) === '') {
     add_flash('warning', 'Configura prima il token Ufficio Postale per inviare telegrammi.');
-    header('Location: create.php');
+    header('Location: ' . telegrammi_module_url('create'));
     exit;
 }
 
@@ -33,7 +33,7 @@ if ($clienteId !== null && $clienteId <= 0) {
 $prodotto = trim((string) ($_POST['prodotto'] ?? ''));
 if ($prodotto === '') {
     add_flash('danger', 'Specificare il prodotto da utilizzare.');
-    header('Location: create.php');
+    header('Location: ' . telegrammi_module_url('create'));
     exit;
 }
 
@@ -58,7 +58,7 @@ if (isset($_POST['mittente']) && is_array($_POST['mittente'])) {
 
     if ($mittenteNome === '' || $mittenteVia === '' || $mittenteCap === '' || $mittenteCitta === '' || $mittenteProvincia === '') {
         add_flash('danger', 'Compila tutti i campi obbligatori del mittente.');
-        header('Location: create.php');
+        header('Location: ' . telegrammi_module_url('create'));
         exit;
     }
 
@@ -88,14 +88,14 @@ if (isset($_POST['mittente']) && is_array($_POST['mittente'])) {
     $mittenteRaw = trim((string) ($_POST['mittente_json'] ?? ''));
     if ($mittenteRaw === '') {
         add_flash('danger', 'Fornisci i dati del mittente.');
-        header('Location: create.php');
+        header('Location: ' . telegrammi_module_url('create'));
         exit;
     }
 
     $decodedMittente = json_decode($mittenteRaw, true);
     if (!is_array($decodedMittente)) {
         add_flash('danger', 'Il campo "Mittente" deve contenere un JSON valido.');
-        header('Location: create.php');
+        header('Location: ' . telegrammi_module_url('create'));
         exit;
     }
     $mittente = $decodedMittente;
@@ -130,7 +130,7 @@ if (isset($_POST['destinatari']) && is_array($_POST['destinatari'])) {
 
         if ($nome === '' || $via === '' || $cap === '' || $citta === '' || $provincia === '') {
             add_flash('danger', 'Completa i dati del destinatario #' . ((int) $index + 1) . '.');
-            header('Location: create.php');
+            header('Location: ' . telegrammi_module_url('create'));
             exit;
         }
 
@@ -163,21 +163,21 @@ if (isset($_POST['destinatari']) && is_array($_POST['destinatari'])) {
 
     if (!$destinatari) {
         add_flash('danger', 'Inserisci almeno un destinatario completo.');
-        header('Location: create.php');
+        header('Location: ' . telegrammi_module_url('create'));
         exit;
     }
 } else {
     $destinatariRaw = trim((string) ($_POST['destinatari_json'] ?? ''));
     if ($destinatariRaw === '') {
         add_flash('danger', 'Fornisci almeno un destinatario.');
-        header('Location: create.php');
+        header('Location: ' . telegrammi_module_url('create'));
         exit;
     }
 
     $decodedDestinatari = json_decode($destinatariRaw, true);
     if (!is_array($decodedDestinatari)) {
         add_flash('danger', 'Il campo "Destinatari" deve contenere un JSON valido.');
-        header('Location: create.php');
+        header('Location: ' . telegrammi_module_url('create'));
         exit;
     }
     $destinatari = $decodedDestinatari;
@@ -192,7 +192,7 @@ if ($opzioniRaw !== '') {
     $opzioni = json_decode($opzioniRaw, true);
     if ($opzioni === null || !is_array($opzioni)) {
         add_flash('danger', 'Il campo "Opzioni" deve contenere un JSON valido.');
-        header('Location: create.php');
+        header('Location: ' . telegrammi_module_url('create'));
         exit;
     }
 }
@@ -202,7 +202,7 @@ if ($callbackRaw !== '') {
     $callback = json_decode($callbackRaw, true);
     if ($callback === null || !is_array($callback)) {
         add_flash('danger', 'Il campo "Callback" deve contenere un JSON valido.');
-        header('Location: create.php');
+        header('Location: ' . telegrammi_module_url('create'));
         exit;
     }
 }
@@ -212,7 +212,7 @@ if ($extraRaw !== '') {
     $extra = json_decode($extraRaw, true);
     if ($extra === null || !is_array($extra)) {
         add_flash('danger', 'Il payload aggiuntivo deve contenere un JSON valido.');
-        header('Location: create.php');
+        header('Location: ' . telegrammi_module_url('create'));
         exit;
     }
 }
@@ -221,7 +221,7 @@ $documentoLines = preg_split('/\R{2,}/', str_replace(["\r\n", "\r"], "\n", $docu
 $documentoSegments = array_values(array_filter(array_map('trim', $documentoLines), static fn ($line) => $line !== ''));
 if (!$documentoSegments) {
     add_flash('danger', 'Inserire il testo da inviare nel telegramma.');
-    header('Location: create.php');
+        header('Location: ' . telegrammi_module_url('create'));
     exit;
 }
 
@@ -277,17 +277,17 @@ try {
 
     if ($record === null) {
         add_flash('warning', 'Telegramma inviato ma non è stato possibile salvare il dettaglio localmente.');
-        header('Location: index.php');
+        header('Location: ' . telegrammi_module_url('index'));
         exit;
     }
 
     $telegrammaId = (string) ($record['telegramma_id'] ?? '');
     add_flash('success', 'Telegramma inviato correttamente. ID: ' . $telegrammaId);
-    header('Location: view.php?id=' . urlencode($telegrammaId));
+    header('Location: ' . telegrammi_module_url('view', ['id' => $telegrammaId]));
     exit;
 } catch (Throwable $exception) {
     error_log('Telegrammi store error: ' . $exception->getMessage());
     add_flash('danger', 'Impossibile inviare il telegramma: ' . $exception->getMessage());
-    header('Location: create.php');
+    header('Location: ' . telegrammi_module_url('create'));
     exit;
 }

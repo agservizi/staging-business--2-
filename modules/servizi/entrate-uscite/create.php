@@ -3,6 +3,7 @@ use App\Services\SettingsService;
 require_once __DIR__ . '/../../../includes/auth.php';
 require_once __DIR__ . '/../../../includes/db_connect.php';
 require_once __DIR__ . '/../../../includes/helpers.php';
+require_once __DIR__ . '/../../../includes/notifications.php';
 
 require_role('Admin', 'Operatore', 'Manager');
 $pageTitle = 'Nuovo movimento';
@@ -14,6 +15,7 @@ $tipiMovimento = ['Entrata', 'Uscita'];
 $projectRoot = realpath(__DIR__ . '/../../../') ?: __DIR__ . '/../../../';
 $settingsService = new SettingsService($pdo, $projectRoot);
 $storedDescriptions = $settingsService->getMovementDescriptions();
+$servicePricing = $settingsService->getServicePricing();
 $clientsStmt = $pdo->query('SELECT id, nome, cognome, ragione_sociale FROM clienti ORDER BY ragione_sociale, cognome, nome');
 $clients = $clientsStmt ? $clientsStmt->fetchAll() : [];
 $fallbackDescriptions = [
@@ -25,6 +27,8 @@ $movementPresets = [
 	'Entrata' => !empty($storedDescriptions['entrate']) ? $storedDescriptions['entrate'] : $fallbackDescriptions['Entrata'],
 	'Uscita' => !empty($storedDescriptions['uscite']) ? $storedDescriptions['uscite'] : $fallbackDescriptions['Uscita'],
 ];
+$currentMovementDate = new DateTimeImmutable('today');
+$currentMovementDateDisplay = $currentMovementDate->format('d/m/Y');
 
 foreach ($movementPresets as $key => $values) {
 	$movementPresets[$key] = array_values(array_unique(array_map('trim', $values)));
@@ -37,15 +41,20 @@ $data = [
 	'descrizione_option' => '',
 	'descrizione_custom' => '',
 	'riferimento' => '',
-	'metodo' => 'Bonifico',
+	'metodo' => 'Contanti',
 	'stato' => 'In lavorazione',
 	'tipo_movimento' => 'Entrata',
 	'quantita' => '1',
 	'prezzo_unitario' => '0.01',
 	'importo' => '0.01',
 	'data_scadenza' => '',
-	'data_pagamento' => date('d/m/Y'),
+	'data_pagamento' => $currentMovementDateDisplay,
 	'note' => '',
+	'service_pricing_id' => '',
+	'listino_voce' => '',
+	'listino_costo_rivenditore' => '',
+	'listino_costo_cliente' => '',
+	'listino_margine' => '',
 ];
 
 $clienteId = null;
@@ -72,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	foreach ($fields as $field) {
 		$data[$field] = trim($_POST[$field] ?? '');
 	}
+	$data['data_pagamento'] = $currentMovementDateDisplay;
 
 		$clienteId = null;
 		if ($data['cliente_id'] === '') {
@@ -93,6 +103,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 	$data['quantita'] = trim($_POST['quantita'] ?? '1');
 	$data['prezzo_unitario'] = trim($_POST['prezzo_unitario'] ?? '');
+	$data['service_pricing_id'] = trim($_POST['service_pricing_id'] ?? '');
+	$selectedPricing = null;
+	if ($data['service_pricing_id'] !== '') {
+		$pricingIndex = (int) $data['service_pricing_id'];
+		if (!array_key_exists($pricingIndex, $servicePricing)) {
+			$errors[] = 'Il listino selezionato non è valido.';
+		} else {
+			$selectedPricing = $servicePricing[$pricingIndex];
+			$data['listino_voce'] = (string) ($selectedPricing['name'] ?? '');
+			$data['listino_costo_rivenditore'] = number_format((float) ($selectedPricing['cost_reseller'] ?? 0), 2, '.', '');
+			$data['listino_costo_cliente'] = number_format((float) ($selectedPricing['cost_customer'] ?? 0), 2, '.', '');
+		}
+	} else {
+		$data['listino_voce'] = '';
+		$data['listino_costo_rivenditore'] = '';
+		$data['listino_costo_cliente'] = '';
+	}
 
 	$selectedDescription = trim($_POST['descrizione_select'] ?? '');
 	$customDescription = trim($_POST['descrizione_custom'] ?? '');
@@ -156,6 +183,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		}
 	}
 
+	$listinoMargineValue = null;
+	if ($selectedPricing && $quantityValue !== null && $unitPriceValue !== null) {
+		$listinoCostReseller = (float) ($selectedPricing['cost_reseller'] ?? 0);
+		if ($data['tipo_movimento'] === 'Entrata') {
+			$listinoMargineValue = ($unitPriceValue - $listinoCostReseller) * $quantityValue;
+		}
+	}
+	$data['listino_margine'] = $listinoMargineValue !== null ? number_format($listinoMargineValue, 2, '.', '') : '';
+
 	if (!$errors) {
 		$data['quantita'] = (string) $quantityValue;
 		$data['prezzo_unitario'] = number_format($unitPriceValue, 2, '.', '');
@@ -177,17 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		}
 	}
 
-	$pagamentoForDb = null;
-	if ($data['data_pagamento'] === '') {
-		$errors[] = 'Specifica la data in cui stai registrando il movimento.';
-	} else {
-		$pagamentoDate = DateTimeImmutable::createFromFormat('d/m/Y', $data['data_pagamento']);
-		if (!$pagamentoDate || $pagamentoDate->format('d/m/Y') !== $data['data_pagamento']) {
-			$errors[] = 'La data del movimento non è valida (usa il formato gg/mm/aaaa).';
-		} else {
-			$pagamentoForDb = $pagamentoDate->format('Y-m-d');
-		}
-	}
+	$pagamentoForDb = $currentMovementDate->format('Y-m-d');
 
 	$uploadPath = null;
 	$uploadHash = null;
@@ -219,6 +245,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$stmt = $pdo->prepare('INSERT INTO entrate_uscite (
 			cliente_id,
 			descrizione,
+			listino_voce,
+			listino_costo_rivenditore,
+			listino_costo_cliente,
+			listino_margine,
 			riferimento,
 			metodo,
 			stato,
@@ -236,6 +266,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		) VALUES (
 			:cliente_id,
 			:descrizione,
+			:listino_voce,
+			:listino_costo_rivenditore,
+			:listino_costo_cliente,
+			:listino_margine,
 			:riferimento,
 			:metodo,
 			:stato,
@@ -254,6 +288,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$stmt->execute([
 			':cliente_id' => $clienteId,
 			':descrizione' => $data['descrizione'],
+			':listino_voce' => $data['listino_voce'] ?: null,
+			':listino_costo_rivenditore' => $data['listino_costo_rivenditore'] !== '' ? $data['listino_costo_rivenditore'] : null,
+			':listino_costo_cliente' => $data['listino_costo_cliente'] !== '' ? $data['listino_costo_cliente'] : null,
+			':listino_margine' => $data['listino_margine'] !== '' ? $data['listino_margine'] : null,
 			':riferimento' => $data['riferimento'] ?: null,
 			':metodo' => $data['metodo'],
 			':stato' => $data['stato'],
@@ -270,7 +308,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 		$paymentId = (int) $pdo->lastInsertId();
 		add_flash('success', 'Movimento registrato correttamente.');
-		header('Location: view.php?id=' . $paymentId);
+		$actorRole = (string) ($_SESSION['role'] ?? '');
+		$actorId = (int) ($_SESSION['user_id'] ?? 0);
+		$notification = [
+			'type' => 'success',
+			'title' => 'Nuovo movimento',
+			'message' => sprintf('Creato movimento #%d (%s).', $paymentId, $data['tipo_movimento']),
+			'metadata' => [
+				'entity' => 'entrate_uscite',
+				'id' => $paymentId,
+				'action' => 'create',
+			],
+		];
+		foreach (['Admin', 'Manager'] as $notifyRole) {
+			create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
+		}
+		header('Location: ' . entrate_uscite_module_url('view', ['id' => $paymentId]));
 		exit;
 	}
 }
@@ -280,11 +333,39 @@ $csrfToken = csrf_token();
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
+<style>
+	.attachment-dropzone {
+		border: 2px dashed var(--bs-border-color, #ced4da);
+		border-radius: 0.75rem;
+		padding: 1.25rem;
+		text-align: center;
+		cursor: pointer;
+		transition: border-color 0.2s ease, background-color 0.2s ease;
+	}
+	.attachment-dropzone .attachment-dropzone-icon {
+		font-size: 1.75rem;
+		color: var(--bs-warning, #ffc107);
+	}
+	.attachment-dropzone.is-dragover {
+		border-color: var(--bs-warning, #ffc107);
+		background-color: rgba(255, 193, 7, 0.1);
+	}
+	.attachment-dropzone.is-uploading {
+		border-color: var(--bs-warning, #ffc107);
+		background-color: rgba(255, 193, 7, 0.08);
+	}
+	.attachment-dropzone-status {
+		min-height: 1.25rem;
+		margin-top: 0.5rem;
+		font-size: 0.85rem;
+	}
+</style>
+</style>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
 	<?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
 	<main class="content-wrapper">
 		<div class="mb-4">
-			<a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Tutti i movimenti</a>
+			<a class="btn btn-outline-warning" href="<?php echo entrate_uscite_module_url('index'); ?>"><i class="fa-solid fa-arrow-left"></i> Tutti i movimenti</a>
 		</div>
 		<div class="card ag-card">
 			<div class="card-header bg-transparent border-0">
@@ -353,6 +434,49 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 										<label class="form-label" for="riferimento">Riferimento</label>
 										<input class="form-control" id="riferimento" name="riferimento" value="<?php echo sanitize_output($data['riferimento']); ?>" maxlength="80" placeholder="Es. FATT-2025-001">
 									</div>
+									<div class="col-12">
+										<label class="form-label" for="service_pricing_id">Servizio/Prodotto dal listino (opzionale)</label>
+										<select class="form-select" id="service_pricing_id" name="service_pricing_id">
+											<option value="">Seleziona dal listino</option>
+											<?php foreach ($servicePricing as $index => $item): ?>
+												<?php
+													$resellerValue = number_format((float) ($item['cost_reseller'] ?? 0), 2, '.', '');
+													$customerValue = number_format((float) ($item['cost_customer'] ?? 0), 2, '.', '');
+												?>
+												<option value="<?php echo (int) $index; ?>"
+													data-name="<?php echo sanitize_output($item['name'] ?? ''); ?>"
+													data-cost-reseller="<?php echo sanitize_output($resellerValue); ?>"
+													data-cost-customer="<?php echo sanitize_output($customerValue); ?>"
+													<?php echo (string) $index === $data['service_pricing_id'] ? 'selected' : ''; ?>>
+													<?php echo sanitize_output($item['name'] ?? ''); ?> (Rivenditore: €<?php echo number_format((float) ($item['cost_reseller'] ?? 0), 2); ?>, Cliente: €<?php echo number_format((float) ($item['cost_customer'] ?? 0), 2); ?>)
+												</option>
+											<?php endforeach; ?>
+										</select>
+										<small class="text-muted">Selezionando, popola automaticamente descrizione e prezzo. Configura i listini in Impostazioni &gt; Listini.</small>
+										<div class="row g-3 mt-1" id="listinoSummary">
+											<div class="col-md-4">
+												<label class="form-label" for="listino_cost_reseller_display">Costo al rivenditore</label>
+												<div class="input-group">
+													<span class="input-group-text">€</span>
+													<input class="form-control" id="listino_cost_reseller_display" type="text" value="<?php echo $data['listino_costo_rivenditore'] !== '' ? sanitize_output($data['listino_costo_rivenditore']) : '0.00'; ?>" readonly>
+												</div>
+											</div>
+											<div class="col-md-4">
+												<label class="form-label" for="listino_cost_customer_display">Costo al cliente</label>
+												<div class="input-group">
+													<span class="input-group-text">€</span>
+													<input class="form-control" id="listino_cost_customer_display" type="text" value="<?php echo $data['listino_costo_cliente'] !== '' ? sanitize_output($data['listino_costo_cliente']) : '0.00'; ?>" readonly>
+												</div>
+											</div>
+											<div class="col-md-4">
+												<label class="form-label" for="listino_margin_display">Margine stimato</label>
+												<div class="input-group">
+													<span class="input-group-text">€</span>
+													<input class="form-control" id="listino_margin_display" type="text" value="<?php echo $data['listino_margine'] !== '' ? sanitize_output($data['listino_margine']) : '0.00'; ?>" readonly>
+												</div>
+											</div>
+										</div>
+									</div>
 									<div class="col-sm-6">
 										<label class="form-label" for="metodo">Metodo</label>
 										<select class="form-select" id="metodo" name="metodo">
@@ -406,7 +530,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 								<div class="row g-3">
 									<div class="col-12">
 										<label class="form-label" for="data_pagamento">Data movimento</label>
-										<input class="form-control" id="data_pagamento" name="data_pagamento" type="text" inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}" placeholder="gg/mm/aaaa" value="<?php echo sanitize_output((string) $data['data_pagamento']); ?>" required>
+										<input class="form-control" id="data_pagamento" name="data_pagamento" type="text" value="<?php echo sanitize_output((string) $data['data_pagamento']); ?>" readonly>
+										<small class="text-muted">Impostata automaticamente alla data odierna.</small>
 										<small class="text-muted">Imposta la giornata di registrazione nel formato gg/mm/aaaa.</small>
 									</div>
 									<div class="col-12">
@@ -416,7 +541,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 									</div>
 									<div class="col-12">
 										<label class="form-label" for="allegato">Allegato (opzionale)</label>
-										<input class="form-control" id="allegato" name="allegato" type="file" accept="application/pdf,image/*">
+										<div class="attachment-dropzone" id="attachmentDropzoneCreate">
+											<div class="attachment-dropzone-icon mb-2"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+											<p class="mb-1">Trascina qui il file oppure</p>
+											<button class="btn btn-sm btn-outline-warning" type="button" data-action="browse">Scegli file</button>
+											<p class="text-muted small mb-0" data-role="filename">Nessun file selezionato</p>
+											<div class="attachment-dropzone-status text-muted" data-role="status" aria-live="polite"></div>
+										</div>
+										<input class="form-control mt-2" id="allegato" name="allegato" type="file" accept="application/pdf,image/*">
 										<small class="text-muted">Allega un PDF o un'immagine (es. distinta d'incasso o giustificativo).</small>
 									</div>
 								</div>
@@ -430,7 +562,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 						</div>
 					</div>
 					<div class="col-12 d-flex justify-content-end gap-2">
-						<a class="btn btn-secondary" href="index.php">Annulla</a>
+						<a class="btn btn-secondary" href="<?php echo entrate_uscite_module_url('index'); ?>">Annulla</a>
 						<button class="btn btn-warning text-dark" type="submit">Salva movimento</button>
 					</div>
 				</form>
@@ -445,6 +577,124 @@ document.addEventListener('DOMContentLoaded', function () {
 	const tipoSelect = document.getElementById('tipo_movimento');
 	const descrSelect = document.getElementById('descrizione_select');
 	const descrCustom = document.getElementById('descrizione_custom');
+	const initAttachmentDropzone = (dropzoneId, inputId) => {
+		const dropzone = document.getElementById(dropzoneId);
+		const fileInput = document.getElementById(inputId);
+		if (!dropzone || !fileInput) {
+			return;
+		}
+
+		const browseButton = dropzone.querySelector('[data-action="browse"]');
+		const filenameLabel = dropzone.querySelector('[data-role="filename"]');
+		const statusIndicator = dropzone.querySelector('[data-role="status"]');
+		let statusTimer = null;
+		const setStatus = (state) => {
+			if (!statusIndicator) {
+				return;
+			}
+			if (statusTimer) {
+				clearTimeout(statusTimer);
+				statusTimer = null;
+			}
+			if (state === 'loading') {
+				dropzone.classList.add('is-uploading');
+				statusIndicator.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin me-1"></i>Caricamento…';
+				statusIndicator.classList.remove('text-success');
+			} else if (state === 'success') {
+				dropzone.classList.remove('is-uploading');
+				statusIndicator.innerHTML = '<i class="fa-solid fa-check me-1 text-success"></i>File pronto';
+				statusIndicator.classList.add('text-success');
+				statusTimer = setTimeout(() => {
+					statusIndicator.textContent = '';
+					statusIndicator.classList.remove('text-success');
+				}, 2000);
+			} else {
+				dropzone.classList.remove('is-uploading');
+				statusIndicator.textContent = '';
+				statusIndicator.classList.remove('text-success');
+			}
+		};
+		setStatus(null);
+		const updateFileName = (file) => {
+			if (!filenameLabel) {
+				return;
+			}
+			filenameLabel.textContent = file ? file.name : 'Nessun file selezionato';
+			if (file) {
+				setStatus('success');
+			} else {
+				setStatus(null);
+			}
+		};
+		const openPicker = () => {
+			fileInput.click();
+		};
+
+		const preventDefaults = (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+		};
+
+		['dragenter', 'dragover'].forEach((eventName) => {
+			dropzone.addEventListener(eventName, (event) => {
+				preventDefaults(event);
+				dropzone.classList.add('is-dragover');
+			});
+		});
+
+		['dragleave', 'dragend'].forEach((eventName) => {
+			dropzone.addEventListener(eventName, (event) => {
+				preventDefaults(event);
+				dropzone.classList.remove('is-dragover');
+			});
+		});
+
+		dropzone.addEventListener('drop', (event) => {
+			preventDefaults(event);
+			dropzone.classList.remove('is-dragover');
+			setStatus('loading');
+			const files = event.dataTransfer ? event.dataTransfer.files : null;
+			if (files && files.length) {
+				const file = files[0];
+				if (typeof DataTransfer !== 'undefined') {
+					const dataTransfer = new DataTransfer();
+					dataTransfer.items.add(file);
+					fileInput.files = dataTransfer.files;
+				} else {
+					fileInput.files = files;
+				}
+				fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+				updateFileName(file);
+					if (fileInput.files && fileInput.files.length) {
+						setStatus('loading');
+					}
+			}
+		});
+
+		dropzone.addEventListener('click', (event) => {
+			if (browseButton && browseButton.contains(event.target)) {
+				event.preventDefault();
+			}
+			openPicker();
+		});
+
+		if (browseButton) {
+			browseButton.addEventListener('click', (event) => {
+				event.preventDefault();
+				openPicker();
+			});
+		}
+
+		fileInput.addEventListener('change', () => {
+			const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+			updateFileName(file);
+		});
+
+		updateFileName(fileInput.files && fileInput.files[0] ? fileInput.files[0] : null);
+		fileInput.classList.add('visually-hidden');
+		fileInput.classList.remove('form-control');
+		fileInput.classList.remove('mt-2');
+	};
 
 	if (!tipoSelect || !descrSelect || !descrCustom) {
 		return;
@@ -511,6 +761,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	tipoSelect.addEventListener('change', () => {
 		populateOptions(tipoSelect.value);
+		applyServicePricingSelection();
 	});
 
 	descrSelect.addEventListener('change', () => {
@@ -520,8 +771,27 @@ document.addEventListener('DOMContentLoaded', function () {
 	const quantityInput = document.getElementById('quantita');
 	const unitPriceInput = document.getElementById('prezzo_unitario');
 	const totalInput = document.getElementById('totale_calcolato');
+	const listinoResellerField = document.getElementById('listino_cost_reseller_display');
+	const listinoCustomerField = document.getElementById('listino_cost_customer_display');
+	const listinoMarginField = document.getElementById('listino_margin_display');
 
 	const formatTotal = (value) => value.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+	const updateMarginDisplay = () => {
+		if (!listinoMarginField || !quantityInput || !unitPriceInput || !tipoSelect) {
+			return;
+		}
+		const resellerValue = listinoResellerField ? parseFloat(listinoResellerField.value.replace(',', '.')) || 0 : 0;
+		const quantity = parseInt(quantityInput.value, 10);
+		const unitPrice = parseFloat(unitPriceInput.value);
+		const safeQuantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
+		const safeUnitPrice = Number.isFinite(unitPrice) && unitPrice >= 0 ? unitPrice : 0;
+		let margin = 0;
+		if (tipoSelect.value === 'Entrata' && resellerValue > 0 && safeQuantity > 0) {
+			margin = (safeUnitPrice - resellerValue) * safeQuantity;
+		}
+		listinoMarginField.value = margin.toFixed(2);
+	};
 
 	const recalcTotal = () => {
 		if (!quantityInput || !unitPriceInput || !totalInput) {
@@ -533,6 +803,7 @@ document.addEventListener('DOMContentLoaded', function () {
 		const safeUnitPrice = Number.isFinite(unitPrice) && unitPrice >= 0 ? unitPrice : 0;
 		const total = safeQuantity * safeUnitPrice;
 		totalInput.value = formatTotal(total);
+		updateMarginDisplay();
 	};
 
 	if (quantityInput) {
@@ -546,8 +817,67 @@ document.addEventListener('DOMContentLoaded', function () {
 		lastCustomValue = descrCustom.value;
 	});
 
+	// Service Pricing Integration
+	const servicePricingSelect = document.getElementById('service_pricing_id');
+	function applyServicePricingSelection() {
+		if (!servicePricingSelect) {
+			return;
+		}
+		const selectedIndex = servicePricingSelect.selectedIndex;
+		if (selectedIndex < 0) {
+			return;
+		}
+		const option = servicePricingSelect.options[selectedIndex];
+		if (!option || option.value === '') {
+			if (listinoResellerField) {
+				listinoResellerField.value = '0.00';
+			}
+			if (listinoCustomerField) {
+				listinoCustomerField.value = '0.00';
+			}
+			if (listinoMarginField) {
+				listinoMarginField.value = '0.00';
+			}
+			return;
+		}
+
+		const name = option.getAttribute('data-name') || '';
+		const costReseller = parseFloat(option.getAttribute('data-cost-reseller') || '0') || 0;
+		const costCustomer = parseFloat(option.getAttribute('data-cost-customer') || '0') || 0;
+
+		if (name && descrSelect) {
+			descrSelect.value = '__custom__';
+			descrCustom.value = name;
+			lastCustomValue = name;
+			applyCustomVisibility();
+		}
+
+		if (listinoResellerField) {
+			listinoResellerField.value = costReseller.toFixed(2);
+		}
+		if (listinoCustomerField) {
+			listinoCustomerField.value = costCustomer.toFixed(2);
+		}
+
+		if (unitPriceInput) {
+			const isEntrata = tipoSelect ? tipoSelect.value === 'Entrata' : true;
+			const price = isEntrata ? costCustomer : costReseller;
+			const normalizedPrice = Number.isFinite(price) ? price : 0;
+			unitPriceInput.value = normalizedPrice.toFixed(2);
+			recalcTotal();
+		}
+
+		updateMarginDisplay();
+	}
+
+	if (servicePricingSelect) {
+		servicePricingSelect.addEventListener('change', applyServicePricingSelection);
+	}
+
 	recalcTotal();
 	populateOptions(tipoSelect.value);
+	applyServicePricingSelection();
+	initAttachmentDropzone('attachmentDropzoneCreate', 'allegato');
 });
 </script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

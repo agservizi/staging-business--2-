@@ -20,6 +20,9 @@ $csrfToken = csrf_token();
 
 $maxAttempts = 5;
 $lockSeconds = 300;
+$rateLimitWindowMinutes = 15;
+$ipRateLimit = 15;
+$userRateLimit = 10;
 $lockedUntil = $_SESSION['login_locked_until'] ?? 0;
 
 $errors = [];
@@ -48,6 +51,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
     $rememberRequested = $remember;
     $ipAddress = request_ip();
     $userAgent = request_user_agent();
+    $windowStart = (new DateTimeImmutable('-' . $rateLimitWindowMinutes . ' minutes'))->format('Y-m-d H:i:s');
+
+    // Simple rate limiting on failed logins by IP and username over a sliding window
+    if ($ipAddress) {
+        $ipAttemptsStmt = $pdo->prepare('SELECT COUNT(*) FROM login_audit WHERE ip_address = :ip AND success = 0 AND created_at >= :window_start');
+        $ipAttemptsStmt->execute([':ip' => $ipAddress, ':window_start' => $windowStart]);
+        $recentIpFailures = (int) $ipAttemptsStmt->fetchColumn();
+        if ($recentIpFailures >= $ipRateLimit) {
+            $errors[] = 'Troppe richieste da questo indirizzo. Riprova tra qualche minuto.';
+            $auditLogger->logLoginAttempt(null, $username, false, $ipAddress, $userAgent, 'rate_limited_ip');
+        }
+    }
+    if ($errors === [] && $username !== '') {
+        $userAttemptsStmt = $pdo->prepare('SELECT COUNT(*) FROM login_audit WHERE username = :username AND success = 0 AND created_at >= :window_start');
+        $userAttemptsStmt->execute([':username' => $username, ':window_start' => $windowStart]);
+        $recentUserFailures = (int) $userAttemptsStmt->fetchColumn();
+        if ($recentUserFailures >= $userRateLimit) {
+            $errors[] = 'Troppe richieste per questo account. Riprova tra qualche minuto.';
+            $auditLogger->logLoginAttempt(null, $username, false, $ipAddress, $userAgent, 'rate_limited_user');
+        }
+    }
 
     if ($username === '' || $password === '') {
         $errors[] = 'Inserisci username e password.';
@@ -83,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                 $_SESSION['mfa_challenge'] = array_merge($pendingLogin, [
                     'expires_at' => time() + 300,
                 ]);
-                header('Location: mfa-verify.php');
+                header('Location: ' . mfa_verify_url());
                 exit;
             }
 
@@ -92,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                 'expires_at' => time() + 900,
             ]);
 
-            header('Location: mfa-setup.php');
+            header('Location: ' . mfa_setup_url());
             exit;
         }
     }
@@ -107,11 +131,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
     <link href="<?php echo asset('assets/vendor/bootstrap/css/bootstrap.min.css'); ?>" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" referrerpolicy="no-referrer" />
     <link href="<?php echo asset('assets/css/custom.css'); ?>" rel="stylesheet">
+    <link href="<?php echo asset('assets/css/cookie-consent.css'); ?>" rel="stylesheet">
+    <script src="<?php echo asset('assets/js/cookie-consent.js'); ?>" defer></script>
 </head>
 <body class="login-body" data-bs-theme="light">
-    <main class="login-shell">
-        <div class="row g-0">
-            <div class="col-md-5 login-side-brand d-flex flex-column justify-content-between">
+    <main class="auth-layout login-shell">
+        <div class="auth-grid">
+            <section class="auth-panel auth-panel-brand login-side-brand">
                 <div>
                     <span class="badge rounded-pill px-3 py-2 mb-4">Coresuite Business</span>
                     <h1 class="display-6 fw-semibold mb-3">Connessioni più smart, decisioni più rapide.</h1>
@@ -122,52 +148,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                         <li><i class="fa-solid fa-shield-halved"></i><span>Sicurezza enterprise con audit completo</span></li>
                     </ul>
                 </div>
-                <div class="login-meta">
+                <div class="login-meta auth-meta">
                     &copy; <?php echo date('Y'); ?> Coresuite Business
                 </div>
-            </div>
-            <div class="col-md-7 login-form-area">
-                <div class="mb-4 text-center text-md-start">
-                    <h2 class="h4 fw-semibold mb-2">Accedi al tuo workspace</h2>
-                    <p class="login-meta mb-0">Hai bisogno di assistenza? <a class="link-warning text-decoration-none" href="forgot_password.php">Recupera l'accesso</a>.</p>
+            </section>
+            <section class="auth-panel auth-panel-form login-form-area">
+                <div class="auth-panel-inner">
+                    <div class="mb-4 text-center text-md-start">
+                        <h2 class="h4 fw-semibold mb-2">Accedi al tuo workspace</h2>
+                        <p class="login-meta mb-1">Hai bisogno di assistenza? <a class="link-warning text-decoration-none" href="<?php echo forgot_password_url(); ?>">Recupera l'accesso</a>.</p>
+                        <p class="login-meta mb-0">Sei un nuovo collaboratore? <a class="link-warning text-decoration-none" href="<?php echo opportunities_collaborator_url('register'); ?>">Registrati qui</a>.</p>
+                    </div>
+                    <?php if ($errors): ?>
+                        <div class="alert alert-danger border-0 shadow-sm mb-4" role="alert">
+                            <?php echo implode('<br>', array_map('htmlspecialchars', $errors)); ?>
+                        </div>
+                    <?php endif; ?>
+                    <form method="post" novalidate>
+                        <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                        <div class="mb-4">
+                            <label for="username" class="form-label">Username</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                                <input type="text" class="form-control" id="username" name="username" required autocomplete="username" placeholder="es. nome.cognome">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password" placeholder="••••••••">
+                                <button class="btn btn-outline-warning" type="button" id="togglePassword" aria-label="Mostra password"><i class="fa-solid fa-eye"></i></button>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-center mb-5">
+                            <div class="form-check m-0">
+                                <input class="form-check-input" type="checkbox" value="1" id="rememberMe" name="remember"<?php echo $rememberRequested ? ' checked' : ''; ?>>
+                                <label class="form-check-label" for="rememberMe">Mantieni l'accesso su questo dispositivo</label>
+                            </div>
+                            <a class="link-warning text-decoration-none" href="<?php echo forgot_password_url(); ?>">Hai dimenticato la password?</a>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-warning fw-semibold">Entra in Coresuite Business</button>
+                        </div>
+                        <div class="d-grid mt-3">
+                            <a class="btn btn-outline-warning" href="<?php echo opportunities_collaborator_url('register'); ?>">Sei un nuovo collaboratore? Registrati</a>
+                        </div>
+                    </form>
+                    <div class="login-meta mt-5">
+                        Accesso riservato al personale autorizzato. Ogni attività viene registrata per motivi di sicurezza e compliance.
+                    </div>
                 </div>
-                <?php if ($errors): ?>
-                    <div class="alert alert-danger border-0 shadow-sm mb-4" role="alert">
-                        <?php echo implode('<br>', array_map('htmlspecialchars', $errors)); ?>
-                    </div>
-                <?php endif; ?>
-                <form method="post" novalidate>
-                    <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-                    <div class="mb-4">
-                        <label for="username" class="form-label">Username</label>
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
-                            <input type="text" class="form-control" id="username" name="username" required autocomplete="username" placeholder="es. nome.cognome">
-                        </div>
-                    </div>
-                    <div class="mb-4">
-                        <label for="password" class="form-label">Password</label>
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
-                            <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password" placeholder="••••••••">
-                            <button class="btn btn-outline-warning" type="button" id="togglePassword" aria-label="Mostra password"><i class="fa-solid fa-eye"></i></button>
-                        </div>
-                    </div>
-                    <div class="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-center mb-5">
-                        <div class="form-check m-0">
-                            <input class="form-check-input" type="checkbox" value="1" id="rememberMe" name="remember"<?php echo $rememberRequested ? ' checked' : ''; ?>>
-                            <label class="form-check-label" for="rememberMe">Mantieni l'accesso su questo dispositivo</label>
-                        </div>
-                        <a class="link-warning text-decoration-none" href="forgot_password.php">Hai dimenticato la password?</a>
-                    </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-warning fw-semibold">Entra in Coresuite Business</button>
-                    </div>
-                </form>
-                <div class="login-meta mt-5">
-                    Accesso riservato al personale autorizzato. Ogni attività viene registrata per motivi di sicurezza e compliance.
-                </div>
-            </div>
+            </section>
         </div>
     </main>
     <script src="<?php echo asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js'); ?>"></script>

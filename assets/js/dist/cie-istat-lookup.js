@@ -1,0 +1,37 @@
+(function(){const c=window.CIEIstatLookupConfig||{},y=typeof c.datasetUrl=="string"&&c.datasetUrl!==""?c.datasetUrl:"https://raw.githubusercontent.com/matteocontrini/comuni-json/master/comuni.json",I=typeof c.fallbackUrl=="string"&&c.fallbackUrl!==""&&c.fallbackUrl!==y?c.fallbackUrl:null,M=Number(c.maxResults)||12,z=Number(c.minChars)||2,U=Number(c.debounceMs)||160,u=window.CIEIstatLookup||(window.CIEIstatLookup={});let d=null,f=null;const N=(()=>{let e=!1;return()=>{if(e)return;const t=document.createElement("style");t.id="cie-istat-lookup-styles",t.textContent=`
+                .cie-istat-dropdown-parent {
+                    position: relative;
+                }
+                .cie-istat-dropdown {
+                    position: absolute;
+                    left: 0;
+                    right: 0;
+                    z-index: 20;
+                    margin-top: 2px;
+                    background: var(--bs-body-bg, #ffffff);
+                    color: var(--bs-body-color, #212529);
+                    border: 1px solid rgba(15, 23, 42, 0.12);
+                    border-radius: 0.5rem;
+                    box-shadow: 0 18px 35px rgba(15, 23, 42, 0.15);
+                    max-height: 260px;
+                    overflow-y: auto;
+                }
+                .cie-istat-dropdown[hidden] {
+                    display: none !important;
+                }
+                .cie-istat-option {
+                    width: 100%;
+                    text-align: left;
+                    border: 0;
+                    background: transparent;
+                    padding: 0.45rem 0.85rem;
+                    color: inherit;
+                    font-size: 0.95rem;
+                    cursor: pointer;
+                }
+                .cie-istat-option:hover,
+                .cie-istat-option.is-active {
+                    background: rgba(13, 110, 253, 0.08);
+                }
+            `,document.head.appendChild(t),e=!0}})(),h=e=>{if(e==null)return"";let t=String(e);return typeof t.normalize=="function"&&(t=t.normalize("NFD").replace(/[\u0300-\u036f]/g,"")),t.replace(/'/g,"").replace(/\s+/g," ").trim().toUpperCase()},x=e=>e==null?"":String(e).trim().toUpperCase(),q=e=>Array.isArray(e)?e.map(t=>{const a=typeof t.nome=="string"?t.nome.trim():"",i=typeof t.sigla=="string"?t.sigla.trim().toUpperCase():typeof t.provincia=="string"?t.provincia.trim().toUpperCase():"";let r=[];return Array.isArray(t.cap)?r=t.cap.filter(n=>typeof n=="string"&&n.trim()!=="").map(n=>n.trim()):typeof t.cap=="string"&&t.cap.trim()!==""&&(r=[t.cap.trim()]),{nome:a,normalized:h(a),sigla:i,cap:r}}).filter(t=>t.nome!==""&&t.normalized!==""):[],k=(e,t)=>fetch(e,{cache:"force-cache"}).then(a=>{if(!a.ok)throw new Error(`${t} request failed (${a.status})`);return a.json()}),m=()=>{if(d)return Promise.resolve(d);if(f)return f;const e=t=>(d=q(t),d);return f=k(y,"ISTAT dataset").catch(t=>{if(!I)throw t;return console.warn("CIE ISTAT lookup: primary dataset unavailable",t),k(I,"ISTAT fallback dataset")}).then(e).catch(t=>(console.warn("CIE ISTAT lookup disabled",t),d=[],d)),f},j=(e,t)=>{let a=null;return function(){const r=this,n=arguments;a&&window.clearTimeout(a),a=window.setTimeout(()=>{e.apply(r,n)},t)}},B=e=>{const t=e.parentElement;if(!t)return null;t.classList.add("cie-istat-dropdown-parent");const a=document.createElement("div");a.className="cie-istat-dropdown",a.setAttribute("role","listbox"),a.hidden=!0;const i=document.createElement("div");return i.className="cie-istat-dropdown-list",a.appendChild(i),e.insertAdjacentElement("afterend",a),{container:a,list:i}},P=(e,t,a,i)=>{e&&(e.list.innerHTML="",t.forEach((r,n)=>{const s=document.createElement("button");s.type="button",s.className="cie-istat-option"+(n===a?" is-active":""),s.textContent=r.sigla?`${r.nome} (${r.sigla})`:r.nome,s.dataset.index=String(n),s.addEventListener("mousedown",g=>{g.preventDefault(),i(n)}),e.list.appendChild(s)}),e.container.hidden=t.length===0)},p=(e,t)=>{if(!t)return;const a=e.dataset.istatProvinceTarget;if(a&&t.sigla){const r=document.querySelector(a);r&&r.value!==t.sigla&&(r.value=t.sigla,r.dispatchEvent(new Event("input",{bubbles:!0})))}const i=e.dataset.istatCapTarget;if(i&&Array.isArray(t.cap)&&t.cap.length===1){const r=document.querySelector(i);r&&r.value!==t.cap[0]&&(r.value=t.cap[0],r.dispatchEvent(new Event("input",{bubbles:!0})))}},A=(e,t)=>{const a=h(e);return a&&t.find(i=>i.normalized===a)||null},$=e=>{if(!(e instanceof HTMLElement)||e.dataset.istatBound==="true")return;e.dataset.istatBound="true";const t=B(e);N();const a=Number(e.dataset.istatMaxResults)||M,i=Number(e.dataset.istatMinChars)||z,r=Number(e.dataset.istatDebounce)||U,n={matches:[],activeIndex:-1},s=()=>{t&&(t.container.hidden=!0),n.activeIndex=-1},g=o=>{o.target!==e&&(t&&t.container.contains(o.target)||s())};document.addEventListener("pointerdown",g);const D=()=>{P(t,n.matches,n.activeIndex,o=>{e.value=n.matches[o].nome,p(e,n.matches[o]),e.dispatchEvent(new Event("input",{bubbles:!0})),e.dispatchEvent(new Event("change",{bubbles:!0})),s()})},v=o=>{n.matches=o,n.activeIndex>=o.length&&(n.activeIndex=o.length?0:-1),D()},w=()=>{const o=e.value.trim();if(o.length<i){v([]);return}m().then(l=>{const E=h(o),O=l.filter(R=>R.normalized.includes(E)).slice(0,a);v(O)}).catch(()=>{v([])})},L=()=>{const o=e.value.trim();if(!o){s();return}const l=A(o,n.matches);if(l){p(e,l),s();return}m().then(E=>{p(e,A(o,E)),s()}).catch(()=>{s()})},F=j(()=>{w()},r),T=o=>{if(n.matches.length&&(o==="down"?(n.activeIndex=n.activeIndex+1,n.activeIndex>=n.matches.length&&(n.activeIndex=0)):(n.activeIndex=n.activeIndex-1,n.activeIndex<0&&(n.activeIndex=n.matches.length-1)),D(),t)){t.container.hidden=!1;const l=t.list.querySelector(".cie-istat-option.is-active");l&&typeof l.scrollIntoView=="function"&&l.scrollIntoView({block:"nearest"})}};e.addEventListener("input",F),e.addEventListener("focus",()=>{w(),t&&n.matches.length&&(t.container.hidden=!1)}),e.addEventListener("change",L),e.addEventListener("blur",()=>{window.setTimeout(()=>{s(),L()},150)}),e.addEventListener("keydown",o=>{switch(o.key){case"ArrowDown":o.preventDefault(),n.matches.length?T("down"):w(),t&&n.matches.length&&(t.container.hidden=!1);break;case"ArrowUp":o.preventDefault(),n.matches.length&&(T("up"),t&&(t.container.hidden=!1));break;case"Enter":n.activeIndex>=0&&n.matches[n.activeIndex]&&(o.preventDefault(),e.value=n.matches[n.activeIndex].nome,p(e,n.matches[n.activeIndex]),e.dispatchEvent(new Event("input",{bubbles:!0})),e.dispatchEvent(new Event("change",{bubbles:!0})),s());break;case"Escape":s();break;default:break}})},C=e=>{if(!e)return Array.from(document.querySelectorAll('[data-istat-comune="true"]'));if(typeof e=="string")return Array.from(document.querySelectorAll(e));if(e instanceof Element||e instanceof Document||e instanceof DocumentFragment)return typeof e.matches=="function"&&e.matches('[data-istat-comune="true"]')?[e]:typeof e.querySelectorAll=="function"?Array.from(e.querySelectorAll('[data-istat-comune="true"]')):[];if(e instanceof NodeList||Array.isArray(e)){const t=[];return e.forEach(a=>{t.push(...C(a))}),t}return[]},b=e=>{C(e).forEach($)},S=(e,t)=>{const a=x(e);return a?t.filter(i=>Array.isArray(i.cap)&&i.cap.some(r=>x(r)===a)):[]};u.init=b,u.refresh=b,u.findByCap=e=>m().then(t=>S(e,t)),u.findFirstByCap=e=>m().then(t=>{const a=S(e,t);return a.length?a[0]:null}),document.addEventListener("DOMContentLoaded",()=>{b()})})();
+//# sourceMappingURL=cie-istat-lookup.js.map

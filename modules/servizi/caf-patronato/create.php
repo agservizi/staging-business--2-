@@ -8,12 +8,20 @@ require_once __DIR__ . '/../../../includes/mailer.php';
 require_once __DIR__ . '/functions.php';
 
 use App\Services\CAFPatronato\PracticesService;
-use PDO;
-use RuntimeException;
-use Throwable;
 
 require_role('Admin', 'Operatore', 'Manager', 'Patronato');
 
+$primaryOperator = caf_patronato_primary_operator($pdo, false);
+$primaryOperatorName = '';
+$primaryOperatorEmail = '';
+if ($primaryOperator !== null) {
+    $nameParts = array_filter([
+        trim((string) ($primaryOperator['nome'] ?? '')),
+        trim((string) ($primaryOperator['cognome'] ?? '')),
+    ]);
+    $primaryOperatorName = trim(implode(' ', $nameParts)) ?: 'Operatore Patronato';
+    $primaryOperatorEmail = trim((string) ($primaryOperator['email'] ?? ''));
+}
 $currentRole = isset($_SESSION['role']) ? (string) $_SESSION['role'] : '';
 $isPatronatoOperator = strcasecmp($currentRole, 'Patronato') === 0;
 
@@ -96,6 +104,10 @@ $data = [
     'send_notification' => '1',
 ];
 
+if ($primaryOperator === null) {
+    $data['send_notification'] = '0';
+}
+
 $errors = [];
 $processedUploads = [];
 $generatedTempFiles = [];
@@ -118,11 +130,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($primaryOperator === null) {
+        $errors[] = 'Nessun operatore Patronato attivo è configurato. Contatta un amministratore prima di registrare una nuova pratica.';
+    }
+
     $selectedType = strtoupper($data['tipo_pratica']);
     if (!array_key_exists($selectedType, $typeOptions)) {
         $selectedType = $defaultTypeKey;
     }
-    $data['tipo_pratica'] = $selectedType;
+    // Normalizza il valore da salvare rispettando l'ENUM della tabella (CAF | Patronato)
+    $data['tipo_pratica'] = $selectedType === 'PATRONATO' ? 'Patronato' : 'CAF';
     $data['nominativo'] = trim($data['nominativo']);
     $data['codice_fiscale'] = strtoupper($data['codice_fiscale']);
     $data['telefono'] = trim($data['telefono']);
@@ -307,7 +324,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new RuntimeException('Impossibile creare la cartella per gli allegati.');
                 }
 
-                caf_patronato_get_encryption_key();
+                try {
+                    caf_patronato_get_encryption_key();
+                } catch (Throwable $encryptionException) {
+                    throw new RuntimeException('Chiave di cifratura mancante: imposta CAF_PATRONATO_ENCRYPTION_KEY.', 0, $encryptionException);
+                }
 
                 $attachmentStmt = $pdo->prepare('INSERT INTO caf_patronato_allegati (
                         pratica_id,
@@ -398,7 +419,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $praticaId,
                 $assignedCode,
                 $legacyAttachments,
-                $creatorUserId
+                $creatorUserId,
+                $primaryOperator ?: null
             );
 
             $pdo->commit();
@@ -436,15 +458,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', $message);
-            header('Location: index.php');
+            header('Location: ' . caf_patronato_module_url('index'));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             $cleanupGeneratedTempFiles();
-            error_log('CAF/Patronato create failed: ' . $exception->getMessage());
-            $errors[] = 'Si è verificato un errore durante il salvataggio della pratica. Riprova.';
+
+            // Log dettagliato per diagnosi rapida
+            $context = [
+                'message' => $exception->getMessage(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+                'code' => $exception->getCode(),
+                'tipo_pratica' => $data['tipo_pratica'] ?? null,
+                'stato' => $data['stato'] ?? null,
+                'cliente_id' => $data['cliente_id'] ?? null,
+                'send_notification' => $data['send_notification'] ?? null,
+            ];
+            error_log('CAF/Patronato create failed: ' . json_encode($context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+
+            $message = $exception->getMessage();
+            if (stripos($message, 'Chiave di cifratura mancante') !== false) {
+                $errors[] = 'Configurazione mancante: imposta CAF_PATRONATO_ENCRYPTION_KEY (chiave AES-256 da 32 byte, hex o base64).';
+            } else {
+                $errors[] = 'Si è verificato un errore durante il salvataggio della pratica. Riprova.';
+            }
         }
     }
 }
@@ -452,6 +492,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
+<style>
+    .attachment-dropzone {
+        border: 2px dashed var(--bs-border-color, #ced4da);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+        background-color: rgba(255, 255, 255, 0.6);
+    }
+    .attachment-dropzone .attachment-dropzone-icon {
+        font-size: 2rem;
+        color: var(--bs-warning, #ffc107);
+    }
+    .attachment-dropzone.is-dragover {
+        border-color: var(--bs-warning, #ffc107);
+        background-color: rgba(255, 193, 7, 0.08);
+    }
+    .attachment-dropzone.is-uploading {
+        border-color: var(--bs-warning, #ffc107);
+        background-color: rgba(255, 193, 7, 0.12);
+        box-shadow: inset 0 0 0 1px rgba(255, 193, 7, 0.3);
+    }
+    .attachment-dropzone-status {
+        min-height: 1.25rem;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+    }
+    .attachment-file-list {
+        list-style: none;
+        padding: 0;
+        margin: 1rem 0 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: center;
+    }
+    .attachment-file-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 999px;
+        padding: 0.35rem 0.85rem;
+        background-color: rgba(255, 255, 255, 0.9);
+        font-size: 0.875rem;
+    }
+    .attachment-file-pill button {
+        border: none;
+        background: transparent;
+        color: var(--bs-danger, #dc3545);
+        line-height: 1;
+        font-size: 1rem;
+        padding: 0;
+        cursor: pointer;
+    }
+</style>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
@@ -461,7 +558,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Registra una nuova richiesta CAF o Patronato e allega la documentazione necessaria.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-warning" href="index.php">
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(caf_patronato_module_url('index')); ?>">
                     <i class="fa-solid fa-arrow-left me-2"></i>Ritorna all'elenco
                 </a>
             </div>
@@ -502,10 +599,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="list-group position-absolute w-100 d-none shadow-sm border bg-white" id="cafPatronatoServiceList" data-service-list role="listbox" style="z-index: 1055; max-height: 240px; overflow-y: auto;"></div>
                         </div>
-                        <div class="form-text">Elenco alimentato dalle impostazioni &ldquo;Servizi richiesti&rdquo;. Puoi indicare anche valori personalizzati.</div>
-                        <div class="d-flex justify-content-between align-items-center small text-muted mt-1">
-                            <span>Prezzo consigliato</span>
-                            <span class="fw-semibold" data-service-price>—</span>
+                        <div class="alert alert-warning bg-opacity-10 border border-warning mt-3 d-flex justify-content-between align-items-center" role="status">
+                            <div>
+                                <div class="text-uppercase small text-warning fw-semibold">Prezzo consigliato</div>
+                                <div class="fs-5 mb-0" data-service-price>—</div>
+                            </div>
+                            <div class="text-muted small ms-3">Adegua il compenso in base all'accordo con l'assistito.</div>
                         </div>
                     </div>
 
@@ -576,19 +675,49 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 
                     <div class="col-12">
                         <label class="form-label" for="allegati">Allegati</label>
-                        <input class="form-control" id="allegati" name="allegati[]" type="file" multiple accept=".pdf,.jpg,.jpeg,.png">
+                        <div class="attachment-dropzone" id="cafAttachmentsDropzone">
+                            <div class="attachment-dropzone-icon mb-2"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                            <p class="mb-1">Trascina qui uno o più file oppure</p>
+                            <button class="btn btn-sm btn-outline-warning" type="button" data-action="browse">Seleziona file</button>
+                            <p class="text-muted small mb-0" data-role="placeholder">Nessun file selezionato.</p>
+                            <div class="attachment-dropzone-status text-muted" data-role="status" aria-live="polite"></div>
+                            <ul class="attachment-file-list" data-role="file-list"></ul>
+                        </div>
+                        <input class="form-control mt-2" id="allegati" name="allegati[]" type="file" multiple accept=".pdf,.jpg,.jpeg,.png">
                         <small class="text-muted">Formati ammessi: PDF, JPG, PNG. Dimensione massima 12 MB per file.</small>
                     </div>
 
                     <div class="col-12">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" role="switch" id="send_notification" name="send_notification" value="1" <?php echo $data['send_notification'] === '1' ? 'checked' : ''; ?>>
-                            <label class="form-check-label" for="send_notification">Invia notifica email al team CAF/Patronato</label>
+                            <input class="form-check-input" type="checkbox" role="switch" id="send_notification" name="send_notification" value="1" <?php echo $data['send_notification'] === '1' ? 'checked' : ''; ?> <?php echo $primaryOperator === null ? 'disabled' : ''; ?>>
+                            <label class="form-check-label" for="send_notification">Invia notifica email al referente Patronato</label>
                         </div>
                     </div>
 
+                    <div class="col-12">
+                        <?php if ($primaryOperator !== null): ?>
+                            <div class="alert alert-info bg-opacity-10 border-info d-flex align-items-center gap-3 mb-0">
+                                <div class="text-info fs-4">
+                                    <i class="fa-solid fa-user-shield"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-semibold">Notifiche inviate a <?php echo sanitize_output($primaryOperatorName); ?></div>
+                                    <div class="small text-muted">L'email di presa in carico sarà spedita a <span class="font-monospace"><?php echo sanitize_output($primaryOperatorEmail); ?></span> appena la pratica viene salvata.</div>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-danger d-flex align-items-start gap-3 mb-0">
+                                <div class="fs-4"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                                <div>
+                                    <div class="fw-semibold">Nessun operatore Patronato configurato</div>
+                                    <p class="mb-0 small">Registra almeno un operatore attivo dal pannello Operatori per abilitare le notifiche automatiche. Nel frattempo l'invio resta disabilitato.</p>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
                     <div class="col-12 d-flex justify-content-end gap-2">
-                        <a class="btn btn-outline-warning" href="index.php">
+                        <a class="btn btn-outline-warning" href="<?php echo sanitize_output(caf_patronato_module_url('index')); ?>">
                             <i class="fa-solid fa-arrow-rotate-left me-2"></i>Annulla
                         </a>
                         <button class="btn btn-warning text-dark" type="submit">
@@ -1172,6 +1301,191 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     } else {
         window.addEventListener('load', initClientLookup, { once: true });
     }
+})();
+
+(function () {
+    const initMultiAttachmentDropzone = function (dropzoneId, inputId) {
+        const dropzone = document.getElementById(dropzoneId);
+        const fileInput = document.getElementById(inputId);
+        if (!dropzone || !fileInput) {
+            return;
+        }
+
+        let currentFiles = Array.from(fileInput.files || []);
+        const browseButton = dropzone.querySelector('[data-action="browse"]');
+        const fileList = dropzone.querySelector('[data-role="file-list"]');
+        const placeholder = dropzone.querySelector('[data-role="placeholder"]');
+        const statusIndicator = dropzone.querySelector('[data-role="status"]');
+        let statusTimer = null;
+
+        const setStatus = function (state) {
+            if (!statusIndicator) {
+                return;
+            }
+            if (statusTimer) {
+                clearTimeout(statusTimer);
+                statusTimer = null;
+            }
+            if (state === 'loading') {
+                dropzone.classList.add('is-uploading');
+                statusIndicator.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin me-1"></i>Caricamento…';
+                statusIndicator.classList.remove('text-success');
+                statusIndicator.classList.add('text-muted');
+            } else if (state === 'success') {
+                dropzone.classList.remove('is-uploading');
+                statusIndicator.innerHTML = '<i class="fa-solid fa-check me-1 text-success"></i>File pronti all\'invio';
+                statusIndicator.classList.remove('text-muted');
+                statusIndicator.classList.add('text-success');
+                statusTimer = window.setTimeout(function () {
+                    statusIndicator.textContent = '';
+                    statusIndicator.classList.remove('text-success');
+                    statusIndicator.classList.add('text-muted');
+                }, 2500);
+            } else {
+                dropzone.classList.remove('is-uploading');
+                statusIndicator.textContent = '';
+                statusIndicator.classList.remove('text-success');
+                statusIndicator.classList.add('text-muted');
+            }
+        };
+
+        const formatBytes = function (bytes) {
+            if (!Number.isFinite(bytes)) {
+                return '';
+            }
+            if (bytes >= 1_048_576) {
+                return (bytes / 1_048_576).toFixed(bytes >= 10_485_760 ? 0 : 1) + ' MB';
+            }
+            if (bytes >= 1_024) {
+                return (bytes / 1_024).toFixed(bytes >= 10_240 ? 0 : 1) + ' KB';
+            }
+            return bytes + ' B';
+        };
+
+        const syncInputFiles = function () {
+            if (typeof DataTransfer === 'undefined') {
+                return;
+            }
+            const dataTransfer = new DataTransfer();
+            currentFiles.forEach(function (file) {
+                dataTransfer.items.add(file);
+            });
+            fileInput.files = dataTransfer.files;
+        };
+
+        const renderFileList = function () {
+            if (!fileList) {
+                return;
+            }
+            fileList.innerHTML = '';
+            if (placeholder) {
+                placeholder.classList.toggle('d-none', currentFiles.length > 0);
+            }
+            if (!currentFiles.length) {
+                setStatus(null);
+                return;
+            }
+            setStatus('success');
+            currentFiles.forEach(function (file, index) {
+                const item = document.createElement('li');
+                item.className = 'attachment-file-pill';
+                const label = document.createElement('span');
+                label.textContent = file.name + ' (' + formatBytes(file.size) + ')';
+                item.appendChild(label);
+                if (typeof DataTransfer !== 'undefined') {
+                    const removeButton = document.createElement('button');
+                    removeButton.type = 'button';
+                    removeButton.setAttribute('aria-label', 'Rimuovi file');
+                    removeButton.innerHTML = '&times;';
+                    removeButton.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        currentFiles.splice(index, 1);
+                        syncInputFiles();
+                        renderFileList();
+                    });
+                    item.appendChild(removeButton);
+                }
+                fileList.appendChild(item);
+            });
+        };
+
+        const handleAddedFiles = function (listLike) {
+            if (!listLike || !listLike.length) {
+                return;
+            }
+            const incoming = Array.from(listLike);
+            if (typeof DataTransfer === 'undefined') {
+                currentFiles = incoming;
+                try {
+                    fileInput.files = listLike;
+                } catch (error) {
+                    // read-only in some browsers; fallback to default input handling
+                }
+                renderFileList();
+                return;
+            }
+            currentFiles = currentFiles.concat(incoming);
+            syncInputFiles();
+            renderFileList();
+        };
+
+        const preventDefaults = function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        };
+
+        ['dragenter', 'dragover'].forEach(function (eventName) {
+            dropzone.addEventListener(eventName, function (event) {
+                preventDefaults(event);
+                dropzone.classList.add('is-dragover');
+            });
+        });
+
+        ['dragleave', 'dragend'].forEach(function (eventName) {
+            dropzone.addEventListener(eventName, function (event) {
+                preventDefaults(event);
+                dropzone.classList.remove('is-dragover');
+            });
+        });
+
+        dropzone.addEventListener('drop', function (event) {
+            preventDefaults(event);
+            dropzone.classList.remove('is-dragover');
+             setStatus('loading');
+            const files = event.dataTransfer ? event.dataTransfer.files : null;
+            handleAddedFiles(files);
+        });
+
+        dropzone.addEventListener('click', function (event) {
+            if (browseButton && browseButton.contains(event.target)) {
+                return;
+            }
+            fileInput.click();
+        });
+
+        if (browseButton) {
+            browseButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                fileInput.click();
+            });
+        }
+
+        fileInput.addEventListener('change', function () {
+            if (fileInput.files && fileInput.files.length) {
+                setStatus('loading');
+            }
+            currentFiles = Array.from(fileInput.files || []);
+            renderFileList();
+        });
+
+        renderFileList();
+        setStatus(null);
+        fileInput.classList.add('visually-hidden');
+        fileInput.classList.remove('form-control');
+        fileInput.classList.remove('mt-2');
+    };
+
+    initMultiAttachmentDropzone('cafAttachmentsDropzone', 'allegati');
 })();
 </script>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

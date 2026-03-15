@@ -26,7 +26,6 @@ final class BrtShipmentService
         'ITALIA' => 'ITALIA',
         'ITALY' => 'ITALIA',
         'E' => 'EUROPE',
-        'EU' => 'EUROPE',
         'EUR' => 'EUROPE',
         'EUROPE' => 'EUROPE',
         'EUROPA' => 'EUROPE',
@@ -37,6 +36,9 @@ final class BrtShipmentService
         'B2C' => 'B2C',
         'D' => 'DPD',
         'DPD' => 'DPD',
+        'S' => 'SWISS',
+        'SWISS' => 'SWISS',
+        'CH' => 'SWISS',
     ];
 
     private const NETWORK_CODE_BY_ALIAS = [
@@ -45,6 +47,7 @@ final class BrtShipmentService
         'PUDO' => 'P',
         'B2C' => 'B',
         'DPD' => 'D',
+        'SWISS' => 'S',
     ];
 
     private BrtConfig $config;
@@ -70,6 +73,8 @@ final class BrtShipmentService
      */
     public function createShipment(array $input): array
     {
+        $input = $this->normalizeLegacyKeys($input);
+
         $payload = [
             'account' => $this->buildAccountData(),
             'createData' => $this->buildCreateData($input),
@@ -85,6 +90,13 @@ final class BrtShipmentService
         if ($labelOverrides !== null) {
             $payload['labelParameters'] = $labelOverrides;
         }
+
+        $this->debugLog('BRT create payload network', [
+            'input_network' => $input['network'] ?? null,
+            'resolved_network' => $payload['createData']['network'] ?? null,
+            'default_network_env' => $this->config->getDefaultNetwork(),
+            'pricing_condition' => $payload['createData']['pricingConditionCode'] ?? null,
+        ]);
 
         $response = $this->client->request('POST', '/shipments/shipment', null, $payload);
 
@@ -110,6 +122,50 @@ final class BrtShipmentService
         $this->assertExecutionSuccess($body['createResponse']);
 
         return $body['createResponse'];
+    }
+
+    /**
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    private function normalizeLegacyKeys(array $input): array
+    {
+        $map = [
+            'number_of_parcels' => 'numberOfParcels',
+            'weight_kg' => 'weightKG',
+            'dimension_length_cm' => 'dimensionLengthCM',
+            'dimension_depth_cm' => 'dimensionDepthCM',
+            'dimension_height_cm' => 'dimensionHeightCM',
+            'cod_amount' => 'cashOnDeliveryAmount',
+            'cod_currency' => 'codCurrency',
+            'cod_payment_type' => 'codPaymentType',
+            'consignee_company_name' => 'consigneeCompanyName',
+            'consignee_address' => 'consigneeAddress',
+            'consignee_zip' => 'consigneeZIPCode',
+            'consignee_city' => 'consigneeCity',
+            'consignee_province' => 'consigneeProvinceAbbreviation',
+            'consignee_country' => 'consigneeCountryAbbreviationISOAlpha2',
+            'consignee_contact_name' => 'consigneeContactName',
+            'consignee_phone' => 'consigneeTelephone',
+            'consignee_mobile' => 'consigneeMobilePhoneNumber',
+            'consignee_email' => 'consigneeEMail',
+            'is_label_required' => 'isLabelRequired',
+            'return_depot' => 'returnDepot',
+            'service_code' => 'brtServiceCode',
+            'pudo_id' => 'pudoId',
+            'alphanumeric_sender_reference' => 'alphanumericSenderReference',
+            'numeric_sender_reference' => 'numericSenderReference',
+            'insurance_amount' => 'insuranceAmount',
+            'insurance_currency' => 'insuranceAmountCurrency',
+        ];
+
+        foreach ($map as $legacy => $modern) {
+            if (array_key_exists($legacy, $input) && !array_key_exists($modern, $input)) {
+                $input[$modern] = $input[$legacy];
+            }
+        }
+
+        return $input;
     }
 
     /**
@@ -433,6 +489,11 @@ final class BrtShipmentService
             $defaults['network'] = $defaultNetworkCode;
         }
 
+        // Per Italia lascia vuoto il network così BRT usa lo standard
+        if (isset($defaults['network']) && $defaults['network'] === 'I' && ($networkAlias === null || $networkAlias === 'ITALIA')) {
+            unset($defaults['network']);
+        }
+
         return array_merge($defaults, $consigneeData);
     }
 
@@ -507,6 +568,11 @@ final class BrtShipmentService
             $routing['network'] = $network;
         } elseif (!$hasNetworkOverride && $defaultNetworkCode !== '') {
             $routing['network'] = $defaultNetworkCode;
+        }
+
+        // Per Italia lascia vuoto il network così BRT usa lo standard
+        if (isset($routing['network']) && $routing['network'] === 'I' && ($networkAlias === null || $networkAlias === 'ITALIA')) {
+            unset($routing['network']);
         }
 
         $serviceType = $this->toString($input['serviceType'] ?? $this->config->getDefaultServiceType() ?? '');
@@ -968,6 +1034,7 @@ final class BrtShipmentService
 
         return $value;
     }
+
     private function normalizeFloat($value): float
     {
         if ($value === null || $value === '') {
@@ -979,6 +1046,30 @@ final class BrtShipmentService
         }
 
         return (float) $value;
+
+    }
+
+    /**
+     * Lightweight logger to trace BRT payload decisions without exposing PII.
+     */
+    private function debugLog(string $message, array $context = []): void
+    {
+        $safeContext = array_filter($context, static function ($value) {
+            if ($value === null) {
+                return false;
+            }
+            if (is_string($value)) {
+                return trim($value) !== '';
+            }
+            return true;
+        });
+
+        if (function_exists('brt_log_event')) {
+            \brt_log_event('info', $message, $safeContext);
+            return;
+        }
+
+        error_log($message . ' ' . json_encode($safeContext));
     }
 
     private function truncateMessage(string $message, int $length = 400): string

@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<ruleset name="CoresuiteBusiness">
+    <description>Code style rules for Coresuite Business</description>
+
+    <file>app</file>
+    <file>includes</file>
+    <file>modules</file>
+    <file>api</file>
+
+    <exclude-pattern>vendor/*</exclude-pattern>
+    <exclude-pattern>storage/*</exclude-pattern>
+    <exclude-pattern>bootstrap/*</exclude-pattern>
+    <exclude-pattern>assets/*</exclude-pattern>
+    <exclude-pattern>uploads/*</exclude-pattern>
+
+    <rule ref="PSR12">
+        <exclude name="PSR1.Files.SideEffects.FoundWithSymbols"/>
+    </rule>
+
+    <config name="php_version" value="80200"/>
+</ruleset>

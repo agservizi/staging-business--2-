@@ -88,6 +88,9 @@ if ($statsRange !== 'today') {
     $exportParams['stats_range'] = $statsRange;
 }
 
+$expectsJsonResponse = str_contains(strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? '')), 'application/json')
+    || strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+
 if (isset($_GET['export'])) {
     $type = $_GET['export'];
     if ($type === 'csv') {
@@ -101,33 +104,54 @@ if (isset($_GET['export'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_valid_csrf();
     $action = $_POST['action'] ?? '';
+    $redirectUrl = logistici_module_url('index');
+    $respondError = static function (Throwable $exception, string $context, bool $expectsJsonResponse): void {
+        error_log($context . ': ' . $exception->getMessage());
+        $message = $exception instanceof InvalidArgumentException
+            ? $exception->getMessage()
+            : 'Operazione non riuscita. Riprova.';
+
+        if ($expectsJsonResponse) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'message' => $message,
+            ], JSON_THROW_ON_ERROR);
+        } else {
+            add_flash('danger', $message);
+            header('Location: ' . logistici_module_url('index'));
+        }
+        exit;
+    };
 
     if ($action === 'generate_checkin_qr') {
-        header('Content-Type: application/json');
         try {
             $locationId = isset($_POST['location_id']) ? (int) $_POST['location_id'] : 0;
             $qrPath = generate_qr_checkin($locationId > 0 ? $locationId : null);
             if (!$qrPath) {
                 throw new RuntimeException('Impossibile generare il QR di check-in.');
             }
+            $qrUrl = pickup_public_url($qrPath);
 
-            echo json_encode([
-                'success' => true,
-                'qrUrl' => pickup_public_url($qrPath),
-                'message' => 'QR di check-in generato con successo.',
-            ], JSON_THROW_ON_ERROR);
+            if ($expectsJsonResponse) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'qrUrl' => $qrUrl,
+                    'message' => 'QR di check-in generato con successo.',
+                ], JSON_THROW_ON_ERROR);
+            } else {
+                add_flash('success', 'QR di check-in generato con successo: ' . $qrUrl);
+                header('Location: ' . $redirectUrl);
+            }
         } catch (Throwable $exception) {
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'message' => $exception->getMessage(),
-            ], JSON_THROW_ON_ERROR);
+            $respondError($exception, 'Pickup generate_checkin_qr failed', $expectsJsonResponse);
         }
         exit;
     }
 
     if ($action === 'update_status') {
-        header('Content-Type: application/json');
         try {
             $packageId = (int) ($_POST['package_id'] ?? 0);
             $newStatus = (string) ($_POST['status'] ?? '');
@@ -140,43 +164,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'status' => $details['status'],
             ]);
 
-            echo json_encode([
-                'success' => true,
-                'statusKey' => $details['status'],
-                'statusLabel' => pickup_status_label($details['status']),
-                'updatedAt' => format_datetime_locale($details['updated_at'] ?? date('Y-m-d H:i:s')),
-            ], JSON_THROW_ON_ERROR);
+            if ($expectsJsonResponse) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'statusKey' => $details['status'],
+                    'statusLabel' => pickup_status_label($details['status']),
+                    'updatedAt' => format_datetime_locale($details['updated_at'] ?? date('Y-m-d H:i:s')),
+                ], JSON_THROW_ON_ERROR);
+            } else {
+                add_flash('success', 'Stato pacco aggiornato con successo.');
+                header('Location: ' . $redirectUrl);
+            }
         } catch (Throwable $exception) {
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'message' => $exception->getMessage(),
-            ], JSON_THROW_ON_ERROR);
+            $respondError($exception, 'Pickup update_status failed', $expectsJsonResponse);
         }
         exit;
     }
 
     if ($action === 'archive_packages') {
-        header('Content-Type: application/json');
         try {
             $days = isset($_POST['days']) ? max(1, (int) $_POST['days']) : PICKUP_DEFAULT_ARCHIVE_DAYS;
             $count = archive_old_packages($days);
-            echo json_encode([
-                'success' => true,
-                'message' => $count > 0 ? "Archiviati $count pacchi." : 'Nessun pacco da archiviare.',
-            ], JSON_THROW_ON_ERROR);
+            $resultMessage = $count > 0 ? "Archiviati $count pacchi." : 'Nessun pacco da archiviare.';
+
+            if ($expectsJsonResponse) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => $resultMessage,
+                ], JSON_THROW_ON_ERROR);
+            } else {
+                add_flash('success', $resultMessage);
+                header('Location: ' . $redirectUrl);
+            }
         } catch (Throwable $exception) {
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'message' => $exception->getMessage(),
-            ], JSON_THROW_ON_ERROR);
+            $respondError($exception, 'Pickup archive_packages failed', $expectsJsonResponse);
+        }
+        exit;
+    }
+
+    if ($action === 'regenerate_qr_tokens') {
+        try {
+            $limit = isset($_POST['limit']) ? max(0, (int) $_POST['limit']) : 0;
+            $result = regenerate_package_qrs([], $limit);
+            $resultMessage = sprintf(
+                'Rigenerazione QR completata: %d aggiornati, %d errori su %d pacchi.',
+                (int) ($result['updated'] ?? 0),
+                (int) ($result['failed'] ?? 0),
+                (int) ($result['total'] ?? 0)
+            );
+
+            if ($expectsJsonResponse) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => $resultMessage,
+                    'result' => $result,
+                ], JSON_THROW_ON_ERROR);
+            } else {
+                add_flash('success', $resultMessage);
+                header('Location: ' . $redirectUrl);
+            }
+        } catch (Throwable $exception) {
+            $respondError($exception, 'Pickup regenerate_qr_tokens failed', $expectsJsonResponse);
         }
         exit;
     }
 
     if ($action === 'send_notification') {
-        header('Content-Type: application/json');
         try {
             $packageId = (int) ($_POST['package_id'] ?? 0);
             $channel = clean_input($_POST['channel'] ?? '', 16);
@@ -271,25 +327,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 '<div class="list-group-item bg-transparent border-secondary-subtle text-body-secondary"><div class="d-flex justify-content-between"><span class="text-warning text-uppercase fw-semibold">%s</span><span class="small">%s</span></div><div class="small text-secondary">Stato: %s</div><div class="small mt-2 text-body">%s</div><div class="small mt-2 text-secondary">%s</div></div>',
                 sanitize_output(strtoupper($channel)),
                 sanitize_output(format_datetime_locale(date('Y-m-d H:i:s'))),
-                sanitize_output(ucfirst($notificationStatus)),
+                sanitize_output(pickup_notification_status_label($notificationStatus)),
                 nl2br(sanitize_output($message)),
                 sanitize_output('Destinatario: ' . ($meta['recipient'] ?? 'N/D'))
             );
 
-            echo json_encode([
-                'success' => true,
-                'message' => $fallbackUrl ? 'API WhatsApp non configurata: apri WhatsApp per completare l\'invio.' : 'Notifica inviata con successo.',
-                'entryHtml' => $entryHtml,
-                'notificationId' => $logId,
-                'fallbackUrl' => $fallbackUrl,
-                'status' => $notificationStatus,
-            ], JSON_THROW_ON_ERROR);
+            $successMessage = $fallbackUrl
+                ? 'API WhatsApp non configurata: apri WhatsApp per completare l\'invio.'
+                : 'Notifica inviata con successo.';
+
+            if ($expectsJsonResponse) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => $successMessage,
+                    'entryHtml' => $entryHtml,
+                    'notificationId' => $logId,
+                    'fallbackUrl' => $fallbackUrl,
+                    'status' => $notificationStatus,
+                ], JSON_THROW_ON_ERROR);
+            } else {
+                add_flash('success', $successMessage);
+                header('Location: ' . $redirectUrl);
+            }
         } catch (Throwable $exception) {
-            http_response_code(400);
-            echo json_encode([
-                'success' => false,
-                'message' => $exception->getMessage(),
-            ], JSON_THROW_ON_ERROR);
+            $respondError($exception, 'Pickup send_notification failed', $expectsJsonResponse);
         }
         exit;
     }
@@ -370,22 +432,184 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 <div class="flex-grow-1 d-flex flex-column min-vh-100 pickup-module">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
-        <div class="page-toolbar mb-4">
-            <div>
-                <h1 class="h3 mb-0">Servizio Pickup</h1>
-                <p class="text-muted mb-0">Monitoraggio pacchi, notifiche clienti e archivio ritiri.</p>
+        <style>
+            .pickup-shell {
+                display: grid;
+                gap: 1.5rem;
+            }
+
+            .pickup-hero {
+                position: relative;
+                overflow: hidden;
+                border: 1px solid rgba(58, 123, 213, 0.14);
+                background:
+                    radial-gradient(circle at top left, rgba(58, 123, 213, 0.16), transparent 34%),
+                    radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 26%),
+                    #fff;
+            }
+
+            .pickup-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.45rem 0.85rem;
+                border-radius: 999px;
+                background: rgba(58, 123, 213, 0.10);
+                color: #2154d7;
+                font-size: 0.72rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            .pickup-hero-kpis {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 1rem;
+            }
+
+            .pickup-hero-kpi {
+                border: 1px solid rgba(15, 23, 42, 0.08);
+                border-radius: 1.15rem;
+                padding: 1rem 1.1rem;
+                background: rgba(255, 255, 255, 0.88);
+                box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
+            }
+
+            .pickup-hero-kpi-label {
+                display: block;
+                margin-bottom: 0.4rem;
+                color: #64748b;
+                font-size: 0.76rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            .pickup-hero-kpi-value {
+                display: block;
+                color: #0f172a;
+                font-size: 1.85rem;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .pickup-hero-kpi-note {
+                display: block;
+                margin-top: 0.45rem;
+                color: #64748b;
+                font-size: 0.86rem;
+            }
+
+            .pickup-panel {
+                border: 1px solid rgba(15, 23, 42, 0.08);
+                border-radius: 1.3rem;
+                background: #fff;
+                box-shadow: 0 18px 44px rgba(15, 23, 42, 0.05);
+            }
+
+            .pickup-table-card-body {
+                padding: 1.25rem 1.25rem 1.4rem !important;
+            }
+
+            .pickup-table-card-body .table-responsive {
+                border: 1px solid rgba(15, 23, 42, 0.06);
+                border-radius: 1rem;
+                overflow: hidden;
+            }
+
+            .pickup-table {
+                --bs-table-bg: transparent;
+                --bs-table-hover-bg: rgba(37, 99, 235, 0.04);
+                margin-bottom: 0;
+            }
+
+            .pickup-table thead th {
+                border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+                color: #64748b;
+                font-size: 0.76rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                white-space: nowrap;
+            }
+
+            .pickup-table td {
+                padding-top: 1rem;
+                padding-bottom: 1rem;
+                border-color: rgba(15, 23, 42, 0.06);
+                vertical-align: middle;
+            }
+
+            @media (max-width: 1199.98px) {
+                .pickup-hero-kpis {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+            }
+
+            @media (max-width: 767.98px) {
+                .pickup-hero-kpis {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+        <div class="pickup-shell">
+        <section class="card pickup-hero">
+            <div class="card-body p-4 p-xl-5">
+                <div class="row g-4 align-items-start">
+                    <div class="col-12 col-xl-7">
+                        <span class="pickup-pill"><i class="fa-solid fa-boxes-stacked"></i>Pickup operativo</span>
+                        <h1 class="mt-3 mb-2 fw-bold" style="max-width: 12ch;">Servizio Pickup più chiaro per giacenze, ritiri e notifiche.</h1>
+                        <p class="text-muted mb-0" style="max-width: 70ch;">
+                            Monitora pacchi, punti ritiro e segnalazioni clienti in un’unica regia, con una lettura più ordinata di stati, consegne e comunicazioni.
+                        </p>
+                    </div>
+                    <div class="col-12 col-xl-5">
+                        <div class="pickup-hero-kpis">
+                            <div class="pickup-hero-kpi">
+                                <span class="pickup-hero-kpi-label">Attivi</span>
+                                <span class="pickup-hero-kpi-value"><?php echo (int) ($statusCounts['totale'] ?? 0); ?></span>
+                                <span class="pickup-hero-kpi-note">Pacchi visibili in dashboard</span>
+                            </div>
+                            <div class="pickup-hero-kpi">
+                                <span class="pickup-hero-kpi-label">In giacenza</span>
+                                <span class="pickup-hero-kpi-value"><?php echo (int) ($dashboardCounters['storage'] ?? 0); ?></span>
+                                <span class="pickup-hero-kpi-note">Pacchi pronti al ritiro</span>
+                            </div>
+                            <div class="pickup-hero-kpi">
+                                <span class="pickup-hero-kpi-label">Scaduti</span>
+                                <span class="pickup-hero-kpi-value"><?php echo (int) ($dashboardCounters['expired'] ?? 0); ?></span>
+                                <span class="pickup-hero-kpi-note">Richiedono attenzione</span>
+                            </div>
+                            <div class="pickup-hero-kpi">
+                                <span class="pickup-hero-kpi-label">Ritirati oggi</span>
+                                <span class="pickup-hero-kpi-value"><?php echo (int) ($dashboardCounters['picked_today'] ?? 0); ?></span>
+                                <span class="pickup-hero-kpi-note">Check-in confermati oggi</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="toolbar-actions d-flex flex-wrap gap-2">
-                <a class="btn btn-outline-warning" href="reports.php"><i class="fa-solid fa-inbox me-2"></i>Segnalazioni portal</a>
-                <button class="btn btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#pickupCheckinModal"><i class="fa-solid fa-qrcode me-2"></i>Ritiro con codice</button>
-                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo pickup</a>
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-rotate"></i></a>
-            </div>
-        </div>
+        </section>
+
+        <section class="card pickup-panel">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+                    <div>
+                        <h2 class="h5 mb-1">Filtri e azioni pickup</h2>
+                        <p class="text-muted small mb-0">Raffina il registro per tracking, stato, corriere, punto ritiro e intervallo temporale.</p>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('reports')); ?>"><i class="fa-solid fa-inbox me-2"></i>Segnalazioni portal</a>
+                        <button class="btn btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#pickupCheckinModal"><i class="fa-solid fa-qrcode me-2"></i>Ritiro con codice</button>
+                        <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(logistici_module_url('create')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo pickup</a>
+                        <a class="btn btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('index')); ?>"><i class="fa-solid fa-rotate"></i></a>
+                    </div>
+                </div>
 
         <div class="row g-4">
             <div class="col-xxl-9">
-                <div class="card ag-card mb-4">
+                <div class="card pickup-panel mb-4">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <div>
                             <h2 class="h5 mb-0">Situazione attuale</h2>
@@ -424,7 +648,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
 
-                <div class="card ag-card mb-4">
+                <div class="card pickup-panel mb-4">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <div>
                             <h2 class="h5 mb-0">Andamento <?php echo sanitize_output($currentStatsLabel); ?></h2>
@@ -459,23 +683,23 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
 
-                <div class="card ag-card mb-4">
+                <div class="card pickup-panel mb-4">
                     <div class="card-header bg-transparent border-0">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                             <h2 class="h5 mb-0">Filtri</h2>
                             <div class="action-buttons d-flex flex-wrap gap-2">
                                 <?php $queryString = http_build_query(array_merge($exportParams, ['export' => 'csv'])); ?>
-                                <a class="btn btn-sm btn-outline-warning" href="index.php?<?php echo sanitize_output($queryString); ?>"><i class="fa-solid fa-file-csv me-1"></i>Esporta CSV</a>
+                                <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('index') . '?' . $queryString); ?>"><i class="fa-solid fa-file-csv me-1"></i>Esporta CSV</a>
                                 <?php $queryStringPdf = http_build_query(array_merge($exportParams, ['export' => 'pdf'])); ?>
-                                <a class="btn btn-sm btn-outline-warning" href="index.php?<?php echo sanitize_output($queryStringPdf); ?>"><i class="fa-solid fa-file-pdf me-1"></i>Esporta PDF</a>
-                                <button class="btn btn-sm btn-outline-warning" type="button" data-pickup-archive-button data-days="<?php echo PICKUP_DEFAULT_ARCHIVE_DAYS; ?>" data-action="index.php" data-csrf="<?php echo $formToken; ?>">
+                                <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('index') . '?' . $queryStringPdf); ?>"><i class="fa-solid fa-file-pdf me-1"></i>Esporta PDF</a>
+                                <button class="btn btn-sm btn-outline-warning" type="button" data-pickup-archive-button data-days="<?php echo PICKUP_DEFAULT_ARCHIVE_DAYS; ?>" data-action="<?php echo sanitize_output(logistici_module_url('index')); ?>" data-csrf="<?php echo $formToken; ?>">
                                     <i class="fa-solid fa-box-archive me-1"></i>Archivia ritirati
                                 </button>
                             </div>
                         </div>
                     </div>
                     <div class="card-body">
-                        <form class="row g-3 align-items-end filters" method="get" action="index.php">
+                        <form class="row g-3 align-items-end filters" method="get" action="<?php echo sanitize_output(logistici_module_url('index')); ?>">
                             <div class="col-sm-6 col-lg-3">
                                 <label class="form-label" for="search">Ricerca</label>
                                 <input class="form-control" id="search" name="search" value="<?php echo sanitize_output($search); ?>" placeholder="Tracking o cliente">
@@ -532,20 +756,20 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-12 d-flex gap-2">
                                 <button class="btn btn-warning text-dark" type="submit">Applica filtri</button>
-                                <a class="btn btn-outline-warning" href="index.php">Reset</a>
+                                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('index')); ?>">Reset</a>
                             </div>
                         </form>
                     </div>
                 </div>
 
-                <div class="card ag-card">
+                <div class="card pickup-panel">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <h2 class="h5 mb-0">Elenco pickup</h2>
                         <span class="text-muted small">Risultati: <?php echo count($packages); ?></span>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body pickup-table-card-body">
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle">
+                            <table class="table table-hover align-middle pickup-table">
                                 <thead>
                                     <tr>
                                         <th>Tracking</th>
@@ -593,7 +817,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             </td>
                                             <td>
                                                 <span class="badge-status" data-status="<?php echo sanitize_output($package['status']); ?>" data-status-badge><?php echo pickup_status_label($package['status']); ?></span>
-                                                <form class="d-flex align-items-center gap-2 mt-2" method="post" action="index.php" data-pickup-status-form>
+                                                <form class="d-flex align-items-center gap-2 mt-2" method="post" action="<?php echo sanitize_output(logistici_module_url('index')); ?>" data-pickup-status-form>
                                                     <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                                                     <input type="hidden" name="action" value="update_status">
                                                     <input type="hidden" name="package_id" value="<?php echo (int) $package['id']; ?>">
@@ -609,13 +833,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <td data-updated-at><?php echo sanitize_output(format_datetime_locale($package['updated_at'] ?? '')); ?></td>
                                             <td class="text-end">
                                                 <div class="d-inline-flex align-items-center justify-content-end gap-2 flex-wrap">
-                                                    <a class="btn btn-icon btn-soft-accent btn-sm" href="view.php?id=<?php echo (int) $package['id']; ?>" title="Dettagli">
+                                                    <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(logistici_module_url('view', ['id' => (int) $package['id']])); ?>" title="Dettagli">
                                                         <i class="fa-solid fa-eye"></i>
                                                     </a>
-                                                    <a class="btn btn-icon btn-soft-accent btn-sm" href="edit.php?id=<?php echo (int) $package['id']; ?>" title="Modifica">
+                                                    <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(logistici_module_url('edit', ['id' => (int) $package['id']])); ?>" title="Modifica">
                                                         <i class="fa-solid fa-pen"></i>
                                                     </a>
-                                                    <form method="post" action="delete.php" onsubmit="return confirm('Confermi l\'eliminazione del pickup?');">
+                                                    <form method="post" action="<?php echo sanitize_output(logistici_module_url('delete')); ?>" onsubmit="return confirm('Confermi l\'eliminazione del pickup?');">
                                                         <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                                                         <input type="hidden" name="id" value="<?php echo (int) $package['id']; ?>">
                                                         <button class="btn btn-icon btn-soft-danger btn-sm" type="submit" title="Elimina">
@@ -634,12 +858,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
 
             <div class="col-xxl-3">
-                <div class="card ag-card mb-4" data-checkin-qr-container>
+                <div class="card pickup-panel mb-4" data-checkin-qr-container>
                     <div class="card-header bg-transparent border-0">
                         <h2 class="h5 mb-0">QR check-in</h2>
                     </div>
                     <div class="card-body">
-                        <form method="post" action="index.php" data-pickup-checkin-qr>
+                        <form method="post" action="<?php echo sanitize_output(logistici_module_url('index')); ?>" data-pickup-checkin-qr>
                             <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                             <input type="hidden" name="action" value="generate_checkin_qr">
                             <div class="mb-3">
@@ -653,18 +877,25 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <button class="btn btn-outline-warning w-100" type="submit"><i class="fa-solid fa-qrcode me-2"></i>Genera QR</button>
                         </form>
+                        <form class="mt-2" method="post" action="<?php echo sanitize_output(logistici_module_url('index')); ?>" onsubmit="return confirm('Rigenerare i QR firmati per tutti i pacchi attivi?');">
+                            <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
+                            <input type="hidden" name="action" value="regenerate_qr_tokens">
+                            <button class="btn btn-sm btn-outline-warning w-100" type="submit">
+                                <i class="fa-solid fa-rotate me-2"></i>Rigenera QR firmati
+                            </button>
+                        </form>
                         <div class="mt-3 text-center" data-checkin-qr-output>
                             <div class="text-muted small">Scarica un QR da esporre al punto ritiro.</div>
                         </div>
                     </div>
                 </div>
-                <div class="card ag-card mb-4">
+                <div class="card pickup-panel mb-4">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-start">
                         <div>
                             <h2 class="h5 mb-0">Segnalazioni clienti</h2>
                             <p class="text-muted small mb-0">Portale pickup</p>
                         </div>
-                        <a class="btn btn-sm btn-outline-warning" href="reports.php">Gestisci</a>
+                        <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('reports')); ?>">Gestisci</a>
                     </div>
                     <div class="card-body">
                         <?php if (($customerReportStats['pending_unlinked'] ?? 0) > 0): ?>
@@ -707,8 +938,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <div class="small text-muted mt-2"><?php echo sanitize_output($notePreview); ?></div>
                                     <?php endif; ?>
                                     <div class="d-flex flex-wrap gap-2 mt-3">
-                                        <a class="btn btn-sm btn-outline-warning" href="report.php?id=<?php echo (int) $report['id']; ?>">Dettagli</a>
-                                        <a class="btn btn-sm btn-warning text-dark" href="create.php?source_report=<?php echo (int) $report['id']; ?>">Crea pickup</a>
+                                        <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('report', ['id' => (int) $report['id']])); ?>">Dettagli</a>
+                                        <a class="btn btn-sm btn-warning text-dark" href="<?php echo sanitize_output(logistici_module_url('create', ['source_report' => (int) $report['id']])); ?>">Crea pickup</a>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -716,12 +947,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
 
-                <div class="card ag-card mb-4">
+                <div class="card pickup-panel mb-4">
                     <div class="card-header bg-transparent border-0">
                         <h2 class="h5 mb-0">Invia notifica</h2>
                     </div>
                     <div class="card-body">
-                        <form class="mb-4" method="post" action="index.php" data-pickup-notification-form>
+                        <form class="mb-4" method="post" action="<?php echo sanitize_output(logistici_module_url('index')); ?>" data-pickup-notification-form>
                             <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                             <input type="hidden" name="action" value="send_notification">
                             <input type="hidden" name="channel" value="email">
@@ -754,7 +985,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <button class="btn btn-warning text-dark w-100" type="submit">Invia email</button>
                         </form>
 
-                        <form method="post" action="index.php" data-pickup-notification-form>
+                        <form method="post" action="<?php echo sanitize_output(logistici_module_url('index')); ?>" data-pickup-notification-form>
                             <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                             <input type="hidden" name="action" value="send_notification">
                             <input type="hidden" name="channel" value="whatsapp">
@@ -785,7 +1016,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
 
-                <div class="card ag-card">
+                <div class="card pickup-panel">
                     <div class="card-header bg-transparent border-0">
                         <h2 class="h5 mb-0">Ultime notifiche</h2>
                     </div>
@@ -800,7 +1031,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <span class="text-warning text-uppercase fw-semibold"><?php echo sanitize_output($notification['channel']); ?></span>
                                         <span class="small"><?php echo sanitize_output(format_datetime_locale($notification['created_at'] ?? '')); ?></span>
                                     </div>
-                                    <div class="small text-secondary">Stato: <?php echo sanitize_output(ucfirst($notification['status'] ?? '')); ?></div>
+                                    <div class="small text-secondary">Stato: <?php echo sanitize_output(pickup_notification_status_label($notification['status'] ?? '')); ?></div>
                                     <div class="small text-secondary">Tracking #<?php echo sanitize_output($notification['tracking']); ?></div>
                                     <div class="small mt-2 text-body"><?php echo nl2br(sanitize_output($notification['message'])); ?></div>
                                 </div>
@@ -809,6 +1040,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
             </div>
+        </div>
         </div>
     </main>
 </div>
@@ -820,7 +1052,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="post" action="checkin.php" id="pickupCheckinForm">
+                <form method="post" action="<?php echo sanitize_output(logistici_module_url('checkin')); ?>" id="pickupCheckinForm">
                     <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                     <div class="mb-3">
                         <label class="form-label" for="checkin_tracking">Tracking</label>

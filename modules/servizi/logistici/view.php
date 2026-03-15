@@ -9,7 +9,7 @@ require_role('Admin', 'Operatore', 'Manager');
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
-    header('Location: index.php');
+    header('Location: ' . logistici_module_url('index'));
     exit;
 }
 
@@ -24,7 +24,7 @@ ensure_pickup_tables();
 $package = get_package_details($id);
 if (!$package) {
     add_flash('warning', 'Pickup non trovato.');
-    header('Location: index.php');
+    header('Location: ' . logistici_module_url('index'));
     exit;
 }
 
@@ -50,10 +50,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="page-toolbar mb-4">
-            <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Tutti i pickup</a>
+            <a class="btn btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('index')); ?>"><i class="fa-solid fa-arrow-left"></i> Tutti i pickup</a>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
-                <a class="btn btn-warning text-dark" href="edit.php?id=<?php echo $id; ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
-                <form method="post" action="delete.php" onsubmit="return confirm('Confermi l\'eliminazione del pickup?');">
+                <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(logistici_module_url('edit', ['id' => $id])); ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
+                <form method="post" action="<?php echo sanitize_output(logistici_module_url('delete')); ?>" onsubmit="return confirm('Confermi l\'eliminazione del pickup?');">
                     <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                     <input type="hidden" name="id" value="<?php echo $id; ?>">
                     <button class="btn btn-outline-warning" type="submit"><i class="fa-solid fa-trash"></i></button>
@@ -108,7 +108,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <div class="card-body">
                             <dl class="row mb-0">
                                 <dt class="col-sm-4">ID segnalazione</dt>
-                                <dd class="col-sm-8">#<?php echo (int) $linkedReport['id']; ?> · <a class="link-warning" href="report.php?id=<?php echo (int) $linkedReport['id']; ?>">Apri dettaglio</a></dd>
+                                <dd class="col-sm-8">#<?php echo (int) $linkedReport['id']; ?> · <a class="link-warning" href="<?php echo sanitize_output(logistici_module_url('report', ['id' => (int) $linkedReport['id']])); ?>">Apri dettaglio</a></dd>
                                 <dt class="col-sm-4">Tracking portal</dt>
                                 <dd class="col-sm-8">#<?php echo sanitize_output($linkedReport['tracking_code'] ?? ''); ?></dd>
                                 <dt class="col-sm-4">Segnalato il</dt>
@@ -145,7 +145,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <h2 class="h5 mb-0">Aggiorna stato</h2>
                     </div>
                     <div class="card-body">
-                        <form class="row g-3 align-items-end" method="post" action="index.php" data-pickup-status-form>
+                        <form class="row g-3 align-items-end" method="post" action="<?php echo sanitize_output(logistici_module_url('index')); ?>" data-pickup-status-form>
                             <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                             <input type="hidden" name="action" value="update_status">
                             <input type="hidden" name="package_id" value="<?php echo $id; ?>">
@@ -221,7 +221,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <h2 class="h5 mb-0">Invia notifica</h2>
                     </div>
                     <div class="card-body">
-                        <form class="mb-4" method="post" action="index.php" data-pickup-notification-form>
+                        <form class="mb-4" method="post" action="<?php echo sanitize_output(logistici_module_url('index')); ?>" data-pickup-notification-form>
                             <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                             <input type="hidden" name="action" value="send_notification">
                             <input type="hidden" name="channel" value="email">
@@ -241,7 +241,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <button class="btn btn-warning text-dark w-100" type="submit">Invia email</button>
                         </form>
 
-                        <form method="post" action="index.php" data-pickup-notification-form>
+                        <form method="post" action="<?php echo sanitize_output(logistici_module_url('index')); ?>" data-pickup-notification-form>
                             <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                             <input type="hidden" name="action" value="send_notification">
                             <input type="hidden" name="channel" value="whatsapp">
@@ -274,7 +274,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <span class="text-warning text-uppercase fw-semibold"><?php echo sanitize_output($notification['channel']); ?></span>
                                         <span class="small"><?php echo sanitize_output(format_datetime_locale($notification['created_at'] ?? '')); ?></span>
                                     </div>
-                                    <div class="small text-secondary">Stato: <?php echo sanitize_output(ucfirst($notification['status'] ?? '')); ?></div>
+                                    <div class="small text-secondary">Stato: <?php echo sanitize_output(pickup_notification_status_label($notification['status'] ?? '')); ?></div>
                                     <div class="small mt-2 text-body"><?php echo nl2br(sanitize_output($notification['message'])); ?></div>
                                 </div>
                             <?php endforeach; ?>

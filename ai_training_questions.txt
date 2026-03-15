@@ -1,0 +1,326 @@
+# Domande per l'Apprendimento dell'Assistente AI - Gestionale Business
+# Queste domande coprono vari moduli e scenari per migliorare le risposte dell'AI
+
+## Modulo Clienti (Clienti)
+1. Quanti clienti ho nel sistema?
+2. Come aggiungo un nuovo cliente?
+3. Quali clienti hanno contratti in scadenza?
+4. Come modifico i dati di un cliente?
+5. Quanti clienti attivi ho?
+6. Come esporto la lista clienti?
+7. Qual è il cliente con più servizi?
+8. Come cerco un cliente per nome?
+9. Quanti clienti sono stati aggiunti questo mese?
+10. Come elimino un cliente?
+11. Quali clienti non hanno email?
+12. Come importo clienti da CSV?
+13. Quanti clienti per regione?
+14. Come creo un contratto per un cliente?
+15. Quali clienti hanno debiti?
+16. Come visualizzo la cronologia di un cliente?
+17. Quanti clienti corporate ho?
+18. Come assegno un agente a un cliente?
+19. Quali clienti hanno anniversario oggi?
+20. Come stampo una scheda cliente?
+
+## Modulo Servizi (Servizi)
+21. Quanti servizi ho coordinato questo mese?
+22. Come creo un nuovo servizio?
+23. Quali servizi sono in corso?
+24. Come modifico un servizio esistente?
+25. Quanti servizi per tipo?
+26. Come assegno un servizio a un cliente?
+27. Quali servizi sono stati completati oggi?
+28. Come calcolo il costo di un servizio?
+29. Quanti servizi in ritardo?
+30. Come duplico un servizio?
+31. Quali servizi richiedono follow-up?
+32. Come esporto i servizi in PDF?
+33. Quanti servizi per mese?
+34. Come cancello un servizio?
+35. Quali servizi hanno problemi?
+36. Come pianifico un servizio futuro?
+37. Quanti servizi urgenti?
+38. Come aggiungo note a un servizio?
+39. Quali servizi sono stati fatturati?
+40. Come visualizzo il tracking di un servizio?
+
+## Modulo Energia (Energia)
+41. Come configuro i reminder energia?
+42. Quanti contratti energia ho?
+43. Come aggiungo un nuovo contratto energia?
+44. Quali contratti energia scadono presto?
+45. Come modifico un contratto energia?
+46. Quanti clienti hanno contratti energia?
+47. Come invio notifiche energia?
+48. Quali contratti energia sono attivi?
+49. Come calcolo i costi energia?
+50. Quanti reminder energia inviati oggi?
+51. Come esporto contratti energia?
+52. Quali contratti energia per fornitore?
+53. Come rinnovo un contratto energia?
+54. Quanti contratti energia scaduti?
+55. Come aggiungo allegati a un contratto energia?
+56. Quali clienti energia senza email?
+57. Come pianifico rinnovi energia?
+58. Quanti contratti energia per tipo?
+59. Come elimino un contratto energia?
+60. Quali contratti energia hanno problemi?
+
+## Modulo Ticket/Supporto (Ticket)
+61. Quanti ticket aperti ho?
+62. Come creo un nuovo ticket?
+63. Quali ticket hanno priorità alta?
+64. Come assegno un ticket a un agente?
+65. Quanti ticket risolti questo mese?
+66. Come chiudo un ticket?
+67. Quali ticket sono in attesa?
+68. Come aggiungo commenti a un ticket?
+69. Quanti ticket per categoria?
+70. Come esporto ticket in Excel?
+71. Quali ticket scadono oggi?
+72. Come modifico la priorità di un ticket?
+73. Quanti ticket da clienti VIP?
+74. Come creo un ticket da email?
+75. Quali ticket senza risposta?
+76. Come visualizzo la cronologia ticket?
+77. Quanti ticket urgenti?
+78. Come assegno SLA a un ticket?
+79. Quali ticket sono stati escalati?
+80. Come elimino un ticket?
+
+## Modulo Report/Statistiche (Report)
+81. Come genero un report clienti?
+82. Quali sono i KPI principali?
+83. Come creo un report personalizzato?
+84. Quanti report generati questo mese?
+85. Come esporto un report in PDF?
+86. Quali report finanziari disponibili?
+87. Come filtro un report per periodo?
+88. Quanti clienti per report?
+89. Come programmo un report automatico?
+90. Quali report operativi?
+91. Come visualizzo statistiche servizi?
+92. Quanti report per utente?
+93. Come condivido un report?
+94. Quali report su energia?
+95. Come calcolo ROI da report?
+96. Quanti report esportati oggi?
+97. Come creo dashboard?
+98. Quali report su ticket?
+99. Come analizzo trend?
+100. Come elimino un report?
+
+## Modulo BRT/Spedizioni (BRT)
+101. Come creo una spedizione BRT?
+102. Quanti pacchi spediti oggi?
+103. Come traccio una spedizione?
+104. Quali spedizioni in consegna?
+105. Come modifico una spedizione BRT?
+106. Quanti spedizioni per destinazione?
+107. Come calcolo costi BRT?
+108. Quali spedizioni ritardate?
+109. Come creo etichette BRT?
+110. Quanti spedizioni internazionali?
+111. Come configuro account BRT?
+112. Quali spedizioni con problemi?
+113. Come esporto manifest BRT?
+114. Quanti spedizioni per servizio?
+115. Come rinnovo contratto BRT?
+116. Quali spedizioni consegnate?
+117. Come aggiungo tracking BRT?
+118. Quanti spedizioni urgenti?
+119. Come elimino una spedizione?
+120. Quali spedizioni in transito?
+
+## Modulo Calendario (Calendario)
+121. Come aggiungo un evento calendario?
+122. Quanti eventi oggi?
+123. Come sincronizzo con Google Calendar?
+124. Quali eventi questa settimana?
+125. Come modifico un appuntamento?
+126. Quanti eventi per cliente?
+127. Come creo reminder calendario?
+128. Quali eventi ricorrenti?
+129. Come esporto calendario?
+130. Quanti eventi completati?
+131. Come condivido calendario?
+132. Quali eventi urgenti?
+133. Come elimino un evento?
+134. Quanti eventi per mese?
+135. Come configuro notifiche calendario?
+136. Quali eventi in ritardo?
+137. Come aggiungo note a evento?
+138. Quanti eventi aziendali?
+139. Come filtro calendario?
+140. Quali eventi personali?
+
+## Modulo Email Marketing (Email)
+141. Come creo una campagna email?
+142. Quanti iscritti alla newsletter?
+143. Come invio email di massa?
+144. Quali campagne attive?
+145. Come modifico template email?
+146. Quanti email inviate oggi?
+147. Come analizzo aperture email?
+148. Quali email in coda?
+149. Come aggiungo contatti email?
+150. Quanti bounce email?
+151. Come configuro SMTP?
+152. Quali campagne per segmento?
+153. Come creo automazioni email?
+154. Quanti clic su email?
+155. Come esporto lista email?
+156. Quali email programmate?
+157. Come elimino una campagna?
+158. Quanti unsubscribe?
+159. Come test A/B email?
+160. Quali email transazionali?
+
+## Modulo CAF Patronato (CAF)
+161. Come creo una pratica CAF?
+162. Quanti pratiche CAF attive?
+163. Come modifico una pratica CAF?
+164. Quali pratiche CAF in scadenza?
+165. Come calcolo costi CAF?
+166. Quanti clienti CAF?
+167. Come esporto pratiche CAF?
+168. Quali pratiche CAF completate?
+169. Come aggiungo documenti CAF?
+170. Quanti pratiche CAF per tipo?
+171. Come configuro CAF?
+172. Quali pratiche CAF problematiche?
+173. Come rinnovo CAF?
+174. Quanti CAF urgenti?
+175. Come elimino pratica CAF?
+176. Quali CAF in attesa?
+177. Come traccio CAF?
+178. Quanti CAF per mese?
+179. Come fatturo CAF?
+180. Quali CAF archiviati?
+
+## Modulo Ufficio Postale (Postale)
+181. Come creo raccomandata?
+182. Quanti telegrammi inviati?
+183. Come traccio posta?
+184. Quali raccomandate in consegna?
+185. Come configuro account postale?
+186. Quanti pacchi postali?
+187. Come calcolo costi postali?
+188. Quali poste urgenti?
+189. Come creo telegramma?
+190. Quanti invii postali oggi?
+191. Come esporto manifest postale?
+192. Quali poste internazionali?
+193. Come rinnovo contratto postale?
+194. Quanti errori postali?
+195. Come elimino invio postale?
+196. Quali poste in transito?
+197. Come aggiungo tracking postale?
+198. Quanti invii raccomandati?
+199. Come configuro notifiche postali?
+200. Quali poste consegnate?
+
+## Domande Generali e Troubleshooting
+201. Come faccio login?
+202. Come resetto password?
+203. Quali sono i moduli disponibili?
+204. Come configuro notifiche?
+205. Quanti utenti attivi?
+206. Come esporto dati?
+207. Quali backup disponibili?
+208. Come aggiorno il sistema?
+209. Quanti errori nel log?
+210. Come contatto supporto?
+211. Quali permessi ho?
+212. Come cambio lingua?
+213. Quanti sessioni attive?
+214. Come configuro API?
+215. Quali integrazioni disponibili?
+216. Come monitoro performance?
+217. Quanti file allegati?
+218. Come pulisco cache?
+219. Quali aggiornamenti pendenti?
+220. Come ripristino backup?
+221. Quanti accessi falliti?
+222. Come configuro firewall?
+223. Quali certificati SSL?
+224. Come monitoro dischi?
+225. Quanti processi attivi?
+226. Come configuro cron jobs?
+227. Quali log di sistema?
+228. Come aggiorno dipendenze?
+229. Quanti utenti per ruolo?
+230. Come configuro email?
+231. Quali plugin installati?
+232. Come monitoro memoria?
+233. Quanti database connessi?
+234. Come configuro VPN?
+235. Quali porte aperte?
+236. Come aggiorno PHP?
+237. Quanti errori 404?
+238. Come configuro HTTPS?
+239. Quali backup automatici?
+240. Come monitoro CPU?
+241. Quanti utenti online?
+242. Come configuro proxy?
+243. Quali virus scansioni?
+244. Come aggiorno OS?
+245. Quanti accessi API?
+246. Come configuro load balancer?
+247. Quali certificati scaduti?
+248. Come monitoro rete?
+249. Quanti file temporanei?
+250. Come configuro logging?
+
+## Domande Avanzate e Analisi
+251. Qual è il cliente più profittevole?
+252. Come analizzo trend vendite?
+253. Quanti servizi per cliente medio?
+254. Quale periodo ha più attività?
+255. Come calcolo margine servizi?
+256. Quanti ticket per servizio?
+257. Quale modulo è più usato?
+258. Come analizzo soddisfazione clienti?
+259. Quanti contratti rinnovati?
+260. Quale servizio ha più problemi?
+261. Come calcolo ROI campagne?
+262. Quanti lead convertiti?
+263. Quale regione ha più clienti?
+264. Come analizzo churn rate?
+265. Quanti servizi completati in tempo?
+266. Quale agente ha più ticket?
+267. Come calcolo costi operativi?
+268. Quanti clienti referral?
+269. Quale servizio più richiesto?
+270. Come analizzo performance agenti?
+271. Quanti contratti cross-sell?
+272. Quale periodo picco vendite?
+273. Come calcolo lifetime value?
+274. Quanti servizi up-sell?
+275. Quale cliente più attivo?
+276. Come analizzo funnel conversione?
+277. Quanti ticket auto-risolti?
+278. Quale modulo meno usato?
+279. Come calcolo efficienza processi?
+280. Quanti clienti enterprise?
+281. Quale servizio più profittevole?
+282. Come analizzo sentiment feedback?
+283. Quanti contratti up-sell?
+284. Quale agente più efficiente?
+285. Come calcolo retention rate?
+286. Quanti servizi custom?
+287. Quale cliente più vecchio?
+288. Come analizzo trend ticket?
+289. Quanti contratti down-sell?
+290. Quale periodo più produttivo?
+291. Come calcolo NPS?
+292. Quanti clienti B2B?
+293. Quale servizio più complesso?
+294. Come analizzo performance moduli?
+295. Quanti contratti enterprise?
+296. Quale cliente VIP?
+297. Come calcolo CAC?
+298. Quanti servizi standard?
+299. Quale periodo più profittevole?
+300. Come analizzo ROI investimenti?

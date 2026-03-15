@@ -162,13 +162,17 @@ final class BrtConfig
             'ITALIA' => $this->clean(env('BRT_PRICING_CONDITION_CODE_ITALIA')),
             'PUDO' => $this->clean(env('BRT_PRICING_CONDITION_CODE_PUDO')),
             'DPD' => $this->clean(env('BRT_PRICING_CONDITION_CODE_DPD')),
-        ], static fn ($value) => $value !== null && $value !== '');
+            'EUROPE' => $this->clean(env('BRT_PRICING_CONDITION_CODE_EUROPE')),
+            'SWISS' => $this->clean(env('BRT_PRICING_CONDITION_CODE_SWISS')),
+        ], static function ($value) {
+            return $value !== null && $value !== '';
+        });
         $this->defaultNetwork = $this->clean(env('BRT_DEFAULT_NETWORK'));
         $this->defaultServiceType = $this->clean(env('BRT_DEFAULT_SERVICE_TYPE'));
         $this->defaultPudoId = $this->clean(env('BRT_DEFAULT_PUDO_ID'));
-    $this->defaultBrtServiceCode = $this->clean(env('BRT_SERVICE_CODE'));
-    $this->returnServiceCode = $this->clean(env('BRT_RETURN_SERVICE_CODE', 'B15'));
-    $this->defaultReturnDepot = $this->clean(env('BRT_RETURN_DEPOT'));
+        $this->defaultBrtServiceCode = $this->clean(env('BRT_SERVICE_CODE'));
+        $this->returnServiceCode = $this->clean(env('BRT_RETURN_SERVICE_CODE', 'B15'));
+        $this->defaultReturnDepot = $this->clean(env('BRT_RETURN_DEPOT'));
 
         $this->labelRequiredByDefault = $this->boolEnv('BRT_LABEL_REQUIRED', true);
         $this->labelOutputType = $this->clean(env('BRT_LABEL_OUTPUT_TYPE', 'PDF')) ?? 'PDF';
@@ -202,7 +206,7 @@ final class BrtConfig
         $this->trackingBatchSize = $this->intEnv('BRT_TRACKING_BATCH_SIZE', 10, 1, 50);
         $this->trackingStaleMinutes = $this->intEnv('BRT_TRACKING_STALE_MINUTES', 180, 15, 1440);
         $this->trackingMaxAgeDays = $this->intEnv('BRT_TRACKING_MAX_AGE_DAYS', 15, 0, 90, true);
-        $this->trackingStatuses = $this->parseStatuses($this->clean(env('BRT_TRACKING_STATUSES')), ['confirmed', 'warning']);
+        $this->trackingStatuses = $this->parseStatuses($this->clean(env('BRT_TRACKING_STATUSES')), ['confirmed', 'warning', 'in_transit', 'out_for_delivery']);
 
         $this->manifestEnabled = $this->boolEnv('BRT_MANIFEST_ENABLED', false);
         $this->manifestStorePdf = $this->boolEnv('BRT_MANIFEST_STORE_PDF', true);

@@ -1,0 +1,141 @@
+#cs-consent-banner {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1055;
+  background: linear-gradient(135deg, var(--ag-gradient-start, #0b2f6b), var(--ag-gradient-end, #12468f));
+  color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  max-width: 1120px;
+  width: calc(100% - 32px);
+  padding: 18px 20px;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  border: 1px solid rgba(var(--ag-accent-rgb, 11, 47, 107), 0.25);
+}
+
+#cs-consent-banner .cs-consent-inner {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 14px;
+  align-items: center;
+}
+
+#cs-consent-banner h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+#cs-consent-banner p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+#cs-consent-banner .cs-consent-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 6px 12px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+#cs-consent-banner label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+
+#cs-consent-banner input[type="checkbox"] {
+  accent-color: var(--ag-accent, #0b2f6b);
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(var(--ag-accent-rgb, 11, 47, 107), 0.45);
+  background: rgba(var(--ag-accent-rgb, 11, 47, 107), 0.06);
+}
+
+#cs-consent-banner input[type="checkbox"]:focus-visible {
+  outline: 2px solid rgba(var(--ag-accent-rgb, 11, 47, 107), 0.35);
+  outline-offset: 2px;
+}
+
+#cs-consent-banner .cs-consent-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+#cs-consent-banner button {
+  border: none;
+  border-radius: var(--bs-btn-border-radius, 0.85rem);
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  min-width: 140px;
+  font-size: 0.95rem;
+}
+
+#cs-consent-banner .btn-primary {
+  background: linear-gradient(135deg, var(--ag-gradient-start, #0b2f6b), var(--ag-gradient-end, #12468f));
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(var(--ag-accent-rgb, 11, 47, 107), 0.28);
+  border: 1px solid rgba(var(--ag-accent-rgb, 11, 47, 107), 0.22);
+  outline: 1.5px solid rgba(255, 255, 255, 0.9);
+  outline-offset: -3px;
+}
+
+#cs-consent-banner .btn-secondary {
+  background: rgba(var(--ag-accent-rgb, 11, 47, 107), 0.12);
+  color: var(--ag-surface, #ffffff);
+  border: 1px solid rgba(var(--ag-accent-rgb, 11, 47, 107), 0.28);
+  box-shadow: 0 8px 20px rgba(8, 28, 60, 0.14);
+}
+
+#cs-consent-banner .btn-primary:hover,
+#cs-consent-banner .btn-secondary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 36px rgba(8, 28, 60, 0.2);
+}
+
+#cs-consent-banner .btn-primary:active,
+#cs-consent-banner .btn-secondary:active {
+  transform: translateY(0);
+  box-shadow: 0 10px 20px rgba(8, 28, 60, 0.18);
+}
+
+@media (max-width: 768px) {
+  #cs-consent-banner .cs-consent-inner {
+    grid-template-columns: 1fr;
+  }
+  #cs-consent-banner {
+    bottom: 10px;
+  }
+  #cs-consent-banner .cs-consent-buttons {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 540px) {
+  #cs-consent-banner {
+    width: calc(100% - 20px);
+    padding: 16px;
+  }
+  #cs-consent-banner .cs-consent-options {
+    grid-template-columns: 1fr;
+  }
+  #cs-consent-banner .cs-consent-buttons {
+    width: 100%;
+    justify-content: center;
+  }
+  #cs-consent-banner .cs-consent-buttons button {
+    flex: 1 1 140px;
+    text-align: center;
+  }
+}

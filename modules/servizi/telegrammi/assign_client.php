@@ -11,7 +11,7 @@ require_once __DIR__ . '/../../../includes/helpers.php';
 require_role('Admin', 'Operatore', 'Manager');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: ' . telegrammi_module_url('index'));
     exit;
 }
 
@@ -22,7 +22,7 @@ $clienteId = isset($_POST['cliente_id']) && $_POST['cliente_id'] !== '' ? (int) 
 
 if ($telegrammaPk <= 0) {
     add_flash('warning', 'Telegramma non valido.');
-    header('Location: index.php');
+    header('Location: ' . telegrammi_module_url('index'));
     exit;
 }
 
@@ -57,9 +57,9 @@ if ($redirectId === '') {
 }
 
 if ($redirectId !== '') {
-    header('Location: view.php?id=' . urlencode((string) $redirectId));
+    header('Location: ' . telegrammi_module_url('view', ['id' => (string) $redirectId]));
     exit;
 }
 
-header('Location: index.php');
+header('Location: ' . telegrammi_module_url('index'));
 exit;

@@ -11,7 +11,7 @@ require_role('Admin', 'Operatore', 'Manager');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     add_flash('warning', 'Metodo non consentito.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
@@ -24,7 +24,7 @@ $messageBody = trim((string) ($_POST['message'] ?? ''));
 
 if ($praticaId <= 0) {
     add_flash('warning', 'Pratica non valida.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
@@ -35,20 +35,20 @@ if (!in_array($channel, $allowedChannels, true)) {
 
 if ($recipient === '' || !filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
     add_flash('warning', 'Indirizzo email non valido.');
-    header('Location: view_request.php?id=' . $praticaId);
+    header('Location: ' . anpr_module_url('view_request', ['id' => $praticaId]));
     exit;
 }
 
 $pratica = anpr_fetch_pratica($pdo, $praticaId);
 if (!$pratica) {
     add_flash('warning', 'Pratica non trovata.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
 if (empty($pratica['certificato_path'])) {
     add_flash('warning', 'Carica prima il certificato per questa pratica.');
-    header('Location: view_request.php?id=' . $praticaId);
+    header('Location: ' . anpr_module_url('view_request', ['id' => $praticaId]));
     exit;
 }
 
@@ -71,9 +71,9 @@ $content = '<p>Gentile ' . sanitize_output($clienteNome !== '' ? $clienteNome : 
 
 $htmlBody = render_mail_template($subject, $content);
 
-if (!send_system_mail($recipient, $subject, $htmlBody)) {
+if (!send_system_mail($recipient, $subject, $htmlBody, ['channel' => $channel])) {
     add_flash('warning', 'Invio non riuscito. Controlla le impostazioni email e riprova.');
-    header('Location: view_request.php?id=' . $praticaId);
+    header('Location: ' . anpr_module_url('view_request', ['id' => $praticaId]));
     exit;
 }
 
@@ -85,5 +85,5 @@ try {
     error_log('ANPR send certificate log failed: ' . $exception->getMessage());
 }
 
-header('Location: view_request.php?id=' . $praticaId);
+header('Location: ' . anpr_module_url('view_request', ['id' => $praticaId]));
 exit;

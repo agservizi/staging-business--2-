@@ -3,6 +3,11 @@ $currentUri = $_SERVER['REQUEST_URI'] ?? '';
 $currentPath = basename(parse_url($currentUri, PHP_URL_PATH) ?? '');
 $role = $_SESSION['role'] ?? '';
 $isPatronato = $role === 'Patronato';
+$isCollaborator = $role === 'Collaboratore';
+$hideCollaboratorIliad = (bool) ($hideCollaboratorIliad ?? false);
+if ($isCollaborator && str_contains($currentUri, 'modules/opportunities/collaborator/')) {
+    $hideCollaboratorIliad = true;
+}
 
 if (!function_exists('nav_active')) {
     function nav_active(string $needle, string $currentPath): string
@@ -27,94 +32,119 @@ $serviziItems = [
         'needle' => 'modules/servizi/entrate-uscite',
         'label' => 'Entrate/Uscite',
         'icon' => 'fa-solid fa-arrow-trend-up',
-        'href' => base_url('modules/servizi/entrate-uscite/index.php'),
+        'href' => entrate_uscite_module_url('index'),
         'color' => 'sky',
     ],
     [
         'needle' => 'modules/servizi/appuntamenti',
         'label' => 'Appuntamenti',
         'icon' => 'fa-solid fa-calendar-check',
-        'href' => base_url('modules/servizi/appuntamenti/index.php'),
+        'href' => appuntamenti_module_url('index'),
         'color' => 'violet',
     ],
     [
         'needle' => 'modules/servizi/caf-patronato',
         'label' => 'CAF & Patronato',
     'icon' => 'fa-solid fa-scale-balanced',
-    'href' => base_url('modules/servizi/caf-patronato/index.php'),
+    'href' => caf_patronato_module_url('index'),
     'color' => 'emerald',
     ],
     [
         'needle' => 'modules/servizi/fedelta',
         'label' => 'Programma Fedeltà',
         'icon' => 'fa-solid fa-gift',
-        'href' => base_url('modules/servizi/fedelta/index.php'),
+        'href' => fedelta_module_url('index'),
         'color' => 'amber',
-    ],
-    [
-        'needle' => 'modules/servizi/web',
-        'label' => 'Servizi Digitali & Web',
-        'icon' => 'fa-solid fa-earth-europe',
-        'href' => base_url('modules/servizi/web/index.php'),
-        'color' => 'azure',
     ],
     [
         'needle' => 'modules/servizi/curriculum',
         'label' => 'Gestione Curriculum',
         'icon' => 'fa-solid fa-id-card',
-        'href' => base_url('modules/servizi/curriculum/index.php'),
+        'href' => curriculum_module_url('index'),
         'color' => 'emerald',
     ],
     [
         'needle' => 'modules/servizi/brt',
-        'label' => 'BRT Spedizioni',
+        'label' => 'Spedizioni BRT',
         'icon' => 'fa-solid fa-truck-fast',
-        'href' => base_url('modules/servizi/brt/index.php'),
+        'href' => brt_module_url('index'),
         'color' => 'azure',
     ],
     [
         'needle' => 'modules/servizi/logistici',
         'label' => 'Pickup Pacchi',
         'icon' => 'fa-solid fa-box-open',
-        'href' => base_url('modules/servizi/logistici/index.php'),
+        'href' => logistici_module_url('index'),
         'color' => 'orange',
-    ],
-    [
-        'needle' => 'modules/servizi/visure',
-        'label' => 'Visure & Catasto',
-        'icon' => 'fa-solid fa-map-location-dot',
-        'href' => base_url('modules/servizi/visure/index.php'),
-        'color' => 'teal',
     ],
     [
         'needle' => 'modules/servizi/telegrammi',
         'label' => 'Invio telegrammi',
         'icon' => 'fa-solid fa-paper-plane',
-        'href' => base_url('modules/servizi/telegrammi/index.php'),
+        'href' => telegrammi_module_url('index'),
         'color' => 'sky',
+    ],
+    [
+        'needle' => 'modules/servizi/posta-telematica',
+        'label' => 'Posta Telematica',
+        'icon' => 'fa-solid fa-envelopes-bulk',
+        'href' => posta_telematica_module_url('index'),
+        'color' => 'indigo',
+    ],
+    [
+        'needle' => 'modules/servizi/aci',
+        'label' => 'Pratiche ACI',
+        'icon' => 'fa-solid fa-car',
+        'href' => aci_module_url('index'),
+        'color' => 'teal',
+    ],
+    [
+        'needle' => 'modules/servizi/visure-cr',
+        'label' => 'Visure CR',
+        'icon' => 'fa-solid fa-file-signature',
+        'href' => visure_cr_module_url('index'),
+        'color' => 'amber',
     ],
     [
         'needle' => 'modules/servizi/energia',
         'label' => 'Contratti Energia',
         'icon' => 'fa-solid fa-bolt',
-        'href' => base_url('modules/servizi/energia/index.php'),
+        'href' => energia_module_url('index'),
         'color' => 'crimson',
+    ],
+    [
+        'needle' => 'modules/servizi/express',
+        'label' => 'Express Telefonia',
+        'icon' => 'fa-solid fa-sim-card',
+        'href' => base_url('modules/servizi/express/index'),
+        'color' => 'amber',
+        'roles' => ['Admin', 'Manager'],
     ],
     [
         'needle' => 'modules/servizi/anpr',
         'label' => 'Servizi ANPR',
         'icon' => 'fa-solid fa-id-card-clip',
-        'href' => base_url('modules/servizi/anpr/index.php'),
+        'href' => anpr_module_url('index'),
         'color' => 'amber',
     ],
     [
         'needle' => 'modules/servizi/cie',
         'label' => 'Prenotazione CIE',
     'icon' => 'fa-solid fa-address-card',
-    'href' => base_url('modules/servizi/cie/index.php'),
+    'href' => cie_module_url('index'),
     'color' => 'violet',
     ],
 ];
+
+if ($role) {
+    $serviziItems = array_values(array_filter($serviziItems, static function (array $item) use ($role): bool {
+        if (empty($item['roles']) || !is_array($item['roles'])) {
+            return true;
+        }
+
+        return in_array($role, $item['roles'], true);
+    }));
+}
 
 if ($isPatronato) {
     $serviziItems = array_values(array_filter($serviziItems, static function (array $item): bool {
@@ -124,11 +154,19 @@ if ($isPatronato) {
 
 $sidebarLogoRelative = 'assets/uploads/branding/sidebar-logo.png';
 $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
+$sidebarHomeHref = $isCollaborator
+    ? opportunities_collaborator_url('index')
+    : dashboard_url();
+$appVersion = env('APP_VERSION', '1.0.0');
+$userDisplayName = function_exists('current_user_display_name')
+    ? current_user_display_name()
+    : (string) ($_SESSION['username'] ?? 'Utente');
+$profileHref = impostazioni_module_url('profile');
 ?>
 <nav id="sidebarMenu" class="sidebar border-end" aria-label="Menu principale">
     <div class="px-3 py-4 sidebar-inner">
         <div class="sidebar-brand mb-4">
-            <a class="sidebar-brand-link" href="<?php echo base_url('dashboard.php'); ?>" aria-label="Coresuite Business">
+            <a class="sidebar-brand-link" href="<?php echo $sidebarHomeHref; ?>" aria-label="Coresuite Business">
                 <span class="sidebar-logo" aria-hidden="true">
                     <?php if ($sidebarLogoAvailable): ?>
                         <img class="sidebar-logo-img" src="<?php echo asset($sidebarLogoRelative); ?>" alt="">
@@ -142,11 +180,109 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                 </span>
             </a>
         </div>
-        <ul class="nav nav-pills flex-column gap-1" role="list">
-            <?php if (!$isPatronato): ?>
-                <?php $dashboardActive = nav_active('dashboard.php', $currentPath); ?>
+        <div class="sidebar-menu-scroll">
+        <ul class="nav nav-pills flex-column gap-1 sidebar-nav" role="list">
+            <?php if ($isCollaborator): ?>
+                <?php
+                    $collabDashboardActive = nav_active('modules/opportunities/collaborator/index', $currentPath);
+                    $collabListActive = nav_active('modules/opportunities/collaborator/list', $currentPath);
+                    $collabCustomersActive = nav_active('modules/opportunities/collaborator/customers', $currentPath) === 'active'
+                        || nav_active('modules/opportunities/collaborator/customer', $currentPath) === 'active'
+                        ? 'active'
+                        : '';
+                    $collabGuideActive = nav_active('modules/opportunities/collaborator/guide', $currentPath);
+                    $collabFilesActive = nav_active('modules/opportunities/collaborator/promotions', $currentPath);
+                    $collabCommissionActive = nav_active('modules/opportunities/collaborator/commissions', $currentPath);
+                    $collabTicketsActive = nav_active('modules/opportunities/collaborator/tickets', $currentPath);
+                ?>
+                <li class="sidebar-section-label">Workspace</li>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo $dashboardActive; ?>" href="<?php echo base_url('dashboard.php'); ?>" aria-label="Dashboard" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Dashboard"<?php echo $dashboardActive ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo $collabDashboardActive; ?>" href="<?php echo opportunities_collaborator_url('index'); ?>" aria-label="Dashboard opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Dashboard opportunity"<?php echo $collabDashboardActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="indigo" aria-hidden="true">
+                            <i class="fa-solid fa-sitemap"></i>
+                        </span>
+                        <span class="nav-label">Dashboard OP</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $collabListActive; ?>" href="<?php echo opportunities_collaborator_url('list'); ?>" aria-label="Elenco opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Elenco opportunity"<?php echo $collabListActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="teal" aria-hidden="true">
+                            <i class="fa-solid fa-list-check"></i>
+                        </span>
+                        <span class="nav-label">Elenco OP</span>
+                    </a>
+                </li>
+                <li class="sidebar-section-label">Relazioni</li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $collabCustomersActive; ?>" href="<?php echo opportunities_collaborator_url('customers'); ?>" aria-label="Clienti" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Clienti"<?php echo $collabCustomersActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="emerald" aria-hidden="true">
+                            <i class="fa-solid fa-users"></i>
+                        </span>
+                        <span class="nav-label">Clienti</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $collabGuideActive; ?>" href="<?php echo opportunities_collaborator_url('guide'); ?>" aria-label="Guida" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Guida"<?php echo $collabGuideActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="azure" aria-hidden="true">
+                            <i class="fa-solid fa-circle-question"></i>
+                        </span>
+                        <span class="nav-label">Guida</span>
+                    </a>
+                </li>
+                <li class="sidebar-section-label">Strumenti</li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $collabFilesActive; ?>" href="<?php echo opportunities_collaborator_url('promotions'); ?>" aria-label="File promo" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="File promo"<?php echo $collabFilesActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="amber" aria-hidden="true">
+                            <i class="fa-solid fa-folder-open"></i>
+                        </span>
+                        <span class="nav-label">File promo</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $collabCommissionActive; ?>" href="<?php echo opportunities_collaborator_url('commissions'); ?>" aria-label="Provvigioni" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Provvigioni"<?php echo $collabCommissionActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="purple" aria-hidden="true">
+                            <i class="fa-solid fa-hand-holding-dollar"></i>
+                        </span>
+                        <span class="nav-label">Provvigioni</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $collabTicketsActive; ?>" href="<?php echo opportunities_collaborator_url('tickets'); ?>" aria-label="Ticket" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Ticket"<?php echo $collabTicketsActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="crimson" aria-hidden="true">
+                            <i class="fa-solid fa-ticket"></i>
+                        </span>
+                        <span class="nav-label">Ticket</span>
+                    </a>
+                </li>
+                <?php if (!$hideCollaboratorIliad): ?>
+                    <li class="sidebar-section-label">Credenziali</li>
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/iliad', $currentPath); ?>" href="<?php echo iliad_module_url('index'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
+                            <span class="nav-icon" data-color="blue" aria-hidden="true">
+                                <i class="fa-solid fa-key"></i>
+                            </span>
+                            <span class="nav-label">Iliad</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+                <?php
+                    $profileActive = (nav_active('modules/impostazioni/profile', $currentPath) === 'active'
+                        || nav_active('profile.php', $currentPath) === 'active') ? 'active' : '';
+                ?>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $profileActive; ?>" href="<?php echo impostazioni_module_url('profile'); ?>" aria-label="Profilo" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Profilo"<?php echo $profileActive ? ' aria-current="page"' : ''; ?>>
+                        <span class="nav-icon" data-color="orange" aria-hidden="true">
+                            <i class="fa-solid fa-id-badge"></i>
+                        </span>
+                        <span class="nav-label">Profilo</span>
+                    </a>
+                </li>
+            <?php else: ?>
+            <?php if (!$isPatronato): ?>
+                <li class="sidebar-section-label">Workspace</li>
+                <?php $dashboardActive = (nav_active('dashboard', $currentPath) === 'active' || nav_active('dashboard.php', $currentPath) === 'active') ? 'active' : ''; ?>
+                <li class="nav-item">
+                    <a class="nav-link d-flex align-items-center <?php echo $dashboardActive; ?>" href="<?php echo dashboard_url(); ?>" aria-label="Dashboard" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Dashboard"<?php echo $dashboardActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="sky" aria-hidden="true">
                             <i class="fa-solid fa-gauge-high"></i>
                         </span>
@@ -157,9 +293,10 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
 
             <?php if ($role !== 'Cliente'): ?>
                 <?php if ($isPatronato): ?>
+                    <li class="sidebar-section-label">Servizi</li>
                     <?php $cafActive = nav_active('modules/servizi/caf-patronato', $currentPath); ?>
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo $cafActive; ?>" href="<?php echo base_url('modules/servizi/caf-patronato/index.php'); ?>" aria-label="CAF &amp; Patronato" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="CAF &amp; Patronato"<?php echo $cafActive ? ' aria-current="page"' : ''; ?>>
+                        <a class="nav-link d-flex align-items-center <?php echo $cafActive; ?>" href="<?php echo caf_patronato_module_url('index'); ?>" aria-label="CAF &amp; Patronato" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="CAF &amp; Patronato"<?php echo $cafActive ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="emerald" aria-hidden="true">
                                 <i class="fa-solid fa-scale-balanced"></i>
                             </span>
@@ -167,9 +304,10 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                         </a>
                     </li>
                 <?php else: ?>
+                    <li class="sidebar-section-label">CRM</li>
                     <?php $clientiActive = nav_active('modules/clienti', $currentPath); ?>
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo $clientiActive; ?>" href="<?php echo base_url('modules/clienti/index.php'); ?>" aria-label="Clienti" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Clienti"<?php echo $clientiActive ? ' aria-current="page"' : ''; ?>>
+                        <a class="nav-link d-flex align-items-center <?php echo $clientiActive; ?>" href="<?php echo clienti_module_url('index'); ?>" aria-label="Clienti" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Clienti"<?php echo $clientiActive ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="emerald" aria-hidden="true">
                                 <i class="fa-solid fa-users"></i>
                             </span>
@@ -179,6 +317,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                 <?php endif; ?>
 
                 <?php if (!$isPatronato && $serviziItems): ?>
+                    <li class="sidebar-section-label">Servizi</li>
                     <?php $serviziMenuOpen = false; ?>
                     <?php foreach ($serviziItems as $item) {
                         if (nav_is_active($item['needle'], $currentPath)) {
@@ -198,7 +337,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                             </span>
                         </button>
                         <div class="collapse<?php echo $serviziMenuOpen ? ' show' : ''; ?>" id="sidebarServices">
-                            <ul class="nav flex-column ms-3 border-start ps-3" role="list">
+                            <ul class="nav flex-column gap-1 ms-3 border-start ps-3" role="list">
                                 <?php foreach ($serviziItems as $item): ?>
                                     <?php $itemActive = nav_active($item['needle'], $currentPath); ?>
                                     <li>
@@ -215,10 +354,38 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                     </li>
                 <?php endif; ?>
 
+                <?php if (!$isPatronato): ?>
+                    <li class="sidebar-section-label">Commerciale</li>
+                    <?php
+                        $opportunityActive = nav_active('modules/opportunities', $currentPath);
+                        $opportunityHref = $role === 'Collaboratore'
+                            ? opportunities_collaborator_url('index')
+                            : opportunities_module_url('index');
+                    ?>
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center <?php echo $opportunityActive; ?>" href="<?php echo $opportunityHref; ?>" aria-label="Opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Opportunity"<?php echo $opportunityActive ? ' aria-current="page"' : ''; ?>>
+                            <span class="nav-icon" data-color="indigo" aria-hidden="true">
+                                <i class="fa-solid fa-sitemap"></i>
+                            </span>
+                            <span class="nav-label">Opportunity</span>
+                        </a>
+                    </li>
+
+                    <li class="sidebar-section-label">Toolbox</li>
+                    <li class="nav-item">
+                        <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/iliad', $currentPath); ?>" href="<?php echo iliad_module_url('index'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
+                            <span class="nav-icon" data-color="blue" aria-hidden="true">
+                                <i class="fa-solid fa-key"></i>
+                            </span>
+                            <span class="nav-label">Iliad</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
                 <?php if (!$isPatronato && current_user_has_capability('email.marketing.manage', 'email.marketing.view')): ?>
                     <?php $emailMarketingActive = nav_active('modules/email-marketing', $currentPath); ?>
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo $emailMarketingActive; ?>" href="<?php echo base_url('modules/email-marketing/index.php'); ?>" aria-label="Email marketing" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Email marketing"<?php echo $emailMarketingActive ? ' aria-current="page"' : ''; ?>>
+                        <a class="nav-link d-flex align-items-center <?php echo $emailMarketingActive; ?>" href="<?php echo email_marketing_module_url('index'); ?>" aria-label="Email marketing" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Email marketing"<?php echo $emailMarketingActive ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="amber" aria-hidden="true">
                                 <i class="fa-solid fa-envelope-open-text"></i>
                             </span>
@@ -228,9 +395,10 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                 <?php endif; ?>
 
                 <?php if (!$isPatronato): ?>
+                    <li class="sidebar-section-label">Supporto</li>
                     <?php $ticketActive = nav_active('modules/ticket', $currentPath); ?>
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo $ticketActive; ?>" href="<?php echo base_url('modules/ticket/index.php'); ?>" aria-label="Ticket" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Ticket"<?php echo $ticketActive ? ' aria-current="page"' : ''; ?>>
+                        <a class="nav-link d-flex align-items-center <?php echo $ticketActive; ?>" href="<?php echo ticket_module_url('index'); ?>" aria-label="Ticket" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Ticket"<?php echo $ticketActive ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="crimson" aria-hidden="true">
                                 <i class="fa-solid fa-life-ring"></i>
                             </span>
@@ -240,7 +408,7 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
 
                     <?php $reportActive = nav_active('modules/report', $currentPath); ?>
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo $reportActive; ?>" href="<?php echo base_url('modules/report/index.php'); ?>" aria-label="Report" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Report"<?php echo $reportActive ? ' aria-current="page"' : ''; ?>>
+                        <a class="nav-link d-flex align-items-center <?php echo $reportActive; ?>" href="<?php echo report_module_url('index'); ?>" aria-label="Report" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Report"<?php echo $reportActive ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="teal" aria-hidden="true">
                                 <i class="fa-solid fa-chart-pie"></i>
                             </span>
@@ -251,9 +419,10 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
             <?php endif; ?>
 
             <?php if (!$isPatronato && current_user_has_capability('settings.manage', 'settings.view')): ?>
+                <li class="sidebar-section-label">Sistema</li>
                 <?php $settingsActive = nav_active('modules/impostazioni', $currentPath); ?>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo $settingsActive; ?>" href="<?php echo base_url('modules/impostazioni/index.php'); ?>" aria-label="Impostazioni" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Impostazioni"<?php echo $settingsActive ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo $settingsActive; ?>" href="<?php echo impostazioni_module_url('index'); ?>" aria-label="Impostazioni" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Impostazioni"<?php echo $settingsActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="orange" aria-hidden="true">
                             <i class="fa-solid fa-gear"></i>
                         </span>
@@ -261,9 +430,27 @@ $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
                     </a>
                 </li>
             <?php endif; ?>
+            <?php endif; ?>
         </ul>
+        </div>
+        <div class="sidebar-usercard" aria-label="Profilo utente">
+            <div class="sidebar-usercard-meta">
+                <span class="sidebar-usercard-name"><?php echo htmlspecialchars($userDisplayName, ENT_QUOTES, 'UTF-8'); ?></span>
+                <span class="sidebar-usercard-role"><?php echo htmlspecialchars((string) $role, ENT_QUOTES, 'UTF-8'); ?></span>
+            </div>
+            <div class="sidebar-usercard-actions">
+                <a class="sidebar-usercard-btn" href="<?php echo $profileHref; ?>">
+                    <i class="fa-solid fa-id-badge"></i>
+                    <span>Profilo</span>
+                </a>
+                <a class="sidebar-usercard-btn sidebar-usercard-btn-danger" href="<?php echo logout_url(); ?>">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
         <div class="sidebar-footer" aria-label="Versione applicazione">
-            v. 1.0.0
+            Coresuite · v. <?php echo htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8'); ?>
         </div>
     </div>
 </nav>

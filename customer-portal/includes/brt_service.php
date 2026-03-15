@@ -442,6 +442,15 @@ final class PickupBrtService
             'pricing_condition_code' => $this->extractRoutingString($response, ['pricingConditionCode', 'pricing_condition_code']),
         ];
 
+        // Log temporaneo per debug rete Svizzera
+        if (($payload['countryAbbreviationISOAlpha2'] ?? '') === 'CH') {
+            portal_error_log('BRT routing suggestion for CH', [
+                'suggestion' => $suggestion,
+                'country' => $payload['countryAbbreviationISOAlpha2'] ?? 'unknown',
+                'zip' => $payload['zipCode'] ?? 'unknown',
+            ]);
+        }
+
         if (($suggestion['pricing_condition_code'] ?? '') === '' && isset($suggestion['network']) && $suggestion['network'] !== '') {
             $resolvedPricing = $this->config->getPricingConditionCode($suggestion['network']);
             if (is_string($resolvedPricing) && $resolvedPricing !== '') {

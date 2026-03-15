@@ -10,7 +10,7 @@ use Throwable;
 require_role('Admin', 'Manager');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: ' . appuntamenti_module_url('index'));
     exit;
 }
 
@@ -18,7 +18,7 @@ require_valid_csrf();
 
 $id = (int) ($_POST['id'] ?? 0);
 if ($id <= 0) {
-    header('Location: index.php?error=1');
+    header('Location: ' . appuntamenti_module_url('index', ['error' => 1]));
     exit;
 }
 
@@ -40,9 +40,9 @@ try {
 
     $stmt = $pdo->prepare('DELETE FROM servizi_appuntamenti WHERE id = :id');
     $stmt->execute([':id' => $id]);
-    header('Location: index.php?deleted=1');
+    header('Location: ' . appuntamenti_module_url('index', ['deleted' => 1]));
 } catch (PDOException $e) {
     error_log('Delete appointment failed: ' . $e->getMessage());
-    header('Location: index.php?error=1');
+    header('Location: ' . appuntamenti_module_url('index', ['error' => 1]));
 }
 exit;

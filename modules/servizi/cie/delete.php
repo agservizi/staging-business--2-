@@ -12,7 +12,7 @@ require_role('Admin', 'Operatore', 'Manager');
 $bookingId = (int) ($_POST['id'] ?? $_GET['id'] ?? 0);
 if ($bookingId <= 0) {
     add_flash('warning', 'Prenotazione CIE non valida.');
-    header('Location: index.php');
+    header('Location: ' . cie_module_url('index'));
     exit;
 }
 
@@ -30,14 +30,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         add_flash('warning', 'Impossibile eliminare la prenotazione selezionata.');
     }
 
-    header('Location: index.php');
+    header('Location: ' . cie_module_url('index'));
     exit;
 }
 
 $booking = cie_fetch_booking($pdo, $bookingId);
 if ($booking === null) {
     add_flash('warning', 'Prenotazione CIE non trovata o già rimossa.');
-    header('Location: index.php');
+    header('Location: ' . cie_module_url('index'));
     exit;
 }
 
@@ -57,8 +57,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Prenotazione #<?php echo (int) $booking['id']; ?> · Codice <strong><?php echo sanitize_output($bookingCode); ?></strong></p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-light" href="view.php?id=<?php echo (int) $booking['id']; ?>"><i class="fa-solid fa-arrow-left me-2"></i>Dettaglio</a>
-                <a class="btn btn-warning text-dark" href="index.php"><i class="fa-solid fa-table-list me-2"></i>Dashboard CIE</a>
+                <a class="btn btn-outline-light" href="<?php echo sanitize_output(cie_module_url('view', ['id' => (int) $booking['id']])); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Dettaglio</a>
+                <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(cie_module_url('index')); ?>"><i class="fa-solid fa-table-list me-2"></i>Dashboard CIE</a>
             </div>
         </div>
 
@@ -82,7 +82,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <form method="post" class="d-flex justify-content-end gap-2">
                     <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                     <input type="hidden" name="id" value="<?php echo (int) $booking['id']; ?>">
-                    <a class="btn btn-outline-light" href="view.php?id=<?php echo (int) $booking['id']; ?>">Annulla</a>
+                    <a class="btn btn-outline-light" href="<?php echo sanitize_output(cie_module_url('view', ['id' => (int) $booking['id']])); ?>">Annulla</a>
                     <button class="btn btn-danger" type="submit"><i class="fa-solid fa-trash me-2"></i>Conferma eliminazione</button>
                 </form>
             </div>
