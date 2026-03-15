@@ -9,9 +9,11 @@ if ($requestPath === false || $requestPath === '') {
 
 $documentRoot = __DIR__;
 $absolutePath = realpath($documentRoot . $requestPath);
+$isExpressPath = str_starts_with($requestPath, '/modules/servizi/express');
 
 if (
-    in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true)
+    $isExpressPath
+    && in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true)
     && $requestPath !== '/index.php'
     && str_ends_with($requestPath, '.php')
 ) {
@@ -24,19 +26,6 @@ if (
         header('Location: ' . $cleanPath, true, 301);
         return true;
     }
-}
-
-if (
-    in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true)
-    && $requestPath === '/index.php'
-) {
-    $target = '/';
-    $queryString = $_SERVER['QUERY_STRING'] ?? '';
-    if ($queryString !== '') {
-        $target .= '?' . $queryString;
-    }
-    header('Location: ' . $target, true, 301);
-    return true;
 }
 
 if ($absolutePath !== false && str_starts_with($absolutePath, $documentRoot) && is_file($absolutePath)) {
@@ -56,7 +45,7 @@ $candidates = [];
 
 if ($trimmedPath === '') {
     $candidates[] = $documentRoot . '/index.php';
-} else {
+} elseif ($isExpressPath) {
     $candidates[] = $documentRoot . '/' . $trimmedPath . '.php';
     $candidates[] = $documentRoot . '/' . $trimmedPath . '/index.php';
 }

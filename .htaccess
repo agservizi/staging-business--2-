@@ -1,14 +1,8 @@
 RewriteEngine On
 
-# Redirect visible .php URLs to clean paths for safe browser navigations only.
+# Redirect visible .php URLs to clean paths only inside Express module.
 RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
-RewriteCond %{REQUEST_URI} ^(.+)\.php$ [NC]
-RewriteCond %1 !/index$ [NC]
-RewriteRule ^ %1 [R=301,L,NE]
-
-# Normalise /index.php to /
-RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
-RewriteCond %{REQUEST_URI} ^(.*/)?index\.php$ [NC]
+RewriteCond %{REQUEST_URI} ^(.*/modules/servizi/express/.+)\.php$ [NC]
 RewriteRule ^ %1 [R=301,L,NE]
 
 # Serve existing files and directories as-is.
@@ -16,10 +10,12 @@ RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Resolve clean URLs to PHP files when they exist.
+# Resolve clean URLs to PHP files only inside Express module.
+RewriteCond %{REQUEST_URI} (?:^|/)modules/servizi/express/ [NC]
 RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^(.+?)/?$ $1.php [L,QSA]
 
-# Resolve clean directory URLs to their index.php.
+# Resolve clean directory URLs to their index.php only inside Express module.
+RewriteCond %{REQUEST_URI} (?:^|/)modules/servizi/express/ [NC]
 RewriteCond %{REQUEST_FILENAME}/index.php -f
 RewriteRule ^(.+?)/?$ $1/index.php [L,QSA]
