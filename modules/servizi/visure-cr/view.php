@@ -11,14 +11,14 @@ require_role('Admin', 'Operatore', 'Manager', 'Viewer');
 $richiestaId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($richiestaId <= 0) {
     add_flash('warning', 'Richiesta non valida.');
-    header('Location: index.php');
+    header('Location: ' . visure_cr_module_url('index'));
     exit;
 }
 
 $richiesta = visure_cr_get_richiesta($pdo, $richiestaId);
 if (!$richiesta) {
     add_flash('warning', 'Richiesta non trovata.');
-    header('Location: index.php');
+    header('Location: ' . visure_cr_module_url('index'));
     exit;
 }
 
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $puoAggiornare) {
 
     if (!in_array($nuovoStato, $stati, true)) {
         add_flash('warning', 'Stato non valido.');
-        header('Location: view.php?id=' . $richiestaId);
+        header('Location: ' . visure_cr_module_url('view', ['id' => $richiestaId]));
         exit;
     }
 
@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $puoAggiornare) {
     ]);
 
     add_flash('success', 'Stato aggiornato.');
-    header('Location: view.php?id=' . $richiestaId);
+    header('Location: ' . visure_cr_module_url('view', ['id' => $richiestaId]));
     exit;
 }
 
@@ -73,7 +73,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Dettaglio richiesta Visura CR.</p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(visure_cr_module_url('index')); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
             </div>
         </div>
 
@@ -178,7 +178,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <div class="fw-semibold"><?php echo sanitize_output($categorieLabels[$attachment['categoria']] ?? $attachment['categoria']); ?></div>
                                             <small class="text-muted"><?php echo sanitize_output($attachment['file_name']); ?></small>
                                         </div>
-                                        <a class="btn btn-sm btn-outline-primary" href="download.php?id=<?php echo (int) $attachment['id']; ?>"><i class="fa-solid fa-download"></i></a>
+                                        <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output(visure_cr_module_url('download', ['id' => (int) $attachment['id']])); ?>"><i class="fa-solid fa-download"></i></a>
                                     </div>
                                 <?php endforeach; ?>
                             </div>

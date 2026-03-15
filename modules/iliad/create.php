@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ], $_SESSION['user_id']);
 
             add_flash('success', 'Credenziali create con successo.');
-            header('Location: index.php');
+            header('Location: ' . iliad_module_url('index'));
             exit;
         } catch (Exception $e) {
             $errors['general'] = 'Errore durante la creazione delle credenziali.';
@@ -70,7 +70,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Inserisci le credenziali per Fibra e Mobile da fornire ai clienti.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna alle credenziali</a>
+                <a class="btn btn-outline-warning" href="<?php echo iliad_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna alle credenziali</a>
             </div>
         </div>
 
@@ -131,7 +131,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <?php endif; ?>
 
                     <div class="d-flex justify-content-between mt-4">
-                        <a href="index.php" class="btn btn-outline-secondary">Annulla</a>
+                        <a href="<?php echo iliad_module_url('index'); ?>" class="btn btn-outline-secondary">Annulla</a>
                         <button type="submit" class="btn btn-primary">Crea Credenziali</button>
                     </div>
                 </form>

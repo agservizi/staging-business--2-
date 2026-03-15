@@ -87,7 +87,7 @@ let cafContext = {
     isPatronato: false,
     operatorId: null,
     useLegacyCreate: false,
-    createUrl: 'create.php',
+    createUrl: 'create',
     trackingBaseUrl: '',
 };
 const dataCache = {
@@ -785,14 +785,14 @@ function buildNotificationsMarkup(notifications, { showActions = false, compact 
     const listItems = notifications.map((notification) => {
         const isNew = notification.stato !== 'letta';
         const badgeClass = isNew ? 'badge bg-warning text-dark' : 'badge bg-secondary';
-        const practiceLink = notification.pratica_id ? `view.php?id=${notification.pratica_id}` : '';
+        const practiceLink = notification.pratica_id ? `view?id=${notification.pratica_id}` : '';
         const practiceBadge = notification.pratica_id ? `<a href="${practiceLink}" class="badge bg-primary-subtle text-primary ms-2"><i class="fa-solid fa-folder-open me-1"></i>#${notification.pratica_id}</a>` : '';
         const actions = [];
         if (showActions && notification.stato !== 'letta') {
             actions.push(`<button type="button" class="btn btn-link btn-sm text-success" data-action="mark-notification" data-notification-id="${notification.id}"><i class="fa-solid fa-circle-check me-1"></i>Segna letta</button>`);
         }
         if (showActions && notification.pratica_id) {
-            actions.push(`<a class="btn btn-link btn-sm" href="view.php?id=${notification.pratica_id}"><i class="fa-solid fa-up-right-from-square me-1"></i>Apri pratica</a>`);
+            actions.push(`<a class="btn btn-link btn-sm" href="view?id=${notification.pratica_id}"><i class="fa-solid fa-up-right-from-square me-1"></i>Apri pratica</a>`);
         }
 
         const actionBar = actions.length ? `<div class="mt-2 d-flex flex-wrap gap-2">${actions.join('')}</div>` : '';
@@ -959,7 +959,7 @@ function renderPracticesSummary(container, summaries) {
     if (totale > 0) {
         html += `
             <div class="d-flex justify-content-center">
-                <a href="index.php?page=practices" class="btn btn-outline-primary">
+                <a href="index" class="btn btn-outline-primary">
                     <i class="fa-solid fa-arrow-right me-2"></i>Visualizza tutte le pratiche
                 </a>
             </div>
@@ -1209,7 +1209,7 @@ async function loadPracticeEditForm(container, practiceId) {
                         practice,
                     })}
                     <div class="d-flex justify-content-end gap-2 mt-4">
-                        <a class="btn btn-outline-secondary" href="view.php?id=${encodeURIComponent(practiceId)}">Annulla</a>
+                        <a class="btn btn-outline-secondary" href="view?id=${encodeURIComponent(practiceId)}">Annulla</a>
                         <button type="submit" form="caf-patronato-modal-form" id="caf-patronato-submit" class="btn btn-primary">Salva modifiche</button>
                     </div>
                 </div>
@@ -1225,7 +1225,7 @@ async function loadPracticeEditForm(container, practiceId) {
             submitButtonId: 'caf-patronato-submit',
             onSuccess: ({ response }) => {
                 const nextId = response?.data?.id || practice.id;
-                window.location.href = `view.php?id=${encodeURIComponent(nextId)}`;
+                window.location.href = `view?id=${encodeURIComponent(nextId)}`;
             },
         });
     } catch (error) {
@@ -2478,7 +2478,7 @@ function editPractice(id) {
     if (!id) {
         return;
     }
-    const targetUrl = `status.php?id=${encodeURIComponent(id)}`;
+    const targetUrl = `status?id=${encodeURIComponent(id)}`;
     window.location.href = targetUrl;
 }
 
@@ -2486,7 +2486,7 @@ function viewPractice(id) {
     if (!id) {
         return;
     }
-    const targetUrl = `view.php?id=${encodeURIComponent(id)}`;
+    const targetUrl = `view?id=${encodeURIComponent(id)}`;
     window.location.href = targetUrl;
 }
 

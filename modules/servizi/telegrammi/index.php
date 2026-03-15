@@ -85,7 +85,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Gestisci invii, sincronizza lo stato dal portale Ufficio Postale e tieni traccia delle conferme.</p>
             </div>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
-                <a class="btn btn-primary" href="create.php">
+                <a class="btn btn-primary" href="<?php echo sanitize_output(telegrammi_module_url('create')); ?>">
                     <i class="fa-solid fa-circle-plus me-2"></i>Nuovo telegramma
                 </a>
             </div>
@@ -144,7 +144,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <i class="fa-solid fa-filter me-1"></i>Applica filtri
                                 </button>
                                 <?php if ($hasFilters): ?>
-                                <a class="btn btn-outline-secondary" href="index.php" title="Pulisci filtri">
+                                <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(telegrammi_module_url('index')); ?>" title="Pulisci filtri">
                                     <i class="fa-solid fa-rotate-left"></i>
                                 </a>
                                 <?php endif; ?>
@@ -163,13 +163,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <div class="text-center py-5">
                             <?php if ($hasFilters): ?>
                             <p class="text-muted mb-3">Nessun telegramma corrisponde ai filtri selezionati.</p>
-                            <a href="index.php" class="btn btn-outline-secondary">
+                            <a href="<?php echo sanitize_output(telegrammi_module_url('index')); ?>" class="btn btn-outline-secondary">
                                 <i class="fa-solid fa-broom me-2"></i>Rimuovi filtri
                             </a>
                             <?php else: ?>
                             <p class="text-muted mb-4">Non sono presenti telegrammi sincronizzati al momento. Puoi inviare un nuovo telegramma; la sincronizzazione avviene automaticamente in background.</p>
                             <div class="d-flex justify-content-center gap-2 flex-wrap">
-                                <a href="create.php" class="btn btn-primary">
+                                <a href="<?php echo sanitize_output(telegrammi_module_url('create')); ?>" class="btn btn-primary">
                                     <i class="fa-solid fa-circle-plus me-2"></i>Nuovo telegramma
                                 </a>
                             </div>
@@ -201,7 +201,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     ?>
                                     <tr id="<?php echo sanitize_output($rowId); ?>">
                                         <td class="fw-semibold">
-                                            <a href="view.php?id=<?php echo urlencode($telegrammaId); ?>" class="text-decoration-none text-body">
+                                            <a href="<?php echo sanitize_output(telegrammi_module_url('view', ['id' => $telegrammaId])); ?>" class="text-decoration-none text-body">
                                                 <?php echo sanitize_output($telegrammaId); ?>
                                             </a>
                                             <?php if (!empty($record['riferimento'])): ?>
@@ -232,7 +232,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         </td>
                                         <td class="text-end">
                                             <div class="d-inline-flex align-items-center justify-content-end gap-2 flex-wrap">
-                                                <form action="confirm.php" method="post" class="d-inline">
+                                                <form action="<?php echo sanitize_output(telegrammi_module_url('confirm')); ?>" method="post" class="d-inline">
                                                     <input type="hidden" name="_token" value="<?php echo csrf_token(); ?>">
                                                     <input type="hidden" name="telegramma_id" value="<?php echo sanitize_output($telegrammaId); ?>">
                                                     <input type="hidden" name="confirmed" value="<?php echo $confirmed ? '0' : '1'; ?>">
@@ -240,7 +240,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                         <i class="fa-solid <?php echo $confirmed ? 'fa-rotate-left' : 'fa-circle-check'; ?>"></i>
                                                     </button>
                                                 </form>
-                                                <a href="view.php?id=<?php echo urlencode($telegrammaId); ?>" class="btn btn-icon btn-soft-accent btn-sm" title="Dettagli">
+                                                <a href="<?php echo sanitize_output(telegrammi_module_url('view', ['id' => $telegrammaId])); ?>" class="btn btn-icon btn-soft-accent btn-sm" title="Dettagli">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
                                             </div>

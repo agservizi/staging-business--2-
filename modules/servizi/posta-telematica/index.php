@@ -59,10 +59,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Gestisci invii Email e PEC e traccia lo storico delle comunicazioni.</p>
             </div>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
-                <a class="btn btn-primary" href="create.php">
+                <a class="btn btn-primary" href="<?php echo sanitize_output(posta_telematica_module_url('create')); ?>">
                     <i class="fa-solid fa-circle-plus me-2"></i>Nuovo invio
                 </a>
-                <a class="btn btn-outline-secondary" href="inbox.php">
+                <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(posta_telematica_module_url('inbox')); ?>">
                     <i class="fa-solid fa-inbox me-2"></i>Inbox PEC
                 </a>
             </div>
@@ -104,7 +104,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <i class="fa-solid fa-filter me-1"></i>Applica
                         </button>
                         <?php if ($hasFilters): ?>
-                            <a class="btn btn-outline-secondary" href="index.php" title="Rimuovi filtri">
+                            <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(posta_telematica_module_url('index')); ?>" title="Rimuovi filtri">
                                 <i class="fa-solid fa-rotate-left"></i>
                             </a>
                         <?php endif; ?>
@@ -123,12 +123,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="text-center py-5">
                         <?php if ($hasFilters): ?>
                             <p class="text-muted mb-3">Nessun invio corrisponde ai filtri selezionati.</p>
-                            <a href="index.php" class="btn btn-outline-secondary">
+                            <a href="<?php echo sanitize_output(posta_telematica_module_url('index')); ?>" class="btn btn-outline-secondary">
                                 <i class="fa-solid fa-broom me-2"></i>Rimuovi filtri
                             </a>
                         <?php else: ?>
                             <p class="text-muted mb-4">Non ci sono invii registrati. Crea il primo invio.</p>
-                            <a href="create.php" class="btn btn-primary">
+                            <a href="<?php echo sanitize_output(posta_telematica_module_url('create')); ?>" class="btn btn-primary">
                                 <i class="fa-solid fa-circle-plus me-2"></i>Nuovo invio
                             </a>
                         <?php endif; ?>
@@ -167,10 +167,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <td><span class="badge <?php echo $statusClass; ?>"><?php echo sanitize_output($statusLabel); ?></span></td>
                                         <td><?php echo sanitize_output(format_datetime_locale($record['created_at'] ?? null)); ?></td>
                                         <td class="text-end">
-                                            <a class="btn btn-sm btn-outline-primary" href="view.php?id=<?php echo (int) $record['id']; ?>">
+                                            <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output(posta_telematica_module_url('view', ['id' => (int) $record['id']])); ?>">
                                                 Dettagli
                                             </a>
-                                            <a class="btn btn-sm btn-outline-secondary" href="receipt.php?id=<?php echo (int) $record['id']; ?>" target="_blank">
+                                            <a class="btn btn-sm btn-outline-secondary" href="<?php echo sanitize_output(posta_telematica_module_url('receipt', ['id' => (int) $record['id']])); ?>" target="_blank">
                                                 <i class="fa-solid fa-print me-1"></i>Stampa
                                             </a>
                                         </td>

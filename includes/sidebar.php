@@ -32,91 +32,91 @@ $serviziItems = [
         'needle' => 'modules/servizi/entrate-uscite',
         'label' => 'Entrate/Uscite',
         'icon' => 'fa-solid fa-arrow-trend-up',
-        'href' => base_url('modules/servizi/entrate-uscite/index.php'),
+        'href' => entrate_uscite_module_url('index'),
         'color' => 'sky',
     ],
     [
         'needle' => 'modules/servizi/appuntamenti',
         'label' => 'Appuntamenti',
         'icon' => 'fa-solid fa-calendar-check',
-        'href' => base_url('modules/servizi/appuntamenti/index.php'),
+        'href' => appuntamenti_module_url('index'),
         'color' => 'violet',
     ],
     [
         'needle' => 'modules/servizi/caf-patronato',
         'label' => 'CAF & Patronato',
     'icon' => 'fa-solid fa-scale-balanced',
-    'href' => base_url('modules/servizi/caf-patronato/index.php'),
+    'href' => caf_patronato_module_url('index'),
     'color' => 'emerald',
     ],
     [
         'needle' => 'modules/servizi/fedelta',
         'label' => 'Programma Fedeltà',
         'icon' => 'fa-solid fa-gift',
-        'href' => base_url('modules/servizi/fedelta/index.php'),
+        'href' => fedelta_module_url('index'),
         'color' => 'amber',
     ],
     [
         'needle' => 'modules/servizi/curriculum',
         'label' => 'Gestione Curriculum',
         'icon' => 'fa-solid fa-id-card',
-        'href' => base_url('modules/servizi/curriculum/index.php'),
+        'href' => curriculum_module_url('index'),
         'color' => 'emerald',
     ],
     [
         'needle' => 'modules/servizi/brt',
         'label' => 'Spedizioni BRT',
         'icon' => 'fa-solid fa-truck-fast',
-        'href' => base_url('modules/servizi/brt/index.php'),
+        'href' => brt_module_url('index'),
         'color' => 'azure',
     ],
     [
         'needle' => 'modules/servizi/logistici',
         'label' => 'Pickup Pacchi',
         'icon' => 'fa-solid fa-box-open',
-        'href' => base_url('modules/servizi/logistici/index.php'),
+        'href' => logistici_module_url('index'),
         'color' => 'orange',
     ],
     [
         'needle' => 'modules/servizi/telegrammi',
         'label' => 'Invio telegrammi',
         'icon' => 'fa-solid fa-paper-plane',
-        'href' => base_url('modules/servizi/telegrammi/index.php'),
+        'href' => telegrammi_module_url('index'),
         'color' => 'sky',
     ],
     [
         'needle' => 'modules/servizi/posta-telematica',
         'label' => 'Posta Telematica',
         'icon' => 'fa-solid fa-envelopes-bulk',
-        'href' => base_url('modules/servizi/posta-telematica/index.php'),
+        'href' => posta_telematica_module_url('index'),
         'color' => 'indigo',
     ],
     [
         'needle' => 'modules/servizi/aci',
         'label' => 'Pratiche ACI',
         'icon' => 'fa-solid fa-car',
-        'href' => base_url('modules/servizi/aci/index.php'),
+        'href' => aci_module_url('index'),
         'color' => 'teal',
     ],
     [
         'needle' => 'modules/servizi/visure-cr',
         'label' => 'Visure CR',
         'icon' => 'fa-solid fa-file-signature',
-        'href' => base_url('modules/servizi/visure-cr/index.php'),
+        'href' => visure_cr_module_url('index'),
         'color' => 'amber',
     ],
     [
         'needle' => 'modules/servizi/energia',
         'label' => 'Contratti Energia',
         'icon' => 'fa-solid fa-bolt',
-        'href' => base_url('modules/servizi/energia/index.php'),
+        'href' => energia_module_url('index'),
         'color' => 'crimson',
     ],
     [
         'needle' => 'modules/servizi/express',
         'label' => 'Express Telefonia',
         'icon' => 'fa-solid fa-sim-card',
-        'href' => base_url('modules/servizi/express/index.php'),
+        'href' => base_url('modules/servizi/express/index'),
         'color' => 'amber',
         'roles' => ['Admin', 'Manager'],
     ],
@@ -124,14 +124,14 @@ $serviziItems = [
         'needle' => 'modules/servizi/anpr',
         'label' => 'Servizi ANPR',
         'icon' => 'fa-solid fa-id-card-clip',
-        'href' => base_url('modules/servizi/anpr/index.php'),
+        'href' => anpr_module_url('index'),
         'color' => 'amber',
     ],
     [
         'needle' => 'modules/servizi/cie',
         'label' => 'Prenotazione CIE',
     'icon' => 'fa-solid fa-address-card',
-    'href' => base_url('modules/servizi/cie/index.php'),
+    'href' => cie_module_url('index'),
     'color' => 'violet',
     ],
 ];
@@ -155,8 +155,8 @@ if ($isPatronato) {
 $sidebarLogoRelative = 'assets/uploads/branding/sidebar-logo.png';
 $sidebarLogoAvailable = is_file(public_path($sidebarLogoRelative));
 $sidebarHomeHref = $isCollaborator
-    ? base_url('modules/opportunities/collaborator/index.php')
-    : base_url('dashboard.php');
+    ? opportunities_collaborator_url('index')
+    : dashboard_url();
 $appVersion = env('APP_VERSION', '1.0.0');
 ?>
 <nav id="sidebarMenu" class="sidebar border-end" aria-label="Menu principale">
@@ -179,19 +179,19 @@ $appVersion = env('APP_VERSION', '1.0.0');
         <ul class="nav nav-pills flex-column gap-1" role="list">
             <?php if ($isCollaborator): ?>
                 <?php
-                    $collabDashboardActive = nav_active('modules/opportunities/collaborator/index.php', $currentPath);
-                    $collabListActive = nav_active('modules/opportunities/collaborator/list.php', $currentPath);
-                    $collabCustomersActive = nav_active('modules/opportunities/collaborator/customers.php', $currentPath) === 'active'
-                        || nav_active('modules/opportunities/collaborator/customer.php', $currentPath) === 'active'
+                    $collabDashboardActive = nav_active('modules/opportunities/collaborator/index', $currentPath);
+                    $collabListActive = nav_active('modules/opportunities/collaborator/list', $currentPath);
+                    $collabCustomersActive = nav_active('modules/opportunities/collaborator/customers', $currentPath) === 'active'
+                        || nav_active('modules/opportunities/collaborator/customer', $currentPath) === 'active'
                         ? 'active'
                         : '';
-                    $collabGuideActive = nav_active('modules/opportunities/collaborator/guide.php', $currentPath);
-                    $collabFilesActive = nav_active('modules/opportunities/collaborator/promotions.php', $currentPath);
-                    $collabCommissionActive = nav_active('modules/opportunities/collaborator/commissions.php', $currentPath);
-                    $collabTicketsActive = nav_active('modules/opportunities/collaborator/tickets.php', $currentPath);
+                    $collabGuideActive = nav_active('modules/opportunities/collaborator/guide', $currentPath);
+                    $collabFilesActive = nav_active('modules/opportunities/collaborator/promotions', $currentPath);
+                    $collabCommissionActive = nav_active('modules/opportunities/collaborator/commissions', $currentPath);
+                    $collabTicketsActive = nav_active('modules/opportunities/collaborator/tickets', $currentPath);
                 ?>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo $collabDashboardActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/index.php'); ?>" aria-label="Dashboard opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Dashboard opportunity"<?php echo $collabDashboardActive ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo $collabDashboardActive; ?>" href="<?php echo opportunities_collaborator_url('index'); ?>" aria-label="Dashboard opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Dashboard opportunity"<?php echo $collabDashboardActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="indigo" aria-hidden="true">
                             <i class="fa-solid fa-sitemap"></i>
                         </span>
@@ -199,7 +199,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo $collabListActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/list.php'); ?>" aria-label="Elenco opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Elenco opportunity"<?php echo $collabListActive ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo $collabListActive; ?>" href="<?php echo opportunities_collaborator_url('list'); ?>" aria-label="Elenco opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Elenco opportunity"<?php echo $collabListActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="teal" aria-hidden="true">
                             <i class="fa-solid fa-list-check"></i>
                         </span>
@@ -207,7 +207,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo $collabCustomersActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/customers.php'); ?>" aria-label="Clienti" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Clienti"<?php echo $collabCustomersActive ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo $collabCustomersActive; ?>" href="<?php echo opportunities_collaborator_url('customers'); ?>" aria-label="Clienti" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Clienti"<?php echo $collabCustomersActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="emerald" aria-hidden="true">
                             <i class="fa-solid fa-users"></i>
                         </span>
@@ -215,7 +215,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo $collabGuideActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/guide.php'); ?>" aria-label="Guida" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Guida"<?php echo $collabGuideActive ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo $collabGuideActive; ?>" href="<?php echo opportunities_collaborator_url('guide'); ?>" aria-label="Guida" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Guida"<?php echo $collabGuideActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="azure" aria-hidden="true">
                             <i class="fa-solid fa-circle-question"></i>
                         </span>
@@ -223,7 +223,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo $collabFilesActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/promotions.php'); ?>" aria-label="File promo" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="File promo"<?php echo $collabFilesActive ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo $collabFilesActive; ?>" href="<?php echo opportunities_collaborator_url('promotions'); ?>" aria-label="File promo" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="File promo"<?php echo $collabFilesActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="amber" aria-hidden="true">
                             <i class="fa-solid fa-folder-open"></i>
                         </span>
@@ -231,7 +231,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo $collabCommissionActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/commissions.php'); ?>" aria-label="Provvigioni" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Provvigioni"<?php echo $collabCommissionActive ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo $collabCommissionActive; ?>" href="<?php echo opportunities_collaborator_url('commissions'); ?>" aria-label="Provvigioni" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Provvigioni"<?php echo $collabCommissionActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="purple" aria-hidden="true">
                             <i class="fa-solid fa-hand-holding-dollar"></i>
                         </span>
@@ -239,7 +239,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo $collabTicketsActive; ?>" href="<?php echo base_url('modules/opportunities/collaborator/tickets.php'); ?>" aria-label="Ticket" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Ticket"<?php echo $collabTicketsActive ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo $collabTicketsActive; ?>" href="<?php echo opportunities_collaborator_url('tickets'); ?>" aria-label="Ticket" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Ticket"<?php echo $collabTicketsActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="crimson" aria-hidden="true">
                             <i class="fa-solid fa-ticket"></i>
                         </span>
@@ -248,7 +248,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                 </li>
                 <?php if (!$hideCollaboratorIliad): ?>
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/iliad', $currentPath); ?>" href="<?php echo base_url('modules/iliad/index.php'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
+                        <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/iliad', $currentPath); ?>" href="<?php echo iliad_module_url('index'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="blue" aria-hidden="true">
                                 <i class="fa-solid fa-key"></i>
                             </span>
@@ -257,11 +257,11 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     </li>
                 <?php endif; ?>
                 <?php
-                    $profileActive = (nav_active('modules/impostazioni/profile.php', $currentPath) === 'active'
+                    $profileActive = (nav_active('modules/impostazioni/profile', $currentPath) === 'active'
                         || nav_active('profile.php', $currentPath) === 'active') ? 'active' : '';
                 ?>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo $profileActive; ?>" href="<?php echo base_url('modules/impostazioni/profile.php'); ?>" aria-label="Profilo" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Profilo"<?php echo $profileActive ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo $profileActive; ?>" href="<?php echo impostazioni_module_url('profile'); ?>" aria-label="Profilo" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Profilo"<?php echo $profileActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="orange" aria-hidden="true">
                             <i class="fa-solid fa-id-badge"></i>
                         </span>
@@ -270,9 +270,9 @@ $appVersion = env('APP_VERSION', '1.0.0');
                 </li>
             <?php else: ?>
             <?php if (!$isPatronato): ?>
-                <?php $dashboardActive = nav_active('dashboard.php', $currentPath); ?>
+                <?php $dashboardActive = (nav_active('dashboard', $currentPath) === 'active' || nav_active('dashboard.php', $currentPath) === 'active') ? 'active' : ''; ?>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo $dashboardActive; ?>" href="<?php echo base_url('dashboard.php'); ?>" aria-label="Dashboard" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Dashboard"<?php echo $dashboardActive ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo $dashboardActive; ?>" href="<?php echo dashboard_url(); ?>" aria-label="Dashboard" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Dashboard"<?php echo $dashboardActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="sky" aria-hidden="true">
                             <i class="fa-solid fa-gauge-high"></i>
                         </span>
@@ -285,7 +285,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                 <?php if ($isPatronato): ?>
                     <?php $cafActive = nav_active('modules/servizi/caf-patronato', $currentPath); ?>
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo $cafActive; ?>" href="<?php echo base_url('modules/servizi/caf-patronato/index.php'); ?>" aria-label="CAF &amp; Patronato" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="CAF &amp; Patronato"<?php echo $cafActive ? ' aria-current="page"' : ''; ?>>
+                        <a class="nav-link d-flex align-items-center <?php echo $cafActive; ?>" href="<?php echo caf_patronato_module_url('index'); ?>" aria-label="CAF &amp; Patronato" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="CAF &amp; Patronato"<?php echo $cafActive ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="emerald" aria-hidden="true">
                                 <i class="fa-solid fa-scale-balanced"></i>
                             </span>
@@ -295,7 +295,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                 <?php else: ?>
                     <?php $clientiActive = nav_active('modules/clienti', $currentPath); ?>
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo $clientiActive; ?>" href="<?php echo base_url('modules/clienti/index.php'); ?>" aria-label="Clienti" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Clienti"<?php echo $clientiActive ? ' aria-current="page"' : ''; ?>>
+                        <a class="nav-link d-flex align-items-center <?php echo $clientiActive; ?>" href="<?php echo clienti_module_url('index'); ?>" aria-label="Clienti" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Clienti"<?php echo $clientiActive ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="emerald" aria-hidden="true">
                                 <i class="fa-solid fa-users"></i>
                             </span>
@@ -345,8 +345,8 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     <?php
                         $opportunityActive = nav_active('modules/opportunities', $currentPath);
                         $opportunityHref = $role === 'Collaboratore'
-                            ? base_url('modules/opportunities/collaborator/index.php')
-                            : base_url('modules/opportunities/index.php');
+                            ? opportunities_collaborator_url('index')
+                            : opportunities_module_url('index');
                     ?>
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center <?php echo $opportunityActive; ?>" href="<?php echo $opportunityHref; ?>" aria-label="Opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Opportunity"<?php echo $opportunityActive ? ' aria-current="page"' : ''; ?>>
@@ -358,7 +358,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/iliad', $currentPath); ?>" href="<?php echo base_url('modules/iliad/index.php'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
+                        <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/iliad', $currentPath); ?>" href="<?php echo iliad_module_url('index'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="blue" aria-hidden="true">
                                 <i class="fa-solid fa-key"></i>
                             </span>
@@ -370,7 +370,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                 <?php if (!$isPatronato && current_user_has_capability('email.marketing.manage', 'email.marketing.view')): ?>
                     <?php $emailMarketingActive = nav_active('modules/email-marketing', $currentPath); ?>
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo $emailMarketingActive; ?>" href="<?php echo base_url('modules/email-marketing/index.php'); ?>" aria-label="Email marketing" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Email marketing"<?php echo $emailMarketingActive ? ' aria-current="page"' : ''; ?>>
+                        <a class="nav-link d-flex align-items-center <?php echo $emailMarketingActive; ?>" href="<?php echo email_marketing_module_url('index'); ?>" aria-label="Email marketing" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Email marketing"<?php echo $emailMarketingActive ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="amber" aria-hidden="true">
                                 <i class="fa-solid fa-envelope-open-text"></i>
                             </span>
@@ -382,7 +382,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                 <?php if (!$isPatronato): ?>
                     <?php $ticketActive = nav_active('modules/ticket', $currentPath); ?>
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo $ticketActive; ?>" href="<?php echo base_url('modules/ticket/index.php'); ?>" aria-label="Ticket" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Ticket"<?php echo $ticketActive ? ' aria-current="page"' : ''; ?>>
+                        <a class="nav-link d-flex align-items-center <?php echo $ticketActive; ?>" href="<?php echo ticket_module_url('index'); ?>" aria-label="Ticket" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Ticket"<?php echo $ticketActive ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="crimson" aria-hidden="true">
                                 <i class="fa-solid fa-life-ring"></i>
                             </span>
@@ -392,7 +392,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
 
                     <?php $reportActive = nav_active('modules/report', $currentPath); ?>
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center <?php echo $reportActive; ?>" href="<?php echo base_url('modules/report/index.php'); ?>" aria-label="Report" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Report"<?php echo $reportActive ? ' aria-current="page"' : ''; ?>>
+                        <a class="nav-link d-flex align-items-center <?php echo $reportActive; ?>" href="<?php echo report_module_url('index'); ?>" aria-label="Report" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Report"<?php echo $reportActive ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="teal" aria-hidden="true">
                                 <i class="fa-solid fa-chart-pie"></i>
                             </span>
@@ -405,7 +405,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
             <?php if (!$isPatronato && current_user_has_capability('settings.manage', 'settings.view')): ?>
                 <?php $settingsActive = nav_active('modules/impostazioni', $currentPath); ?>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center <?php echo $settingsActive; ?>" href="<?php echo base_url('modules/impostazioni/index.php'); ?>" aria-label="Impostazioni" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Impostazioni"<?php echo $settingsActive ? ' aria-current="page"' : ''; ?>>
+                    <a class="nav-link d-flex align-items-center <?php echo $settingsActive; ?>" href="<?php echo impostazioni_module_url('index'); ?>" aria-label="Impostazioni" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Impostazioni"<?php echo $settingsActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="orange" aria-hidden="true">
                             <i class="fa-solid fa-gear"></i>
                         </span>

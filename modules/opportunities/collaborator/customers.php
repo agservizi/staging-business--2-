@@ -34,7 +34,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <h1 class="h4 mb-0">Rubrica clienti</h1>
                 <p class="text-muted mb-0">Elenco clienti che hai già inserito in una opportunity.</p>
             </div>
-            <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
+            <a class="btn btn-primary" href="<?php echo opportunities_collaborator_url('create'); ?>">
                 <i class="fa-solid fa-plus me-2"></i>Nuova OP
             </a>
         </div>
@@ -53,7 +53,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                     <?php if ($searchQuery !== ''): ?>
                         <div class="col-md-3 col-lg-2">
-                            <a class="btn btn-outline-secondary w-100" href="<?php echo asset('modules/opportunities/collaborator/customers.php'); ?>">
+                            <a class="btn btn-outline-secondary w-100" href="<?php echo opportunities_collaborator_url('customers'); ?>">
                                 <i class="fa-solid fa-rotate-left me-2"></i>Reset
                             </a>
                         </div>
@@ -146,7 +146,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         </td>
                                         <td class="text-end">
                                             <?php if ($taxCode !== ''): ?>
-                                                <a class="btn btn-sm btn-outline-primary" href="<?php echo base_url('modules/opportunities/collaborator/customer.php?tax_code=' . urlencode((string) $taxCode)); ?>">
+                                                <a class="btn btn-sm btn-outline-primary" href="<?php echo opportunities_collaborator_url('customer', ['tax_code' => (string) $taxCode]); ?>">
                                                     <i class="fa-solid fa-user me-1"></i>Apri scheda
                                                 </a>
                                             <?php else: ?>

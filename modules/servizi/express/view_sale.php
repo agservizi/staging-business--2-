@@ -16,12 +16,12 @@ $saleId = (int) ($_GET['id'] ?? 0);
 $showDocument = (int) ($_GET['show_document'] ?? 0) === 1;
 $autoPrintDocument = (int) ($_GET['autoprint'] ?? 0) === 1;
 $adobeEmbedApiKey = trim((string) env('ADOBE_EMBED_API_KEY', ''));
-$salePdfUrl = 'sale_pdf.php?id=' . $saleId;
+$salePdfUrl = 'sale_pdf?id=' . $saleId;
 $sale = $saleId > 0 ? express_module_sale_detail($pdo, $saleId) : null;
 
 if ($sale === null) {
     add_flash('warning', 'Vendita non trovata.');
-    header('Location: sales.php');
+    header('Location: ' . express_module_url('sales'));
     exit;
 }
 
@@ -40,7 +40,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <p class="text-muted mb-0"><?php echo sanitize_output(format_datetime_locale((string) ($sale['data_vendita'] ?? ''))); ?></p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
-                    <a class="btn btn-outline-secondary" href="sales.php">Torna all'elenco</a>
+                    <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(express_module_url('sales')); ?>">Torna all'elenco</a>
                     <button class="btn btn-warning" type="button" data-bs-toggle="modal" data-bs-target="#saleDocumentModal"><i class="fa-solid fa-print me-2"></i>Stampa documento</button>
                 </div>
             </div>
@@ -134,7 +134,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
             <div class="modal-footer">
                 <a class="btn btn-outline-secondary" href="<?php echo sanitize_output($salePdfUrl); ?>" target="_blank" rel="noopener">Apri PDF</a>
-                <a class="btn btn-outline-secondary" href="print_sale.php?id=<?php echo (int) $sale['id']; ?>" target="_blank" rel="noopener">Versione termica</a>
+                <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(express_module_url('print_sale', ['id' => (int) $sale['id']])); ?>" target="_blank" rel="noopener">Versione termica</a>
                 <button type="button" class="btn btn-warning" id="printSaleDocumentButton">Stampa</button>
             </div>
         </div>

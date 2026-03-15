@@ -57,7 +57,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
             <div class="toolbar-actions d-flex gap-2">
                 <a class="btn btn-outline-warning" href="https://www.prenotazionicie.interno.gov.it/cittadino/n/sc/wizardAppuntamentoCittadino/sceltaComune" target="_blank" rel="noopener"><i class="fa-solid fa-id-card me-2"></i>Portale CIE</a>
-                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
+                <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(cie_module_url('create')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
             </div>
         </div>
         <section class="mb-4">
@@ -113,7 +113,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                     <div class="col-md-12 d-flex gap-2">
                         <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-filter me-2"></i>Filtra</button>
-                        <a class="btn btn-outline-light" href="index.php"><i class="fa-solid fa-eraser me-2"></i>Pulisci</a>
+                        <a class="btn btn-outline-light" href="<?php echo sanitize_output(cie_module_url('index')); ?>"><i class="fa-solid fa-eraser me-2"></i>Pulisci</a>
                     </div>
                 </form>
             </div>
@@ -186,16 +186,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         </td>
                                         <td class="text-end">
                                             <div class="d-inline-flex align-items-center justify-content-end gap-2 flex-wrap" role="group">
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="view.php?id=<?php echo (int) $booking['id']; ?>" title="Dettagli">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(cie_module_url('view', ['id' => (int) $booking['id']])); ?>" title="Dettagli">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="edit.php?id=<?php echo (int) $booking['id']; ?>" title="Modifica">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(cie_module_url('edit', ['id' => (int) $booking['id']])); ?>" title="Modifica">
                                                     <i class="fa-solid fa-pen"></i>
                                                 </a>
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="open_portal.php?id=<?php echo (int) $booking['id']; ?>" title="Apri portale" target="_blank">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(cie_module_url('open_portal', ['id' => (int) $booking['id']])); ?>" title="Apri portale" target="_blank">
                                                     <i class="fa-solid fa-up-right-from-square"></i>
                                                 </a>
-                                                <a class="btn btn-icon btn-soft-danger btn-sm" href="delete.php?id=<?php echo (int) $booking['id']; ?>" title="Elimina">
+                                                <a class="btn btn-icon btn-soft-danger btn-sm" href="<?php echo sanitize_output(cie_module_url('delete', ['id' => (int) $booking['id']])); ?>" title="Elimina">
                                                     <i class="fa-solid fa-trash"></i>
                                                 </a>
                                             </div>

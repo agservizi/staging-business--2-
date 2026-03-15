@@ -64,16 +64,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Controlla quanto vale ogni mese in base alle opportunity inserite.</p>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <a class="btn btn-outline-primary" href="<?php echo asset('modules/opportunities/collaborator/index.php'); ?>">
+                <a class="btn btn-outline-primary" href="<?php echo opportunities_collaborator_url('index'); ?>">
                     <i class="fa-solid fa-arrow-left me-2"></i>Torna al portale
                 </a>
-                <a class="btn btn-outline-secondary d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;" href="<?php echo asset('modules/opportunities/collaborator/commissions-info.php'); ?>" aria-label="Tabella provvigioni" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-trigger="hover focus" data-bs-title="Tabella provvigioni per gestore e offerta">
+                <a class="btn btn-outline-secondary d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;" href="<?php echo opportunities_collaborator_url('commissions-info'); ?>" aria-label="Tabella provvigioni" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-trigger="hover focus" data-bs-title="Tabella provvigioni per gestore e offerta">
                     <i class="fa-solid fa-info"></i>
                 </a>
-                <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/promotions.php'); ?>">
+                <a class="btn btn-outline-secondary" href="<?php echo opportunities_collaborator_url('promotions'); ?>">
                     <i class="fa-solid fa-folder-open me-2"></i>File manager
                 </a>
-                <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
+                <a class="btn btn-primary" href="<?php echo opportunities_collaborator_url('create'); ?>">
                     <i class="fa-solid fa-plus me-2"></i>Nuova OP
                 </a>
             </div>

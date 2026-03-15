@@ -63,7 +63,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Panoramica centralizzata delle richieste dei clienti e delle attività interne.</p>
             </div>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
-                <a class="btn btn-warning text-dark" href="new.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo ticket</a>
+                <a class="btn btn-warning text-dark" href="<?php echo ticket_module_url('new'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo ticket</a>
             </div>
         </div>
 
@@ -191,7 +191,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="col-12 d-flex justify-content-end gap-2">
                         <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-filter me-1"></i>Filtra</button>
                         <?php if ($hasFilters): ?>
-                            <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-rotate-left me-1"></i>Reimposta</a>
+                            <a class="btn btn-outline-secondary" href="<?php echo ticket_module_url('index'); ?>"><i class="fa-solid fa-rotate-left me-1"></i>Reimposta</a>
                         <?php endif; ?>
                     </div>
                 </form>
@@ -211,8 +211,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="text-center py-5">
                         <p class="text-muted mb-3">Nessun ticket trovato. Puoi crearne uno nuovo o rimuovere i filtri.</p>
                         <div class="d-flex justify-content-center gap-2 flex-wrap">
-                            <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-broom me-2"></i>Pulisci filtri</a>
-                            <a class="btn btn-primary" href="new.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo ticket</a>
+                            <a class="btn btn-outline-secondary" href="<?php echo ticket_module_url('index'); ?>"><i class="fa-solid fa-broom me-2"></i>Pulisci filtri</a>
+                            <a class="btn btn-primary" href="<?php echo ticket_module_url('new'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo ticket</a>
                         </div>
                     </div>
                 <?php else: ?>
@@ -258,7 +258,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <td><?php echo sanitize_output(date('d/m/Y H:i', strtotime((string) $ticket['updated_at']))); ?></td>
                                         <td class="text-end">
                                             <div class="d-inline-flex gap-2 justify-content-end flex-wrap">
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="view.php?id=<?php echo (int) $ticket['id']; ?>" title="Apri" data-bs-toggle="tooltip" data-bs-placement="top">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo ticket_module_url('view', ['id' => (int) $ticket['id']]); ?>" title="Apri" data-bs-toggle="tooltip" data-bs-placement="top">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
                                                 <button class="btn btn-icon btn-warning text-dark btn-sm" type="button" data-ticket-assign="<?php echo (int) $ticket['id']; ?>" title="Assegna" data-bs-toggle="tooltip" data-bs-placement="top">
@@ -281,7 +281,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <?php for ($i = 1; $i <= $totalPages; $i++): ?>
                                     <?php $query = http_build_query(array_merge($_GET, ['page' => $i])); ?>
                                     <li class="page-item <?php echo $i === $page ? 'active' : ''; ?>">
-                                        <a class="page-link" href="index.php?<?php echo sanitize_output($query); ?>"><?php echo $i; ?></a>
+                                        <a class="page-link" href="<?php echo ticket_module_url('index') . '?' . sanitize_output($query); ?>"><?php echo $i; ?></a>
                                     </li>
                                 <?php endfor; ?>
                             </ul>

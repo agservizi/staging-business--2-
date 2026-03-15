@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../includes/notifications.php';
 require_role('Admin', 'Manager', 'Operatore');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: ' . clienti_module_url('index'));
     exit;
 }
 
@@ -16,7 +16,7 @@ require_valid_csrf();
 $id = (int) ($_POST['id'] ?? 0);
 if ($id <= 0) {
     add_flash('danger', 'Richiesta non valida: impossibile individuare il cliente.');
-    header('Location: index.php');
+    header('Location: ' . clienti_module_url('index'));
     exit;
 }
 
@@ -26,7 +26,7 @@ $client = $clientStmt->fetch();
 
 if (!$client) {
     add_flash('danger', 'Il cliente selezionato non esiste più.');
-    header('Location: index.php');
+    header('Location: ' . clienti_module_url('index'));
     exit;
 }
 
@@ -111,11 +111,11 @@ try {
     foreach (['Admin', 'Manager'] as $notifyRole) {
         create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
     }
-    header('Location: index.php');
+    header('Location: ' . clienti_module_url('index'));
 } catch (Throwable $e) {
     $pdo->rollBack();
     error_log('Client delete failed: ' . $e->getMessage());
     add_flash('danger', 'Impossibile eliminare il cliente. Riprova più tardi.');
-    header('Location: index.php');
+    header('Location: ' . clienti_module_url('index'));
 }
 exit;

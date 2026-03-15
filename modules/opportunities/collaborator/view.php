@@ -13,14 +13,14 @@ $opportunityId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
 if ($opportunityId <= 0 || $collaboratorId <= 0) {
     add_flash('warning', 'Opportunity non trovata.');
-    header('Location: list.php');
+    header('Location: ' . opportunities_collaborator_url('list'));
     exit;
 }
 
 $opportunity = $opportunityService->findById($opportunityId);
 if ($opportunity === null || (int) ($opportunity['collaborator_id'] ?? 0) !== $collaboratorId) {
     add_flash('warning', 'Non hai accesso a questa opportunity.');
-    header('Location: list.php');
+    header('Location: ' . opportunities_collaborator_url('list'));
     exit;
 }
 
@@ -40,10 +40,10 @@ if ($statusColor && isset($colorToBootstrap[$statusColor])) {
     $badgeClass = $colorToBootstrap[$statusColor];
 }
 
-$noteUrl = asset('modules/opportunities/collaborator/notes.php?id=' . $opportunityId);
-$reminderUrl = asset('modules/opportunities/collaborator/reminder.php?id=' . $opportunityId);
-$ticketUrl = asset('modules/opportunities/collaborator/ticket.php?id=' . $opportunityId);
-$listUrl = asset('modules/opportunities/collaborator/list.php');
+$noteUrl = opportunities_collaborator_url('notes', ['id' => $opportunityId]);
+$reminderUrl = opportunities_collaborator_url('reminder', ['id' => $opportunityId]);
+$ticketUrl = opportunities_collaborator_url('ticket', ['id' => $opportunityId]);
+$listUrl = opportunities_collaborator_url('list');
 $canEdit = ($opportunity['status_code'] ?? '') === 'in_verifica';
 $metadata = [];
 if (!empty($opportunity['metadata'])) {
@@ -119,7 +119,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <i class="fa-solid fa-arrow-left me-2"></i>Torna alla lista
                 </a>
                 <?php if ($canEdit): ?>
-                    <a class="btn btn-outline-warning" href="<?php echo sanitize_output(asset('modules/opportunities/collaborator/create.php?edit_id=' . $opportunityId)); ?>">
+                    <a class="btn btn-outline-warning" href="<?php echo sanitize_output(opportunities_collaborator_url('create', ['edit_id' => $opportunityId])); ?>">
                         <i class="fa-solid fa-pen me-2"></i>Modifica dati
                     </a>
                 <?php endif; ?>
@@ -361,7 +361,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <?php foreach ($ticketSummaries as $ticket): ?>
                                     <?php
                                         $statusBadge = ticket_status_badge((string) ($ticket['status'] ?? 'OPEN'));
-                                        $ticketLink = asset('modules/opportunities/collaborator/ticket-view.php?id=' . (int) ($ticket['id'] ?? 0));
+                                        $ticketLink = opportunities_collaborator_url('ticket-view', ['id' => (int) ($ticket['id'] ?? 0)]);
                                     ?>
                                     <div class="border rounded-3 p-3">
                                         <div class="d-flex justify-content-between align-items-center mb-1">

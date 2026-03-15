@@ -25,7 +25,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Gestisci le credenziali per i servizi Iliad da fornire ai clienti.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-plus me-2"></i>Nuove Credenziali</a>
+                <a class="btn btn-warning text-dark" href="<?php echo iliad_module_url('create'); ?>"><i class="fa-solid fa-plus me-2"></i>Nuove Credenziali</a>
             </div>
         </div>
 
@@ -69,7 +69,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         </td>
                                         <td><?php echo format_datetime_locale($cred['created_at']); ?></td>
                                         <td>
-                                            <a href="generate_pdf.php?id=<?php echo $cred['id']; ?>" class="btn btn-sm btn-outline-primary" target="_blank">
+                                            <a href="<?php echo iliad_module_url('generate_pdf', ['id' => (int) $cred['id']]); ?>" class="btn btn-sm btn-outline-primary" target="_blank">
                                                 <i class="fa-solid fa-file-pdf me-1"></i>PDF
                                             </a>
                                         </td>

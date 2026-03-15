@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $folderName = (string) ($_POST['folder_name'] ?? '');
             $newPath = $library->createFolder($folderName, $currentPath);
             add_flash('success', 'Cartella creata correttamente.');
-            header('Location: index.php' . ($newPath !== '' ? '?path=' . urlencode($newPath) : ''));
+            header('Location: ' . opportunities_promotions_url('index', $newPath !== '' ? ['path' => $newPath] : []));
             exit;
         }
 
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 add_flash($result['uploaded'] > 0 ? 'warning' : 'danger', $message);
             }
 
-            header('Location: index.php' . ($currentPath !== '' ? '?path=' . urlencode($currentPath) : ''));
+            header('Location: ' . opportunities_promotions_url('index', $currentPath !== '' ? ['path' => $currentPath] : []));
             exit;
         }
 
@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $target = (string) ($_POST['target'] ?? '');
             $library->deleteFile($target);
             add_flash('success', 'File eliminato.');
-            header('Location: index.php' . ($currentPath !== '' ? '?path=' . urlencode($currentPath) : ''));
+            header('Location: ' . opportunities_promotions_url('index', $currentPath !== '' ? ['path' => $currentPath] : []));
             exit;
         }
 
@@ -93,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             array_pop($segments);
             $redirectPath = implode('/', $segments);
             add_flash('success', 'Cartella rimossa.');
-            header('Location: index.php' . ($redirectPath !== '' ? '?path=' . urlencode($redirectPath) : ''));
+            header('Location: ' . opportunities_promotions_url('index', $redirectPath !== '' ? ['path' => $redirectPath] : []));
             exit;
         }
     } catch (RuntimeException $exception) {
@@ -105,7 +105,7 @@ try {
     $listing = $library->listContents($currentPath);
 } catch (RuntimeException $exception) {
     add_flash('warning', $exception->getMessage());
-    header('Location: index.php');
+    header('Location: ' . opportunities_promotions_url('index'));
     exit;
 }
 
@@ -131,7 +131,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <h1 class="h4 mb-0">File manager collaboratori</h1>
                 <p class="text-muted mb-0">Carica PDF e immagini organizzandoli in cartelle condivise.</p>
             </div>
-            <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(asset('modules/opportunities/index.php')); ?>">
+            <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(opportunities_module_url('index')); ?>">
                 <i class="fa-solid fa-arrow-left me-2"></i>Torna alla pipeline
             </a>
         </div>
@@ -194,7 +194,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <nav aria-label="Navigazione cartelle">
                             <ol class="breadcrumb mb-0">
                                 <?php foreach ($breadcrumbs as $index => $crumb): ?>
-                                    <?php $crumbUrl = 'index.php' . ($crumb['path'] !== '' ? '?path=' . urlencode($crumb['path']) : ''); ?>
+                                    <?php $crumbUrl = opportunities_promotions_url('index', $crumb['path'] !== '' ? ['path' => $crumb['path']] : []); ?>
                                     <li class="breadcrumb-item<?php echo $index === count($breadcrumbs) - 1 ? ' active' : ''; ?>">
                                         <?php if ($index === count($breadcrumbs) - 1): ?>
                                             <?php echo sanitize_output($crumb['label']); ?>
@@ -207,7 +207,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </nav>
                     </div>
                     <?php if ($currentPath !== ''): ?>
-                        <a class="btn btn-sm btn-light" href="<?php echo sanitize_output('index.php' . ($backLink !== '' ? '?path=' . urlencode($backLink) : '')); ?>">
+                        <a class="btn btn-sm btn-light" href="<?php echo sanitize_output(opportunities_promotions_url('index', $backLink !== '' ? ['path' => $backLink] : [])); ?>">
                             <i class="fa-solid fa-arrow-turn-up me-1"></i>Cartella superiore
                         </a>
                     <?php endif; ?>
@@ -221,7 +221,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <?php else: ?>
                     <div class="list-group list-group-flush">
                         <?php foreach ($directories as $directory): ?>
-                            <?php $folderUrl = 'index.php?path=' . urlencode($directory['path']); ?>
+                            <?php $folderUrl = opportunities_promotions_url('index', ['path' => $directory['path']]); ?>
                             <div class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                                 <div class="d-flex align-items-center gap-3">
                                     <span class="text-warning" aria-hidden="true"><i class="fa-solid fa-folder fa-lg"></i></span>

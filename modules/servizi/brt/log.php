@@ -51,7 +51,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Storico delle operazioni e degli avvisi generati dal modulo BRT.</p>
             </div>
             <div class="toolbar-actions d-flex align-items-center gap-2">
-                <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Torna alle spedizioni</a>
+                <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Torna alle spedizioni</a>
             </div>
         </div>
 
@@ -68,7 +68,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                     <div class="col-md-4 col-lg-3 d-flex gap-2">
                         <button class="btn btn-primary" type="submit"><i class="fa-solid fa-magnifying-glass me-2"></i>Filtra</button>
-                        <a class="btn btn-outline-secondary" href="log.php"><i class="fa-solid fa-rotate-left me-2"></i>Reimposta</a>
+                        <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('log'); ?>"><i class="fa-solid fa-rotate-left me-2"></i>Reimposta</a>
                     </div>
                 </form>
             </div>

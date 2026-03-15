@@ -11,14 +11,14 @@ $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
 $taxCodeParam = isset($_GET['tax_code']) ? strtoupper(trim((string) $_GET['tax_code'])) : '';
 if ($taxCodeParam === '') {
     add_flash('warning', 'Cliente non trovato.');
-    header('Location: customers.php');
+    header('Location: ' . opportunities_collaborator_url('customers'));
     exit;
 }
 
 $customerData = $opportunityService->findCollaboratorCustomer($collaboratorId, $taxCodeParam);
 if ($customerData === null) {
     add_flash('warning', 'Cliente non trovato.');
-    header('Location: customers.php');
+    header('Location: ' . opportunities_collaborator_url('customers'));
     exit;
 }
 
@@ -47,10 +47,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0"><?php echo sanitize_output($customer['customer_tax_code'] ?? ''); ?></p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-                <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/customers.php'); ?>">
+                <a class="btn btn-outline-secondary" href="<?php echo opportunities_collaborator_url('customers'); ?>">
                     <i class="fa-solid fa-arrow-left me-2"></i>Torna ai clienti
                 </a>
-                <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
+                <a class="btn btn-primary" href="<?php echo opportunities_collaborator_url('create'); ?>">
                     <i class="fa-solid fa-plus me-2"></i>Nuova OP
                 </a>
             </div>
@@ -181,7 +181,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     ?>
                                     <tr>
                                         <td class="fw-semibold">
-                                            <a href="<?php echo asset('modules/opportunities/collaborator/view.php?id=' . (int) ($op['id'] ?? 0)); ?>" class="link-body-emphasis text-decoration-none">
+                                            <a href="<?php echo opportunities_collaborator_url('view', ['id' => (int) ($op['id'] ?? 0)]); ?>" class="link-body-emphasis text-decoration-none">
                                                 <?php echo sanitize_output($op['code'] ?? ''); ?>
                                             </a>
                                         </td>

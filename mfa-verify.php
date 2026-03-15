@@ -8,7 +8,7 @@ require_once __DIR__ . '/includes/db_connect.php';
 
 $challenge = $_SESSION['mfa_challenge'] ?? null;
 if (!$challenge || empty($challenge['user']['id'])) {
-    header('Location: ' . base_url('index.php'));
+    header('Location: ' . login_url());
     exit;
 }
 
@@ -16,7 +16,7 @@ if (($challenge['expires_at'] ?? 0) < time()) {
     unset($_SESSION['mfa_challenge']);
     unset($_SESSION['mfa_failed_attempts']);
     $_SESSION['login_error'] = 'Sessione MFA scaduta. Effettua nuovamente l\'accesso.';
-    header('Location: ' . base_url('index.php'));
+    header('Location: ' . login_url());
     exit;
 }
 
@@ -28,7 +28,7 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$user || (int) ($user['mfa_enabled'] ?? 0) !== 1 || empty($user['mfa_secret'])) {
     unset($_SESSION['mfa_challenge']);
     $_SESSION['login_error'] = 'La configurazione MFA non è valida. Contatta l\'amministratore.';
-    header('Location: ' . base_url('index.php'));
+    header('Location: ' . login_url());
     exit;
 }
 
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             unset($_SESSION['mfa_challenge']);
             unset($_SESSION['mfa_failed_attempts']);
             $_SESSION['login_error'] = 'Servizio MFA non disponibile. Contatta l\'amministratore.';
-            header('Location: ' . base_url('index.php'));
+            header('Location: ' . login_url());
             exit;
         }
         $totp = $totpClass::create($user['mfa_secret'], 30, 'sha1', 6);
@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['login_attempts'] = ($_SESSION['login_attempts'] ?? 0) + 1;
             unset($_SESSION['mfa_challenge']);
             $_SESSION['login_error'] = 'Troppi tentativi MFA. Effettua nuovamente l\'accesso tra qualche minuto.';
-            header('Location: ' . base_url('index.php'));
+            header('Location: ' . login_url());
             exit;
         }
     }

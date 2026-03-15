@@ -494,7 +494,7 @@ if ($emailTablesReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     add_flash('success', 'Template creato.');
                 }
 
-                header('Location: templates.php');
+                header('Location: ' . email_marketing_module_url('templates'));
                 exit;
             } catch (PDOException $exception) {
                 error_log('Template save failed: ' . $exception->getMessage());
@@ -510,7 +510,7 @@ if ($emailTablesReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare('DELETE FROM email_templates WHERE id = :id');
                 $stmt->execute([':id' => $templateId]);
                 add_flash('success', 'Template eliminato.');
-                header('Location: templates.php');
+                header('Location: ' . email_marketing_module_url('templates'));
                 exit;
             } catch (PDOException $exception) {
                 error_log('Template delete failed: ' . $exception->getMessage());
@@ -571,7 +571,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Definisci layout riutilizzabili per le campagne.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-light" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
+                <a class="btn btn-outline-light" href="<?php echo email_marketing_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
             </div>
         </div>
 
@@ -694,7 +694,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                         ?>
                                                     </td>
                                                     <td class="text-end">
-                                                        <a class="btn btn-sm btn-outline-warning" href="templates.php?template_id=<?php echo (int) $template['id']; ?>"><i class="fa-solid fa-pen-to-square"></i></a>
+                                                        <a class="btn btn-sm btn-outline-warning" href="<?php echo email_marketing_module_url('templates', ['template_id' => (int) $template['id']]); ?>"><i class="fa-solid fa-pen-to-square"></i></a>
                                                         <form method="post" class="d-inline ms-2" onsubmit="return confirm('Eliminare questo template?');">
                                                             <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
                                                             <input type="hidden" name="action" value="delete-template">

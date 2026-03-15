@@ -65,7 +65,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Esegui una scansione rapida per individuare errori e colli di bottiglia.</p>
             </div>
             <div class="toolbar-actions d-flex gap-2 flex-wrap">
-                <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-angles-left me-2"></i>Torna alle impostazioni</a>
+                <a class="btn btn-outline-secondary" href="<?php echo impostazioni_module_url('index'); ?>"><i class="fa-solid fa-angles-left me-2"></i>Torna alle impostazioni</a>
                 <button class="btn btn-primary" type="button" data-health-refresh><i class="fa-solid fa-arrows-rotate me-2"></i>Riesegui diagnostica</button>
             </div>
         </div>
@@ -73,8 +73,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
            <div class="card ag-card" id="systemHealthApp"
                data-initial-checks='<?php echo htmlspecialchars(json_encode($initialChecks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8'); ?>'
              data-csrf="<?php echo sanitize_output($csrfToken); ?>"
-             data-list-url="system-health.php?action=list"
-             data-fix-url="system-health.php">
+             data-list-url="<?php echo sanitize_output(impostazioni_module_url('system-health', ['action' => 'list'])); ?>"
+             data-fix-url="<?php echo sanitize_output(impostazioni_module_url('system-health')); ?>">
             <div class="card-body">
                 <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
                     <div data-role="health-summary" class="badge bg-secondary-subtle text-body-secondary px-3 py-2">Inizializzazione controllo…</div>
@@ -111,8 +111,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 
     const state = {
         csrf: root.dataset.csrf || '',
-        listUrl: root.dataset.listUrl || 'system-health.php?action=list',
-        fixUrl: root.dataset.fixUrl || 'system-health.php',
+        listUrl: root.dataset.listUrl || '<?php echo sanitize_output(impostazioni_module_url('system-health', ['action' => 'list'])); ?>',
+        fixUrl: root.dataset.fixUrl || '<?php echo sanitize_output(impostazioni_module_url('system-health')); ?>',
         checks: [],
     };
 

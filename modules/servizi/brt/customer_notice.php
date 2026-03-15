@@ -22,20 +22,20 @@ require_role('Admin', 'Operatore', 'Manager');
 $shipmentId = (int) ($_GET['id'] ?? 0);
 if ($shipmentId <= 0) {
     add_flash('warning', 'Seleziona una spedizione valida.');
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }
 
 $shipment = brt_get_shipment($shipmentId);
 if ($shipment === null) {
     add_flash('warning', 'Spedizione BRT non trovata.');
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }
 
 if (empty($shipment['label_path'])) {
     add_flash('warning', 'Genera prima l\'etichetta per questa spedizione.');
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }
 
@@ -49,7 +49,7 @@ try {
     ]);
 } catch (MpdfException $exception) {
     add_flash('warning', 'Impossibile inizializzare la libreria PDF: ' . $exception->getMessage());
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }
 
@@ -138,6 +138,6 @@ try {
         'error' => $exception->getMessage(),
     ]);
     add_flash('warning', 'Impossibile generare il documento: ' . $exception->getMessage());
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }

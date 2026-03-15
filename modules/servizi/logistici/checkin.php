@@ -8,7 +8,7 @@ require_once __DIR__ . '/../../../includes/helpers.php';
 require_role('Admin', 'Operatore', 'Manager');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: ' . logistici_module_url('index'));
     exit;
 }
 
@@ -27,7 +27,7 @@ $codeLower = strtolower($codeRaw);
 
 if ($tracking === '' && $codeRaw === '') {
     add_flash('danger', 'Inserisci il tracking o il codice per procedere al ritiro.');
-    header('Location: index.php');
+    header('Location: ' . logistici_module_url('index'));
     exit;
 }
 
@@ -61,7 +61,7 @@ if (!$packageId) {
 
 if (!$packageId || !$package) {
     add_flash('danger', 'Pacco non trovato per i dati forniti.');
-    header('Location: index.php');
+    header('Location: ' . logistici_module_url('index'));
     exit;
 }
 
@@ -95,10 +95,10 @@ try {
         add_flash('success', 'Ritiro confermato tramite QR code.');
     }
 
-    header('Location: view.php?id=' . $packageId);
+    header('Location: ' . logistici_module_url('view', ['id' => $packageId]));
     exit;
 } catch (Throwable $exception) {
     add_flash('danger', $exception->getMessage());
-    header('Location: index.php');
+    header('Location: ' . logistici_module_url('index'));
     exit;
 }

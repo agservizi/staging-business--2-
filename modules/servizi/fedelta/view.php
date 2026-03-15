@@ -9,7 +9,7 @@ $pageTitle = 'Dettaglio movimento fedeltà';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
-    header('Location: index.php');
+    header('Location: ' . fedelta_module_url('index'));
     exit;
 }
 
@@ -21,7 +21,7 @@ $movementStmt->execute([':id' => $id]);
 $movement = $movementStmt->fetch();
 
 if (!$movement) {
-    header('Location: index.php?notfound=1');
+    header('Location: ' . fedelta_module_url('index', ['notfound' => 1]));
     exit;
 }
 
@@ -48,8 +48,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="text-muted small text-uppercase">Saldo cliente</div>
                     <div class="fs-5 fw-semibold mb-0"><?php echo loyalty_format_points($currentBalance); ?> pt</div>
                 </div>
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Torna allo storico</a>
-                <a class="btn btn-warning text-dark" href="edit.php?id=<?php echo $id; ?>"><i class="fa-solid fa-pen me-2"></i>Modifica</a>
+                <a class="btn btn-outline-warning" href="<?php echo fedelta_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Torna allo storico</a>
+                <a class="btn btn-warning text-dark" href="<?php echo fedelta_module_url('edit', ['id' => $id]); ?>"><i class="fa-solid fa-pen me-2"></i>Modifica</a>
             </div>
         </div>
 

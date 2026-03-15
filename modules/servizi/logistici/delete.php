@@ -8,7 +8,7 @@ require_once __DIR__ . '/../../../includes/helpers.php';
 require_role('Admin', 'Manager');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: ' . logistici_module_url('index'));
     exit;
 }
 
@@ -17,7 +17,7 @@ require_valid_csrf();
 $id = (int) ($_POST['id'] ?? 0);
 if ($id <= 0) {
     add_flash('danger', 'Richiesta non valida.');
-    header('Location: index.php');
+    header('Location: ' . logistici_module_url('index'));
     exit;
 }
 
@@ -38,5 +38,5 @@ try {
     add_flash('danger', 'Impossibile eliminare il pickup.');
 }
 
-header('Location: index.php');
+header('Location: ' . logistici_module_url('index'));
 exit;

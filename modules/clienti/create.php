@@ -109,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach (['Admin', 'Manager'] as $notifyRole) {
             create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
         }
-        header('Location: index.php');
+        header('Location: ' . clienti_module_url('index'));
         exit;
     }
 }
@@ -126,7 +126,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Completa i dati anagrafici e di contatto per aggiungere un nuovo cliente in rubrica.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna ai clienti</a>
+                <a class="btn btn-outline-warning" href="<?php echo clienti_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna ai clienti</a>
             </div>
         </div>
 
@@ -180,7 +180,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         </div>
                     </div>
                     <div class="stack-sm justify-content-end mt-4">
-                        <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-rotate-left me-2"></i>Annulla</a>
+                        <a class="btn btn-outline-warning" href="<?php echo clienti_module_url('index'); ?>"><i class="fa-solid fa-arrow-rotate-left me-2"></i>Annulla</a>
                         <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Salva cliente</button>
                     </div>
                 </form>

@@ -18,7 +18,7 @@ express_module_require_access($pdo, (int) ($_SESSION['user_id'] ?? 0));
 $saleId = (int) ($_GET['id'] ?? 0);
 if ($saleId <= 0) {
     add_flash('warning', 'Vendita non valida.');
-    header('Location: sales.php');
+    header('Location: ' . express_module_url('sales'));
     exit;
 }
 
@@ -27,13 +27,13 @@ express_module_bootstrap_schema($pdo);
 $sale = express_module_sale_detail($pdo, $saleId);
 if ($sale === null) {
     add_flash('warning', 'Vendita non trovata.');
-    header('Location: sales.php');
+    header('Location: ' . express_module_url('sales'));
     exit;
 }
 
 if (!class_exists(Mpdf::class)) {
     add_flash('warning', 'Libreria PDF non disponibile.');
-    header('Location: view_sale.php?id=' . $saleId);
+    header('Location: ' . express_module_url('view_sale', ['id' => $saleId]));
     exit;
 }
 
@@ -53,7 +53,7 @@ try {
     ]);
 } catch (MpdfException $exception) {
     add_flash('warning', 'Impossibile inizializzare il PDF: ' . $exception->getMessage());
-    header('Location: view_sale.php?id=' . $saleId);
+    header('Location: ' . express_module_url('view_sale', ['id' => $saleId]));
     exit;
 }
 
@@ -150,6 +150,6 @@ try {
     exit;
 } catch (MpdfException $exception) {
     add_flash('warning', 'Impossibile generare il PDF: ' . $exception->getMessage());
-    header('Location: view_sale.php?id=' . $saleId);
+    header('Location: ' . express_module_url('view_sale', ['id' => $saleId]));
     exit;
 }

@@ -54,9 +54,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Gestione richieste visura Centrale Rischi.</p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-warning" href="dashboard.php"><i class="fa-solid fa-gauge-high me-2"></i>Dashboard</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(visure_cr_module_url('dashboard')); ?>"><i class="fa-solid fa-gauge-high me-2"></i>Dashboard</a>
                 <?php if ($puoCreare): ?>
-                    <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
+                    <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(visure_cr_module_url('create')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -82,7 +82,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </select>
                         <input class="form-control me-2 mb-2" style="min-width: 220px;" id="search" type="search" name="search" value="<?php echo sanitize_output($filters['search']); ?>" placeholder="Cerca nome, CF o P.IVA">
                         <button class="btn btn-warning mb-2" type="submit" title="Applica filtri"><i class="fa-solid fa-filter"></i></button>
-                        <a class="btn btn-outline-warning mb-2" href="index.php" title="Reimposta filtri"><i class="fa-solid fa-rotate-left"></i></a>
+                        <a class="btn btn-outline-warning mb-2" href="<?php echo sanitize_output(visure_cr_module_url('index')); ?>" title="Reimposta filtri"><i class="fa-solid fa-rotate-left"></i></a>
                     </div>
                 </form>
             </div>
@@ -131,7 +131,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <td><?php echo sanitize_output(format_datetime_locale($row['updated_at'] ?? null)); ?></td>
                                         <td class="text-end">
                                             <div class="btn-group btn-group-sm" role="group">
-                                                <a class="btn btn-outline-light" href="view.php?id=<?php echo (int) $row['id']; ?>"><i class="fa-solid fa-eye"></i></a>
+                                                <a class="btn btn-outline-light" href="<?php echo sanitize_output(visure_cr_module_url('view', ['id' => (int) $row['id']])); ?>"><i class="fa-solid fa-eye"></i></a>
                                             </div>
                                         </td>
                                     </tr>

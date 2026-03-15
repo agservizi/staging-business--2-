@@ -76,5 +76,5 @@ try {
     add_flash('danger', 'Sync PEC fallita: ' . $exception->getMessage());
 }
 
-header('Location: inbox.php');
+header('Location: ' . posta_telematica_module_url('inbox'));
 exit;

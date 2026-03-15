@@ -11,14 +11,14 @@ require_role('Admin', 'Operatore', 'Manager');
 $messageId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($messageId <= 0) {
     add_flash('warning', 'Invio non trovato.');
-    header('Location: index.php');
+    header('Location: ' . posta_telematica_module_url('index'));
     exit;
 }
 
 $message = posta_telematica_get_message($pdo, $messageId);
 if (!$message) {
     add_flash('warning', 'Invio non trovato.');
-    header('Location: index.php');
+    header('Location: ' . posta_telematica_module_url('index'));
     exit;
 }
 
@@ -66,9 +66,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Storico invio posta telematica.</p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
-                <a class="btn btn-outline-primary" href="receipt.php?id=<?php echo (int) $message['id']; ?>" target="_blank"><i class="fa-solid fa-print me-2"></i>Stampa ricevuta</a>
-                <a class="btn btn-primary" href="create.php"><i class="fa-solid fa-paper-plane me-2"></i>Nuovo invio</a>
+                <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(posta_telematica_module_url('index')); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
+                <a class="btn btn-outline-primary" href="<?php echo sanitize_output(posta_telematica_module_url('receipt', ['id' => (int) $message['id']])); ?>" target="_blank"><i class="fa-solid fa-print me-2"></i>Stampa ricevuta</a>
+                <a class="btn btn-primary" href="<?php echo sanitize_output(posta_telematica_module_url('create')); ?>"><i class="fa-solid fa-paper-plane me-2"></i>Nuovo invio</a>
             </div>
         </div>
 
@@ -129,13 +129,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <h2 class="h5 mb-0">Ricevute PEC</h2>
                     <div class="d-flex flex-wrap gap-2">
-                        <a class="btn btn-sm btn-outline-primary" href="receipt.php?id=<?php echo (int) $message['id']; ?>&type=invio" target="_blank">
+                        <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output(posta_telematica_module_url('receipt', ['id' => (int) $message['id'], 'type' => 'invio'])); ?>" target="_blank">
                             <i class="fa-solid fa-print me-1"></i>Stampa invio
                         </a>
-                        <a class="btn btn-sm btn-outline-primary" href="receipt.php?id=<?php echo (int) $message['id']; ?>&type=accettazione" target="_blank">
+                        <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output(posta_telematica_module_url('receipt', ['id' => (int) $message['id'], 'type' => 'accettazione'])); ?>" target="_blank">
                             <i class="fa-solid fa-print me-1"></i>Stampa accettazione
                         </a>
-                        <a class="btn btn-sm btn-outline-primary" href="receipt.php?id=<?php echo (int) $message['id']; ?>&type=consegna" target="_blank">
+                        <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output(posta_telematica_module_url('receipt', ['id' => (int) $message['id'], 'type' => 'consegna'])); ?>" target="_blank">
                             <i class="fa-solid fa-print me-1"></i>Stampa consegna
                         </a>
                     </div>
@@ -149,7 +149,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <?php if ($invioSourceId > 0): ?>
                                 <div class="small text-muted">
-                                    Sorgente inbox: <a href="inbox.php?id=<?php echo $invioSourceId; ?>">#<?php echo $invioSourceId; ?></a>
+                                    Sorgente inbox: <a href="<?php echo sanitize_output(posta_telematica_module_url('inbox', ['id' => $invioSourceId])); ?>">#<?php echo $invioSourceId; ?></a>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -160,7 +160,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <?php if ($accettazioneSourceId > 0): ?>
                                 <div class="small text-muted">
-                                    Sorgente inbox: <a href="inbox.php?id=<?php echo $accettazioneSourceId; ?>">#<?php echo $accettazioneSourceId; ?></a>
+                                    Sorgente inbox: <a href="<?php echo sanitize_output(posta_telematica_module_url('inbox', ['id' => $accettazioneSourceId])); ?>">#<?php echo $accettazioneSourceId; ?></a>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -171,7 +171,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <?php if ($consegnaSourceId > 0): ?>
                                 <div class="small text-muted">
-                                    Sorgente inbox: <a href="inbox.php?id=<?php echo $consegnaSourceId; ?>">#<?php echo $consegnaSourceId; ?></a>
+                                    Sorgente inbox: <a href="<?php echo sanitize_output(posta_telematica_module_url('inbox', ['id' => $consegnaSourceId])); ?>">#<?php echo $consegnaSourceId; ?></a>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -216,7 +216,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <div class="fw-semibold"><?php echo sanitize_output($attachment['file_name'] ?? 'Allegato'); ?></div>
                                     <small class="text-muted"><?php echo sanitize_output($attachment['mime_type'] ?? ''); ?> · <?php echo number_format((int) ($attachment['file_size'] ?? 0) / 1024, 1); ?> KB</small>
                                 </div>
-                                <a class="btn btn-sm btn-outline-primary" href="download.php?id=<?php echo (int) $attachment['id']; ?>">
+                                <a class="btn btn-sm btn-outline-primary" href="<?php echo sanitize_output(posta_telematica_module_url('download', ['id' => (int) $attachment['id']])); ?>">
                                     <i class="fa-solid fa-download me-1"></i>Scarica
                                 </a>
                             </div>

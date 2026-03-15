@@ -73,7 +73,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </div>
             <?php if ($hasMore && $nextCursor): ?>
                 <div class="card-footer bg-transparent border-0">
-                    <a class="btn btn-outline-primary" href="<?php echo base_url('modules/impostazioni/notifications.php?before_id=' . (int) $nextCursor); ?>">Mostra di più</a>
+                    <a class="btn btn-outline-primary" href="<?php echo impostazioni_module_url('notifications', ['before_id' => (int) $nextCursor]); ?>">Mostra di più</a>
                 </div>
             <?php endif; ?>
         </div>

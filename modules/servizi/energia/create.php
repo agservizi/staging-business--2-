@@ -218,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash($type, $message);
-            header('Location: index.php');
+            header('Location: ' . energia_module_url('index'));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -242,7 +242,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Carica la documentazione per volture e subentri Enel luce e gas.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Indietro</a>
+                <a class="btn btn-outline-warning" href="<?php echo energia_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Indietro</a>
             </div>
         </div>
         <?php if ($errors): ?>
@@ -343,7 +343,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <small class="text-muted">Se deselezionato, potrai inviare successivamente dal dettaglio contratto.</small>
                             </div>
                             <div class="d-flex flex-wrap justify-content-end gap-2">
-                                <a class="btn btn-outline-warning" href="index.php">Annulla</a>
+                                <a class="btn btn-outline-warning" href="<?php echo energia_module_url('index'); ?>">Annulla</a>
                                 <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Salva contratto</button>
                             </div>
                         </div>

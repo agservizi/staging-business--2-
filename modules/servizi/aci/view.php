@@ -12,14 +12,14 @@ $pageTitle = 'Dettaglio pratica ACI';
 $praticaId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($praticaId <= 0) {
     add_flash('warning', 'Pratica non valida.');
-    header('Location: index.php');
+    header('Location: ' . aci_module_url('index'));
     exit;
 }
 
 $pratica = aci_get_pratica($pdo, $praticaId);
 if (!$pratica) {
     add_flash('warning', 'Pratica non trovata.');
-    header('Location: index.php');
+    header('Location: ' . aci_module_url('index'));
     exit;
 }
 
@@ -55,12 +55,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Dettaglio pratica automobilistica.</p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
+                <a class="btn btn-outline-warning" href="<?php echo aci_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
                 <?php if ($isCompleted): ?>
-                    <a class="btn btn-outline-primary" href="receipt.php?id=<?php echo (int) $pratica['id']; ?>"><i class="fa-solid fa-file-pdf me-2"></i>Documento cliente</a>
+                    <a class="btn btn-outline-primary" href="<?php echo aci_module_url('receipt', ['id' => (int) $pratica['id']]); ?>"><i class="fa-solid fa-file-pdf me-2"></i>Documento cliente</a>
                 <?php endif; ?>
                 <?php if (current_user_can('Admin', 'Operatore', 'Manager')): ?>
-                    <a class="btn btn-warning text-dark" href="edit.php?id=<?php echo (int) $pratica['id']; ?>"><i class="fa-solid fa-pen me-2"></i>Modifica</a>
+                    <a class="btn btn-warning text-dark" href="<?php echo aci_module_url('edit', ['id' => (int) $pratica['id']]); ?>"><i class="fa-solid fa-pen me-2"></i>Modifica</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -236,7 +236,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <small class="text-muted d-block"><?php echo sanitize_output($attachment['file_name'] ?? ''); ?></small>
                                     <small class="text-muted"><?php echo sanitize_output($attachment['mime_type'] ?? ''); ?> · <?php echo number_format((int) ($attachment['file_size'] ?? 0) / 1024, 1); ?> KB</small>
                                 </div>
-                                <a class="btn btn-sm btn-outline-primary" href="download.php?id=<?php echo (int) $attachment['id']; ?>"><i class="fa-solid fa-download me-1"></i>Scarica</a>
+                                <a class="btn btn-sm btn-outline-primary" href="<?php echo aci_module_url('download', ['id' => (int) $attachment['id']]); ?>"><i class="fa-solid fa-download me-1"></i>Scarica</a>
                             </div>
                         <?php endforeach; ?>
                     </div>

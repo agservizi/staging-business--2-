@@ -7,14 +7,14 @@ require_role('Admin', 'Operatore');
 require_valid_csrf();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: ' . curriculum_module_url('index'));
     exit;
 }
 
 $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 if ($id <= 0) {
     add_flash('warning', 'Curriculum non valido.');
-    header('Location: index.php');
+    header('Location: ' . curriculum_module_url('index'));
     exit;
 }
 
@@ -28,7 +28,7 @@ try {
     if (!$curriculum) {
         $pdo->rollBack();
         add_flash('warning', 'Curriculum non trovato.');
-        header('Location: index.php');
+        header('Location: ' . curriculum_module_url('index'));
         exit;
     }
 
@@ -45,7 +45,7 @@ try {
     }
 
     add_flash('success', 'Curriculum eliminato correttamente.');
-    header('Location: index.php');
+    header('Location: ' . curriculum_module_url('index'));
     exit;
 } catch (Throwable $exception) {
     if ($pdo->inTransaction()) {
@@ -53,6 +53,6 @@ try {
     }
     error_log('Curriculum delete failed: ' . $exception->getMessage());
     add_flash('warning', 'Errore durante l\'eliminazione del curriculum.');
-    header('Location: index.php');
+    header('Location: ' . curriculum_module_url('index'));
     exit;
 }

@@ -138,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->commit();
 
             $baseUrl = rtrim((string) env('APP_URL', sprintf('%s://%s', (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http', $_SERVER['HTTP_HOST'] ?? 'localhost')), '/');
-            $ticketLink = $baseUrl . '/modules/ticket/view.php?id=' . $ticketId;
+            $ticketLink = ticket_module_url('view', ['id' => $ticketId]);
 
             if ($notifyClient && $customerEmail !== '') {
                 $mailBody = '<p>Ciao,</p>'
@@ -159,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Ticket creato correttamente.');
-            header('Location: view.php?id=' . $ticketId);
+            header('Location: ' . ticket_module_url('view', ['id' => $ticketId]));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -186,7 +186,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <h1 class="h3 mb-1">Crea nuovo ticket</h1>
                 <p class="text-muted mb-0">Registra rapidamente richieste di assistenza e comunicazioni interne.</p>
             </div>
-            <a class="btn btn-outline-secondary" href="index.php">
+            <a class="btn btn-outline-secondary" href="<?php echo ticket_module_url('index'); ?>">
                 <i class="fa-solid fa-arrow-left me-2"></i>Indietro
             </a>
         </div>
@@ -334,7 +334,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         </div>
                     </div>
                     <div class="card-footer bg-transparent border-0 d-flex justify-content-end gap-2">
-                        <a class="btn btn-outline-secondary" href="index.php">Annulla</a>
+                        <a class="btn btn-outline-secondary" href="<?php echo ticket_module_url('index'); ?>">Annulla</a>
                         <button class="btn btn-primary" type="submit">Registra ticket</button>
                     </div>
                 </div>

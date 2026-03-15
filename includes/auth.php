@@ -34,7 +34,7 @@ if (!defined('BYPASS_AUTH')) {
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
-        header('Location: index.php');
+        header('Location: ' . login_url());
         exit;
     }
 }
@@ -51,7 +51,7 @@ function require_role(string ...$roles): void
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
-        header('Location: dashboard.php');
+        header('Location: ' . dashboard_url());
         exit;
     }
 }

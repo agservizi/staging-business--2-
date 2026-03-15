@@ -458,7 +458,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', $message);
-            header('Location: index.php');
+            header('Location: ' . caf_patronato_module_url('index'));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -558,7 +558,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Registra una nuova richiesta CAF o Patronato e allega la documentazione necessaria.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-warning" href="index.php">
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(caf_patronato_module_url('index')); ?>">
                     <i class="fa-solid fa-arrow-left me-2"></i>Ritorna all'elenco
                 </a>
             </div>
@@ -717,7 +717,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
 
                     <div class="col-12 d-flex justify-content-end gap-2">
-                        <a class="btn btn-outline-warning" href="index.php">
+                        <a class="btn btn-outline-warning" href="<?php echo sanitize_output(caf_patronato_module_url('index')); ?>">
                             <i class="fa-solid fa-arrow-rotate-left me-2"></i>Annulla
                         </a>
                         <button class="btn btn-warning text-dark" type="submit">

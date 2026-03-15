@@ -14,14 +14,14 @@ $ticketId = (int) ($_GET['id'] ?? 0);
 
 if ($ticketId <= 0) {
     add_flash('warning', 'Ticket non trovato.');
-    header('Location: tickets.php');
+    header('Location: ' . opportunities_collaborator_url('tickets'));
     exit;
 }
 
 $ticket = ticket_find($pdo, $ticketId);
 if (!$ticket || (int) ($ticket['created_by'] ?? 0) !== $collaboratorId) {
     add_flash('warning', 'Non hai accesso a questo ticket.');
-    header('Location: tickets.php');
+    header('Location: ' . opportunities_collaborator_url('tickets'));
     exit;
 }
 
@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Messaggio inviato correttamente.');
-            header('Location: ticket-view.php?id=' . $ticketId);
+            header('Location: ' . opportunities_collaborator_url('ticket-view', ['id' => $ticketId]));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -117,7 +117,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <h1 class="h4 mb-1"><?php echo sanitize_output($ticket['subject'] ?? 'Richiesta di assistenza'); ?></h1>
                 <p class="text-muted mb-0">Creato il <?php echo sanitize_output(format_datetime_locale($ticket['created_at'] ?? null)); ?> · Ultimo aggiornamento <?php echo sanitize_output(format_datetime_locale($ticket['updated_at'] ?? null)); ?></p>
             </div>
-            <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/tickets.php'); ?>">
+            <a class="btn btn-outline-secondary" href="<?php echo opportunities_collaborator_url('tickets'); ?>">
                 <i class="fa-solid fa-arrow-left me-2"></i>Indietro
             </a>
         </div>

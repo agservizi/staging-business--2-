@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$error) {
         <div class="auth-card">
             <h1 class="h4 text-center mb-4">Imposta nuova password</h1>
             <?php if ($success): ?>
-                <div class="alert alert-success">Password aggiornata con successo. <a class="link-warning" href="index.php">Accedi</a></div>
+                <div class="alert alert-success">Password aggiornata con successo. <a class="link-warning" href="<?php echo login_url(); ?>">Accedi</a></div>
             <?php else: ?>
                 <?php if ($error): ?>
                     <div class="alert alert-warning"><?php echo sanitize_output($error); ?></div>

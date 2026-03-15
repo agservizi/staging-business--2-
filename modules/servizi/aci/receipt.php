@@ -18,21 +18,21 @@ require_role('Admin', 'Operatore', 'Manager', 'Viewer');
 $praticaId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($praticaId <= 0) {
 	add_flash('warning', 'Pratica non valida.');
-	header('Location: index.php');
+	header('Location: ' . aci_module_url('index'));
 	exit;
 }
 
 $pratica = aci_get_pratica($pdo, $praticaId);
 if (!$pratica) {
 	add_flash('warning', 'Pratica non trovata.');
-	header('Location: index.php');
+	header('Location: ' . aci_module_url('index'));
 	exit;
 }
 
 $isCompleted = strcasecmp(trim((string) ($pratica['stato'] ?? '')), 'Completata') === 0;
 if (!$isCompleted) {
 	add_flash('warning', 'Il documento cliente è disponibile solo per pratiche completate.');
-	header('Location: view.php?id=' . (int) $praticaId);
+	header('Location: ' . aci_module_url('view', ['id' => (int) $praticaId]));
 	exit;
 }
 
@@ -46,7 +46,7 @@ try {
 	]);
 } catch (MpdfException $exception) {
 	add_flash('warning', 'Impossibile inizializzare la libreria PDF: ' . $exception->getMessage());
-	header('Location: view.php?id=' . (int) $praticaId);
+	header('Location: ' . aci_module_url('view', ['id' => (int) $praticaId]));
 	exit;
 }
 
@@ -151,6 +151,6 @@ try {
 	exit;
 } catch (MpdfException $exception) {
 	add_flash('warning', 'Impossibile generare il documento: ' . $exception->getMessage());
-	header('Location: view.php?id=' . (int) $praticaId);
+	header('Location: ' . aci_module_url('view', ['id' => (int) $praticaId]));
 	exit;
 }

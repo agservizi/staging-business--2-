@@ -8,18 +8,18 @@ require_once __DIR__ . '/includes/db_connect.php';
 
 $setup = $_SESSION['mfa_setup'] ?? null;
 if (!$setup || empty($setup['user']['id'])) {
-    header('Location: ' . base_url('index.php'));
+    header('Location: ' . login_url());
     exit;
 }
 
 $mode = $setup['mode'] ?? 'enroll';
-$returnTo = $setup['return_to'] ?? base_url('modules/impostazioni/profile.php');
+$returnTo = $setup['return_to'] ?? impostazioni_module_url('profile');
 $resetRequested = !empty($setup['reset']);
 $rememberLogin = !empty($setup['remember']);
 if ($mode === 'enroll' && ($setup['expires_at'] ?? 0) < time()) {
     unset($_SESSION['mfa_setup']);
     $_SESSION['login_error'] = 'La sessione di configurazione MFA è scaduta. Effettua nuovamente il login.';
-    header('Location: ' . base_url('index.php'));
+    header('Location: ' . login_url());
     exit;
 }
 
@@ -31,7 +31,7 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$user) {
     unset($_SESSION['mfa_setup']);
     $_SESSION['login_error'] = 'Utente non trovato. Effettua nuovamente il login.';
-    header('Location: ' . base_url('index.php'));
+    header('Location: ' . login_url());
     exit;
 }
 
@@ -47,7 +47,7 @@ if ($mode === 'enroll' && (int) ($user['mfa_enabled'] ?? 0) === 1 && !empty($use
         'expires_at' => time() + 300,
     ];
     unset($_SESSION['mfa_setup']);
-    header('Location: ' . base_url('mfa-verify.php'));
+    header('Location: ' . mfa_verify_url());
     exit;
 }
 
@@ -56,7 +56,7 @@ if (!class_exists($totpClass)) {
     unset($_SESSION['mfa_setup']);
     if ($mode === 'enroll') {
         $_SESSION['login_error'] = 'Servizio MFA non disponibile. Ripeti l\'accesso più tardi.';
-        header('Location: ' . base_url('index.php'));
+        header('Location: ' . login_url());
     } else {
         add_flash('danger', 'Impossibile attivare l\'autenticazione a due fattori in questo momento.');
         header('Location: ' . $returnTo);
@@ -109,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($_POST['regen'])) {
         unset($_SESSION['mfa_setup']['secret']);
-        header('Location: ' . base_url('mfa-setup.php'));
+        header('Location: ' . mfa_setup_url());
         exit;
     }
 

@@ -11,21 +11,21 @@ require_role('Admin', 'Operatore', 'Manager', 'Viewer');
 $attachmentId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($attachmentId <= 0) {
     add_flash('warning', 'Allegato non valido.');
-    header('Location: index.php');
+    header('Location: ' . visure_cr_module_url('index'));
     exit;
 }
 
 $attachment = visure_cr_get_attachment($pdo, $attachmentId);
 if (!$attachment) {
     add_flash('warning', 'Allegato non trovato.');
-    header('Location: index.php');
+    header('Location: ' . visure_cr_module_url('index'));
     exit;
 }
 
 $relativePath = (string) ($attachment['file_path'] ?? '');
 if ($relativePath === '') {
     add_flash('warning', 'Percorso allegato non valido.');
-    header('Location: index.php');
+    header('Location: ' . visure_cr_module_url('index'));
     exit;
 }
 
@@ -35,7 +35,7 @@ $uploadRoot = realpath(rtrim(project_root_path(), '/') . '/' . VISURE_CR_UPLOAD_
 
 if ($realPath === false || $uploadRoot === false || strpos($realPath, $uploadRoot) !== 0 || !is_file($realPath)) {
     add_flash('warning', 'File allegato non disponibile.');
-    header('Location: index.php');
+    header('Location: ' . visure_cr_module_url('index'));
     exit;
 }
 

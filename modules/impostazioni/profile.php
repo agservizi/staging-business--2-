@@ -13,7 +13,7 @@ $allowedThemes = ['dark', 'light'];
 
 if ($userId <= 0) {
     add_flash('danger', 'Sessione non valida. Accedi nuovamente.');
-    header('Location: ' . base_url('index.php'));
+    header('Location: ' . login_url());
     exit;
 }
 
@@ -23,7 +23,7 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$user) {
     add_flash('danger', 'Profilo utente non trovato.');
-    header('Location: ' . base_url('dashboard.php'));
+    header('Location: ' . dashboard_url());
     exit;
 }
 
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
 
                 add_flash('success', 'Profilo aggiornato con successo.');
-                header('Location: profile.php');
+                header('Location: ' . impostazioni_module_url('profile'));
                 exit;
             } catch (Throwable $e) {
                 error_log('Profile update failed: ' . $e->getMessage());
@@ -168,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 );
 
                 add_flash('success', 'Password aggiornata correttamente.');
-                header('Location: profile.php');
+                header('Location: ' . impostazioni_module_url('profile'));
                 exit;
             } catch (Throwable $e) {
                 error_log('Password update failed: ' . $e->getMessage());
@@ -185,12 +185,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'user_agent' => request_user_agent(),
             'created_at' => time(),
             'expires_at' => time() + 900,
-            'return_to' => base_url('modules/impostazioni/profile.php'),
+            'return_to' => impostazioni_module_url('profile'),
             'reset' => !empty($_POST['reset']),
         ];
 
         add_flash('info', 'Completa la configurazione MFA per proteggere il tuo account.');
-        header('Location: ' . base_url('mfa-setup.php'));
+        header('Location: ' . mfa_setup_url());
         exit;
     }
 
@@ -226,7 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         unset($_SESSION['mfa_verified_at']);
                         unset($_SESSION['mfa_setup']);
                         add_flash('success', 'Autenticazione a due fattori disattivata correttamente.');
-                        header('Location: profile.php');
+                        header('Location: ' . impostazioni_module_url('profile'));
                         exit;
                     }
                 }
@@ -286,7 +286,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Gestisci le tue informazioni, la sicurezza dell'account e le preferenze di interfaccia.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-light" href="index.php"><i class="fa-solid fa-gear me-2"></i>Torna alle impostazioni</a>
+                <a class="btn btn-outline-light" href="<?php echo impostazioni_module_url('index'); ?>"><i class="fa-solid fa-gear me-2"></i>Torna alle impostazioni</a>
             </div>
         </div>
 

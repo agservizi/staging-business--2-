@@ -200,7 +200,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <?php endif; ?>
                             </p>
                         </div>
-                        <a class="btn btn-warning text-dark" href="create_sale.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova vendita</a>
+                        <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(express_module_url('create_sale')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova vendita</a>
                     </div>
                     <?php if ($sales === []): ?>
                         <div class="express-sales-empty">Nessuna vendita registrata.</div>
@@ -249,7 +249,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <td><span class="badge <?php echo $statusBadgeClass; ?>"><?php echo sanitize_output($status !== '' ? $status : '—'); ?></span></td>
                                             <td class="text-end fw-semibold">&euro; <?php echo number_format((float) ($sale['totale'] ?? 0), 2, ',', '.'); ?></td>
                                             <td class="text-end">
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="view_sale.php?id=<?php echo (int) $sale['id']; ?>" title="Dettagli">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(express_module_url('view_sale', ['id' => (int) $sale['id']])); ?>" title="Dettagli">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
                                             </td>

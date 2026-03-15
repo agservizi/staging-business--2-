@@ -18,14 +18,14 @@ ensure_pickup_tables();
 $reportId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($reportId <= 0) {
     add_flash('warning', 'Segnalazione non valida.');
-    header('Location: reports.php');
+    header('Location: ' . logistici_module_url('reports'));
     exit;
 }
 
 $report = get_customer_report($reportId);
 if (!$report) {
     add_flash('warning', 'Segnalazione non trovata.');
-    header('Location: reports.php');
+    header('Location: ' . logistici_module_url('reports'));
     exit;
 }
 
@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         error_log('Pickup portal report action failed: ' . $exception->getMessage());
     }
 
-    header('Location: report.php?id=' . $reportId);
+    header('Location: ' . logistici_module_url('report', ['id' => $reportId]));
     exit;
 }
 
@@ -115,12 +115,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="page-toolbar mb-4 d-flex justify-content-between align-items-center">
-            <a class="btn btn-outline-warning" href="reports.php"><i class="fa-solid fa-arrow-left"></i> Tutte le segnalazioni</a>
+            <a class="btn btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('reports')); ?>"><i class="fa-solid fa-arrow-left"></i> Tutte le segnalazioni</a>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
                 <?php if (empty($report['pickup_id'])): ?>
-                    <a class="btn btn-warning text-dark" href="create.php?source_report=<?php echo $reportId; ?>"><i class="fa-solid fa-circle-plus me-2"></i>Crea pickup</a>
+                    <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(logistici_module_url('create', ['source_report' => $reportId])); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Crea pickup</a>
                 <?php else: ?>
-                    <a class="btn btn-outline-warning" href="view.php?id=<?php echo (int) $report['pickup_id']; ?>"><i class="fa-solid fa-box"></i> Apri pickup</a>
+                    <a class="btn btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('view', ['id' => (int) $report['pickup_id']])); ?>"><i class="fa-solid fa-box"></i> Apri pickup</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -256,7 +256,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <dt class="col-sm-5">Aggiornato</dt>
                                 <dd class="col-sm-7"><?php echo sanitize_output(format_datetime_locale($linkedPackage['updated_at'] ?? '')); ?></dd>
                             </dl>
-                            <a class="btn btn-sm btn-outline-warning mt-3" href="view.php?id=<?php echo (int) $linkedPackage['id']; ?>">Apri dettagli pickup</a>
+                            <a class="btn btn-sm btn-outline-warning mt-3" href="<?php echo sanitize_output(logistici_module_url('view', ['id' => (int) $linkedPackage['id']])); ?>">Apri dettagli pickup</a>
                         </div>
                     </div>
                 <?php else: ?>

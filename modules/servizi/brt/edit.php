@@ -22,7 +22,7 @@ require_role('Admin', 'Operatore', 'Manager');
 $shipmentId = (int) ($_GET['id'] ?? 0);
 if ($shipmentId <= 0) {
     add_flash('warning', 'Spedizione BRT non trovata.');
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }
 
@@ -38,13 +38,13 @@ try {
 $shipment = brt_get_shipment($shipmentId);
 if ($shipment === null) {
     add_flash('warning', 'Spedizione BRT non trovata.');
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }
 
 if (!in_array($shipment['status'] ?? '', ['created', 'warning'], true) || !empty($shipment['manifest_id']) || !empty($shipment['deleted_at'])) {
     add_flash('warning', 'La spedizione non può essere modificata.');
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }
 
@@ -443,7 +443,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Spedizione aggiornata correttamente.');
-            header('Location: index.php');
+            header('Location: ' . brt_module_url('index'));
             exit;
         } catch (BrtException $exception) {
             $errors[] = $exception->getMessage();
@@ -490,7 +490,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Aggiorna i dati della spedizione prima della conferma o dell'inclusione nel borderò.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Torna alle spedizioni</a>
+                <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Torna alle spedizioni</a>
             </div>
         </div>
 
@@ -842,7 +842,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <label class="form-check-label" for="is_label_required">Genera automaticamente l'etichetta PDF</label>
                                     </div>
                                     <div class="d-flex gap-2">
-                                        <a class="btn btn-outline-secondary" href="index.php">Annulla</a>
+                                        <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('index'); ?>">Annulla</a>
                                         <button class="btn btn-primary" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Salva modifiche</button>
                                     </div>
                                 </div>

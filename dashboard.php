@@ -5,12 +5,12 @@ require_once __DIR__ . '/includes/helpers.php';
 
 $currentRole = $_SESSION['role'] ?? '';
 if ($currentRole === 'Collaboratore') {
-    header('Location: ' . base_url('modules/opportunities/collaborator/index.php'));
+    header('Location: ' . opportunities_collaborator_url('index'));
     exit;
 }
 
 if ($currentRole === 'Patronato') {
-    header('Location: ' . base_url('modules/servizi/caf-patronato/index.php'));
+    header('Location: ' . caf_patronato_module_url('index'));
     exit;
 }
 
@@ -312,7 +312,7 @@ try {
                 'icon' => 'fa-envelope-open-text',
                 'title' => 'Campagna email da seguire',
                 'detail' => sprintf('%s (%s). %s.', $pendingCampaign['name'] ?: ('Campagna #' . $pendingCampaign['id']), $statusLabel, $scheduleInfo),
-                'url' => base_url('modules/email-marketing/view.php?id=' . (int) $pendingCampaign['id']),
+                'url' => email_marketing_module_url('view', ['id' => (int) $pendingCampaign['id']]),
             ];
         }
     } catch (PDOException $emailReminderException) {
@@ -332,7 +332,7 @@ try {
             'icon' => 'fa-life-ring',
             'title' => 'Ticket da prendere in carico',
             'detail' => sprintf('Ticket #%s · %s aperto il %s.', $ticketCode, $ticketSubject, format_datetime($oldestTicket['created_at'] ?? '')),
-            'url' => base_url('modules/ticket/view.php?id=' . (int) $oldestTicket['id']),
+            'url' => ticket_module_url('view', ['id' => (int) $oldestTicket['id']]),
         ];
     }
 
@@ -349,7 +349,7 @@ try {
                 strtoupper($pendingMovimento['stato'] ?? ''),
                 $pendingMovimento['data_scadenza'] ? format_datetime($pendingMovimento['data_scadenza'], 'd/m/Y') : 'N/D'
             ),
-            'url' => base_url('modules/servizi/entrate-uscite/view.php?id=' . $pendingMovimento['id']),
+            'url' => entrate_uscite_module_url('view', ['id' => (int) $pendingMovimento['id']]),
         ];
     }
 
@@ -744,7 +744,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 <h5 class="card-title mb-0">Opportunity pipeline</h5>
                                 <small class="text-muted">Avanzamento e KPI</small>
                             </div>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/opportunities/index.php">Apri</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo opportunities_module_url('index'); ?>">Apri</a>
                         </div>
                         <div class="card-body">
                             <?php
@@ -823,7 +823,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 <h5 class="card-title mb-0">Opportunity pipeline</h5>
                                 <small class="text-muted">Stati e ultime attività</small>
                             </div>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/opportunities/index.php">Apri</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo opportunities_module_url('index'); ?>">Apri</a>
                         </div>
                         <div class="card-body">
                             <div class="opportunity-layout-row">
@@ -866,7 +866,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                                                 <div class="text-end opportunity-list-actions">
                                                                     <span class="badge <?php echo $badgeClass; ?> text-uppercase"><?php echo sanitize_output($opportunityItem['status_label'] ?? $opportunityItem['status_code'] ?? ''); ?></span>
                                                                     <div>
-                                                                        <a class="btn btn-sm btn-outline-warning" href="modules/opportunities/detail.php?id=<?php echo (int) ($opportunityItem['id'] ?? 0); ?>">Apri</a>
+                                                                        <a class="btn btn-sm btn-outline-warning" href="<?php echo opportunities_module_url('detail', ['id' => (int) ($opportunityItem['id'] ?? 0)]); ?>">Apri</a>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -909,7 +909,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                                                 <div class="text-end opportunity-list-actions">
                                                                     <span class="badge <?php echo $badgeClass; ?> text-uppercase"><?php echo sanitize_output($opportunityItem['status_label'] ?? $opportunityItem['status_code'] ?? ''); ?></span>
                                                                     <div>
-                                                                        <a class="btn btn-sm btn-outline-warning" href="modules/opportunities/detail.php?id=<?php echo (int) ($opportunityItem['id'] ?? 0); ?>">Apri</a>
+                                                                        <a class="btn btn-sm btn-outline-warning" href="<?php echo opportunities_module_url('detail', ['id' => (int) ($opportunityItem['id'] ?? 0)]); ?>">Apri</a>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -981,7 +981,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Movimenti recenti</h5>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/servizi/entrate-uscite/index.php">Gestisci</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo entrate_uscite_module_url('index'); ?>">Gestisci</a>
                         </div>
                         <div class="card-body">
                             <?php if ($latestMovements): ?>
@@ -1023,7 +1023,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Prossimi appuntamenti</h5>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/servizi/appuntamenti/index.php">Agenda</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo appuntamenti_module_url('index'); ?>">Agenda</a>
                         </div>
                         <div class="card-body">
                             <?php if ($upcomingAppointmentsList): ?>
@@ -1057,7 +1057,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Spedizioni BRT recenti</h5>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/servizi/brt/index.php">Dettagli</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo brt_module_url('index'); ?>">Dettagli</a>
                         </div>
                         <div class="card-body">
                             <?php if ($recentShipments): ?>
@@ -1108,7 +1108,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Scadenze contabili (7 giorni)</h5>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/servizi/entrate-uscite/index.php">Situazione</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo entrate_uscite_module_url('index'); ?>">Situazione</a>
                         </div>
                         <div class="card-body">
                             <?php if ($dueSoonMovements): ?>
@@ -1130,7 +1130,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                                 </div>
                                                 <div class="text-end">
                                                     <span class="fw-semibold <?php echo $isIncome ? 'text-success' : 'text-danger'; ?>"><?php echo sanitize_output($amountLabel); ?></span>
-                                                    <div><a class="link-warning small" href="modules/servizi/entrate-uscite/view.php?id=<?php echo (int) $movement['id']; ?>">Apri</a></div>
+                                                    <div><a class="link-warning small" href="<?php echo entrate_uscite_module_url('view', ['id' => (int) $movement['id']]); ?>">Apri</a></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1146,7 +1146,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Campagne email programmate</h5>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/email-marketing/index.php">Pianifica</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo email_marketing_module_url('index'); ?>">Pianifica</a>
                         </div>
                         <div class="card-body">
                             <?php if ($scheduledCampaigns): ?>
@@ -1166,7 +1166,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                                 </div>
                                                 <div class="text-end">
                                                     <span class="badge ag-badge text-uppercase"><?php echo sanitize_output($statusLabel); ?></span>
-                                                    <div><a class="link-warning small" href="modules/email-marketing/view.php?id=<?php echo (int) $campaign['id']; ?>">Dettagli</a></div>
+                                                    <div><a class="link-warning small" href="<?php echo email_marketing_module_url('view', ['id' => (int) $campaign['id']]); ?>">Dettagli</a></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1188,7 +1188,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Ticket in evidenza</h5>
-                            <a class="btn btn-sm btn-outline-warning" href="modules/ticket/index.php">Vedi tutti</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo ticket_module_url('index'); ?>">Vedi tutti</a>
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
@@ -1219,7 +1219,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                                     </td>
                                                     <td><span class="badge ag-badge text-uppercase"><?php echo sanitize_output($ticket['status']); ?></span></td>
                                                     <td><?php echo sanitize_output($ticketDate ? format_datetime($ticketDate, 'd/m/Y') : 'N/D'); ?></td>
-                                                    <td class="text-end"><a class="btn btn-sm btn-outline-warning" href="modules/ticket/view.php?id=<?php echo (int) $ticket['id']; ?>">Apri</a></td>
+                                                    <td class="text-end"><a class="btn btn-sm btn-outline-warning" href="<?php echo ticket_module_url('view', ['id' => (int) $ticket['id']]); ?>">Apri</a></td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
@@ -1238,7 +1238,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                         <div class="card ag-card flex-fill">
                             <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                                 <h5 class="card-title mb-0">Attività prioritarie</h5>
-                                <a class="btn btn-sm btn-link text-decoration-none" href="modules/servizi/entrate-uscite/index.php">
+                                <a class="btn btn-sm btn-link text-decoration-none" href="<?php echo entrate_uscite_module_url('index'); ?>">
                                     <i class="fa-solid fa-list-check me-1"></i>Vai alla sezione
                                 </a>
                             </div>
@@ -1293,7 +1293,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                                                     ?>
                                                     <tr>
                                                         <td>
-                                                            <a class="link-warning" href="modules/clienti/view.php?id=<?php echo (int) $client['id']; ?>"><?php echo sanitize_output($clientName); ?></a>
+                                                            <a class="link-warning" href="<?php echo clienti_module_url('view', ['id' => (int) $client['id']]); ?>"><?php echo sanitize_output($clientName); ?></a>
                                                         </td>
                                                         <td class="text-end text-success"><?php echo sanitize_output(format_currency($entrate)); ?></td>
                                                         <td class="text-end text-danger"><?php echo sanitize_output(format_currency($uscite)); ?></td>

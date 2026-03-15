@@ -38,7 +38,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Esegui un controllo manuale su un cliente tramite codice fiscale o partita IVA e, se serve, imposta l'esito.</p>
             </div>
             <div class="d-flex gap-2 flex-wrap">
-                <a class="btn btn-outline-secondary" href="<?php echo base_url('modules/opportunities/index.php'); ?>">
+                <a class="btn btn-outline-secondary" href="<?php echo opportunities_module_url('index'); ?>">
                     <i class="fa-solid fa-arrow-left me-2"></i>Torna alle Opportunity
                 </a>
             </div>

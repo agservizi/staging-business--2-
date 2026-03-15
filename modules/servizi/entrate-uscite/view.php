@@ -8,7 +8,7 @@ $pageTitle = 'Dettaglio movimento';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
-	header('Location: index.php');
+	header('Location: ' . entrate_uscite_module_url('index'));
 	exit;
 }
 
@@ -17,7 +17,7 @@ $stmt->execute([':id' => $id]);
 $pagamento = $stmt->fetch();
 
 if (!$pagamento) {
-	header('Location: index.php?notfound=1');
+	header('Location: ' . entrate_uscite_module_url('index', ['notfound' => 1]));
 	exit;
 }
 
@@ -39,11 +39,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 	<?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
 	<main class="content-wrapper">
 		<div class="d-flex justify-content-between align-items-center mb-4">
-			<a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Elenco movimenti</a>
+			<a class="btn btn-outline-warning" href="<?php echo entrate_uscite_module_url('index'); ?>"><i class="fa-solid fa-arrow-left"></i> Elenco movimenti</a>
 			<div class="d-flex gap-2">
 				<?php if ($puoModificare): ?>
-					<a class="btn btn-success" href="create.php"><i class="fa-solid fa-plus"></i> Nuova entrata/uscita</a>
-					<a class="btn btn-warning text-dark" href="edit.php?id=<?php echo $id; ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
+					<a class="btn btn-success" href="<?php echo entrate_uscite_module_url('create'); ?>"><i class="fa-solid fa-plus"></i> Nuova entrata/uscita</a>
+					<a class="btn btn-warning text-dark" href="<?php echo entrate_uscite_module_url('edit', ['id' => $id]); ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
 				<?php endif; ?>
 				<?php if ($puoEliminare): ?>
 					<button class="btn btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteMovementModal">
@@ -162,7 +162,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
-					<form method="post" action="delete.php" class="d-inline">
+					<form method="post" action="<?php echo entrate_uscite_module_url('delete'); ?>" class="d-inline">
 						<input type="hidden" name="id" value="<?php echo $id; ?>">
 						<input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
 						<button class="btn btn-danger" type="submit">

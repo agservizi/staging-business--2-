@@ -330,7 +330,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		foreach (['Admin', 'Manager'] as $notifyRole) {
 			create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
 		}
-		header('Location: view.php?id=' . $paymentId);
+		header('Location: ' . entrate_uscite_module_url('view', ['id' => $paymentId]));
 		exit;
 	}
 }
@@ -372,7 +372,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 	<?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
 	<main class="content-wrapper">
 		<div class="mb-4">
-			<a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Tutti i movimenti</a>
+			<a class="btn btn-outline-warning" href="<?php echo entrate_uscite_module_url('index'); ?>"><i class="fa-solid fa-arrow-left"></i> Tutti i movimenti</a>
 		</div>
 		<div class="card ag-card">
 			<div class="card-header bg-transparent border-0">
@@ -568,7 +568,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 						</div>
 					</div>
 					<div class="col-12 d-flex justify-content-end gap-2">
-						<a class="btn btn-secondary" href="index.php">Annulla</a>
+						<a class="btn btn-secondary" href="<?php echo entrate_uscite_module_url('index'); ?>">Annulla</a>
 						<button class="btn btn-warning text-dark" type="submit">Salva movimento</button>
 					</div>
 				</form>

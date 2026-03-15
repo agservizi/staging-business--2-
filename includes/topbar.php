@@ -119,7 +119,7 @@ if ($role === 'Collaboratore') {
                     'title' => sprintf('Opportunity %s', sanitize_output($row['code'] ?? '')), // short label first
                     'subtitle' => sprintf('Stato: %s', sanitize_output($row['status_label'] ?? ($row['status_code'] ?? ''))),
                     'timestamp' => $row['last_status_change'] ?? null,
-                    'url' => asset('modules/opportunities/collaborator/view.php?id=' . (int) ($row['id'] ?? 0)),
+                    'url' => opportunities_collaborator_url('view', ['id' => (int) ($row['id'] ?? 0)]),
                 ];
             }
         } catch (Throwable $exception) {
@@ -152,7 +152,7 @@ if ($role === 'Collaboratore') {
                     'title' => sprintf('Ticket #%s', sanitize_output($row['codice'] ?? $row['ticket_id'] ?? '')), // show code fallback
                     'subtitle' => sprintf('Risposta admin: %s', sanitize_output($row['subject'] ?? 'Aggiornamento ticket')),
                     'timestamp' => $row['created_at'] ?? null,
-                    'url' => asset('modules/opportunities/collaborator/ticket-view.php?id=' . (int) ($row['ticket_id'] ?? 0)),
+                    'url' => opportunities_collaborator_url('ticket-view', ['id' => (int) ($row['ticket_id'] ?? 0)]),
                 ];
             }
         } catch (Throwable $exception) {
@@ -257,7 +257,7 @@ $collaboratorNotificationsJson = htmlspecialchars((string) (json_encode($collabo
                 </div>
             </div>
 
-            <div class="topbar-search" id="globalSearch" data-search-endpoint="<?php echo sanitize_output(base_url('api/search.php')); ?>" data-search-page="<?php echo sanitize_output(base_url('modules/impostazioni/search.php')); ?>">
+            <div class="topbar-search" id="globalSearch" data-search-endpoint="<?php echo sanitize_output(base_url('api/search.php')); ?>" data-search-page="<?php echo sanitize_output(impostazioni_module_url('search')); ?>">
                 <button class="btn topbar-btn topbar-btn-icon topbar-search-toggle d-lg-none" type="button" id="globalSearchToggle" aria-label="Apri ricerca">
                     <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
                 </button>
@@ -294,21 +294,21 @@ $collaboratorNotificationsJson = htmlspecialchars((string) (json_encode($collabo
                         <div class="notifications-list" id="notificationsList"></div>
                         <div class="notifications-footer d-grid gap-2">
                             <button class="btn btn-sm btn-outline-primary" type="button" id="notificationsLoadMore">Carica altre</button>
-                            <a class="btn btn-sm btn-outline-secondary" href="<?php echo base_url('modules/impostazioni/notifications.php'); ?>">Mostra di più</a>
+                            <a class="btn btn-sm btn-outline-secondary" href="<?php echo impostazioni_module_url('notifications'); ?>">Mostra di più</a>
                         </div>
                     </div>
                 </div>
                 <?php if ($canSeeDocumentActions): ?>
                     <div class="topbar-quick-actions d-none d-md-flex">
-                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/servizi/entrate-uscite/create.php'); ?>" aria-label="Registra una nuova entrata o uscita" title="Registra una nuova entrata o uscita" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Registra una nuova entrata o uscita">
+                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo entrate_uscite_module_url('create'); ?>" aria-label="Registra una nuova entrata o uscita" title="Registra una nuova entrata o uscita" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Registra una nuova entrata o uscita">
                             <i class="fa-solid fa-coins topbar-btn-icon-lead" aria-hidden="true"></i>
                             <span class="topbar-btn-label d-none d-xxl-inline">Nuova entrata/uscita</span>
                         </a>
-                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/servizi/brt/create.php'); ?>" aria-label="Crea una nuova spedizione BRT" title="Crea una nuova spedizione BRT" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Crea una nuova spedizione BRT">
+                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo brt_module_url('create'); ?>" aria-label="Crea una nuova spedizione BRT" title="Crea una nuova spedizione BRT" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Crea una nuova spedizione BRT">
                             <i class="fa-solid fa-truck-fast topbar-btn-icon-lead" aria-hidden="true"></i>
                             <span class="topbar-btn-label d-none d-xxl-inline">Nuova spedizione BRT</span>
                         </a>
-                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo base_url('modules/servizi/appuntamenti/create.php'); ?>" aria-label="Pianifica un nuovo appuntamento" title="Pianifica un nuovo appuntamento" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Pianifica un nuovo appuntamento">
+                        <a class="btn topbar-btn topbar-btn-action" href="<?php echo appuntamenti_module_url('create'); ?>" aria-label="Pianifica un nuovo appuntamento" title="Pianifica un nuovo appuntamento" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-trigger="hover focus" data-bs-title="Pianifica un nuovo appuntamento">
                             <i class="fa-solid fa-calendar-plus topbar-btn-icon-lead" aria-hidden="true"></i>
                             <span class="topbar-btn-label d-none d-xxl-inline">Nuovo appuntamento</span>
                         </a>
@@ -318,9 +318,9 @@ $collaboratorNotificationsJson = htmlspecialchars((string) (json_encode($collabo
                             <i class="fa-solid fa-plus" aria-hidden="true"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="<?php echo base_url('modules/servizi/entrate-uscite/create.php'); ?>"><i class="fa-solid fa-coins me-2"></i>Nuova entrata/uscita</a></li>
-                            <li><a class="dropdown-item" href="<?php echo base_url('modules/servizi/brt/create.php'); ?>"><i class="fa-solid fa-truck-fast me-2"></i>Nuova spedizione BRT</a></li>
-                            <li><a class="dropdown-item" href="<?php echo base_url('modules/servizi/appuntamenti/create.php'); ?>"><i class="fa-solid fa-calendar-plus me-2"></i>Nuovo appuntamento</a></li>
+                            <li><a class="dropdown-item" href="<?php echo entrate_uscite_module_url('create'); ?>"><i class="fa-solid fa-coins me-2"></i>Nuova entrata/uscita</a></li>
+                            <li><a class="dropdown-item" href="<?php echo brt_module_url('create'); ?>"><i class="fa-solid fa-truck-fast me-2"></i>Nuova spedizione BRT</a></li>
+                            <li><a class="dropdown-item" href="<?php echo appuntamenti_module_url('create'); ?>"><i class="fa-solid fa-calendar-plus me-2"></i>Nuovo appuntamento</a></li>
                         </ul>
                     </div>
                 <?php endif; ?>
@@ -335,8 +335,8 @@ $collaboratorNotificationsJson = htmlspecialchars((string) (json_encode($collabo
                             <div class="fw-semibold text-capitalize"><?php echo sanitize_output($role); ?></div>
                         </li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="<?php echo base_url('modules/impostazioni/profile.php'); ?>"><i class="fa-solid fa-id-badge me-2"></i>Profilo</a></li>
-                        <li><a class="dropdown-item" href="<?php echo base_url('logout.php'); ?>"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
+                        <li><a class="dropdown-item" href="<?php echo impostazioni_module_url('profile'); ?>"><i class="fa-solid fa-id-badge me-2"></i>Profilo</a></li>
+                        <li><a class="dropdown-item" href="<?php echo logout_url(); ?>"><i class="fa-solid fa-right-from-bracket me-2"></i>Logout</a></li>
                     </ul>
                 </div>
             </div>

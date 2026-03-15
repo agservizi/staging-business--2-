@@ -151,7 +151,7 @@ foreach ($formFilters as $key => $value) {
     }
 }
 
-$exportUrl = 'index.php?' . http_build_query(array_merge($filterQueryParams, ['export' => 'csv']));
+$exportUrl = fedelta_module_url('index', array_merge($filterQueryParams, ['export' => 'csv']));
 $isExport = isset($_GET['export']) && $_GET['export'] === 'csv';
 
 if ($isExport) {
@@ -198,7 +198,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Monitoraggio dei movimenti punti tra accumulo e riscatti.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo movimento</a>
+                <a class="btn btn-warning text-dark" href="<?php echo fedelta_module_url('create'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo movimento</a>
             </div>
         </div>
         <div class="card ag-card mb-4">
@@ -254,7 +254,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                     <div class="col-12 col-lg-3 d-flex flex-wrap gap-2 mt-2">
                         <button class="btn btn-warning text-dark flex-fill" type="submit"><i class="fa-solid fa-filter me-2"></i>Applica</button>
-                        <a class="btn btn-outline-warning flex-fill" href="index.php"><i class="fa-solid fa-rotate-left me-2"></i>Reimposta</a>
+                        <a class="btn btn-outline-warning flex-fill" href="<?php echo fedelta_module_url('index'); ?>"><i class="fa-solid fa-rotate-left me-2"></i>Reimposta</a>
                         <a class="btn btn-outline-secondary flex-fill" href="<?php echo sanitize_output($exportUrl); ?>" title="Esporta risultati in CSV"><i class="fa-solid fa-file-arrow-down me-2"></i>Export</a>
                     </div>
                 </form>
@@ -340,13 +340,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <td><?php echo sanitize_output(format_datetime_locale($movement['data_movimento'])); ?></td>
                                         <td class="text-end">
                                             <div class="d-inline-flex align-items-center justify-content-end gap-2 flex-wrap">
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="view.php?id=<?php echo (int) $movement['id']; ?>" title="Dettagli">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo fedelta_module_url('view', ['id' => (int) $movement['id']]); ?>" title="Dettagli">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="edit.php?id=<?php echo (int) $movement['id']; ?>" title="Modifica">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo fedelta_module_url('edit', ['id' => (int) $movement['id']]); ?>" title="Modifica">
                                                     <i class="fa-solid fa-pen"></i>
                                                 </a>
-                                                <form method="post" action="delete.php" class="d-inline" onsubmit="return confirm('Confermi eliminazione del movimento?');">
+                                                <form method="post" action="<?php echo fedelta_module_url('delete'); ?>" class="d-inline" onsubmit="return confirm('Confermi eliminazione del movimento?');">
                                                     <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                     <input type="hidden" name="id" value="<?php echo (int) $movement['id']; ?>">
                                                     <button class="btn btn-icon btn-soft-danger btn-sm" type="submit" title="Elimina">
@@ -365,10 +365,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <i class="fa-solid fa-gift fa-2x mb-3"></i>
                         <?php if ($filtersApplied): ?>
                             <p class="mb-1">Nessun movimento corrisponde ai filtri selezionati.</p>
-                            <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-rotate-left me-2"></i>Reimposta filtri</a>
+                            <a class="btn btn-outline-warning" href="<?php echo fedelta_module_url('index'); ?>"><i class="fa-solid fa-rotate-left me-2"></i>Reimposta filtri</a>
                         <?php else: ?>
                             <p class="mb-1">Ancora nessun movimento registrato per il programma fedeltà.</p>
-                            <a class="btn btn-outline-warning" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Registra il primo movimento</a>
+                            <a class="btn btn-outline-warning" href="<?php echo fedelta_module_url('create'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Registra il primo movimento</a>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>

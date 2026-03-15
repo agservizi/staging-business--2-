@@ -175,9 +175,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </div>
             <?php if ($emailTablesReady): ?>
                 <div class="toolbar-actions d-flex gap-2">
-                    <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-plus me-2"></i>Nuova campagna</a>
-                    <a class="btn btn-outline-light" href="templates.php"><i class="fa-solid fa-pen-ruler me-2"></i>Modelli</a>
-                    <a class="btn btn-outline-light" href="subscribers.php"><i class="fa-solid fa-users me-2"></i>Iscritti</a>
+                    <a class="btn btn-warning text-dark" href="<?php echo email_marketing_module_url('create'); ?>"><i class="fa-solid fa-plus me-2"></i>Nuova campagna</a>
+                    <a class="btn btn-outline-light" href="<?php echo email_marketing_module_url('templates'); ?>"><i class="fa-solid fa-pen-ruler me-2"></i>Modelli</a>
+                    <a class="btn btn-outline-light" href="<?php echo email_marketing_module_url('subscribers'); ?>"><i class="fa-solid fa-users me-2"></i>Iscritti</a>
                 </div>
             <?php endif; ?>
         </div>
@@ -284,7 +284,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="card ag-card h-100">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Campagne recenti</h5>
-                            <a class="btn btn-sm btn-outline-warning" href="create.php"><i class="fa-solid fa-plus me-2"></i>Nuova campagna</a>
+                            <a class="btn btn-sm btn-outline-warning" href="<?php echo email_marketing_module_url('create'); ?>"><i class="fa-solid fa-plus me-2"></i>Nuova campagna</a>
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
@@ -324,7 +324,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                     <td><?php echo sanitize_output($campaign['audience_type'] ?? '—'); ?></td>
                                                     <td><?php echo sanitize_output(format_datetime($campaign['updated_at'] ?? '')); ?></td>
                                                     <td class="text-end">
-                                                        <a class="btn btn-sm btn-outline-warning" href="view.php?id=<?php echo (int) $campaign['id']; ?>">
+                                                        <a class="btn btn-sm btn-outline-warning" href="<?php echo email_marketing_module_url('view', ['id' => (int) $campaign['id']]); ?>">
                                                             <i class="fa-solid fa-arrow-up-right-from-square"></i>
                                                         </a>
                                                     </td>
@@ -345,7 +345,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="card ag-card mb-4">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Invii pianificati</h5>
-                            <a class="btn btn-sm btn-link text-decoration-none" href="view.php?id=<?php echo $scheduledCampaigns ? (int) $scheduledCampaigns[0]['id'] : 0; ?>"<?php echo $scheduledCampaigns ? '' : ' hidden'; ?>>Gestisci</a>
+                            <a class="btn btn-sm btn-link text-decoration-none" href="<?php echo email_marketing_module_url('view', ['id' => $scheduledCampaigns ? (int) $scheduledCampaigns[0]['id'] : 0]); ?>"<?php echo $scheduledCampaigns ? '' : ' hidden'; ?>>Gestisci</a>
                         </div>
                         <div class="card-body">
                             <?php if ($scheduledCampaigns): ?>
@@ -366,7 +366,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="card ag-card">
                         <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                             <h5 class="card-title mb-0">Liste</h5>
-                            <a class="btn btn-sm btn-outline-light" href="subscribers.php"><i class="fa-solid fa-pen"></i></a>
+                            <a class="btn btn-sm btn-outline-light" href="<?php echo email_marketing_module_url('subscribers'); ?>"><i class="fa-solid fa-pen"></i></a>
                         </div>
                         <div class="card-body">
                             <?php if ($lists): ?>
@@ -394,7 +394,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             <div class="card ag-card mt-4">
                 <div class="card-header bg-transparent border-0 d-flex align-items-center justify-content-between">
                     <h5 class="card-title mb-0">Ultimi iscritti</h5>
-                    <a class="btn btn-sm btn-outline-light" href="subscribers.php">Gestisci iscritti</a>
+                    <a class="btn btn-sm btn-outline-light" href="<?php echo email_marketing_module_url('subscribers'); ?>">Gestisci iscritti</a>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">

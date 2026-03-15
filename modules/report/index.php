@@ -398,7 +398,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                 if ($owner !== '') {
                                                     $queryParams['responsabile'] = $owner;
                                                 }
-                                                $detailsUrl = 'index.php?' . http_build_query($queryParams);
+                                                $detailsUrl = report_module_url('index', $queryParams);
                                             ?>
                                             <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output($detailsUrl); ?>">
                                                 Apri dettaglio
@@ -492,8 +492,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         $saldoValue = isset($report['saldo']) ? (float) $report['saldo'] : 0.0;
                                         $saldoClass = $saldoValue >= 0 ? 'text-success fw-semibold' : 'text-danger fw-semibold';
                                         $reportId = (int) ($report['id'] ?? 0);
-                                        $downloadUrl = base_url('modules/report/download_daily_report.php?id=' . $reportId);
-                                        $previewUrl = base_url('modules/report/download_daily_report.php?id=' . $reportId . '&mode=inline');
+                                        $downloadUrl = report_module_url('download_daily_report', ['id' => $reportId]);
+                                        $previewUrl = report_module_url('download_daily_report', ['id' => $reportId, 'mode' => 'inline']);
                                     ?>
                                     <tr>
                                         <td><?php echo sanitize_output($reportDate ? format_date_locale((string) $reportDate) : '—'); ?></td>
@@ -522,21 +522,21 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         // Prev
                                         $prevPage = max(1, $pageDaily - 1);
                                         $baseQuery['page_daily'] = $prevPage;
-                                        $prevUrl = 'index.php?' . http_build_query($baseQuery);
+                                        $prevUrl = report_module_url('index', $baseQuery);
                                     ?>
                                     <li class="page-item <?php echo $pageDaily <= 1 ? 'disabled' : ''; ?>">
                                         <a class="page-link" href="<?php echo sanitize_output($prevUrl); ?>" aria-label="Previous">&laquo;</a>
                                     </li>
                                     <?php for ($i = 1; $i <= $dailyPages; $i++):
                                         $baseQuery['page_daily'] = $i;
-                                        $pageUrl = 'index.php?' . http_build_query($baseQuery);
+                                        $pageUrl = report_module_url('index', $baseQuery);
                                     ?>
                                         <li class="page-item <?php echo $i === $pageDaily ? 'active' : ''; ?>"><a class="page-link" href="<?php echo sanitize_output($pageUrl); ?>"><?php echo $i; ?></a></li>
                                     <?php endfor; ?>
                                     <?php
                                         $nextPage = min($dailyPages, $pageDaily + 1);
                                         $baseQuery['page_daily'] = $nextPage;
-                                        $nextUrl = 'index.php?' . http_build_query($baseQuery);
+                                        $nextUrl = report_module_url('index', $baseQuery);
                                     ?>
                                     <li class="page-item <?php echo $pageDaily >= $dailyPages ? 'disabled' : ''; ?>">
                                         <a class="page-link" href="<?php echo sanitize_output($nextUrl); ?>" aria-label="Next">&raquo;</a>

@@ -80,10 +80,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Apri ticket su opportunity, problemi tecnici al portale o richieste di informazioni.</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-                <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/ticket-general.php'); ?>">
+                <a class="btn btn-primary" href="<?php echo opportunities_collaborator_url('ticket-general'); ?>">
                     <i class="fa-solid fa-circle-plus me-2"></i>Nuovo ticket
                 </a>
-                <a class="btn btn-outline-primary" href="<?php echo asset('modules/opportunities/collaborator/list.php'); ?>">
+                <a class="btn btn-outline-primary" href="<?php echo opportunities_collaborator_url('list'); ?>">
                     <i class="fa-solid fa-table-list me-2"></i>Elenco opportunity
                 </a>
             </div>
@@ -177,7 +177,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <i class="fa-solid fa-filter me-2"></i>Filtra
                         </button>
                         <?php if ($statusFilter !== '' || $searchFilter !== ''): ?>
-                            <a class="btn btn-light w-100" href="<?php echo asset('modules/opportunities/collaborator/tickets.php'); ?>">
+                            <a class="btn btn-light w-100" href="<?php echo opportunities_collaborator_url('tickets'); ?>">
                                 Reset
                             </a>
                         <?php endif; ?>
@@ -206,7 +206,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <td colspan="6" class="text-center py-5 text-muted">
                                         Nessun ticket trovato. <?php echo sanitize_output($ticketCreateHint); ?>
                                         <div class="mt-3">
-                                            <a class="btn btn-sm btn-primary" href="<?php echo asset('modules/opportunities/collaborator/ticket-general.php'); ?>">
+                                            <a class="btn btn-sm btn-primary" href="<?php echo opportunities_collaborator_url('ticket-general'); ?>">
                                                 <i class="fa-solid fa-circle-plus me-2"></i>Apri ticket
                                             </a>
                                         </div>
@@ -218,7 +218,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     $statusBadge = ticket_status_badge((string) ($ticket['status'] ?? 'OPEN'));
                                     $priorityBadge = ticket_priority_badge((string) ($ticket['priority'] ?? 'MEDIUM'));
                                     $updatedAt = $ticket['last_message_at'] ?? $ticket['updated_at'] ?? $ticket['created_at'];
-                                    $viewUrl = asset('modules/opportunities/collaborator/ticket-view.php?id=' . (int) $ticket['id']);
+                                    $viewUrl = opportunities_collaborator_url('ticket-view', ['id' => (int) $ticket['id']]);
                                 ?>
                                 <tr>
                                     <td>

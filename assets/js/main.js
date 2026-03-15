@@ -536,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchClear = document.getElementById('globalSearchClear');
     const searchToggle = document.getElementById('globalSearchToggle');
     const searchEndpoint = searchWrapper?.dataset.searchEndpoint || '';
-    const searchPageUrl = searchWrapper?.dataset.searchPage || '/modules/impostazioni/search.php';
+    const searchPageUrl = searchWrapper?.dataset.searchPage || '/modules/impostazioni/search';
     const searchState = {
         items: [],
         activeIndex: -1,
@@ -1377,7 +1377,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (ticket.id !== undefined && ticket.id !== null) {
                     const link = document.createElement('a');
                     link.className = 'btn btn-sm btn-outline-warning';
-                    link.href = `modules/ticket/view.php?id=${ticket.id}`;
+                    link.href = `modules/ticket/view?id=${ticket.id}`;
                     link.textContent = 'Apri';
                     actionCell.appendChild(link);
                 }
@@ -1494,7 +1494,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (item?.id !== undefined && item?.id !== null) {
                     const link = document.createElement('a');
                     link.className = 'btn btn-sm btn-outline-warning';
-                    link.href = `modules/opportunities/detail.php?id=${item.id}`;
+                    link.href = `modules/opportunities/detail?id=${item.id}`;
                     link.textContent = 'Apri';
                     right.appendChild(link);
                 }

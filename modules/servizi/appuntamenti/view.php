@@ -10,7 +10,7 @@ $pageTitle = 'Dettaglio appuntamento';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
-    header('Location: index.php');
+    header('Location: ' . appuntamenti_module_url('index'));
     exit;
 }
 
@@ -18,7 +18,7 @@ $stmt = $pdo->prepare('SELECT sa.*, c.nome, c.cognome, c.email, c.telefono, c.in
 $stmt->execute([':id' => $id]);
 $record = $stmt->fetch();
 if (!$record) {
-    header('Location: index.php?notfound=1');
+    header('Location: ' . appuntamenti_module_url('index', ['notfound' => 1]));
     exit;
 }
 
@@ -102,10 +102,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="page-toolbar mb-4">
-            <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Tutti gli appuntamenti</a>
+            <a class="btn btn-outline-warning" href="<?php echo appuntamenti_module_url('index'); ?>"><i class="fa-solid fa-arrow-left"></i> Tutti gli appuntamenti</a>
             <div class="toolbar-actions d-flex gap-2">
                 <?php if ($canSendManualReminder): ?>
-                    <form method="post" action="send-reminder.php" class="d-inline"<?php if (!empty($record['reminder_sent_at'])): ?> onsubmit="return confirm('Reinviare il promemoria al cliente?');"<?php endif; ?>>
+                    <form method="post" action="<?php echo appuntamenti_module_url('send-reminder'); ?>" class="d-inline"<?php if (!empty($record['reminder_sent_at'])): ?> onsubmit="return confirm('Reinviare il promemoria al cliente?');"<?php endif; ?>>
                         <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                         <input type="hidden" name="id" value="<?php echo $id; ?>">
                         <?php if (!empty($record['reminder_sent_at'])): ?>
@@ -117,7 +117,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </form>
                 <?php endif; ?>
                 <?php if ($calendarEnabled): ?>
-                    <form method="post" action="sync-calendar.php" class="d-inline">
+                    <form method="post" action="<?php echo appuntamenti_module_url('sync-calendar'); ?>" class="d-inline">
                         <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                         <input type="hidden" name="id" value="<?php echo $id; ?>">
                         <button class="btn btn-outline-warning" type="submit"<?php if (!$canSyncCalendar): ?> title="Imposta lo stato su &quot;<?php echo sanitize_output($confirmationStatus ?: 'Confermato'); ?>&quot; per sincronizzare"<?php endif; ?>>
@@ -128,7 +128,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <small class="text-muted ms-2">Stato attuale: <?php echo sanitize_output($currentStatus !== '' ? $currentStatus : 'N/D'); ?>. Imposta "<?php echo sanitize_output($confirmationStatus); ?>" per inviare l'evento.</small>
                     <?php endif; ?>
                 <?php endif; ?>
-                <a class="btn btn-warning text-dark" href="edit.php?id=<?php echo $id; ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
+                <a class="btn btn-warning text-dark" href="<?php echo appuntamenti_module_url('edit', ['id' => $id]); ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
             </div>
         </div>
         <div class="row g-4">

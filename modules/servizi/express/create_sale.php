@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $currentUserId
         );
         add_flash($result['success'] ? 'success' : 'warning', $result['message']);
-        header('Location: create_sale.php');
+        header('Location: ' . express_module_url('create_sale'));
         exit;
     }
 
@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $currentUserId
             );
         add_flash($result['success'] ? 'success' : 'warning', $result['message']);
-        header('Location: create_sale.php');
+        header('Location: ' . express_module_url('create_sale'));
         exit;
     }
 
@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     add_flash($result['success'] ? 'success' : 'warning', $result['message']);
 
     if ($result['success'] && !empty($result['sale_id'])) {
-        header('Location: view_sale.php?id=' . (int) $result['sale_id'] . '&show_document=1&autoprint=1');
+        header('Location: ' . express_module_url('view_sale', ['id' => (int) $result['sale_id'], 'show_document' => 1, 'autoprint' => 1]));
         exit;
     }
 }
@@ -616,7 +616,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 Shortcut operativo: scanner ICCID + invio
                             </div>
                             <div class="d-flex gap-2 flex-wrap">
-                                <a class="btn btn-outline-secondary" href="sales.php">Annulla</a>
+                                <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(express_module_url('sales')); ?>">Annulla</a>
                                 <button class="btn btn-warning" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Salva e stampa</button>
                             </div>
                         </div>
@@ -727,7 +727,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const refundFeedback = document.getElementById('express_refund_feedback');
     const refundRows = document.getElementById('express_refund_rows');
     const refundSaleMeta = document.getElementById('express_refund_sale_meta');
-    const refundLookupUrlBase = <?php echo json_encode(base_url('modules/servizi/express/create_sale.php?action=refund_lookup'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+    const refundLookupUrlBase = <?php echo json_encode(express_module_url('create_sale', ['action' => 'refund_lookup']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
     const offerOptions = offerSelect ? Array.from(offerSelect.options) : [];
     const saleLines = [];
     const escapeHtml = (value) => String(value || '')

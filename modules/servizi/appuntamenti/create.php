@@ -15,9 +15,9 @@ $pageHeading = $pageTitle;
 $pageSubtitle = $isPatronatoContext
     ? 'Pianifica un appuntamento per lo sportello patronato, collega la pratica e invia promemoria mirati.'
     : 'Pianifica un nuovo appuntamento, gestisci responsabile e promemoria per il cliente.';
-$backUrl = $isPatronatoContext ? '../caf-patronato/index.php' : 'index.php';
+$backUrl = $isPatronatoContext ? caf_patronato_module_url('index') : appuntamenti_module_url('index');
 $backLabel = $isPatronatoContext ? 'Torna alle pratiche patronato' : 'Ritorna agli appuntamenti';
-$successRedirect = $isPatronatoContext ? '../caf-patronato/index.php?created=1' : 'index.php?created=1';
+$successRedirect = $isPatronatoContext ? caf_patronato_module_url('index', ['created' => 1]) : appuntamenti_module_url('index', ['created' => 1]);
 
 $clientsStmt = $pdo->query('SELECT id, nome, cognome, ragione_sociale FROM clienti ORDER BY ragione_sociale, cognome, nome');
 $clients = $clientsStmt ? $clientsStmt->fetchAll() : [];

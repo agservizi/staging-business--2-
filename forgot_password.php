@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             $baseUrl = env('APP_URL', sprintf('%s://%s', isset($_SERVER['HTTPS']) ? 'https' : 'http', $_SERVER['HTTP_HOST'] ?? 'localhost'));
-            $resetLink = rtrim($baseUrl, '/') . '/reset_password.php?token=' . $token;
+            $resetLink = rtrim($baseUrl, '/') . '/reset_password?token=' . $token;
             $mailBody = render_mail_template('Reset password', sprintf('<p>Ciao,</p><p>È stata richiesta la reimpostazione della password per il tuo account CRM.</p><p><a href="%s">Clicca qui per impostare una nuova password</a>.</p><p>Se non hai richiesto tu questa operazione ignora il messaggio.</p>', $resetLink));
             if (send_system_mail($email, 'Reimposta la tua password', $mailBody)) {
                 $success = true;
@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </form>
                     <div class="login-meta mt-4 text-center text-md-start">
-                        Ti sei ricordato la password? <a class="link-warning text-decoration-none" href="index.php">Torna al login</a>.
+                        Ti sei ricordato la password? <a class="link-warning text-decoration-none" href="<?php echo login_url(); ?>">Torna al login</a>.
                     </div>
                 </div>
             </section>

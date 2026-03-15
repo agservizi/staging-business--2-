@@ -19,7 +19,7 @@ $currentRole = isset($_SESSION['role']) ? (string) $_SESSION['role'] : '';
 $canCreatePractices = in_array($currentRole, ['Admin', 'Manager', 'Operatore'], true);
 $canManagePractices = $isPatronatoUser || $canCreatePractices;
 $useLegacyCreate = in_array($currentRole, ['Admin', 'Manager', 'Operatore'], true);
-$createPracticeUrl = base_url('modules/servizi/caf-patronato/create.php');
+$createPracticeUrl = caf_patronato_module_url('create');
 
 $operatorId = null;
 try {

@@ -17,7 +17,7 @@ express_module_bootstrap_schema($pdo);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = express_module_save_offer($pdo, $_POST, $currentUserId);
     add_flash($result['success'] ? 'success' : 'warning', $result['message']);
-    header('Location: offers.php');
+    header('Location: ' . express_module_url('offers'));
     exit;
 }
 
@@ -214,7 +214,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <p class="text-muted small mb-0">Configura operatore, finestra di validità e posizionamento economico dell'offerta.</p>
                                 </div>
                                 <?php if ($editingOffer): ?>
-                                    <a class="btn btn-outline-secondary btn-sm" href="offers.php">Annulla</a>
+                                    <a class="btn btn-outline-secondary btn-sm" href="<?php echo sanitize_output(express_module_url('offers')); ?>">Annulla</a>
                                 <?php else: ?>
                                     <span class="badge rounded-pill text-bg-light"><?php echo (int) $offerSummary['total_offers']; ?> totali</span>
                                 <?php endif; ?>
@@ -304,7 +304,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                 <td class="text-end fw-semibold">&euro; <?php echo number_format((float) $offer['prezzo'], 2, ',', '.'); ?></td>
                                                 <td><?php echo sanitize_output((string) (($offer['valid_from'] ?? '') !== '' || ($offer['valid_to'] ?? '') !== '' ? (($offer['valid_from'] ?? '—') . ' → ' . ($offer['valid_to'] ?? '—')) : '—')); ?></td>
                                                 <td><span class="badge <?php echo ($offer['stato'] ?? 'Active') === 'Active' ? 'text-bg-success' : 'text-bg-secondary'; ?>"><?php echo ($offer['stato'] ?? 'Active') === 'Active' ? 'Attiva' : 'Archiviata'; ?></span></td>
-                                                <td class="text-end"><a class="btn btn-icon btn-soft-accent btn-sm" href="offers.php?edit=<?php echo (int) $offer['id']; ?>"><i class="fa-solid fa-pen"></i></a></td>
+                                                <td class="text-end"><a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(express_module_url('offers', ['edit' => (int) $offer['id']])); ?>"><i class="fa-solid fa-pen"></i></a></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>

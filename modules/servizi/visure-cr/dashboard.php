@@ -40,9 +40,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Panoramica richieste Centrale Rischi.</p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-table-list me-2"></i>Elenco richieste</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(visure_cr_module_url('index')); ?>"><i class="fa-solid fa-table-list me-2"></i>Elenco richieste</a>
                 <?php if ($puoCreare): ?>
-                    <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
+                    <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(visure_cr_module_url('create')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -130,7 +130,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <div class="card ag-card">
             <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                 <h2 class="h5 mb-0">Ultime richieste aggiornate</h2>
-                <a class="btn btn-sm btn-outline-warning" href="index.php">Vedi elenco</a>
+                <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output(visure_cr_module_url('index')); ?>">Vedi elenco</a>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">

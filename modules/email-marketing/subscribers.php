@@ -89,7 +89,7 @@ if ($emailTablesReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     add_flash('success', 'Iscritto salvato.');
-                    header('Location: subscribers.php');
+                    header('Location: ' . email_marketing_module_url('subscribers'));
                     exit;
                 } catch (PDOException $exception) {
                     error_log('Subscriber save failed: ' . $exception->getMessage());
@@ -115,7 +115,7 @@ if ($emailTablesReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         ':description' => $description !== '' ? $description : null,
                     ]);
                     add_flash('success', 'Lista creata.');
-                    header('Location: subscribers.php');
+                    header('Location: ' . email_marketing_module_url('subscribers'));
                     exit;
                 } catch (PDOException $exception) {
                     error_log('List create failed: ' . $exception->getMessage());
@@ -147,7 +147,7 @@ if ($emailTablesReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     add_flash('success', 'Stato aggiornato.');
-                    header('Location: subscribers.php');
+                    header('Location: ' . email_marketing_module_url('subscribers'));
                     exit;
                 } catch (PDOException $exception) {
                     error_log('Subscriber toggle failed: ' . $exception->getMessage());
@@ -177,7 +177,7 @@ if ($emailTablesReady && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     $count++;
                 }
                 add_flash('success', 'Importazione completata. Nuovi iscritti: ' . $count);
-                header('Location: subscribers.php');
+                header('Location: ' . email_marketing_module_url('subscribers'));
                 exit;
             } catch (PDOException $exception) {
                 error_log('Client import failed: ' . $exception->getMessage());
@@ -230,7 +230,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Gestisci contatti, liste e stato iscrizione.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-light" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
+                <a class="btn btn-outline-light" href="<?php echo email_marketing_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
             </div>
         </div>
 

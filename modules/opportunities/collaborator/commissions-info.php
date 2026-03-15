@@ -52,10 +52,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Valori caricati dall'amministrazione in Impostazioni &rarr; Opportunity.</p>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/commissions.php'); ?>">
+                <a class="btn btn-outline-secondary" href="<?php echo opportunities_collaborator_url('commissions'); ?>">
                     <i class="fa-solid fa-arrow-left me-2"></i>Torna alle provvigioni
                 </a>
-                <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
+                <a class="btn btn-primary" href="<?php echo opportunities_collaborator_url('create'); ?>">
                     <i class="fa-solid fa-plus me-2"></i>Nuova OP
                 </a>
             </div>

@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($selectedIds === []) {
             add_flash('warning', 'Seleziona almeno una spedizione da inserire nel bordero.');
-            header('Location: index.php');
+            header('Location: ' . brt_module_url('index'));
             exit;
         }
 
@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $shipmentService = new BrtShipmentService($config);
         } catch (\Throwable $exception) {
             add_flash('warning', 'Configurazione BRT non valida: ' . $exception->getMessage());
-            header('Location: index.php');
+            header('Location: ' . brt_module_url('index'));
             exit;
         }
 
@@ -125,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 add_flash('warning', 'Nessuna spedizione disponibile per il bordero.');
             }
-            header('Location: index.php');
+            header('Location: ' . brt_module_url('index'));
             exit;
         }
 
@@ -164,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             add_flash('warning', implode(' ', $errors));
         }
 
-        header('Location: index.php');
+        header('Location: ' . brt_module_url('index'));
         exit;
     }
 
@@ -173,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $trackingService = new BrtTrackingService($config);
     } catch (\Throwable $exception) {
         add_flash('warning', 'Configurazione BRT non valida: ' . $exception->getMessage());
-        header('Location: index.php');
+        header('Location: ' . brt_module_url('index'));
         exit;
     }
 
@@ -181,14 +181,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $shipmentId = (int) ($_POST['shipment_id'] ?? 0);
         if ($shipmentId <= 0) {
             add_flash('warning', 'Seleziona una spedizione valida.');
-            header('Location: index.php');
+            header('Location: ' . brt_module_url('index'));
             exit;
         }
 
         $shipment = brt_get_shipment($shipmentId);
         if ($shipment === null) {
             add_flash('warning', 'Spedizione BRT non trovata.');
-            header('Location: index.php');
+            header('Location: ' . brt_module_url('index'));
             exit;
         }
 
@@ -348,7 +348,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         add_flash('warning', 'Azione non supportata.');
     }
 
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }
 
@@ -408,7 +408,7 @@ $paginationUrlBuilder = static function (int $targetPage) use ($paginationFilter
         unset($params['page']);
     }
     $query = http_build_query($params);
-    return $query === '' ? 'index.php' : 'index.php?' . $query;
+    return $query === '' ? brt_module_url('index') : brt_module_url('index') . '?' . $query;
 };
 $paginationPages = [];
 if ($totalPages > 1) {
@@ -452,7 +452,7 @@ $manifestPaginationUrlBuilder = static function (int $targetPage) use ($manifest
         unset($params['manifests_page']);
     }
     $query = http_build_query($params);
-    return $query === '' ? 'index.php' : 'index.php?' . $query;
+    return $query === '' ? brt_module_url('index') : brt_module_url('index') . '?' . $query;
 };
 $manifestPaginationPages = [];
 if ($totalManifestPages > 1) {
@@ -480,9 +480,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Gestione spedizioni, etichette e tracking tramite webservice BRT.</p>
             </div>
             <div class="toolbar-actions d-flex align-items-center gap-2">
-                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova spedizione</a>
-                <a class="btn btn-outline-secondary" href="orm.php"><i class="fa-solid fa-truck-ramp-box me-2"></i>Ordine ritiro (ORM)</a>
-                <a class="btn btn-outline-secondary" href="log.php"><i class="fa-solid fa-clipboard-list me-2"></i>Log attività</a>
+                <a class="btn btn-warning text-dark" href="<?php echo brt_module_url('create'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova spedizione</a>
+                <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('orm'); ?>"><i class="fa-solid fa-truck-ramp-box me-2"></i>Ordine ritiro (ORM)</a>
+                <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('log'); ?>"><i class="fa-solid fa-clipboard-list me-2"></i>Log attività</a>
             </div>
         </div>
 
@@ -503,7 +503,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                     <div class="col-md-4 d-flex gap-2">
                         <button class="btn btn-primary" type="submit"><i class="fa-solid fa-magnifying-glass me-2"></i>Cerca</button>
-                        <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-rotate-left me-2"></i>Reimposta</a>
+                        <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('index'); ?>"><i class="fa-solid fa-rotate-left me-2"></i>Reimposta</a>
                     </div>
                 </form>
             </div>
@@ -682,16 +682,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         </td>
                                         <td class="text-end">
                                             <div class="shipment-actions" role="group">
-                                                <a class="btn btn-icon btn-outline-secondary btn-sm shipment-action-btn" href="view.php?id=<?php echo (int) $shipment['id']; ?>" title="Dettagli spedizione">
+                                                <a class="btn btn-icon btn-outline-secondary btn-sm shipment-action-btn" href="<?php echo brt_module_url('view', ['id' => (int) $shipment['id']]); ?>" title="Dettagli spedizione">
                                                     <i class="fa-solid fa-eye fa-sm fa-fw"></i>
                                                 </a>
                                                 <?php if ((string) ($shipment['status'] ?? '') !== 'cancelled' && empty($shipment['deleted_at'])): ?>
-                                                    <a class="btn btn-icon btn-outline-warning btn-sm shipment-action-btn" href="orm.php?from_shipment=<?php echo (int) $shipment['id']; ?>" title="Precompila ordine di ritiro (ORM)">
+                                                    <a class="btn btn-icon btn-outline-warning btn-sm shipment-action-btn" href="<?php echo brt_module_url('orm', ['from_shipment' => (int) $shipment['id']]); ?>" title="Precompila ordine di ritiro (ORM)">
                                                         <i class="fa-solid fa-truck-ramp-box fa-sm fa-fw"></i>
                                                     </a>
                                                 <?php endif; ?>
                                                 <?php if (in_array($shipment['status'], ['created', 'warning'], true) && empty($shipment['manifest_id']) && empty($shipment['deleted_at'])): ?>
-                                                    <a class="btn btn-icon btn-outline-primary btn-sm shipment-action-btn" href="edit.php?id=<?php echo (int) $shipment['id']; ?>" title="Modifica spedizione">
+                                                    <a class="btn btn-icon btn-outline-primary btn-sm shipment-action-btn" href="<?php echo brt_module_url('edit', ['id' => (int) $shipment['id']]); ?>" title="Modifica spedizione">
                                                         <i class="fa-solid fa-pen fa-sm fa-fw"></i>
                                                     </a>
                                                 <?php endif; ?>
@@ -716,7 +716,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                 <?php if ($canGenerateCustomerNotice): ?>
                                                     <a
                                                         class="btn btn-icon btn-outline-success btn-sm shipment-action-btn"
-                                                        href="customer_notice.php?id=<?php echo (int) $shipment['id']; ?>"
+                                                        href="<?php echo brt_module_url('customer_notice', ['id' => (int) $shipment['id']]); ?>"
                                                         title="Genera comunicazione per il cliente"
                                                         target="_blank"
                                                         rel="noopener"
@@ -867,7 +867,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <td class="text-end">
                                             <div class="btn-group btn-group-sm" role="group">
                                                 <?php if (!empty($manifest['id'])): ?>
-                                                    <a class="btn btn-outline-secondary" href="manifest.php?id=<?php echo (int) $manifest['id']; ?>" target="_blank" rel="noopener">
+                                                    <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('manifest', ['id' => (int) $manifest['id']]); ?>" target="_blank" rel="noopener">
                                                         <i class="fa-solid fa-file-pdf me-1"></i>Locale
                                                     </a>
                                                 <?php endif; ?>
@@ -939,7 +939,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <div class="card ag-card mb-5">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h2 class="card-title h5 mb-0">Ordini di ritiro (ORM) recenti</h2>
-                <a class="btn btn-outline-secondary btn-sm" href="orm.php"><i class="fa-solid fa-truck-ramp-box me-2"></i>Gestisci ORM</a>
+                <a class="btn btn-outline-secondary btn-sm" href="<?php echo brt_module_url('orm'); ?>"><i class="fa-solid fa-truck-ramp-box me-2"></i>Gestisci ORM</a>
             </div>
             <div class="card-body p-0">
                 <?php if (!$recentOrmRequests): ?>

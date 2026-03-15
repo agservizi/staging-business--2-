@@ -10,13 +10,13 @@ require_role('Admin', 'Operatore', 'Manager', 'Support');
 
 $ticketId = (int) ($_GET['id'] ?? 0);
 if ($ticketId <= 0) {
-    header('Location: index.php');
+    header('Location: ' . ticket_module_url('index'));
     exit;
 }
 
 $ticket = ticket_find($pdo, $ticketId);
 if (!$ticket) {
-    header('Location: index.php?ticket_not_found=1');
+    header('Location: ' . ticket_module_url('index', ['ticket_not_found' => 1]));
     exit;
 }
 
@@ -49,7 +49,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <main class="content-wrapper">
         <div class="page-toolbar mb-4 d-flex justify-content-between align-items-start flex-wrap gap-3">
             <div>
-                <a class="btn btn-outline-secondary btn-sm mb-2" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Tutti i ticket</a>
+                <a class="btn btn-outline-secondary btn-sm mb-2" href="<?php echo ticket_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Tutti i ticket</a>
                 <h1 class="h3 mb-1">Ticket #<?php echo sanitize_output($ticket['codice'] ?? $ticket['id']); ?></h1>
                 <p class="text-muted mb-0">Creato il <?php echo sanitize_output(date('d/m/Y H:i', strtotime((string) $ticket['created_at']))); ?> · Ultimo aggiornamento <?php echo sanitize_output(date('d/m/Y H:i', strtotime((string) $ticket['updated_at']))); ?></p>
             </div>

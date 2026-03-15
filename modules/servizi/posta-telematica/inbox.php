@@ -30,9 +30,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Visualizza le PEC in arrivo dalla casella configurata.</p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
-                <a class="btn btn-primary" href="create.php"><i class="fa-solid fa-paper-plane me-2"></i>Nuovo invio</a>
-                <a class="btn btn-warning text-dark" href="sync.php"><i class="fa-solid fa-arrows-rotate me-2"></i>Sincronizza</a>
+                <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(posta_telematica_module_url('index')); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
+                <a class="btn btn-primary" href="<?php echo sanitize_output(posta_telematica_module_url('create')); ?>"><i class="fa-solid fa-paper-plane me-2"></i>Nuovo invio</a>
+                <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(posta_telematica_module_url('sync')); ?>"><i class="fa-solid fa-arrows-rotate me-2"></i>Sincronizza</a>
             </div>
         </div>
 
@@ -49,7 +49,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <span class="input-group-text bg-transparent"><i class="fa-solid fa-magnifying-glass"></i></span>
                                 <input type="search" class="form-control" name="search" placeholder="Cerca oggetto o mittente" value="<?php echo sanitize_output($search); ?>">
                                 <?php if ($search !== ''): ?>
-                                    <a class="btn btn-outline-secondary" href="inbox.php">Reset</a>
+                                    <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(posta_telematica_module_url('inbox')); ?>">Reset</a>
                                 <?php endif; ?>
                             </div>
                         </form>
@@ -62,7 +62,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         $isActive = $selectedId === (int) $message['id'];
                                         $dateLabel = $message['received_at'] ? date('d/m/Y H:i', strtotime((string) $message['received_at'])) : '';
                                     ?>
-                                    <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-start<?php echo $isActive ? ' active' : ''; ?>" href="?id=<?php echo (int) $message['id']; ?>">
+                                    <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-start<?php echo $isActive ? ' active' : ''; ?>" href="<?php echo sanitize_output(posta_telematica_module_url('inbox', ['id' => (int) $message['id']])); ?>">
                                         <div class="me-2">
                                             <div class="fw-semibold text-truncate" style="max-width: 260px;">
                                                 <?php echo sanitize_output($message['subject'] ?: '(Senza oggetto)'); ?>

@@ -114,7 +114,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Agenda appuntamenti, sopralluoghi e scadenze operative.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo appuntamento</a>
+                <a class="btn btn-warning text-dark" href="<?php echo appuntamenti_module_url('create'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo appuntamento</a>
             </div>
         </div>
 
@@ -162,7 +162,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <input class="form-control me-2 mb-2" type="date" id="dal" name="dal" value="<?php echo sanitize_output($filterFrom); ?>" aria-label="Dal">
                         <input class="form-control me-2 mb-2" type="date" id="al" name="al" value="<?php echo sanitize_output($filterTo); ?>" aria-label="Al">
                         <button class="btn btn-warning mb-2" type="submit" title="Applica filtri"><i class="fa-solid fa-filter"></i></button>
-                        <a class="btn btn-outline-warning mb-2" href="index.php" title="Reimposta filtri"><i class="fa-solid fa-rotate-left"></i></a>
+                        <a class="btn btn-outline-warning mb-2" href="<?php echo appuntamenti_module_url('index'); ?>" title="Reimposta filtri"><i class="fa-solid fa-rotate-left"></i></a>
                     </div>
                 </form>
             </div>
@@ -229,14 +229,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <td><span class="badge ag-badge text-uppercase"><?php echo sanitize_output($row['stato'] ?? ''); ?></span></td>
                                         <td class="text-end">
                                             <div class="d-inline-flex align-items-center justify-content-end gap-2 flex-wrap">
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="view.php?id=<?php echo (int) $row['id']; ?>" title="Dettagli">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo appuntamenti_module_url('view', ['id' => (int) $row['id']]); ?>" title="Dettagli">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="edit.php?id=<?php echo (int) $row['id']; ?>" title="Modifica">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo appuntamenti_module_url('edit', ['id' => (int) $row['id']]); ?>" title="Modifica">
                                                     <i class="fa-solid fa-pen"></i>
                                                 </a>
                                                 <?php if ($calendarEnabled && $confirmationStatus !== '' && strcasecmp((string) ($row['stato'] ?? ''), $confirmationStatus) === 0): ?>
-                                                    <form method="post" action="sync-calendar.php" class="d-inline">
+                                                    <form method="post" action="<?php echo appuntamenti_module_url('sync-calendar'); ?>" class="d-inline">
                                                         <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                         <input type="hidden" name="id" value="<?php echo (int) $row['id']; ?>">
                                                         <button class="btn btn-icon btn-soft-accent btn-sm" type="submit" title="Sincronizza Google Calendar">
@@ -244,7 +244,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                         </button>
                                                     </form>
                                                 <?php endif; ?>
-                                                <form method="post" action="delete.php" class="d-inline" onsubmit="return confirm('Confermi eliminazione dell\'appuntamento?');">
+                                                <form method="post" action="<?php echo appuntamenti_module_url('delete'); ?>" class="d-inline" onsubmit="return confirm('Confermi eliminazione dell\'appuntamento?');">
                                                     <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                     <input type="hidden" name="id" value="<?php echo (int) $row['id']; ?>">
                                                     <button class="btn btn-icon btn-soft-danger btn-sm" type="submit" title="Elimina">
@@ -262,7 +262,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="text-center text-muted py-5">
                         <i class="fa-solid fa-calendar-xmark fa-2x mb-3"></i>
                         <p class="mb-1">Nessun appuntamento corrisponde ai filtri selezionati.</p>
-                        <a class="btn btn-outline-warning" href="index.php">Reimposta filtri</a>
+                        <a class="btn btn-outline-warning" href="<?php echo appuntamenti_module_url('index'); ?>">Reimposta filtri</a>
                     </div>
                 <?php endif; ?>
             </div>

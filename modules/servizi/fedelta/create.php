@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Movimento fedeltà registrato correttamente.');
-            header('Location: index.php?created=1');
+            header('Location: ' . fedelta_module_url('index', ['created' => 1]));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -166,7 +166,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="text-muted small text-uppercase">Totale punti attivi</div>
                     <div class="fs-5 fw-semibold mb-0"><?php echo loyalty_format_points($totalPoints); ?> pt</div>
                 </div>
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Torna allo storico</a>
+                <a class="btn btn-outline-warning" href="<?php echo fedelta_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Torna allo storico</a>
             </div>
         </div>
         <div class="card ag-card">
@@ -234,7 +234,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                     </div>
                     <div class="stack-sm justify-content-end mt-4">
-                        <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-rotate-left me-2"></i>Annulla</a>
+                        <a class="btn btn-outline-warning" href="<?php echo fedelta_module_url('index'); ?>"><i class="fa-solid fa-arrow-rotate-left me-2"></i>Annulla</a>
                         <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Registra movimento</button>
                     </div>
                 </form>

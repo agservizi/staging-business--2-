@@ -71,7 +71,7 @@ try {
 
     if ($notifyClient && !$isInternal && !empty($ticket['customer_email'])) {
         $baseUrl = rtrim((string) env('APP_URL', sprintf('%s://%s', isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http', $_SERVER['HTTP_HOST'] ?? 'localhost')), '/');
-        $ticketUrl = $baseUrl . '/modules/ticket/view.php?id=' . $ticketId;
+        $ticketUrl = ticket_module_url('view', ['id' => $ticketId]);
         $mailContent = '<p>Ciao,</p>' .
             '<p>È stato aggiunto un nuovo aggiornamento al ticket <strong>#' . sanitize_output($ticket['codice'] ?? $ticket['id']) . '</strong>.</p>' .
             '<blockquote>' . nl2br(sanitize_output($body)) . '</blockquote>' .

@@ -31,17 +31,94 @@ function redirect_by_role(string $role): void
         case 'Admin':
         case 'Operatore':
         case 'Manager':
-            header('Location: ' . base_url('dashboard.php'));
+            header('Location: ' . dashboard_url());
             break;
         case 'Patronato':
-            header('Location: ' . base_url('modules/servizi/caf-patronato/index.php'));
+            header('Location: ' . caf_patronato_module_url('index'));
             break;
         case 'Cliente':
-            header('Location: ' . base_url('dashboard.php?view=cliente'));
+            header('Location: ' . dashboard_url(['view' => 'cliente']));
             break;
         default:
-            header('Location: ' . base_url('dashboard.php'));
+            header('Location: ' . dashboard_url());
     }
+}
+
+function dashboard_url(array $query = []): string
+{
+    $url = base_url('dashboard');
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function login_url(array $query = []): string
+{
+    $url = base_url();
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function forgot_password_url(array $query = []): string
+{
+    $url = base_url('forgot_password');
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function reset_password_url(array $query = []): string
+{
+    $url = base_url('reset_password');
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function logout_url(array $query = []): string
+{
+    $url = base_url('logout');
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function mfa_setup_url(array $query = []): string
+{
+    $url = base_url('mfa-setup');
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function mfa_verify_url(array $query = []): string
+{
+    $url = base_url('mfa-verify');
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
 }
 
 function sanitize_output(string|int|float|bool|null $value): string
@@ -170,6 +247,318 @@ function base_url(string $path = ''): string
 
     $path = ltrim($path, '/');
     return $cached . ($path !== '' ? '/' . $path : '');
+}
+
+function clienti_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/clienti' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function ticket_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/ticket' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function documenti_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/documenti' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function report_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/report' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function impostazioni_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/impostazioni' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function email_marketing_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/email-marketing' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function opportunities_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/opportunities' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function opportunities_collaborator_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/opportunities/collaborator' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function opportunities_promotions_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/opportunities/promotions' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function iliad_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/iliad' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function entrate_uscite_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/entrate-uscite' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function appuntamenti_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/appuntamenti' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function energia_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/energia' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function aci_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/aci' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function fedelta_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/fedelta' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function brt_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/brt' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function curriculum_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/curriculum' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function posta_telematica_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/posta-telematica' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function telegrammi_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/telegrammi' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function logistici_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/logistici' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function visure_cr_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/visure-cr' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function cie_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/cie' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function digitali_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/digitali' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function anpr_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/anpr' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function caf_patronato_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/caf-patronato' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
+}
+
+function ricariche_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/ricariche' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
 }
 
 function public_path(string $path = ''): string
@@ -832,7 +1221,7 @@ function current_user_has_capability(string ...$capabilities): bool
 function require_capability(string ...$capabilities): void
 {
     if (!current_user_has_capability(...$capabilities)) {
-        header('Location: dashboard.php');
+        header('Location: ' . dashboard_url());
         exit;
     }
 }

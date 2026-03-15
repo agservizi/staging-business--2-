@@ -8,7 +8,7 @@ require_role('Admin', 'Operatore', 'Manager');
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($id <= 0) {
     add_flash('warning', 'Curriculum non trovato.');
-    header('Location: index.php');
+    header('Location: ' . curriculum_module_url('index'));
     exit;
 }
 
@@ -21,7 +21,7 @@ $curriculum = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$curriculum) {
     add_flash('warning', 'Curriculum non trovato.');
-    header('Location: index.php');
+    header('Location: ' . curriculum_module_url('index'));
     exit;
 }
 
@@ -282,9 +282,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <?php endif; ?>
                             </div>
                             <div class="d-flex flex-wrap gap-2 justify-content-md-end mt-2">
-                                <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-arrow-left-long me-2"></i>Lista</a>
-                                <a class="btn btn-outline-warning" href="wizard.php?id=<?php echo (int) $id; ?>"><i class="fa-solid fa-pen me-2"></i>Modifica</a>
-                                <form method="post" action="publish.php" class="d-inline">
+                                <a class="btn btn-outline-secondary" href="<?php echo curriculum_module_url('index'); ?>"><i class="fa-solid fa-arrow-left-long me-2"></i>Lista</a>
+                                <a class="btn btn-outline-warning" href="<?php echo curriculum_module_url('wizard', ['id' => (int) $id]); ?>"><i class="fa-solid fa-pen me-2"></i>Modifica</a>
+                                <form method="post" action="<?php echo curriculum_module_url('publish'); ?>" class="d-inline">
                                     <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                     <input type="hidden" name="id" value="<?php echo (int) $id; ?>">
                                     <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-file-pdf me-2"></i>Genera PDF</button>
@@ -377,7 +377,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <div class="card ag-card shadow-sm mb-4">
             <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                 <h2 class="h5 mb-0">Esperienza professionale</h2>
-                <a class="btn btn-sm btn-outline-warning" href="wizard.php?id=<?php echo (int) $id; ?>#experiences-container"><i class="fa-solid fa-circle-plus me-2"></i>Modifica</a>
+                <a class="btn btn-sm btn-outline-warning" href="<?php echo curriculum_module_url('wizard', ['id' => (int) $id]) . '#experiences-container'; ?>"><i class="fa-solid fa-circle-plus me-2"></i>Modifica</a>
             </div>
             <div class="card-body">
                 <?php if ($experiences): ?>
@@ -413,7 +413,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <div class="card ag-card shadow-sm mb-4">
             <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                 <h2 class="h5 mb-0">Istruzione e formazione</h2>
-                <a class="btn btn-sm btn-outline-warning" href="wizard.php?id=<?php echo (int) $id; ?>#education-container"><i class="fa-solid fa-circle-plus me-2"></i>Modifica</a>
+                <a class="btn btn-sm btn-outline-warning" href="<?php echo curriculum_module_url('wizard', ['id' => (int) $id]) . '#education-container'; ?>"><i class="fa-solid fa-circle-plus me-2"></i>Modifica</a>
             </div>
             <div class="card-body">
                 <?php if ($education): ?>
@@ -452,7 +452,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <div class="card ag-card shadow-sm mb-4">
             <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                 <h2 class="h5 mb-0">Competenze linguistiche</h2>
-                <a class="btn btn-sm btn-outline-warning" href="wizard.php?id=<?php echo (int) $id; ?>#languages-container"><i class="fa-solid fa-circle-plus me-2"></i>Modifica</a>
+                <a class="btn btn-sm btn-outline-warning" href="<?php echo curriculum_module_url('wizard', ['id' => (int) $id]) . '#languages-container'; ?>"><i class="fa-solid fa-circle-plus me-2"></i>Modifica</a>
             </div>
             <div class="card-body">
                 <?php if ($languages): ?>
@@ -499,7 +499,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         <div class="card ag-card shadow-sm mb-5">
             <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                 <h2 class="h5 mb-0">Competenze personali</h2>
-                <a class="btn btn-sm btn-outline-warning" href="wizard.php?id=<?php echo (int) $id; ?>#skills-container"><i class="fa-solid fa-circle-plus me-2"></i>Modifica</a>
+                <a class="btn btn-sm btn-outline-warning" href="<?php echo curriculum_module_url('wizard', ['id' => (int) $id]) . '#skills-container'; ?>"><i class="fa-solid fa-circle-plus me-2"></i>Modifica</a>
             </div>
             <div class="card-body">
                 <?php if ($skillsByCategory): ?>

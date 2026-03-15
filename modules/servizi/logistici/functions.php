@@ -2619,9 +2619,9 @@ function generate_package_qr(int $packageId, ?string $targetUrl = null): ?string
 
     $baseUrl = $targetUrl ?? rtrim((string) env('APP_URL', ''), '/');
     if ($baseUrl === '') {
-        $baseUrl = '/modules/servizi/logistici/view.php?id=' . $packageId;
+        $baseUrl = '/modules/servizi/logistici/view?id=' . $packageId;
     } elseif (!str_contains($baseUrl, (string) $packageId)) {
-        $baseUrl .= '/modules/servizi/logistici/view.php?id=' . $packageId;
+        $baseUrl .= '/modules/servizi/logistici/view?id=' . $packageId;
     }
 
     $separator = str_contains($baseUrl, '?') ? '&' : '?';
@@ -2910,7 +2910,7 @@ function generate_qr_checkin(?int $locationId = null, ?string $callbackUrl = nul
 {
     $baseUrl = $callbackUrl ?? rtrim(env('APP_URL', ''), '/');
     if ($baseUrl === '') {
-        $baseUrl = '/modules/servizi/logistici/index.php';
+        $baseUrl = '/modules/servizi/logistici/index';
     }
 
     if ($locationId) {

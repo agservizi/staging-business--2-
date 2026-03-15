@@ -84,9 +84,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 				<p class="text-muted mb-0">Registra e monitora movimenti economici interni all&rsquo;azienda.</p>
 			</div>
 			<div class="toolbar-actions">
-				<a class="btn btn-outline-warning" href="../../../dashboard.php"><i class="fa-solid fa-gauge-high me-2"></i>Dashboard</a>
+				<a class="btn btn-outline-warning" href="<?php echo dashboard_url(); ?>"><i class="fa-solid fa-gauge-high me-2"></i>Dashboard</a>
 				<?php if ($puoCreare): ?>
-					<a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo movimento</a>
+					<a class="btn btn-warning text-dark" href="<?php echo entrate_uscite_module_url('create'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo movimento</a>
 				<?php endif; ?>
 			</div>
 		</div>
@@ -126,7 +126,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 						</select>
 						<input class="form-control me-2 mb-2" style="min-width: 220px;" id="search" type="search" name="search" value="<?php echo sanitize_output($filters['search']); ?>" placeholder="Cerca descrizione o riferimento">
 						<button class="btn btn-warning mb-2" type="submit" title="Applica filtri"><i class="fa-solid fa-filter"></i></button>
-						<a class="btn btn-outline-warning mb-2" href="index.php" title="Reimposta filtri"><i class="fa-solid fa-rotate-left"></i></a>
+						<a class="btn btn-outline-warning mb-2" href="<?php echo entrate_uscite_module_url('index'); ?>" title="Reimposta filtri"><i class="fa-solid fa-rotate-left"></i></a>
 					</div>
 				</form>
 			</div>
@@ -206,16 +206,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 										<td><?php echo $pagamento['data_pagamento'] ? sanitize_output(date('d/m/Y', strtotime($pagamento['data_pagamento']))) : '<span class="text-muted">—</span>'; ?></td>
 										<td class="text-end">
 											<div class="d-inline-flex align-items-center justify-content-end gap-2 flex-wrap">
-												<a class="btn btn-icon btn-soft-accent btn-sm" href="view.php?id=<?php echo (int) $pagamento['id']; ?>" title="Dettagli">
+												<a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo entrate_uscite_module_url('view', ['id' => (int) $pagamento['id']]); ?>" title="Dettagli">
 													<i class="fa-solid fa-eye"></i>
 												</a>
 												<?php if ($puoModificare): ?>
-													<a class="btn btn-icon btn-soft-accent btn-sm" href="edit.php?id=<?php echo (int) $pagamento['id']; ?>" title="Modifica">
+													<a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo entrate_uscite_module_url('edit', ['id' => (int) $pagamento['id']]); ?>" title="Modifica">
 														<i class="fa-solid fa-pen"></i>
 													</a>
 												<?php endif; ?>
 												<?php if ($puoEliminare): ?>
-													<form method="post" action="delete.php" class="d-inline" onsubmit="return confirm('Confermi l\'eliminazione di questo movimento?');">
+													<form method="post" action="<?php echo entrate_uscite_module_url('delete'); ?>" class="d-inline" onsubmit="return confirm('Confermi l\'eliminazione di questo movimento?');">
 														<input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
 														<input type="hidden" name="id" value="<?php echo (int) $pagamento['id']; ?>">
 														<button class="btn btn-icon btn-soft-danger btn-sm" type="submit" title="Elimina">
@@ -234,7 +234,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 					<div class="text-center text-muted py-5">
 						<i class="fa-solid fa-money-bill-wave fa-2x mb-3"></i>
 						<p class="mb-1">Nessun movimento corrisponde ai filtri selezionati.</p>
-						<a class="btn btn-outline-warning" href="index.php">Reimposta filtri</a>
+						<a class="btn btn-outline-warning" href="<?php echo entrate_uscite_module_url('index'); ?>">Reimposta filtri</a>
 					</div>
 				<?php endif; ?>
 			</div>

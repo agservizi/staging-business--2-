@@ -9,7 +9,7 @@ $csrfToken = csrf_token();
 
 $documentId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($documentId <= 0) {
-    header('Location: index.php');
+    header('Location: ' . documenti_module_url('index'));
     exit;
 }
 
@@ -23,7 +23,7 @@ $document = $documentStmt->fetch();
 
 if (!$document) {
     add_flash('warning', 'Documento non trovato.');
-    header('Location: index.php');
+    header('Location: ' . documenti_module_url('index'));
     exit;
 }
 
@@ -146,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $pdo->commit();
                 add_flash('success', 'Dati aggiornati.');
-                header('Location: view.php?id=' . $documentId);
+                header('Location: ' . documenti_module_url('view', ['id' => $documentId]));
                 exit;
             } catch (Throwable $e) {
                 $pdo->rollBack();
@@ -221,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $pdo->commit();
                     add_flash('success', 'Nuova versione caricata.');
-                    header('Location: view.php?id=' . $documentId);
+                    header('Location: ' . documenti_module_url('view', ['id' => $documentId]));
                     exit;
                 } catch (Throwable $e) {
                     $pdo->rollBack();
@@ -250,9 +250,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         <div class="page-toolbar mb-4">
             <h1 class="h3 mb-0"><?php echo sanitize_output($document['titolo']); ?></h1>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-light" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Archivio</a>
+                <a class="btn btn-outline-light" href="<?php echo documenti_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Archivio</a>
                 <?php if ($versions): ?>
-                    <a class="btn btn-warning text-dark" href="download.php?version=<?php echo (int) $versions[0]['id']; ?>"><i class="fa-solid fa-cloud-arrow-down me-2"></i>Scarica ultima</a>
+                    <a class="btn btn-warning text-dark" href="<?php echo documenti_module_url('download', ['version' => (int) $versions[0]['id']]); ?>"><i class="fa-solid fa-cloud-arrow-down me-2"></i>Scarica ultima</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -350,7 +350,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             <td><?php echo sanitize_output($version['autore'] ?? 'Sconosciuto'); ?></td>
                                             <td><?php echo sanitize_output(format_datetime($version['created_at'])); ?></td>
                                             <td class="text-end">
-                                                <a class="btn btn-sm btn-outline-light" href="download.php?version=<?php echo (int) $version['id']; ?>"><i class="fa-solid fa-download"></i></a>
+                                                <a class="btn btn-sm btn-outline-light" href="<?php echo documenti_module_url('download', ['version' => (int) $version['id']]); ?>"><i class="fa-solid fa-download"></i></a>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>

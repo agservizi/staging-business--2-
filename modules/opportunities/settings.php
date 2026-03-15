@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'code' => $_POST['code'] ?? null,
                 ]);
                 add_flash('success', 'Nuovo stato aggiunto.');
-                header('Location: settings.php');
+                header('Location: ' . opportunities_module_url('settings'));
                 exit;
             case 'status_update':
                 $statusId = isset($_POST['status_id']) ? (int) $_POST['status_id'] : 0;
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'ordering' => $_POST['ordering'] ?? 0,
                 ]);
                 add_flash('success', 'Stato aggiornato correttamente.');
-                header('Location: settings.php');
+                header('Location: ' . opportunities_module_url('settings'));
                 exit;
             case 'status_delete':
                 $statusId = isset($_POST['status_id']) ? (int) $_POST['status_id'] : 0;
@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $opportunityService->deleteStatus($statusId);
                 add_flash('success', 'Stato eliminato.');
-                header('Location: settings.php');
+                header('Location: ' . opportunities_module_url('settings'));
                 exit;
             case 'provider_create':
                 $opportunityService->createProvider([
@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'active' => $_POST['active'] ?? 1,
                 ]);
                 add_flash('success', 'Gestore creato.');
-                header('Location: settings.php');
+                header('Location: ' . opportunities_module_url('settings'));
                 exit;
             case 'provider_update':
                 $providerId = isset($_POST['provider_id']) ? (int) $_POST['provider_id'] : 0;
@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'active' => $_POST['active'] ?? 1,
                 ]);
                 add_flash('success', 'Gestore aggiornato.');
-                header('Location: settings.php');
+                header('Location: ' . opportunities_module_url('settings'));
                 exit;
             case 'offer_create':
                 $opportunityService->createOffer([
@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'active' => $_POST['active'] ?? 1,
                 ]);
                 add_flash('success', 'Offerta creata.');
-                header('Location: settings.php');
+                header('Location: ' . opportunities_module_url('settings'));
                 exit;
             case 'offer_update':
                 $offerId = isset($_POST['offer_id']) ? (int) $_POST['offer_id'] : 0;
@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'active' => $_POST['active'] ?? 1,
                 ]);
                 add_flash('success', 'Offerta aggiornata.');
-                header('Location: settings.php');
+                header('Location: ' . opportunities_module_url('settings'));
                 exit;
             default:
                 $errors[] = 'Azione non riconosciuta.';
@@ -159,7 +159,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <h1 class="h4 mb-0">Impostazioni modulo</h1>
                 <p class="text-muted mb-0">Gestisci stati del workflow, gestori e offerte disponibili per i collaboratori.</p>
             </div>
-            <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/index.php'); ?>">
+            <a class="btn btn-outline-secondary" href="<?php echo opportunities_module_url('index'); ?>">
                 <i class="fa-solid fa-diagram-project me-2"></i>Pipeline
             </a>
         </div>

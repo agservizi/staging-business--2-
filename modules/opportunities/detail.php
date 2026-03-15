@@ -9,21 +9,21 @@ require_role('Admin', 'Manager');
 $opportunityId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($opportunityId <= 0) {
     add_flash('warning', 'Opportunity non trovata.');
-    header('Location: index.php');
+    header('Location: ' . opportunities_module_url('index'));
     exit;
 }
 
 $managerId = (int) ($_SESSION['user_id'] ?? 0);
 if ($managerId <= 0) {
     add_flash('warning', 'Sessione non valida.');
-    header('Location: index.php');
+    header('Location: ' . opportunities_module_url('index'));
     exit;
 }
 
 $opportunity = $opportunityService->findById($opportunityId);
 if ($opportunity === null) {
     add_flash('warning', 'Opportunity non trovata.');
-    header('Location: index.php');
+    header('Location: ' . opportunities_module_url('index'));
     exit;
 }
 
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
             }
             add_flash('success', 'Stato aggiornato correttamente.');
-            header('Location: detail.php?id=' . $opportunityId);
+            header('Location: ' . opportunities_module_url('detail', ['id' => $opportunityId]));
             exit;
         }
         if ($action === 'update_codes') {
@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
             $opportunityService->updateCodes($opportunityId, $payload, $managerId);
             add_flash('success', 'Codici aggiornati.');
-            header('Location: detail.php?id=' . $opportunityId);
+            header('Location: ' . opportunities_module_url('detail', ['id' => $opportunityId]));
             exit;
         }
         if ($action === 'reopen_for_correction') {
@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
             }
             add_flash('success', 'Opportunity riaperta per rettifica collaboratore.');
-            header('Location: detail.php?id=' . $opportunityId);
+            header('Location: ' . opportunities_module_url('detail', ['id' => $opportunityId]));
             exit;
         }
     } catch (RuntimeException $exception) {
@@ -138,7 +138,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <h1 class="h4 mb-0"><?php echo sanitize_output($opportunity['code'] ?? ''); ?></h1>
                 <p class="text-muted mb-0">Categoria <?php echo sanitize_output(strtoupper((string) ($opportunity['category'] ?? ''))); ?> &middot; Stato <?php echo sanitize_output($opportunity['status_label'] ?? $opportunity['status_code'] ?? ''); ?></p>
             </div>
-            <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/index.php'); ?>">
+            <a class="btn btn-outline-secondary" href="<?php echo opportunities_module_url('index'); ?>">
                 <i class="fa-solid fa-arrow-left me-2"></i>Torna alla pipeline
             </a>
         </div>

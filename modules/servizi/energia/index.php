@@ -19,14 +19,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($contractId <= 0) {
         add_flash('warning', 'Richiesta non valida.');
-        header('Location: index.php');
+        header('Location: ' . energia_module_url('index'));
         exit;
     }
 
     $contract = energia_fetch_contract($pdo, $contractId);
     if ($contract === null) {
         add_flash('warning', 'Contratto energia non trovato.');
-        header('Location: index.php');
+        header('Location: ' . energia_module_url('index'));
         exit;
     }
 
@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         add_flash('warning', 'Azione non supportata.');
     }
 
-    header('Location: index.php');
+    header('Location: ' . energia_module_url('index'));
     exit;
 }
 
@@ -75,7 +75,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Caricamenti contratti Enel luce e gas con promemoria di gestione.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo caricamento</a>
+                <a class="btn btn-warning text-dark" href="<?php echo energia_module_url('create'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo caricamento</a>
             </div>
         </div>
         <div class="card ag-card">
@@ -155,10 +155,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         </td>
                                         <td class="text-end">
                                             <div class="d-inline-flex align-items-center justify-content-end gap-2 flex-wrap" role="group">
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="view.php?id=<?php echo (int) $contract['id']; ?>" title="Dettagli">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo energia_module_url('view', ['id' => (int) $contract['id']]); ?>" title="Dettagli">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="view.php?id=<?php echo (int) $contract['id']; ?>#extra-docs" title="Documenti aggiuntivi">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo energia_module_url('view', ['id' => (int) $contract['id']]) . '#extra-docs'; ?>" title="Documenti aggiuntivi">
                                                     <i class="fa-solid fa-file-circle-plus"></i>
                                                 </a>
                                                 <form method="post" class="d-inline">

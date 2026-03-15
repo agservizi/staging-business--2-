@@ -62,7 +62,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Progetta, compila e genera curriculum Europass per i tuoi clienti.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-warning text-dark" href="wizard.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo curriculum</a>
+                <a class="btn btn-warning text-dark" href="<?php echo curriculum_module_url('wizard'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo curriculum</a>
             </div>
         </div>
         <div class="card ag-card mb-4">
@@ -87,7 +87,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="col-md-4 align-self-end">
                         <div class="d-flex gap-2">
                             <button class="btn btn-warning text-dark" type="submit">Applica</button>
-                            <a class="btn btn-outline-secondary" href="index.php">Reimposta</a>
+                            <a class="btn btn-outline-secondary" href="<?php echo curriculum_module_url('index'); ?>">Reimposta</a>
                         </div>
                     </div>
                 </form>
@@ -140,20 +140,20 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <td><?php echo sanitize_output(format_datetime_locale($cv['updated_at'])); ?></td>
                                     <td class="text-end">
                                         <div class="d-inline-flex align-items-center justify-content-end gap-2 flex-wrap">
-                                            <a class="btn btn-icon btn-soft-accent btn-sm" href="view.php?id=<?php echo (int) $cv['id']; ?>" title="Dettagli" aria-label="Dettagli">
+                                            <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo curriculum_module_url('view', ['id' => (int) $cv['id']]); ?>" title="Dettagli" aria-label="Dettagli">
                                                 <i class="fa-solid fa-eye"></i>
                                             </a>
-                                            <a class="btn btn-icon btn-soft-accent btn-sm" href="wizard.php?id=<?php echo (int) $cv['id']; ?>" title="Modifica" aria-label="Modifica">
+                                            <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo curriculum_module_url('wizard', ['id' => (int) $cv['id']]); ?>" title="Modifica" aria-label="Modifica">
                                                 <i class="fa-solid fa-pen"></i>
                                             </a>
-                                            <form method="post" action="publish.php" class="d-inline">
+                                            <form method="post" action="<?php echo curriculum_module_url('publish'); ?>" class="d-inline">
                                                 <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                 <input type="hidden" name="id" value="<?php echo (int) $cv['id']; ?>">
                                                 <button class="btn btn-icon btn-soft-accent btn-sm" type="submit" title="Genera PDF" aria-label="Genera PDF">
                                                     <i class="fa-solid fa-file-pdf"></i>
                                                 </button>
                                             </form>
-                                            <form method="post" action="delete.php" class="d-inline" onsubmit="return confirm('Confermi l\'eliminazione del curriculum? Questa operazione è irreversibile.');">
+                                            <form method="post" action="<?php echo curriculum_module_url('delete'); ?>" class="d-inline" onsubmit="return confirm('Confermi l\'eliminazione del curriculum? Questa operazione è irreversibile.');">
                                                 <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                 <input type="hidden" name="id" value="<?php echo (int) $cv['id']; ?>">
                                                 <button class="btn btn-icon btn-soft-danger btn-sm" type="submit" title="Elimina" aria-label="Elimina">

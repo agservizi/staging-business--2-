@@ -44,7 +44,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <h1 class="h4 mb-0">Provvigioni per collaboratore</h1>
                 <p class="text-muted mb-0">Analizza i valori stimati caricati dai collaboratori su base mensile.</p>
             </div>
-            <a class="btn btn-outline-primary" href="<?php echo asset('modules/opportunities/index.php'); ?>">
+            <a class="btn btn-outline-primary" href="<?php echo opportunities_module_url('index'); ?>">
                 <i class="fa-solid fa-arrow-left me-2"></i>Torna alla pipeline
             </a>
         </div>

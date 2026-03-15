@@ -1,6 +1,56 @@
 <?php
 declare(strict_types=1);
 
+function clean_url_scopes(): array
+{
+    return [
+        '/',
+        '/forgot_password',
+        '/reset_password',
+        '/logout',
+        '/mfa-setup',
+        '/mfa-verify',
+        '/dashboard',
+        '/modules/servizi/express',
+        '/modules/clienti',
+        '/modules/ticket',
+        '/modules/documenti',
+        '/modules/report',
+        '/modules/impostazioni',
+        '/modules/email-marketing',
+        '/modules/opportunities',
+        '/modules/iliad',
+        '/modules/servizi/entrate-uscite',
+        '/modules/servizi/appuntamenti',
+        '/modules/servizi/energia',
+        '/modules/servizi/aci',
+        '/modules/servizi/fedelta',
+        '/modules/servizi/brt',
+        '/modules/servizi/curriculum',
+        '/modules/servizi/posta-telematica',
+        '/modules/servizi/telegrammi',
+        '/modules/servizi/logistici',
+        '/modules/servizi/visure-cr',
+        '/modules/servizi/cie',
+        '/modules/servizi/digitali',
+        '/modules/servizi/anpr',
+        '/modules/servizi/caf-patronato',
+        '/modules/servizi/ricariche',
+    ];
+}
+
+function clean_url_scope_match(string $requestPath): bool
+{
+    foreach (clean_url_scopes() as $scope) {
+        $normalizedScope = '/' . trim($scope, '/');
+        if ($requestPath === $normalizedScope || str_starts_with($requestPath, $normalizedScope . '/')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 $requestPath = rawurldecode((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
 
 if ($requestPath === false || $requestPath === '') {
@@ -9,10 +59,10 @@ if ($requestPath === false || $requestPath === '') {
 
 $documentRoot = __DIR__;
 $absolutePath = realpath($documentRoot . $requestPath);
-$isExpressPath = str_starts_with($requestPath, '/modules/servizi/express');
+$isCleanUrlScope = clean_url_scope_match($requestPath);
 
 if (
-    $isExpressPath
+    $isCleanUrlScope
     && in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true)
     && $requestPath !== '/index.php'
     && str_ends_with($requestPath, '.php')
@@ -45,7 +95,7 @@ $candidates = [];
 
 if ($trimmedPath === '') {
     $candidates[] = $documentRoot . '/index.php';
-} elseif ($isExpressPath) {
+} elseif ($isCleanUrlScope) {
     $candidates[] = $documentRoot . '/' . $trimmedPath . '.php';
     $candidates[] = $documentRoot . '/' . $trimmedPath . '/index.php';
 }

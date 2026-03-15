@@ -85,7 +85,7 @@ if ($categoryFilter !== '') {
 if ($searchQuery !== '') {
     $filterQueryParams['q'] = $searchQuery;
 }
-$advancedFiltersUrl = asset('modules/opportunities/collaborator/list.php');
+$advancedFiltersUrl = opportunities_collaborator_url('list');
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
@@ -98,7 +98,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-uppercase small fw-semibold text-muted mb-1">Dashboard collaboratore</p>
                 <h1 class="h4 mb-0">Panoramica opportunity</h1>
             </div>
-            <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
+            <a class="btn btn-primary" href="<?php echo opportunities_collaborator_url('create'); ?>">
                 <i class="fa-solid fa-plus me-2"></i>Nuova OP
             </a>
         </div>
@@ -142,7 +142,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <div>
                                     <div class="d-flex align-items-center gap-2 flex-wrap">
                                         <?php
-                                            $viewUrl = asset('modules/opportunities/collaborator/view.php?id=' . (int) ($reminder['id'] ?? 0));
+                                            $viewUrl = opportunities_collaborator_url('view', ['id' => (int) ($reminder['id'] ?? 0)]);
                                         ?>
                                         <a class="fw-semibold text-body" href="<?php echo sanitize_output($viewUrl); ?>" aria-label="Apri opportunity <?php echo sanitize_output($reminder['code'] ?? ''); ?>">
                                             <?php echo sanitize_output($reminder['code'] ?? ''); ?>
@@ -432,7 +432,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <td><?php echo sanitize_output($draftSavedLabel); ?></td>
                                             <td class="text-end">
                                                 <div class="d-flex justify-content-end gap-2 flex-wrap">
-                                                    <a class="btn btn-sm btn-warning" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
+                                                    <a class="btn btn-sm btn-warning" href="<?php echo opportunities_collaborator_url('create'); ?>">
                                                         <i class="fa-solid fa-pen-to-square me-1"></i>Continua
                                                     </a>
                                                     <button class="btn btn-sm btn-outline-danger" type="button" data-action="discard-remote-draft">

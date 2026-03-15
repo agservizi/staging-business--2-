@@ -127,8 +127,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Traccia le azioni effettuate dagli utenti e scarica gli storici in CSV.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-light" href="index.php"><i class="fa-solid fa-gear me-2"></i>Impostazioni</a>
-                <a class="btn btn-warning text-dark" href="?<?php echo http_build_query($exportQuery); ?>">
+                <a class="btn btn-outline-light" href="<?php echo impostazioni_module_url('index'); ?>"><i class="fa-solid fa-gear me-2"></i>Impostazioni</a>
+                <a class="btn btn-warning text-dark" href="<?php echo impostazioni_module_url('logs') . '?' . http_build_query($exportQuery); ?>">
                     <i class="fa-solid fa-file-export me-2"></i>Esporta CSV
                 </a>
             </div>
@@ -169,7 +169,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <input class="form-control" id="al" name="al" type="date" value="<?php echo sanitize_output($filters['al']); ?>">
                 </div>
                 <div class="col-12 d-flex justify-content-end gap-2">
-                    <a class="btn btn-outline-secondary" href="logs.php"><i class="fa-solid fa-arrows-rotate me-2"></i>Reimposta</a>
+                    <a class="btn btn-outline-secondary" href="<?php echo impostazioni_module_url('logs'); ?>"><i class="fa-solid fa-arrows-rotate me-2"></i>Reimposta</a>
                     <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-filter me-2"></i>Applica filtri</button>
                 </div>
             </div>

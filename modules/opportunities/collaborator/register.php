@@ -105,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         complete_user_login($pdo, $auditLogger, $userPayload, $ipAddress, $userAgent, false, 'self_signup_collaborator');
 
-        header('Location: ' . asset('modules/opportunities/collaborator/index.php'));
+        header('Location: ' . opportunities_collaborator_url('index'));
         exit;
     }
 }
@@ -142,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="auth-panel-inner">
                     <div class="mb-4 text-center text-md-start">
                         <h2 class="h4 fw-semibold mb-2">Crea il tuo account collaboratore</h2>
-                        <p class="login-meta mb-0">Hai già un account? <a class="link-warning text-decoration-none" href="<?php echo base_url('index.php'); ?>">Accedi</a>.</p>
+                        <p class="login-meta mb-0">Hai già un account? <a class="link-warning text-decoration-none" href="<?php echo login_url(); ?>">Accedi</a>.</p>
                     </div>
                     <?php if ($errors): ?>
                         <div class="alert alert-danger border-0 shadow-sm mb-4" role="alert">

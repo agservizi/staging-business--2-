@@ -245,7 +245,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Gestisci contratti, pratiche e allegati con versioning e tag personalizzati.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-upload me-2"></i>Carica documento</a>
+                <a class="btn btn-warning text-dark" href="<?php echo documenti_module_url('create'); ?>"><i class="fa-solid fa-upload me-2"></i>Carica documento</a>
             </div>
         </div>
 
@@ -348,7 +348,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         </td>
                                         <td><?php echo sanitize_output(format_datetime($doc['updated_at'])); ?></td>
                                         <td class="text-end">
-                                            <a class="btn btn-sm btn-outline-warning" href="view.php?id=<?php echo (int)$doc['id']; ?>">
+                                            <a class="btn btn-sm btn-outline-warning" href="<?php echo documenti_module_url('view', ['id' => (int) $doc['id']]); ?>">
                                                 <i class="fa-solid fa-eye"></i>
                                             </a>
                                         </td>

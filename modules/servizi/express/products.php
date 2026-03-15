@@ -17,7 +17,7 @@ express_module_bootstrap_schema($pdo);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = express_module_save_product($pdo, $_POST, $currentUserId);
     add_flash($result['success'] ? 'success' : 'warning', $result['message']);
-    header('Location: products.php');
+    header('Location: ' . express_module_url('products'));
     exit;
 }
 
@@ -231,7 +231,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <p class="text-muted small mb-0">Scheda prodotto completa con prezzo, stock, soglia e metadati utili alla vendita.</p>
                                 </div>
                                 <?php if ($editingProduct): ?>
-                                    <a class="btn btn-outline-secondary btn-sm" href="products.php">Annulla</a>
+                                    <a class="btn btn-outline-secondary btn-sm" href="<?php echo sanitize_output(express_module_url('products')); ?>">Annulla</a>
                                 <?php else: ?>
                                     <span class="badge rounded-pill text-bg-light"><?php echo (int) $productSummary['inactive_products']; ?> inattivi</span>
                                 <?php endif; ?>
@@ -374,7 +374,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <span class="fw-semibold"><?php echo (int) $product['stock_quantita']; ?></span>
                                         </td>
                                         <td><span class="badge <?php echo (int) $product['attivo'] === 1 ? 'text-bg-success' : 'text-bg-secondary'; ?>"><?php echo (int) $product['attivo'] === 1 ? 'Attivo' : 'Inattivo'; ?></span></td>
-                                        <td class="text-end"><a class="btn btn-icon btn-soft-accent btn-sm" href="products.php?edit=<?php echo (int) $product['id']; ?>"><i class="fa-solid fa-pen"></i></a></td>
+                                        <td class="text-end"><a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(express_module_url('products', ['edit' => (int) $product['id']])); ?>"><i class="fa-solid fa-pen"></i></a></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>

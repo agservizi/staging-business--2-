@@ -71,7 +71,7 @@ SQL;
             'id' => $eventId,
             'message' => $message,
             'severity' => 'info',
-            'url' => base_url('modules/servizi/logistici/report.php?id=' . $eventId),
+            'url' => logistici_module_url('report', ['id' => $eventId]),
             'createdAt' => (string) ($row['created_at'] ?? ''),
             'trackingCode' => sanitize_notification_value($row['tracking_code'] ?? null),
             'customerName' => $customerLabel,

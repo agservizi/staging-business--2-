@@ -12,14 +12,14 @@ require_role('Admin');
 $praticaId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($praticaId <= 0) {
     add_flash('warning', 'Pratica non valida.');
-    header('Location: index.php');
+    header('Location: ' . aci_module_url('index'));
     exit;
 }
 
 $pratica = aci_get_pratica($pdo, $praticaId);
 if (!$pratica) {
     add_flash('warning', 'Pratica non trovata.');
-    header('Location: index.php');
+    header('Location: ' . aci_module_url('index'));
     exit;
 }
 
@@ -46,5 +46,5 @@ $notification = [
 foreach (['Admin', 'Manager'] as $notifyRole) {
     create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
 }
-header('Location: index.php');
+header('Location: ' . aci_module_url('index'));
 exit;

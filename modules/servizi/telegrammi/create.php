@@ -189,7 +189,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Prepara il payload da inviare al servizio Ufficio Postale e salva la pratica nel gestionale.</p>
             </div>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
-                <a class="btn btn-outline-secondary" href="index.php">
+                <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(telegrammi_module_url('index')); ?>">
                     <i class="fa-solid fa-arrow-left me-2"></i>Torna all'elenco
                 </a>
             </div>
@@ -256,7 +256,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <?php endforeach; ?>
                         </div>
                         <?php endif; ?>
-                        <form action="store.php" method="post" class="telegrammi-form" autocomplete="off">
+                        <form action="<?php echo sanitize_output(telegrammi_module_url('store')); ?>" method="post" class="telegrammi-form" autocomplete="off">
                             <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
                             <fieldset class="d-flex flex-column gap-5"<?php echo $tokenConfigured ? '' : ' disabled'; ?>>
                                 <section class="telegrammi-step" id="step-anagrafica">
@@ -763,7 +763,7 @@ window.CIEIstatLookupConfig = {
 <script src="<?php echo asset('assets/js/cie-istat-lookup.js'); ?>"></script>
 <script>
 (function () {
-    const form = document.querySelector('form[action="store.php"]');
+    const form = document.querySelector('form[action$="/store"], form[action$="/store.php"]');
     if (!form) {
         return;
     }

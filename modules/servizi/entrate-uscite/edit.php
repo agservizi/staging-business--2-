@@ -10,7 +10,7 @@ $pageTitle = 'Modifica movimento';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
-	header('Location: index.php');
+	header('Location: ' . entrate_uscite_module_url('index'));
 	exit;
 }
 
@@ -19,7 +19,7 @@ $stmt->execute([':id' => $id]);
 $pagamento = $stmt->fetch();
 
 if (!$pagamento) {
-	header('Location: index.php?notfound=1');
+	header('Location: ' . entrate_uscite_module_url('index', ['notfound' => 1]));
 	exit;
 }
 
@@ -336,7 +336,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		foreach (['Admin', 'Manager'] as $notifyRole) {
 			create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
 		}
-		header('Location: view.php?id=' . $id);
+		header('Location: ' . entrate_uscite_module_url('view', ['id' => $id]));
 		exit;
 	}
 }
@@ -368,7 +368,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 	<?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
 	<main class="content-wrapper">
 		<div class="mb-4">
-			<a class="btn btn-outline-warning" href="view.php?id=<?php echo $id; ?>"><i class="fa-solid fa-arrow-left"></i> Dettaglio movimento</a>
+			<a class="btn btn-outline-warning" href="<?php echo entrate_uscite_module_url('view', ['id' => $id]); ?>"><i class="fa-solid fa-arrow-left"></i> Dettaglio movimento</a>
 		</div>
 		<div class="card ag-card">
 			<div class="card-header bg-transparent border-0">
@@ -545,7 +545,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 						<small class="text-muted">Allega un PDF o un'immagine in supporto al movimento.</small>
 					</div>
 					<div class="col-12 d-flex justify-content-end gap-2">
-						<a class="btn btn-secondary" href="view.php?id=<?php echo $id; ?>">Annulla</a>
+						<a class="btn btn-secondary" href="<?php echo entrate_uscite_module_url('view', ['id' => $id]); ?>">Annulla</a>
 						<button class="btn btn-warning text-dark" type="submit">Salva modifiche</button>
 					</div>
 				</form>

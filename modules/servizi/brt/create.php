@@ -202,7 +202,7 @@ try {
     $departureDepot = $config->getDepartureDepot();
 } catch (BrtException $exception) {
     add_flash('warning', $exception->getMessage());
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }
 
@@ -738,7 +738,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $_SESSION[$referenceSessionKey] = brt_next_numeric_reference($senderCustomerCode, (int) $data['numeric_sender_reference']);
 
-            header('Location: index.php');
+            header('Location: ' . brt_module_url('index'));
             exit;
             } catch (BrtException $exception) {
                 $message = $exception->getMessage();
@@ -899,7 +899,7 @@ window.CIEIstatLookupConfig = Object.assign({}, window.CIEIstatLookupConfig, {
                 <p class="text-muted mb-0">Compila i dati del destinatario e genera l'etichetta con riferimento mittente progressivo.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Torna alle spedizioni</a>
+                <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Torna alle spedizioni</a>
             </div>
         </div>
 
@@ -1384,7 +1384,7 @@ window.CIEIstatLookupConfig = Object.assign({}, window.CIEIstatLookupConfig, {
                             <div class="mt-4 d-flex flex-wrap gap-2">
                                 <button class="btn btn-primary" type="submit" name="intent" value="create"><i class="fa-solid fa-truck-fast me-2"></i>Crea spedizione</button>
                                 <button class="btn btn-outline-primary" type="submit" name="intent" value="quote"><i class="fa-solid fa-coins me-2"></i>Calcola costo</button>
-                                <a class="btn btn-outline-secondary" href="index.php">Annulla</a>
+                                <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('index'); ?>">Annulla</a>
                             </div>
                         </form>
                     </div>

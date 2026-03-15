@@ -50,7 +50,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Ricerca rapida dei certificati emessi e azioni di invio al cliente.</p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Elenco pratiche</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('index')); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Elenco pratiche</a>
                 <a class="btn btn-outline-warning" href="https://www.anagrafenazionale.interno.it/servizi-al-cittadino/" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square me-2"></i>Portale ANPR</a>
             </div>
         </div>
@@ -59,7 +59,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <h2 class="h5 mb-0">Filtra certificati</h2>
             </div>
             <div class="card-body">
-                <form class="row g-3 align-items-end" method="get" action="certificate_archive.php">
+                <form class="row g-3 align-items-end" method="get" action="<?php echo sanitize_output(anpr_module_url('certificate_archive')); ?>">
                     <div class="col-sm-6 col-lg-3">
                         <label class="form-label" for="tipo_pratica">Tipologia</label>
                         <select class="form-select" id="tipo_pratica" name="tipo_pratica">
@@ -134,10 +134,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         </td>
                                         <td class="text-end">
                                             <div class="btn-group" role="group">
-                                                <a class="btn btn-sm btn-outline-warning" href="view_request.php?id=<?php echo (int) $pratica['id']; ?>" title="Dettagli pratica"><i class="fa-solid fa-eye"></i></a>
+                                                <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('view_request', ['id' => (int) $pratica['id']])); ?>" title="Dettagli pratica"><i class="fa-solid fa-eye"></i></a>
                                                 <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output(base_url($pratica['certificato_path'])); ?>" target="_blank" rel="noopener" title="Scarica PDF"><i class="fa-solid fa-file-pdf"></i></a>
                                                 <?php if (!empty($pratica['cliente_email'])): ?>
-                                                    <form method="post" action="send_certificate.php" class="d-inline">
+                                                    <form method="post" action="<?php echo sanitize_output(anpr_module_url('send_certificate')); ?>" class="d-inline">
                                                         <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                         <input type="hidden" name="pratica_id" value="<?php echo (int) $pratica['id']; ?>">
                                                         <input type="hidden" name="channel" value="email">

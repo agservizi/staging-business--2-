@@ -17,7 +17,7 @@ express_module_bootstrap_schema($pdo);
 $sale = $saleId > 0 ? express_module_sale_detail($pdo, $saleId) : null;
 if ($sale === null) {
     add_flash('warning', 'Vendita non trovata.');
-    header('Location: sales.php');
+    header('Location: ' . express_module_url('sales'));
     exit;
 }
 
@@ -222,8 +222,8 @@ $documentNote = express_module_sale_document_note($sale);
         <?php if (!$embedded): ?>
             <div class="toolbar">
                 <button class="primary" type="button" onclick="window.print();">Stampa</button>
-                <a class="secondary" href="view_sale.php?id=<?php echo (int) $sale['id']; ?>">Dettaglio vendita</a>
-                <a class="secondary" href="create_sale.php">Nuova vendita</a>
+                <a class="secondary" href="<?php echo sanitize_output(express_module_url('view_sale', ['id' => (int) $sale['id']])); ?>">Dettaglio vendita</a>
+                <a class="secondary" href="<?php echo sanitize_output(express_module_url('create_sale')); ?>">Nuova vendita</a>
             </div>
         <?php endif; ?>
 

@@ -199,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach (['Admin', 'Manager'] as $notifyRole) {
                 create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
             }
-            header('Location: view.php?id=' . $praticaId);
+            header('Location: ' . aci_module_url('view', ['id' => $praticaId]));
             exit;
         }
     }
@@ -219,7 +219,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Inserisci una nuova pratica automobilistica.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
+                <a class="btn btn-outline-warning" href="<?php echo aci_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
             </div>
         </div>
 
@@ -313,7 +313,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                     </div>
                     <div class="mt-4 d-flex justify-content-end gap-2">
-                        <a class="btn btn-outline-secondary" href="index.php">Annulla</a>
+                        <a class="btn btn-outline-secondary" href="<?php echo aci_module_url('index'); ?>">Annulla</a>
                         <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Salva pratica</button>
                     </div>
                 </form>

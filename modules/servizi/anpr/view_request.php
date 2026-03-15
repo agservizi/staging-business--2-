@@ -12,14 +12,14 @@ $pageTitle = 'Dettaglio pratica ANPR';
 $praticaId = (int) ($_GET['id'] ?? 0);
 if ($praticaId <= 0) {
     add_flash('warning', 'Pratica non valida.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
 $pratica = anpr_fetch_pratica($pdo, $praticaId);
 if (!$pratica) {
     add_flash('warning', 'Pratica non trovata.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
@@ -48,9 +48,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <a class="btn btn-outline-warning" href="https://www.anagrafenazionale.interno.it/servizi-al-cittadino/" target="_blank" rel="noopener">
                     <i class="fa-solid fa-up-right-from-square me-2"></i>Portale ANPR
                 </a>
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Indietro</a>
-                <a class="btn btn-outline-warning" href="edit_request.php?id=<?php echo $praticaId; ?>"><i class="fa-solid fa-pen me-2"></i>Modifica</a>
-                <a class="btn btn-outline-warning" href="upload_certificate.php?id=<?php echo $praticaId; ?>"><i class="fa-solid fa-file-arrow-up me-2"></i>Certificato</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('index')); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Indietro</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('edit_request', ['id' => $praticaId])); ?>"><i class="fa-solid fa-pen me-2"></i>Modifica</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('upload_certificate', ['id' => $praticaId])); ?>"><i class="fa-solid fa-file-arrow-up me-2"></i>Certificato</a>
             </div>
         </div>
         <div class="row g-4">
@@ -101,7 +101,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <h2 class="h5 mb-0">Certificato</h2>
                         <?php if (!empty($pratica['certificato_path'])): ?>
-                            <form method="post" action="upload_certificate.php?id=<?php echo $praticaId; ?>" data-confirm="Rimuovere il certificato archiviato?">
+                            <form method="post" action="<?php echo sanitize_output(anpr_module_url('upload_certificate', ['id' => $praticaId])); ?>" data-confirm="Rimuovere il certificato archiviato?">
                                 <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                 <input type="hidden" name="id" value="<?php echo $praticaId; ?>">
                                 <input type="hidden" name="action" value="remove">
@@ -119,7 +119,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <p class="text-muted mt-3 mb-0 small">Consigliato upload su storage di backup esterno dopo ogni emissione.</p>
                         <?php else: ?>
                             <p class="text-muted mb-2">Nessun certificato caricato.</p>
-                            <a class="btn btn-outline-warning" href="upload_certificate.php?id=<?php echo $praticaId; ?>">Carica ora</a>
+                            <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('upload_certificate', ['id' => $praticaId])); ?>">Carica ora</a>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -158,7 +158,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <?php if ($signatureStatus === 'firmata'): ?>
                                     <p class="mb-1 small">Firmata il: <strong><?php echo sanitize_output(format_datetime_locale($pratica['delega_firma_verificata_il'] ?? '')); ?></strong></p>
                                     <p class="mb-2 small">Destinatario OTP: <?php echo sanitize_output($pratica['delega_firma_recipient'] ?? ''); ?></p>
-                                    <form method="post" action="delega_signature.php" class="d-inline" data-confirm="Annullare lo stato di firma e richiedere una nuova sottoscrizione?">
+                                    <form method="post" action="<?php echo sanitize_output(anpr_module_url('delega_signature')); ?>" class="d-inline" data-confirm="Annullare lo stato di firma e richiedere una nuova sottoscrizione?">
                                         <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                         <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                         <input type="hidden" name="action" value="reset">
@@ -186,7 +186,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <?php if ($signatureAttempts > 0): ?>
                                             <p class="text-muted small">Tentativi effettuati: <?php echo $signatureAttempts; ?> / <?php echo ANPR_SIGNATURE_MAX_ATTEMPTS; ?></p>
                                         <?php endif; ?>
-                                        <form method="post" action="delega_signature.php" class="row g-2 align-items-end mb-2">
+                                        <form method="post" action="<?php echo sanitize_output(anpr_module_url('delega_signature')); ?>" class="row g-2 align-items-end mb-2">
                                             <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                             <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                             <input type="hidden" name="action" value="verify">
@@ -200,14 +200,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             </div>
                                         </form>
                                         <div class="d-flex flex-wrap gap-2 justify-content-end">
-                                            <form method="post" action="delega_signature.php" data-confirm="Inviare nuovamente l'OTP al cliente?">
+                                            <form method="post" action="<?php echo sanitize_output(anpr_module_url('delega_signature')); ?>" data-confirm="Inviare nuovamente l'OTP al cliente?">
                                                 <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                 <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                                 <input type="hidden" name="action" value="send">
                                                 <input type="hidden" name="recipient" value="<?php echo sanitize_output($pratica['delega_firma_recipient'] ?? $customerEmail); ?>">
                                                 <button class="btn btn-outline-warning" type="submit"><i class="fa-solid fa-paper-plane me-2"></i>Reinvia OTP</button>
                                             </form>
-                                            <form method="post" action="delega_signature.php" data-confirm="Annullare l'OTP attivo?">
+                                            <form method="post" action="<?php echo sanitize_output(anpr_module_url('delega_signature')); ?>" data-confirm="Annullare l'OTP attivo?">
                                                 <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                                 <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                                 <input type="hidden" name="action" value="reset">
@@ -218,7 +218,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <?php if ($signatureExpired || $signatureStatus === 'scaduta'): ?>
                                             <p class="text-muted small">L'OTP precedente è scaduto o il limite di tentativi è stato raggiunto. Invia nuovamente il codice.</p>
                                         <?php endif; ?>
-                                        <form method="post" action="delega_signature.php" class="row g-2 align-items-end">
+                                        <form method="post" action="<?php echo sanitize_output(anpr_module_url('delega_signature')); ?>" class="row g-2 align-items-end">
                                             <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                             <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                             <input type="hidden" name="action" value="send">
@@ -247,7 +247,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <?php if (!empty($pratica['spid_verificato_at'])): ?>
                                 <p class="mb-1 small">Ultima verifica: <strong><?php echo sanitize_output(format_datetime_locale($pratica['spid_verificato_at'])); ?></strong></p>
                                 <p class="mb-3 small">Operatore: <?php echo !empty($pratica['spid_operatore_username']) ? sanitize_output($pratica['spid_operatore_username']) : '<span class="text-muted">N/D</span>'; ?></p>
-                                <form method="post" action="spid_verification.php" class="d-flex gap-2" data-confirm="Annullare la verifica SPID?">
+                                <form method="post" action="<?php echo sanitize_output(anpr_module_url('spid_verification')); ?>" class="d-flex gap-2" data-confirm="Annullare la verifica SPID?">
                                     <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                     <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                     <input type="hidden" name="action" value="reset">
@@ -255,7 +255,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 </form>
                             <?php else: ?>
                                 <p class="text-muted small mb-3">Registra la verifica SPID per certificare l&apos;identità del richiedente.</p>
-                                <form method="post" action="spid_verification.php" class="d-flex gap-2">
+                                <form method="post" action="<?php echo sanitize_output(anpr_module_url('spid_verification')); ?>" class="d-flex gap-2">
                                     <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                     <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                     <input type="hidden" name="action" value="verify">
@@ -278,7 +278,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <p class="mb-2 small">Canale: <?php echo sanitize_output(strtoupper($pratica['certificato_inviato_via'] ?? '')); ?> → <?php echo sanitize_output($pratica['certificato_inviato_destinatario'] ?? ''); ?></p>
                             <?php endif; ?>
                             <?php if ($hasCertificate && $customerEmail !== ''): ?>
-                                <form method="post" action="send_certificate.php" class="row g-2" enctype="application/x-www-form-urlencoded">
+                                <form method="post" action="<?php echo sanitize_output(anpr_module_url('send_certificate')); ?>" class="row g-2" enctype="application/x-www-form-urlencoded">
                                     <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                     <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                     <div class="col-12">
@@ -326,7 +326,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <i class="fa-solid fa-file-lines me-2"></i>Scarica delega
                                 </a>
                                 <?php if ($canAutoGenerateDelega): ?>
-                                    <form method="post" action="generate_delega.php" class="d-inline-block" data-confirm="Rigenerare la delega automaticamente? Eventuali stati di firma verranno reimpostati.">
+                                    <form method="post" action="<?php echo sanitize_output(anpr_module_url('generate_delega')); ?>" class="d-inline-block" data-confirm="Rigenerare la delega automaticamente? Eventuali stati di firma verranno reimpostati.">
                                         <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                         <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                         <input type="hidden" name="action" value="generate">
@@ -336,7 +336,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <?php else: ?>
                                 <p class="text-muted mb-0">Nessuna delega caricata.</p>
                                 <?php if ($canAutoGenerateDelega): ?>
-                                    <form method="post" action="generate_delega.php" class="mt-3 d-inline-block" data-confirm="Generare automaticamente la delega per questa pratica?">
+                                    <form method="post" action="<?php echo sanitize_output(anpr_module_url('generate_delega')); ?>" class="mt-3 d-inline-block" data-confirm="Generare automaticamente la delega per questa pratica?">
                                         <input type="hidden" name="_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                         <input type="hidden" name="pratica_id" value="<?php echo $praticaId; ?>">
                                         <input type="hidden" name="action" value="generate">

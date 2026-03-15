@@ -1,21 +1,64 @@
 RewriteEngine On
 
-# Redirect visible .php URLs to clean paths only inside Express module.
+# Rollout graduale URL puliti:
+# aggiungi qui altri scope modulo per modulo quando sono pronti.
+# Esempio futuro:
+# modules/servizi/express|modules/clienti|modules/ticket|modules/documenti|modules/report|modules/impostazioni|modules/email-marketing|modules/opportunities|modules/iliad|modules/servizi/altro-modulo
+#
+# Scope attivi attuali:
+# /
+# forgot_password
+# reset_password
+# logout
+# mfa-setup
+# mfa-verify
+# dashboard
+# modules/servizi/express
+# modules/clienti
+# modules/ticket
+# modules/documenti
+# modules/report
+# modules/impostazioni
+# modules/email-marketing
+# modules/opportunities
+# modules/iliad
+# modules/servizi/entrate-uscite
+# modules/servizi/appuntamenti
+# modules/servizi/energia
+# modules/servizi/aci
+# modules/servizi/fedelta
+# modules/servizi/brt
+# modules/servizi/curriculum
+# modules/servizi/posta-telematica
+# modules/servizi/telegrammi
+# modules/servizi/logistici
+# modules/servizi/visure-cr
+# modules/servizi/cie
+# modules/servizi/digitali
+# modules/servizi/anpr
+# modules/servizi/caf-patronato
+# modules/servizi/ricariche
+
+# Redirect visible .php URLs to clean paths only inside allowed scopes.
 RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
-RewriteCond %{REQUEST_URI} ^(.*/modules/servizi/express/.+)\.php$ [NC]
+RewriteCond %{REQUEST_URI} ^(.*/(?:forgot_password|reset_password|logout|mfa-setup|mfa-verify|dashboard|modules/servizi/express|modules/clienti|modules/ticket|modules/documenti|modules/report|modules/impostazioni|modules/email-marketing|modules/opportunities|modules/iliad|modules/servizi/entrate-uscite|modules/servizi/appuntamenti|modules/servizi/energia|modules/servizi/aci|modules/servizi/fedelta|modules/servizi/brt|modules/servizi/curriculum|modules/servizi/posta-telematica|modules/servizi/telegrammi|modules/servizi/logistici|modules/servizi/visure-cr|modules/servizi/cie|modules/servizi/digitali|modules/servizi/anpr|modules/servizi/caf-patronato|modules/servizi/ricariche)/?.*)\.php$ [NC]
 RewriteRule ^ %1 [R=301,L,NE]
+
+RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+RewriteCond %{THE_REQUEST} \s/+index\.php(?:[\s?]|$) [NC]
+RewriteRule ^index\.php$ / [R=301,L]
 
 # Serve existing files and directories as-is.
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# Resolve clean URLs to PHP files only inside Express module.
-RewriteCond %{REQUEST_URI} (?:^|/)modules/servizi/express/ [NC]
+# Resolve clean URLs to PHP files only inside allowed scopes.
+RewriteCond %{REQUEST_URI} (?:^|/)(?:forgot_password|reset_password|logout|mfa-setup|mfa-verify|dashboard|modules/servizi/express|modules/clienti|modules/ticket|modules/documenti|modules/report|modules/impostazioni|modules/email-marketing|modules/opportunities|modules/iliad|modules/servizi/entrate-uscite|modules/servizi/appuntamenti|modules/servizi/energia|modules/servizi/aci|modules/servizi/fedelta|modules/servizi/brt|modules/servizi/curriculum|modules/servizi/posta-telematica|modules/servizi/telegrammi|modules/servizi/logistici|modules/servizi/visure-cr|modules/servizi/cie|modules/servizi/digitali|modules/servizi/anpr|modules/servizi/caf-patronato|modules/servizi/ricariche)(?:/|$) [NC]
 RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^(.+?)/?$ $1.php [L,QSA]
 
-# Resolve clean directory URLs to their index.php only inside Express module.
-RewriteCond %{REQUEST_URI} (?:^|/)modules/servizi/express/ [NC]
+# Resolve clean directory URLs to their index.php only inside allowed scopes.
+RewriteCond %{REQUEST_URI} (?:^|/)(?:forgot_password|reset_password|logout|mfa-setup|mfa-verify|dashboard|modules/servizi/express|modules/clienti|modules/ticket|modules/documenti|modules/report|modules/impostazioni|modules/email-marketing|modules/opportunities|modules/iliad|modules/servizi/entrate-uscite|modules/servizi/appuntamenti|modules/servizi/energia|modules/servizi/aci|modules/servizi/fedelta|modules/servizi/brt|modules/servizi/curriculum|modules/servizi/posta-telematica|modules/servizi/telegrammi|modules/servizi/logistici|modules/servizi/visure-cr|modules/servizi/cie|modules/servizi/digitali|modules/servizi/anpr|modules/servizi/caf-patronato|modules/servizi/ricariche)(?:/|$) [NC]
 RewriteCond %{REQUEST_FILENAME}/index.php -f
 RewriteRule ^(.+?)/?$ $1/index.php [L,QSA]

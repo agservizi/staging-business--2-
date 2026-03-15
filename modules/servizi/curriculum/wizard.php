@@ -403,7 +403,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->commit();
 
             add_flash('success', 'Curriculum salvato correttamente.');
-            header('Location: wizard.php?id=' . $curriculumId);
+            header('Location: ' . curriculum_module_url('wizard', ['id' => $curriculumId]));
             exit;
         } catch (Throwable $exception) {
             $pdo->rollBack();
@@ -418,7 +418,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $curriculum = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$curriculum) {
             add_flash('warning', 'Curriculum non trovato.');
-            header('Location: index.php');
+            header('Location: ' . curriculum_module_url('index'));
             exit;
         }
         $defaultForm = array_merge($defaultForm, [
@@ -455,7 +455,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="mb-4">
-            <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Torna alla lista</a>
+            <a class="btn btn-outline-warning" href="<?php echo curriculum_module_url('index'); ?>"><i class="fa-solid fa-arrow-left"></i> Torna alla lista</a>
         </div>
         <div class="card ag-card">
             <div class="card-header bg-transparent border-0">
@@ -787,7 +787,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </section>
 
                     <div class="d-flex justify-content-end gap-3">
-                        <a class="btn btn-outline-secondary" href="index.php">Annulla</a>
+                        <a class="btn btn-outline-secondary" href="<?php echo curriculum_module_url('index'); ?>">Annulla</a>
                         <button class="btn btn-warning text-dark" type="submit">Salva curriculum</button>
                     </div>
                 </form>

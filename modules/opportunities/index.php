@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (RuntimeException $exception) {
             add_flash('warning', $exception->getMessage());
         }
-        header('Location: index.php');
+        header('Location: ' . opportunities_module_url('index'));
         exit;
     }
 }
@@ -83,7 +83,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     : 'Nuova opportunity inserita';
                 window.CS.showToast(message, 'info', {
                     delay: 7000,
-                    url: '<?php echo sanitize_output(asset('modules/opportunities/index.php')); ?>',
+                    url: '<?php echo sanitize_output(opportunities_module_url('index')); ?>',
                 });
             };
 
@@ -128,13 +128,13 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Monitora le richieste inserite dai collaboratori e applica gli avanzamenti di stato.</p>
             </div>
             <div class="d-flex gap-2">
-                <a class="btn btn-outline-primary" href="<?php echo sanitize_output(asset('modules/opportunities/promotions/index.php')); ?>">
+                <a class="btn btn-outline-primary" href="<?php echo sanitize_output(opportunities_promotions_url('index')); ?>">
                     <i class="fa-solid fa-folder-open me-2"></i>File manager promo
                 </a>
                 <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(asset('modules/impostazioni/morosita.php')); ?>">
                     <i class="fa-solid fa-shield-halved me-2"></i>Verifica morosità
                 </a>
-                <a class="btn btn-primary" href="<?php echo sanitize_output(asset('modules/opportunities/commissions.php')); ?>">
+                <a class="btn btn-primary" href="<?php echo sanitize_output(opportunities_module_url('commissions')); ?>">
                     <i class="fa-solid fa-hand-holding-dollar me-2"></i>Provvigioni collaboratori
                 </a>
             </div>
@@ -171,7 +171,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </div>
                     <div class="col-md-2 d-flex gap-2">
                         <button class="btn btn-primary w-100" type="submit"><i class="fa-solid fa-filter me-2"></i>Filtra</button>
-                        <a class="btn btn-light w-100" href="<?php echo asset('modules/opportunities/index.php'); ?>">Reset</a>
+                        <a class="btn btn-light w-100" href="<?php echo opportunities_module_url('index'); ?>">Reset</a>
                     </div>
                 </div>
             </div>
@@ -241,7 +241,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <td><?php echo sanitize_output(format_datetime_locale($opportunity['created_at'] ?? null)); ?></td>
                                 <td class="text-end">
                                     <?php if (($opportunity['status_code'] ?? '') === 'annullato'): ?>
-                                        <form class="d-inline" method="post" action="<?php echo asset('modules/opportunities/detail.php?id=' . (int) $opportunity['id']); ?>">
+                                        <form class="d-inline" method="post" action="<?php echo opportunities_module_url('detail', ['id' => (int) $opportunity['id']]); ?>">
                                             <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                             <input type="hidden" name="form_action" value="reopen_for_correction">
                                             <input type="hidden" name="reopen_note" value="Richiesta rettifica dall'elenco amministrazione">
@@ -250,7 +250,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             </button>
                                         </form>
                                     <?php endif; ?>
-                                    <form class="d-inline" method="post" action="<?php echo asset('modules/opportunities/index.php'); ?>">
+                                    <form class="d-inline" method="post" action="<?php echo opportunities_module_url('index'); ?>">
                                         <input type="hidden" name="csrf_token" value="<?php echo sanitize_output($csrfToken); ?>">
                                         <input type="hidden" name="form_action" value="delete_opportunity">
                                         <input type="hidden" name="opportunity_id" value="<?php echo (int) $opportunity['id']; ?>">
@@ -258,7 +258,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
                                     </form>
-                                    <a class="btn btn-sm btn-outline-primary" href="<?php echo asset('modules/opportunities/detail.php?id=' . (int) $opportunity['id']); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Gestisci opportunity">
+                                    <a class="btn btn-sm btn-outline-primary" href="<?php echo opportunities_module_url('detail', ['id' => (int) $opportunity['id']]); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Gestisci opportunity">
                                         <i class="fa-solid fa-eye me-1"></i>Gestisci
                                     </a>
                                 </td>

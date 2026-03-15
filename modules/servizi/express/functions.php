@@ -267,7 +267,7 @@ function express_module_require_access(?PDO $pdo = null, ?int $userId = null): v
     }
 
     add_flash('warning', 'Solo Admin e Manager possono utilizzare il modulo Express.');
-    header('Location: ' . base_url('dashboard.php'));
+    header('Location: ' . dashboard_url());
     exit;
 }
 
@@ -2546,16 +2546,16 @@ function express_module_sale_document_note(array $sale): string
 function express_module_render_nav(string $active): void
 {
     $items = [
-        'dashboard' => ['label' => 'Dashboard', 'href' => base_url('modules/servizi/express/index.php')],
-        'stock' => ['label' => 'Stock ICCID', 'href' => base_url('modules/servizi/express/stock.php')],
-        'products' => ['label' => 'Prodotti', 'href' => base_url('modules/servizi/express/products.php')],
-        'offers' => ['label' => 'Offerte', 'href' => base_url('modules/servizi/express/offers.php')],
-        'customers' => ['label' => 'Clienti', 'href' => base_url('modules/servizi/express/customers.php')],
-        'requests' => ['label' => 'Richieste', 'href' => base_url('modules/servizi/express/requests.php')],
-        'notifications' => ['label' => 'Notifiche', 'href' => base_url('modules/servizi/express/notifications.php')],
-        'sales' => ['label' => 'Vendite', 'href' => base_url('modules/servizi/express/sales.php')],
-        'reports' => ['label' => 'Report', 'href' => base_url('modules/servizi/express/reports.php')],
-        'new-sale' => ['label' => 'Nuova vendita', 'href' => base_url('modules/servizi/express/create_sale.php')],
+        'dashboard' => ['label' => 'Dashboard', 'href' => express_module_url('index')],
+        'stock' => ['label' => 'Stock ICCID', 'href' => express_module_url('stock')],
+        'products' => ['label' => 'Prodotti', 'href' => express_module_url('products')],
+        'offers' => ['label' => 'Offerte', 'href' => express_module_url('offers')],
+        'customers' => ['label' => 'Clienti', 'href' => express_module_url('customers')],
+        'requests' => ['label' => 'Richieste', 'href' => express_module_url('requests')],
+        'notifications' => ['label' => 'Notifiche', 'href' => express_module_url('notifications')],
+        'sales' => ['label' => 'Vendite', 'href' => express_module_url('sales')],
+        'reports' => ['label' => 'Report', 'href' => express_module_url('reports')],
+        'new-sale' => ['label' => 'Nuova vendita', 'href' => express_module_url('create_sale')],
     ];
     ?>
     <div class="card ag-card mb-4">
@@ -2576,4 +2576,16 @@ function express_module_render_nav(string $active): void
         </div>
     </div>
     <?php
+}
+
+function express_module_url(string $path = '', array $query = []): string
+{
+    $normalizedPath = trim($path, '/');
+    $url = base_url('modules/servizi/express' . ($normalizedPath !== '' ? '/' . $normalizedPath : ''));
+
+    if ($query !== []) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    return $url;
 }

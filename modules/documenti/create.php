@@ -235,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->commit();
             add_flash('success', 'Documento caricato con successo.');
-            header('Location: index.php');
+            header('Location: ' . documenti_module_url('index'));
             exit;
         } catch (Throwable $e) {
             $pdo->rollBack();
@@ -254,7 +254,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         <div class="page-toolbar mb-4">
             <h1 class="h3 mb-0">Carica documento</h1>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-light" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Torna all'archivio</a>
+                <a class="btn btn-outline-light" href="<?php echo documenti_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Torna all'archivio</a>
             </div>
         </div>
 

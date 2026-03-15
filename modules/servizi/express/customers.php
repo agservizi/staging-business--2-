@@ -16,7 +16,7 @@ $perPage = 10;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = express_module_save_customer($pdo, $_POST, $currentUserId);
     add_flash($result['success'] ? 'success' : 'warning', $result['message']);
-    header('Location: customers.php');
+    header('Location: ' . express_module_url('customers'));
     exit;
 }
 
@@ -237,7 +237,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <p class="text-muted small mb-0">Anagrafica completa per vendite Express, documenti gestionali e gestione post-vendita.</p>
                                 </div>
                                 <?php if ($editingCustomer): ?>
-                                    <a class="btn btn-outline-secondary btn-sm" href="customers.php">Annulla</a>
+                                    <a class="btn btn-outline-secondary btn-sm" href="<?php echo sanitize_output(express_module_url('customers')); ?>">Annulla</a>
                                 <?php else: ?>
                                     <span class="badge rounded-pill text-bg-light"><?php echo (int) $customerSummary['noted_customers']; ?> con note</span>
                                 <?php endif; ?>
@@ -303,7 +303,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 </div>
                                 <div class="express-customers-toolbar-actions">
                                     <button class="btn btn-warning px-4" type="submit">Cerca</button>
-                                    <a class="btn btn-outline-secondary px-4" href="customers.php">Reset</a>
+                                    <a class="btn btn-outline-secondary px-4" href="<?php echo sanitize_output(express_module_url('customers')); ?>">Reset</a>
                                 </div>
                             </form>
 
@@ -338,7 +338,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                 <td class="text-muted"><?php echo sanitize_output($contactLine !== '' ? $contactLine : '—'); ?></td>
                                                 <td><?php echo sanitize_output((string) ($customer['cf_piva'] ?? '—')); ?></td>
                                                 <td class="text-muted"><?php echo sanitize_output((string) (($customer['note'] ?? '') !== '' ? mb_substr((string) $customer['note'], 0, 80) : '—')); ?></td>
-                                                <td class="text-end"><a class="btn btn-icon btn-soft-accent btn-sm" href="customers.php?edit=<?php echo (int) $customer['id']; ?>"><i class="fa-solid fa-pen"></i></a></td>
+                                                <td class="text-end"><a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(express_module_url('customers', ['edit' => (int) $customer['id']])); ?>"><i class="fa-solid fa-pen"></i></a></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>

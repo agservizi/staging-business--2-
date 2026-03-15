@@ -31,14 +31,14 @@ require_role('Admin', 'Operatore', 'Manager');
 $shipmentId = (int) ($_GET['id'] ?? 0);
 if ($shipmentId <= 0) {
     add_flash('warning', 'Spedizione BRT non trovata.');
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }
 
 $shipment = brt_get_shipment($shipmentId);
 if ($shipment === null) {
     add_flash('warning', 'Spedizione BRT non trovata.');
-    header('Location: index.php');
+    header('Location: ' . brt_module_url('index'));
     exit;
 }
 
@@ -588,12 +588,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Riepilogo completo della spedizione e payload inviati ai webservice.</p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Torna alla lista</a>
+                <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('index'); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Torna alla lista</a>
                 <?php if (!empty($shipment['label_path'])): ?>
                     <a class="btn btn-outline-primary" href="<?php echo asset($shipment['label_path']); ?>" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf me-2"></i>Scarica etichetta</a>
                 <?php endif; ?>
                 <?php if ((string) ($shipment['status'] ?? '') !== 'cancelled' && empty($shipment['deleted_at'])): ?>
-                    <a class="btn btn-outline-warning" href="orm.php?from_shipment=<?php echo (int) $shipment['id']; ?>">
+                    <a class="btn btn-outline-warning" href="<?php echo brt_module_url('orm', ['from_shipment' => (int) $shipment['id']]); ?>">
                         <i class="fa-solid fa-truck-ramp-box me-2"></i>Prenota ritiro ORM
                     </a>
                 <?php endif; ?>

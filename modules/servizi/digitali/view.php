@@ -8,7 +8,7 @@ $pageTitle = 'Dettaglio movimento fedeltà';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
-    header('Location: index.php');
+    header('Location: ' . digitali_module_url('index'));
     exit;
 }
 
@@ -20,7 +20,7 @@ $movementStmt->execute([':id' => $id]);
 $movement = $movementStmt->fetch();
 
 if (!$movement) {
-    header('Location: index.php?notfound=1');
+    header('Location: ' . digitali_module_url('index', ['notfound' => 1]));
     exit;
 }
 
@@ -38,9 +38,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="page-toolbar mb-4">
-            <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Tutti i movimenti</a>
+            <a class="btn btn-outline-warning" href="<?php echo sanitize_output(digitali_module_url('index')); ?>"><i class="fa-solid fa-arrow-left"></i> Tutti i movimenti</a>
             <div class="toolbar-actions">
-                <a class="btn btn-warning text-dark" href="edit.php?id=<?php echo $id; ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
+                <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(digitali_module_url('edit', ['id' => $id])); ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
             </div>
         </div>
 

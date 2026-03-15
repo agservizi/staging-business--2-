@@ -128,7 +128,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </div>
                     <div class="col-12 d-flex gap-2">
                         <button class="btn btn-primary" type="submit">Cerca</button>
-                        <a class="btn btn-outline-secondary" href="<?php echo base_url('modules/impostazioni/search.php'); ?>">Reset</a>
+                        <a class="btn btn-outline-secondary" href="<?php echo impostazioni_module_url('search'); ?>">Reset</a>
                     </div>
                 </form>
             </div>

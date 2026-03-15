@@ -13,14 +13,14 @@ $opportunityId = isset($_REQUEST['id']) ? (int) $_REQUEST['id'] : 0;
 
 if ($opportunityId <= 0 || $collaboratorId <= 0) {
     add_flash('warning', 'Opportunity non trovata.');
-    header('Location: list.php');
+    header('Location: ' . opportunities_collaborator_url('list'));
     exit;
 }
 
 $opportunity = $opportunityService->findById($opportunityId);
 if ($opportunity === null || (int) ($opportunity['collaborator_id'] ?? 0) !== $collaboratorId) {
     add_flash('warning', 'Non hai accesso a questa opportunity.');
-    header('Location: list.php');
+    header('Location: ' . opportunities_collaborator_url('list'));
     exit;
 }
 
@@ -91,14 +91,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
             $errors[] = 'Impossibile inviare il sollecito. Riprova più tardi.';
         } else {
             add_flash('success', 'Sollecito inviato al team operativo.');
-            header('Location: view.php?id=' . $opportunityId);
+            header('Location: ' . opportunities_collaborator_url('view', ['id' => $opportunityId]));
             exit;
         }
     }
 }
 
-$viewUrl = asset('modules/opportunities/collaborator/view.php?id=' . $opportunityId);
-$listUrl = asset('modules/opportunities/collaborator/list.php');
+$viewUrl = opportunities_collaborator_url('view', ['id' => $opportunityId]);
+$listUrl = opportunities_collaborator_url('list');
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';

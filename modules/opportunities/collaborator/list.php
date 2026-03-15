@@ -124,10 +124,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Elenco compatto delle tue opportunity, ispirato alla vista amministratore.</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-                <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/index.php'); ?>">
+                <a class="btn btn-outline-secondary" href="<?php echo opportunities_collaborator_url('index'); ?>">
                     <i class="fa-solid fa-layer-group me-2"></i>Vista dashboard
                 </a>
-                <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
+                <a class="btn btn-primary" href="<?php echo opportunities_collaborator_url('create'); ?>">
                     <i class="fa-solid fa-plus me-2"></i>Nuova OP
                 </a>
             </div>
@@ -177,7 +177,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <button class="btn btn-primary w-100" type="submit">
                             <i class="fa-solid fa-filter me-2"></i>Filtra
                         </button>
-                        <a class="btn btn-light w-100" href="<?php echo asset('modules/opportunities/collaborator/list.php'); ?>">Reset</a>
+                        <a class="btn btn-light w-100" href="<?php echo opportunities_collaborator_url('list'); ?>">Reset</a>
                     </div>
                 </div>
             </div>
@@ -252,18 +252,18 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <td><?php echo sanitize_output(format_datetime_locale($opportunity['created_at'] ?? null)); ?></td>
                                 <td class="text-end">
                                     <?php if (!empty($opportunity['is_draft'])): ?>
-                                        <a class="btn btn-sm btn-warning" href="<?php echo sanitize_output(asset('modules/opportunities/collaborator/create.php?auto_restore_draft=1')); ?>">
+                                        <a class="btn btn-sm btn-warning" href="<?php echo sanitize_output(opportunities_collaborator_url('create', ['auto_restore_draft' => 1])); ?>">
                                             <i class="fa-solid fa-pen-to-square me-1"></i>Completa bozza
                                         </a>
                                     <?php elseif (!empty($opportunity['id'])): ?>
                                         <?php
                                             $opportunityId = (int) $opportunity['id'];
                                             $statusCode = strtolower((string) ($opportunity['status_code'] ?? ''));
-                                            $cloneUrl = asset('modules/opportunities/collaborator/create.php?clone_id=' . $opportunityId);
-                                            $viewUrl = asset('modules/opportunities/collaborator/view.php?id=' . $opportunityId);
-                                            $noteUrl = asset('modules/opportunities/collaborator/notes.php?id=' . $opportunityId);
-                                            $reminderUrl = asset('modules/opportunities/collaborator/reminder.php?id=' . $opportunityId);
-                                            $ticketUrl = asset('modules/opportunities/collaborator/ticket.php?id=' . $opportunityId);
+                                            $cloneUrl = opportunities_collaborator_url('create', ['clone_id' => $opportunityId]);
+                                            $viewUrl = opportunities_collaborator_url('view', ['id' => $opportunityId]);
+                                            $noteUrl = opportunities_collaborator_url('notes', ['id' => $opportunityId]);
+                                            $reminderUrl = opportunities_collaborator_url('reminder', ['id' => $opportunityId]);
+                                            $ticketUrl = opportunities_collaborator_url('ticket', ['id' => $opportunityId]);
                                             $isCancelled = in_array($statusCode, ['annullato', 'annullata', 'cancelled', 'canceled'], true);
                                             $canEdit = $statusCode === 'in_verifica';
                                         ?>
@@ -276,7 +276,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             </a>
                                             <?php if (!$isCancelled): ?>
                                                 <?php if ($canEdit): ?>
-                                                    <a class="btn btn-sm btn-outline-warning btn-icon" href="<?php echo sanitize_output(asset('modules/opportunities/collaborator/create.php?edit_id=' . $opportunityId)); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Modifica dati opportunity" aria-label="Modifica dati opportunity">
+                                                    <a class="btn btn-sm btn-outline-warning btn-icon" href="<?php echo sanitize_output(opportunities_collaborator_url('create', ['edit_id' => $opportunityId])); ?>" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Modifica dati opportunity" aria-label="Modifica dati opportunity">
                                                         <i class="fa-solid fa-pen" aria-hidden="true"></i>
                                                     </a>
                                                 <?php endif; ?>
@@ -320,7 +320,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 }
                 $buildPageUrl = static function (int $page) use ($queryParams): string {
                     $params = array_merge($queryParams, ['page' => $page]);
-                    return asset('modules/opportunities/collaborator/list.php?' . http_build_query($params));
+                    return opportunities_collaborator_url('list', $params);
                 };
             ?>
             <nav class="mt-3" aria-label="Paginazione elenco opportunity">

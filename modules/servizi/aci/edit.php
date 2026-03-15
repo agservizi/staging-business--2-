@@ -41,14 +41,14 @@ if (!$stati) {
 $praticaId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($praticaId <= 0) {
     add_flash('warning', 'Pratica non valida.');
-    header('Location: index.php');
+    header('Location: ' . aci_module_url('index'));
     exit;
 }
 
     $pratica = aci_get_pratica($pdo, $praticaId);
     if (!$pratica) {
         add_flash('warning', 'Pratica non trovata.');
-        header('Location: index.php');
+        header('Location: ' . aci_module_url('index'));
         exit;
     }
 
@@ -379,7 +379,7 @@ if ($praticaId <= 0) {
                 foreach (['Admin', 'Manager'] as $notifyRole) {
                     create_notification($pdo, array_merge($notification, ['scope' => 'role', 'role' => $notifyRole]), $actorId, $actorRole);
                 }
-                header('Location: view.php?id=' . $praticaId);
+                header('Location: ' . aci_module_url('view', ['id' => $praticaId]));
                 exit;
             }
         }
@@ -410,7 +410,7 @@ if ($praticaId <= 0) {
                     <p class="text-muted mb-0">Aggiorna la pratica con il wizard guidato.</p>
                 </div>
                 <div class="toolbar-actions d-flex gap-2">
-                    <a class="btn btn-outline-warning" href="view.php?id=<?php echo (int) $praticaId; ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
+                    <a class="btn btn-outline-warning" href="<?php echo aci_module_url('view', ['id' => (int) $praticaId]); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
                 </div>
             </div>
 
@@ -734,8 +734,8 @@ if ($praticaId <= 0) {
                                 <label class="form-check-label" for="consenso_veridicita">Dichiarazione veridicità dati</label>
                             </div>
                             <div class="d-flex flex-wrap gap-3">
-                                <a class="link-warning" href="privacy.php" target="_blank" rel="noopener">Privacy Policy</a>
-                                <a class="link-warning" href="termini.php" target="_blank" rel="noopener">Termini del servizio</a>
+                                <a class="link-warning" href="<?php echo aci_module_url('privacy'); ?>" target="_blank" rel="noopener">Privacy Policy</a>
+                                <a class="link-warning" href="<?php echo aci_module_url('termini'); ?>" target="_blank" rel="noopener">Termini del servizio</a>
                             </div>
                         </section>
 
@@ -775,7 +775,7 @@ if ($praticaId <= 0) {
                                         <div class="fw-semibold"><?php echo sanitize_output($categorieLabels[$attachment['categoria'] ?? 'generico'] ?? 'Allegato'); ?></div>
                                         <small class="text-muted d-block"><?php echo sanitize_output($attachment['file_name'] ?? ''); ?></small>
                                     </div>
-                                    <a class="btn btn-sm btn-outline-primary" href="download.php?id=<?php echo (int) $attachment['id']; ?>"><i class="fa-solid fa-download me-1"></i>Scarica</a>
+                                    <a class="btn btn-sm btn-outline-primary" href="<?php echo aci_module_url('download', ['id' => (int) $attachment['id']]); ?>"><i class="fa-solid fa-download me-1"></i>Scarica</a>
                                 </div>
                             <?php endforeach; ?>
                         </div>

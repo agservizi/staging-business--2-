@@ -137,11 +137,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <input class="form-control" type="date" name="created_from" value="<?php echo sanitize_output($createdFrom ? $createdFrom->format('Y-m-d') : ''); ?>" aria-label="Registrati dal">
                         <input class="form-control" type="date" name="created_to" value="<?php echo sanitize_output($createdTo ? $createdTo->format('Y-m-d') : ''); ?>" aria-label="Registrati fino al">
                         <button class="btn btn-warning" type="submit" title="Applica filtri"><i class="fa-solid fa-search"></i></button>
-                        <a class="btn btn-outline-warning" href="index.php" title="Reimposta"><i class="fa-solid fa-rotate-left"></i></a>
+                        <a class="btn btn-outline-warning" href="<?php echo clienti_module_url('index'); ?>" title="Reimposta"><i class="fa-solid fa-rotate-left"></i></a>
                     </div>
                 </form>
-                <a class="btn btn-outline-warning" href="import.php"><i class="fa-solid fa-file-import me-2"></i>Importa CSV</a>
-                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-user-plus me-2"></i>Nuovo cliente</a>
+                <a class="btn btn-outline-warning" href="<?php echo clienti_module_url('import'); ?>"><i class="fa-solid fa-file-import me-2"></i>Importa CSV</a>
+                <a class="btn btn-warning text-dark" href="<?php echo clienti_module_url('create'); ?>"><i class="fa-solid fa-user-plus me-2"></i>Nuovo cliente</a>
             </div>
         </div>
 
@@ -222,10 +222,10 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <td><?php echo sanitize_output(date('d/m/Y', strtotime($client['created_at']))); ?></td>
                                         <td class="text-end">
                                             <div class="d-inline-flex align-items-center justify-content-end gap-2 flex-wrap">
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="view.php?id=<?php echo (int) $client['id']; ?>" title="Dettaglio">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo clienti_module_url('view', ['id' => (int) $client['id']]); ?>" title="Dettaglio">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="edit.php?id=<?php echo (int) $client['id']; ?>" title="Modifica">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo clienti_module_url('edit', ['id' => (int) $client['id']]); ?>" title="Modifica">
                                                     <i class="fa-solid fa-pen"></i>
                                                 </a>
                                                 <button class="btn btn-icon btn-soft-danger btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#deleteModal" data-id="<?php echo (int) $client['id']; ?>" title="Elimina">
@@ -242,7 +242,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     <div class="text-center text-muted py-5">
                         <i class="fa-solid fa-users-slash fa-2x mb-3"></i>
                         <p class="mb-1">Nessun cliente corrisponde ai filtri applicati.</p>
-                        <a class="btn btn-outline-warning" href="index.php">Reimposta filtri</a>
+                        <a class="btn btn-outline-warning" href="<?php echo clienti_module_url('index'); ?>">Reimposta filtri</a>
                     </div>
                 <?php endif; ?>
             </div>
@@ -296,7 +296,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </div>
             <div class="modal-footer border-0">
                 <button type="button" class="btn btn-outline-warning" data-bs-dismiss="modal">Annulla</button>
-                <form id="deleteForm" method="post" action="delete.php">
+                <form id="deleteForm" method="post" action="<?php echo clienti_module_url('delete'); ?>">
                     <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
                     <input type="hidden" name="id" id="deleteId" value="">
                     <button type="submit" class="btn btn-warning">Elimina</button>

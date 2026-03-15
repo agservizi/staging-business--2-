@@ -107,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                 $_SESSION['mfa_challenge'] = array_merge($pendingLogin, [
                     'expires_at' => time() + 300,
                 ]);
-                header('Location: ' . base_url('mfa-verify.php'));
+                header('Location: ' . mfa_verify_url());
                 exit;
             }
 
@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                 'expires_at' => time() + 900,
             ]);
 
-            header('Location: ' . base_url('mfa-setup.php'));
+            header('Location: ' . mfa_setup_url());
             exit;
         }
     }
@@ -156,8 +156,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                 <div class="auth-panel-inner">
                     <div class="mb-4 text-center text-md-start">
                         <h2 class="h4 fw-semibold mb-2">Accedi al tuo workspace</h2>
-                        <p class="login-meta mb-1">Hai bisogno di assistenza? <a class="link-warning text-decoration-none" href="forgot_password.php">Recupera l'accesso</a>.</p>
-                        <p class="login-meta mb-0">Sei un nuovo collaboratore? <a class="link-warning text-decoration-none" href="<?php echo base_url('modules/opportunities/collaborator/register.php'); ?>">Registrati qui</a>.</p>
+                        <p class="login-meta mb-1">Hai bisogno di assistenza? <a class="link-warning text-decoration-none" href="<?php echo forgot_password_url(); ?>">Recupera l'accesso</a>.</p>
+                        <p class="login-meta mb-0">Sei un nuovo collaboratore? <a class="link-warning text-decoration-none" href="<?php echo opportunities_collaborator_url('register'); ?>">Registrati qui</a>.</p>
                     </div>
                     <?php if ($errors): ?>
                         <div class="alert alert-danger border-0 shadow-sm mb-4" role="alert">
@@ -186,13 +186,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                                 <input class="form-check-input" type="checkbox" value="1" id="rememberMe" name="remember"<?php echo $rememberRequested ? ' checked' : ''; ?>>
                                 <label class="form-check-label" for="rememberMe">Mantieni l'accesso su questo dispositivo</label>
                             </div>
-                            <a class="link-warning text-decoration-none" href="forgot_password.php">Hai dimenticato la password?</a>
+                            <a class="link-warning text-decoration-none" href="<?php echo forgot_password_url(); ?>">Hai dimenticato la password?</a>
                         </div>
                         <div class="d-grid">
                             <button type="submit" class="btn btn-warning fw-semibold">Entra in Coresuite Business</button>
                         </div>
                         <div class="d-grid mt-3">
-                            <a class="btn btn-outline-warning" href="<?php echo base_url('modules/opportunities/collaborator/register.php'); ?>">Sei un nuovo collaboratore? Registrati</a>
+                            <a class="btn btn-outline-warning" href="<?php echo opportunities_collaborator_url('register'); ?>">Sei un nuovo collaboratore? Registrati</a>
                         </div>
                     </form>
                     <div class="login-meta mt-5">

@@ -68,9 +68,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Panoramica rapida delle pratiche automobilistiche.</p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-table-list me-2"></i>Elenco pratiche</a>
+                <a class="btn btn-outline-warning" href="<?php echo aci_module_url('index'); ?>"><i class="fa-solid fa-table-list me-2"></i>Elenco pratiche</a>
                 <?php if ($puoCreare): ?>
-                    <a class="btn btn-warning text-dark" href="create-wizard.php?protocollo=<?php echo urlencode($protocolloWizard); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova pratica</a>
+                    <a class="btn btn-warning text-dark" href="<?php echo aci_module_url('create-wizard', ['protocollo' => $protocolloWizard]); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova pratica</a>
                 <?php endif; ?>
             </div>
         </div>
@@ -155,7 +155,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <div class="card ag-card h-100">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <h2 class="h5 mb-0">Scadenze in 30 giorni</h2>
-                        <a class="btn btn-sm btn-outline-warning" href="index.php?stato=">Vedi elenco</a>
+                        <a class="btn btn-sm btn-outline-warning" href="<?php echo aci_module_url('index', ['stato' => '']); ?>">Vedi elenco</a>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -200,7 +200,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <div class="card ag-card h-100">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <h2 class="h5 mb-0">Ultime pratiche aggiornate</h2>
-                        <a class="btn btn-sm btn-outline-warning" href="index.php">Vedi elenco</a>
+                        <a class="btn btn-sm btn-outline-warning" href="<?php echo aci_module_url('index'); ?>">Vedi elenco</a>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">

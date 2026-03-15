@@ -12,14 +12,14 @@ $pageTitle = 'Modifica pratica ANPR';
 $praticaId = (int) ($_GET['id'] ?? 0);
 if ($praticaId <= 0) {
     add_flash('warning', 'Pratica non valida.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
 $pratica = anpr_fetch_pratica($pdo, $praticaId);
 if (!$pratica) {
     add_flash('warning', 'Pratica non trovata.');
-    header('Location: index.php');
+    header('Location: ' . anpr_module_url('index'));
     exit;
 }
 
@@ -127,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             anpr_log_action($pdo, 'Pratica aggiornata', 'Aggiornata pratica ANPR ' . $pratica['pratica_code']);
             add_flash('success', 'Pratica aggiornata correttamente.');
-            header('Location: view_request.php?id=' . $praticaId);
+            header('Location: ' . anpr_module_url('view_request', ['id' => $praticaId]));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -158,8 +158,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <a class="btn btn-outline-warning" href="https://www.anagrafenazionale.interno.it/servizi-al-cittadino/" target="_blank" rel="noopener">
                     <i class="fa-solid fa-up-right-from-square me-2"></i>Portale ANPR
                 </a>
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Indietro</a>
-                <a class="btn btn-outline-warning" href="view_request.php?id=<?php echo $praticaId; ?>"><i class="fa-solid fa-eye me-2"></i>Dettagli</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('index')); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Indietro</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('view_request', ['id' => $praticaId])); ?>"><i class="fa-solid fa-eye me-2"></i>Dettagli</a>
             </div>
         </div>
         <?php if ($errors): ?>
@@ -225,7 +225,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <small class="text-muted">Carica solo se devi sostituire il PDF già salvato.</small>
                     </div>
                     <div class="col-12 d-flex justify-content-end gap-2">
-                        <a class="btn btn-outline-warning" href="index.php">Annulla</a>
+                        <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('view_request', ['id' => $praticaId])); ?>">Annulla</a>
                         <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Salva modifiche</button>
                     </div>
                 </form>

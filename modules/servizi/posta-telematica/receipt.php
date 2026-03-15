@@ -11,14 +11,14 @@ require_role('Admin', 'Operatore', 'Manager');
 $messageId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 if ($messageId <= 0) {
     add_flash('warning', 'Invio non trovato.');
-    header('Location: index.php');
+    header('Location: ' . posta_telematica_module_url('index'));
     exit;
 }
 
 $message = posta_telematica_get_message($pdo, $messageId);
 if (!$message) {
     add_flash('warning', 'Invio non trovato.');
-    header('Location: index.php');
+    header('Location: ' . posta_telematica_module_url('index'));
     exit;
 }
 

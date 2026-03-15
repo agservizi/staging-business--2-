@@ -8,7 +8,7 @@ $pageTitle = 'Dettaglio cliente';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
-    header('Location: index.php');
+    header('Location: ' . clienti_module_url('index'));
     exit;
 }
 
@@ -17,7 +17,7 @@ $clientStmt->execute([':id' => $id]);
 $client = $clientStmt->fetch();
 
 if (!$client) {
-    header('Location: index.php?notfound=1');
+    header('Location: ' . clienti_module_url('index', ['notfound' => 1]));
     exit;
 }
 
@@ -110,8 +110,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <?php endif; ?>
             </div>
             <div class="toolbar-actions d-inline-flex align-items-center gap-2 flex-wrap">
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-arrow-left"></i> Tutti i clienti</a>
-                <a class="btn btn-warning text-dark" href="edit.php?id=<?php echo (int) $client['id']; ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
+                <a class="btn btn-outline-warning" href="<?php echo clienti_module_url('index'); ?>"><i class="fa-solid fa-arrow-left"></i> Tutti i clienti</a>
+                <a class="btn btn-warning text-dark" href="<?php echo clienti_module_url('edit', ['id' => (int) $client['id']]); ?>"><i class="fa-solid fa-pen"></i> Modifica</a>
             </div>
         </div>
 
@@ -161,7 +161,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="card ag-card h-100">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">Storico servizi</h5>
-                        <a class="btn btn-sm btn-outline-warning" href="../servizi/entrate-uscite/create.php?cliente_id=<?php echo (int) $client['id']; ?>">Nuovo movimento</a>
+                        <a class="btn btn-sm btn-outline-warning" href="<?php echo entrate_uscite_module_url('create', ['cliente_id' => (int) $client['id']]); ?>">Nuovo movimento</a>
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
@@ -195,7 +195,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="card ag-card h-100">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">Ticket recenti</h5>
-                        <a class="btn btn-sm btn-outline-warning" href="../ticket/create.php?cliente_id=<?php echo (int) $client['id']; ?>">Nuovo ticket</a>
+                        <a class="btn btn-sm btn-outline-warning" href="<?php echo ticket_module_url('create', ['cliente_id' => (int) $client['id']]); ?>">Nuovo ticket</a>
                     </div>
                     <div class="card-body">
                         <?php if ($tickets): ?>
@@ -210,7 +210,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     ?>
                                     <li class="list-group-item bg-transparent text-light d-flex justify-content-between align-items-start">
                                         <div>
-                                            <a class="link-warning fw-semibold" href="../ticket/view.php?id=<?php echo (int) $ticket['id']; ?>">#<?php echo sanitize_output($ticketCode); ?> &middot; <?php echo sanitize_output($subject); ?></a>
+                                            <a class="link-warning fw-semibold" href="<?php echo ticket_module_url('view', ['id' => (int) $ticket['id']]); ?>">#<?php echo sanitize_output($ticketCode); ?> &middot; <?php echo sanitize_output($subject); ?></a>
                                             <div class="small text-muted">Aperto il <?php echo sanitize_output(date('d/m/Y H:i', strtotime($ticket['created_at']))); ?></div>
                                         </div>
                                         <span class="badge ag-badge text-uppercase ms-2 flex-shrink-0"><?php echo sanitize_output($ticket['status']); ?></span>
@@ -227,7 +227,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <div class="card ag-card h-100">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">Documenti collegati</h5>
-                        <a class="btn btn-sm btn-outline-warning" href="../documenti/create.php?cliente_id=<?php echo (int) $client['id']; ?>">Carica documento</a>
+                        <a class="btn btn-sm btn-outline-warning" href="<?php echo documenti_module_url('create', ['cliente_id' => (int) $client['id']]); ?>">Carica documento</a>
                     </div>
                     <div class="card-body">
                         <?php if (!$documentsAvailable): ?>
@@ -238,7 +238,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     <li class="list-group-item bg-transparent text-light">
                                         <div class="d-flex justify-content-between align-items-start">
                                             <div>
-                                                <a class="link-warning fw-semibold" href="../documenti/view.php?id=<?php echo (int) $document['id']; ?>"><?php echo sanitize_output($document['titolo']); ?></a>
+                                                <a class="link-warning fw-semibold" href="<?php echo documenti_module_url('view', ['id' => (int) $document['id']]); ?>"><?php echo sanitize_output($document['titolo']); ?></a>
                                                 <div class="small text-muted">Modulo: <?php echo sanitize_output($document['modulo'] ?? '—'); ?></div>
                                             </div>
                                             <span class="badge bg-secondary text-uppercase ms-2 flex-shrink-0"><?php echo sanitize_output($document['stato']); ?></span>

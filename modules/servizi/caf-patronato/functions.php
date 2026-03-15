@@ -324,7 +324,7 @@ function caf_patronato_decrypt_file(string $absolutePath): string
 function caf_patronato_build_download_url(string $source, int $id): string
 {
     $normalizedSource = 'document';
-    return base_url('modules/servizi/caf-patronato/download.php?source=' . $normalizedSource . '&id=' . $id);
+    return caf_patronato_module_url('download', ['source' => $normalizedSource, 'id' => $id]);
 }
 
 /**

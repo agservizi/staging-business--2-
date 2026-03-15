@@ -8,7 +8,7 @@ use App\Services\GoogleCalendarService;
 require_role('Admin', 'Operatore', 'Manager');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: index.php');
+    header('Location: ' . appuntamenti_module_url('index'));
     exit;
 }
 
@@ -17,14 +17,14 @@ require_valid_csrf();
 $id = (int) ($_POST['id'] ?? 0);
 if ($id <= 0) {
     add_flash('warning', 'Appuntamento non valido.');
-    header('Location: index.php');
+    header('Location: ' . appuntamenti_module_url('index'));
     exit;
 }
 
 $calendarService = new GoogleCalendarService();
 if (!$calendarService->isEnabled()) {
     add_flash('warning', 'Integrazione Google Calendar disabilitata.');
-    header('Location: view.php?id=' . $id);
+    header('Location: ' . appuntamenti_module_url('view', ['id' => $id]));
     exit;
 }
 
@@ -32,7 +32,7 @@ $statusConfig = get_appointment_status_config($pdo);
 $confirmationStatus = trim((string) $statusConfig['confirmation']);
 if ($confirmationStatus === '') {
     add_flash('warning', 'Configura uno stato "confermato" nelle impostazioni prima di sincronizzare.');
-    header('Location: view.php?id=' . $id);
+    header('Location: ' . appuntamenti_module_url('view', ['id' => $id]));
     exit;
 }
 
@@ -42,13 +42,13 @@ $appointment = $stmt->fetch();
 
 if (!$appointment) {
     add_flash('warning', 'Appuntamento non trovato.');
-    header('Location: index.php');
+    header('Location: ' . appuntamenti_module_url('index'));
     exit;
 }
 
 if (strcasecmp(trim((string) ($appointment['stato'] ?? '')), $confirmationStatus) !== 0) {
     add_flash('warning', 'Sincronizza l\'appuntamento solo dopo averlo impostato come "' . $confirmationStatus . '".');
-    header('Location: view.php?id=' . $id);
+    header('Location: ' . appuntamenti_module_url('view', ['id' => $id]));
     exit;
 }
 
@@ -74,5 +74,5 @@ try {
     add_flash('warning', 'Sincronizzazione Google Calendar non riuscita: ' . $errorMessage);
 }
 
-header('Location: view.php?id=' . $id);
+header('Location: ' . appuntamenti_module_url('view', ['id' => $id]));
 exit;

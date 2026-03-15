@@ -104,7 +104,7 @@ if (isset($_GET['export'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_valid_csrf();
     $action = $_POST['action'] ?? '';
-    $redirectUrl = 'index.php';
+    $redirectUrl = logistici_module_url('index');
     $respondError = static function (Throwable $exception, string $context, bool $expectsJsonResponse): void {
         error_log($context . ': ' . $exception->getMessage());
         $message = $exception instanceof InvalidArgumentException
@@ -120,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ], JSON_THROW_ON_ERROR);
         } else {
             add_flash('danger', $message);
-            header('Location: index.php');
+            header('Location: ' . logistici_module_url('index'));
         }
         exit;
     };
@@ -438,10 +438,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Monitoraggio pacchi, notifiche clienti e archivio ritiri.</p>
             </div>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
-                <a class="btn btn-outline-warning" href="reports.php"><i class="fa-solid fa-inbox me-2"></i>Segnalazioni portal</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('reports')); ?>"><i class="fa-solid fa-inbox me-2"></i>Segnalazioni portal</a>
                 <button class="btn btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#pickupCheckinModal"><i class="fa-solid fa-qrcode me-2"></i>Ritiro con codice</button>
-                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo pickup</a>
-                <a class="btn btn-outline-warning" href="index.php"><i class="fa-solid fa-rotate"></i></a>
+                <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(logistici_module_url('create')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo pickup</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('index')); ?>"><i class="fa-solid fa-rotate"></i></a>
             </div>
         </div>
 
@@ -527,17 +527,17 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <h2 class="h5 mb-0">Filtri</h2>
                             <div class="action-buttons d-flex flex-wrap gap-2">
                                 <?php $queryString = http_build_query(array_merge($exportParams, ['export' => 'csv'])); ?>
-                                <a class="btn btn-sm btn-outline-warning" href="index.php?<?php echo sanitize_output($queryString); ?>"><i class="fa-solid fa-file-csv me-1"></i>Esporta CSV</a>
+                                <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('index') . '?' . $queryString); ?>"><i class="fa-solid fa-file-csv me-1"></i>Esporta CSV</a>
                                 <?php $queryStringPdf = http_build_query(array_merge($exportParams, ['export' => 'pdf'])); ?>
-                                <a class="btn btn-sm btn-outline-warning" href="index.php?<?php echo sanitize_output($queryStringPdf); ?>"><i class="fa-solid fa-file-pdf me-1"></i>Esporta PDF</a>
-                                <button class="btn btn-sm btn-outline-warning" type="button" data-pickup-archive-button data-days="<?php echo PICKUP_DEFAULT_ARCHIVE_DAYS; ?>" data-action="index.php" data-csrf="<?php echo $formToken; ?>">
+                                <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('index') . '?' . $queryStringPdf); ?>"><i class="fa-solid fa-file-pdf me-1"></i>Esporta PDF</a>
+                                <button class="btn btn-sm btn-outline-warning" type="button" data-pickup-archive-button data-days="<?php echo PICKUP_DEFAULT_ARCHIVE_DAYS; ?>" data-action="<?php echo sanitize_output(logistici_module_url('index')); ?>" data-csrf="<?php echo $formToken; ?>">
                                     <i class="fa-solid fa-box-archive me-1"></i>Archivia ritirati
                                 </button>
                             </div>
                         </div>
                     </div>
                     <div class="card-body">
-                        <form class="row g-3 align-items-end filters" method="get" action="index.php">
+                        <form class="row g-3 align-items-end filters" method="get" action="<?php echo sanitize_output(logistici_module_url('index')); ?>">
                             <div class="col-sm-6 col-lg-3">
                                 <label class="form-label" for="search">Ricerca</label>
                                 <input class="form-control" id="search" name="search" value="<?php echo sanitize_output($search); ?>" placeholder="Tracking o cliente">
@@ -594,7 +594,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-12 d-flex gap-2">
                                 <button class="btn btn-warning text-dark" type="submit">Applica filtri</button>
-                                <a class="btn btn-outline-warning" href="index.php">Reset</a>
+                                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('index')); ?>">Reset</a>
                             </div>
                         </form>
                     </div>
@@ -655,7 +655,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             </td>
                                             <td>
                                                 <span class="badge-status" data-status="<?php echo sanitize_output($package['status']); ?>" data-status-badge><?php echo pickup_status_label($package['status']); ?></span>
-                                                <form class="d-flex align-items-center gap-2 mt-2" method="post" action="index.php" data-pickup-status-form>
+                                                <form class="d-flex align-items-center gap-2 mt-2" method="post" action="<?php echo sanitize_output(logistici_module_url('index')); ?>" data-pickup-status-form>
                                                     <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                                                     <input type="hidden" name="action" value="update_status">
                                                     <input type="hidden" name="package_id" value="<?php echo (int) $package['id']; ?>">
@@ -671,13 +671,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <td data-updated-at><?php echo sanitize_output(format_datetime_locale($package['updated_at'] ?? '')); ?></td>
                                             <td class="text-end">
                                                 <div class="d-inline-flex align-items-center justify-content-end gap-2 flex-wrap">
-                                                    <a class="btn btn-icon btn-soft-accent btn-sm" href="view.php?id=<?php echo (int) $package['id']; ?>" title="Dettagli">
+                                                    <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(logistici_module_url('view', ['id' => (int) $package['id']])); ?>" title="Dettagli">
                                                         <i class="fa-solid fa-eye"></i>
                                                     </a>
-                                                    <a class="btn btn-icon btn-soft-accent btn-sm" href="edit.php?id=<?php echo (int) $package['id']; ?>" title="Modifica">
+                                                    <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(logistici_module_url('edit', ['id' => (int) $package['id']])); ?>" title="Modifica">
                                                         <i class="fa-solid fa-pen"></i>
                                                     </a>
-                                                    <form method="post" action="delete.php" onsubmit="return confirm('Confermi l\'eliminazione del pickup?');">
+                                                    <form method="post" action="<?php echo sanitize_output(logistici_module_url('delete')); ?>" onsubmit="return confirm('Confermi l\'eliminazione del pickup?');">
                                                         <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                                                         <input type="hidden" name="id" value="<?php echo (int) $package['id']; ?>">
                                                         <button class="btn btn-icon btn-soft-danger btn-sm" type="submit" title="Elimina">
@@ -701,7 +701,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <h2 class="h5 mb-0">QR check-in</h2>
                     </div>
                     <div class="card-body">
-                        <form method="post" action="index.php" data-pickup-checkin-qr>
+                        <form method="post" action="<?php echo sanitize_output(logistici_module_url('index')); ?>" data-pickup-checkin-qr>
                             <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                             <input type="hidden" name="action" value="generate_checkin_qr">
                             <div class="mb-3">
@@ -715,7 +715,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <button class="btn btn-outline-warning w-100" type="submit"><i class="fa-solid fa-qrcode me-2"></i>Genera QR</button>
                         </form>
-                        <form class="mt-2" method="post" action="index.php" onsubmit="return confirm('Rigenerare i QR firmati per tutti i pacchi attivi?');">
+                        <form class="mt-2" method="post" action="<?php echo sanitize_output(logistici_module_url('index')); ?>" onsubmit="return confirm('Rigenerare i QR firmati per tutti i pacchi attivi?');">
                             <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                             <input type="hidden" name="action" value="regenerate_qr_tokens">
                             <button class="btn btn-sm btn-outline-warning w-100" type="submit">
@@ -733,7 +733,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <h2 class="h5 mb-0">Segnalazioni clienti</h2>
                             <p class="text-muted small mb-0">Portale pickup</p>
                         </div>
-                        <a class="btn btn-sm btn-outline-warning" href="reports.php">Gestisci</a>
+                        <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('reports')); ?>">Gestisci</a>
                     </div>
                     <div class="card-body">
                         <?php if (($customerReportStats['pending_unlinked'] ?? 0) > 0): ?>
@@ -776,8 +776,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         <div class="small text-muted mt-2"><?php echo sanitize_output($notePreview); ?></div>
                                     <?php endif; ?>
                                     <div class="d-flex flex-wrap gap-2 mt-3">
-                                        <a class="btn btn-sm btn-outline-warning" href="report.php?id=<?php echo (int) $report['id']; ?>">Dettagli</a>
-                                        <a class="btn btn-sm btn-warning text-dark" href="create.php?source_report=<?php echo (int) $report['id']; ?>">Crea pickup</a>
+                                        <a class="btn btn-sm btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('report', ['id' => (int) $report['id']])); ?>">Dettagli</a>
+                                        <a class="btn btn-sm btn-warning text-dark" href="<?php echo sanitize_output(logistici_module_url('create', ['source_report' => (int) $report['id']])); ?>">Crea pickup</a>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -790,7 +790,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <h2 class="h5 mb-0">Invia notifica</h2>
                     </div>
                     <div class="card-body">
-                        <form class="mb-4" method="post" action="index.php" data-pickup-notification-form>
+                        <form class="mb-4" method="post" action="<?php echo sanitize_output(logistici_module_url('index')); ?>" data-pickup-notification-form>
                             <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                             <input type="hidden" name="action" value="send_notification">
                             <input type="hidden" name="channel" value="email">
@@ -823,7 +823,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <button class="btn btn-warning text-dark w-100" type="submit">Invia email</button>
                         </form>
 
-                        <form method="post" action="index.php" data-pickup-notification-form>
+                        <form method="post" action="<?php echo sanitize_output(logistici_module_url('index')); ?>" data-pickup-notification-form>
                             <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                             <input type="hidden" name="action" value="send_notification">
                             <input type="hidden" name="channel" value="whatsapp">
@@ -889,7 +889,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="post" action="checkin.php" id="pickupCheckinForm">
+                <form method="post" action="<?php echo sanitize_output(logistici_module_url('checkin')); ?>" id="pickupCheckinForm">
                     <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                     <div class="mb-3">
                         <label class="form-label" for="checkin_tracking">Tracking</label>

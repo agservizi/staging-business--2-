@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $newId = cie_create($pdo, $payload, $_FILES);
             add_flash('success', 'Prenotazione CIE creata correttamente.');
-            header('Location: view.php?id=' . $newId);
+            header('Location: ' . cie_module_url('view', ['id' => $newId]));
             exit;
         } catch (Throwable $exception) {
             $errors[] = 'Impossibile creare la prenotazione: ' . $exception->getMessage();
@@ -119,7 +119,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Accompagna il cittadino nella raccolta dei dati e avvia la procedura sul portale ministeriale.</p>
             </div>
             <div>
-                <a class="btn btn-outline-light" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Torna alla dashboard</a>
+                <a class="btn btn-outline-light" href="<?php echo sanitize_output(cie_module_url('index')); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Torna alla dashboard</a>
             </div>
         </div>
 
@@ -270,7 +270,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
 
                     <div class="col-12 d-flex justify-content-end gap-2">
-                        <a class="btn btn-outline-light" href="index.php">Annulla</a>
+                        <a class="btn btn-outline-light" href="<?php echo sanitize_output(cie_module_url('index')); ?>">Annulla</a>
                         <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Salva prenotazione</button>
                     </div>
                 </form>

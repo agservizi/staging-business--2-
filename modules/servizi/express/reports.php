@@ -229,7 +229,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                         <div class="col-12 d-flex gap-2 flex-wrap">
                             <button class="btn btn-warning" type="submit"><i class="fa-solid fa-filter me-2"></i>Applica filtri</button>
-                            <a class="btn btn-outline-secondary" href="reports.php">Reset</a>
+                            <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(express_module_url('reports')); ?>">Reset</a>
                         </div>
                     </form>
                 </div>

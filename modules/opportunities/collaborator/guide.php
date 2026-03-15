@@ -21,7 +21,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <h1 class="h4 mb-0">Come usare il portale Opportunity</h1>
                 <p class="text-muted mb-0">Istruzioni operative, flussi passo-passo e FAQ per collaboratori.</p>
             </div>
-            <a class="btn btn-primary" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
+            <a class="btn btn-primary" href="<?php echo opportunities_collaborator_url('create'); ?>">
                 <i class="fa-solid fa-plus me-2"></i>Nuova OP
             </a>
         </div>

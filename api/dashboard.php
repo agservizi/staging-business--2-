@@ -220,7 +220,7 @@ try {
                 'icon' => 'fa-envelope-open-text',
                 'title' => 'Campagna email da seguire',
                 'detail' => sprintf('%s (%s). %s.', $pendingCampaign['name'] ?: ('Campagna #' . $pendingCampaign['id']), $statusLabel, $scheduleInfo),
-                'url' => base_url('modules/email-marketing/view.php?id=' . (int) $pendingCampaign['id']),
+                'url' => email_marketing_module_url('view', ['id' => (int) $pendingCampaign['id']]),
             ];
         }
     } catch (PDOException $emailReminderException) {
@@ -240,7 +240,7 @@ try {
             'icon' => 'fa-life-ring',
             'title' => 'Ticket da prendere in carico',
             'detail' => sprintf('Ticket #%s · %s aperto il %s.', $ticketCode, $ticketSubject, format_datetime($oldestTicket['created_at'] ?? '')),
-            'url' => base_url('modules/ticket/view.php?id=' . (int) $oldestTicket['id']),
+            'url' => ticket_module_url('view', ['id' => (int) $oldestTicket['id']]),
         ];
     }
 
@@ -257,7 +257,7 @@ try {
                 strtoupper($pendingMovimento['stato'] ?? ''),
                 $pendingMovimento['data_scadenza'] ? format_datetime($pendingMovimento['data_scadenza'], 'd/m/Y') : 'N/D'
             ),
-            'url' => base_url('modules/servizi/entrate-uscite/view.php?id=' . $pendingMovimento['id']),
+            'url' => entrate_uscite_module_url('view', ['id' => (int) $pendingMovimento['id']]),
         ];
     }
 

@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $queryString = $redirectQuery ? '?' . http_build_query($redirectQuery) : '';
-    header('Location: reports.php' . $queryString);
+    header('Location: ' . logistici_module_url('reports') . $queryString);
     exit;
 }
 
@@ -156,8 +156,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Gestisci le segnalazioni inviate dai clienti attraverso il portale.</p>
             </div>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
-                <a class="btn btn-outline-warning w-100 w-sm-auto" href="index.php"><i class="fa-solid fa-arrow-left"></i> Pickup</a>
-                <a class="btn btn-warning text-dark w-100 w-sm-auto" href="../logistici/create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo pickup</a>
+                <a class="btn btn-outline-warning w-100 w-sm-auto" href="<?php echo sanitize_output(logistici_module_url('index')); ?>"><i class="fa-solid fa-arrow-left"></i> Pickup</a>
+                <a class="btn btn-warning text-dark w-100 w-sm-auto" href="<?php echo sanitize_output(logistici_module_url('create')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo pickup</a>
             </div>
         </div>
 
@@ -171,7 +171,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                     </div>
                     <div class="card-body">
-                        <form class="row g-3 align-items-end" method="get" action="reports.php">
+                        <form class="row g-3 align-items-end" method="get" action="<?php echo sanitize_output(logistici_module_url('reports')); ?>">
                             <div class="col-12 col-md-6 col-lg-4">
                                 <label class="form-label" for="search">Ricerca</label>
                                 <input class="form-control" id="search" name="search" value="<?php echo sanitize_output($search); ?>" placeholder="Tracking, cliente o note">
@@ -210,7 +210,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             </div>
                             <div class="col-12 d-flex flex-wrap gap-2">
                                 <button class="btn btn-warning text-dark flex-grow-1 flex-sm-grow-0" type="submit">Applica filtri</button>
-                                <a class="btn btn-outline-warning flex-grow-1 flex-sm-grow-0" href="reports.php">Reset</a>
+                                <a class="btn btn-outline-warning flex-grow-1 flex-sm-grow-0" href="<?php echo sanitize_output(logistici_module_url('reports')); ?>">Reset</a>
                             </div>
                         </form>
                     </div>
@@ -292,7 +292,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <td>
                                                 <?php if (!empty($report['pickup_id'])): ?>
                                                     <div class="fw-semibold text-body">Pickup #<?php echo (int) $report['pickup_id']; ?></div>
-                                                    <div class="small"><a class="link-warning" href="view.php?id=<?php echo (int) $report['pickup_id']; ?>">Apri dettaglio</a></div>
+                                                    <div class="small"><a class="link-warning" href="<?php echo sanitize_output(logistici_module_url('view', ['id' => (int) $report['pickup_id']])); ?>">Apri dettaglio</a></div>
                                                     <form class="mt-2" method="post">
                                                         <input type="hidden" name="_token" value="<?php echo $formToken; ?>">
                                                         <input type="hidden" name="action" value="unlink_report">
@@ -324,11 +324,11 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                             <td><?php echo sanitize_output(format_datetime_locale($report['updated_at'] ?? '')); ?></td>
                                             <td class="text-end">
                                                 <div class="d-flex flex-wrap justify-content-end gap-2">
-                                                    <a class="btn btn-soft-accent btn-icon btn-icon-sm" href="report.php?id=<?php echo (int) $report['id']; ?>" title="Dettaglio">
+                                                    <a class="btn btn-soft-accent btn-icon btn-icon-sm" href="<?php echo sanitize_output(logistici_module_url('report', ['id' => (int) $report['id']])); ?>" title="Dettaglio">
                                                         <i class="fa-solid fa-eye"></i>
                                                     </a>
                                                     <?php if (empty($report['pickup_id'])): ?>
-                                                        <a class="btn btn-warning text-dark btn-icon btn-icon-sm" href="create.php?source_report=<?php echo (int) $report['id']; ?>" title="Crea pickup">
+                                                        <a class="btn btn-warning text-dark btn-icon btn-icon-sm" href="<?php echo sanitize_output(logistici_module_url('create', ['source_report' => (int) $report['id']])); ?>" title="Crea pickup">
                                                             <i class="fa-solid fa-circle-plus"></i>
                                                         </a>
                                                     <?php endif; ?>

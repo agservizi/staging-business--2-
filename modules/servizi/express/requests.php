@@ -17,7 +17,7 @@ express_module_bootstrap_schema($pdo);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $result = express_module_save_request($pdo, $_POST, $currentUserId, $currentRole);
     add_flash($result['success'] ? 'success' : 'warning', $result['message']);
-    header('Location: requests.php');
+    header('Location: ' . express_module_url('requests'));
     exit;
 }
 
@@ -229,7 +229,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <p class="text-muted small mb-0">Compila la scheda operativa con cliente, tipo richiesta, stato e dettagli economici se presenti.</p>
                                 </div>
                                 <?php if ($editingRequest): ?>
-                                    <a class="btn btn-outline-secondary btn-sm" href="requests.php">Annulla</a>
+                                    <a class="btn btn-outline-secondary btn-sm" href="<?php echo sanitize_output(express_module_url('requests')); ?>">Annulla</a>
                                 <?php else: ?>
                                     <span class="badge rounded-pill text-bg-light"><?php echo count($requests); ?> richieste</span>
                                 <?php endif; ?>
@@ -363,7 +363,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                 <td><span class="express-requests-type"><?php echo sanitize_output($requestTypeLabels[(string) ($request['tipo_richiesta'] ?? '')] ?? (string) ($request['tipo_richiesta'] ?? '')); ?></span></td>
                                                 <td><span class="badge <?php echo $statusBadgeClass; ?>"><?php echo sanitize_output($requestStatusLabels[(string) ($request['stato'] ?? '')] ?? (string) ($request['stato'] ?? '')); ?></span></td>
                                                 <td><?php echo sanitize_output((string) (($request['prodotto_nome'] ?? '') !== '' ? $request['prodotto_nome'] : '—')); ?></td>
-                                                <td class="text-end"><a class="btn btn-icon btn-soft-accent btn-sm" href="requests.php?edit=<?php echo (int) $request['id']; ?>"><i class="fa-solid fa-pen"></i></a></td>
+                                                <td class="text-end"><a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(express_module_url('requests', ['edit' => (int) $request['id']])); ?>"><i class="fa-solid fa-pen"></i></a></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>

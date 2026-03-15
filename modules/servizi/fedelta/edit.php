@@ -9,7 +9,7 @@ $pageTitle = 'Modifica movimento fedeltà';
 
 $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
-    header('Location: index.php');
+    header('Location: ' . fedelta_module_url('index'));
     exit;
 }
 
@@ -18,7 +18,7 @@ $movementStmt->execute([':id' => $id]);
 $movement = $movementStmt->fetch();
 
 if (!$movement) {
-    header('Location: index.php?notfound=1');
+    header('Location: ' . fedelta_module_url('index', ['notfound' => 1]));
     exit;
 }
 
@@ -162,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Movimento fedeltà aggiornato correttamente.');
-            header('Location: view.php?id=' . $id . '&updated=1');
+            header('Location: ' . fedelta_module_url('view', ['id' => $id, 'updated' => 1]));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -199,7 +199,7 @@ $balanceVisible = $selectedClientId > 0;
                     <div class="text-muted small text-uppercase">Saldo post movimento</div>
                     <div class="fs-5 fw-semibold mb-0"><?php echo loyalty_format_points((int) $movement['saldo_post_movimento']); ?> pt</div>
                 </div>
-                <a class="btn btn-outline-warning" href="view.php?id=<?php echo $id; ?>"><i class="fa-solid fa-arrow-left me-2"></i>Torna al dettaglio</a>
+                <a class="btn btn-outline-warning" href="<?php echo fedelta_module_url('view', ['id' => $id]); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Torna al dettaglio</a>
             </div>
         </div>
         <div class="card ag-card">
@@ -267,7 +267,7 @@ $balanceVisible = $selectedClientId > 0;
                         </div>
                     </div>
                     <div class="stack-sm justify-content-end mt-4">
-                        <a class="btn btn-outline-warning" href="view.php?id=<?php echo $id; ?>"><i class="fa-solid fa-arrow-rotate-left me-2"></i>Annulla</a>
+                        <a class="btn btn-outline-warning" href="<?php echo fedelta_module_url('view', ['id' => $id]); ?>"><i class="fa-solid fa-arrow-rotate-left me-2"></i>Annulla</a>
                         <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Salva modifiche</button>
                     </div>
                 </form>

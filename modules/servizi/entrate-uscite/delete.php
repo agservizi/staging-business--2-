@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../../includes/notifications.php';
 require_role('Admin', 'Manager');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-	header('Location: index.php');
+	header('Location: ' . entrate_uscite_module_url('index'));
 	exit;
 }
 
@@ -15,7 +15,7 @@ require_valid_csrf();
 
 $id = (int) ($_POST['id'] ?? 0);
 if ($id <= 0) {
-	header('Location: index.php');
+	header('Location: ' . entrate_uscite_module_url('index'));
 	exit;
 }
 
@@ -24,7 +24,7 @@ $stmt->execute([':id' => $id]);
 $pagamento = $stmt->fetch();
 
 if (!$pagamento) {
-	header('Location: index.php?notfound=1');
+	header('Location: ' . entrate_uscite_module_url('index', ['notfound' => 1]));
 	exit;
 }
 
@@ -65,5 +65,5 @@ try {
 	add_flash('danger', "Impossibile eliminare il movimento. Riprova più tardi.");
 }
 
-header('Location: index.php');
+header('Location: ' . entrate_uscite_module_url('index'));
 exit;

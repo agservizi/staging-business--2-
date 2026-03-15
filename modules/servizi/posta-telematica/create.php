@@ -120,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             add_flash('success', 'Invio completato con successo.');
-            header('Location: view.php?id=' . $messageId);
+            header('Location: ' . posta_telematica_module_url('view', ['id' => $messageId]));
             exit;
         }
 
@@ -146,7 +146,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Invia Email o PEC e archivia lo storico delle comunicazioni.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-outline-secondary" href="index.php"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
+                <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(posta_telematica_module_url('index')); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Ritorna</a>
             </div>
         </div>
 

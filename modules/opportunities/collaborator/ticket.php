@@ -14,14 +14,14 @@ $opportunityId = isset($_POST['opportunity_id']) ? (int) $_POST['opportunity_id'
 
 if ($opportunityId <= 0 || $collaboratorId <= 0) {
     add_flash('warning', 'Opportunity non trovata.');
-    header('Location: list.php');
+    header('Location: ' . opportunities_collaborator_url('list'));
     exit;
 }
 
 $opportunity = $opportunityService->findById($opportunityId);
 if ($opportunity === null || (int) ($opportunity['collaborator_id'] ?? 0) !== $collaboratorId) {
     add_flash('warning', 'Non hai accesso a questa opportunity.');
-    header('Location: list.php');
+    header('Location: ' . opportunities_collaborator_url('list'));
     exit;
 }
 
@@ -153,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Ticket inviato al team di supporto. Ti contatteremo al più presto.');
-            header('Location: view.php?id=' . $opportunityId);
+            header('Location: ' . opportunities_collaborator_url('view', ['id' => $opportunityId]));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -178,8 +178,8 @@ $customerName = $customerName ?? $customerNameDefault;
 $customerEmail = $customerEmail ?? $customerEmailDefault;
 $customerPhone = $customerPhone ?? $customerPhoneDefault;
 
-$opportunityListUrl = asset('modules/opportunities/collaborator/list.php');
-$opportunityViewUrl = asset('modules/opportunities/collaborator/view.php?id=' . $opportunityId);
+$opportunityListUrl = opportunities_collaborator_url('list');
+$opportunityViewUrl = opportunities_collaborator_url('view', ['id' => $opportunityId]);
 
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';

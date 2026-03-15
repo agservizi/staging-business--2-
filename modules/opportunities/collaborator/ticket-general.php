@@ -12,7 +12,7 @@ require_once __DIR__ . '/../../../includes/mailer.php';
 $collaboratorId = (int) ($_SESSION['user_id'] ?? 0);
 if ($collaboratorId <= 0) {
     add_flash('warning', 'Sessione non valida.');
-    header('Location: tickets.php');
+    header('Location: ' . opportunities_collaborator_url('tickets'));
     exit;
 }
 
@@ -184,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Ticket creato. Ti risponderemo al più presto.');
-            header('Location: ticket-view.php?id=' . $ticketId);
+            header('Location: ' . opportunities_collaborator_url('ticket-view', ['id' => $ticketId]));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -216,7 +216,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <h1 class="h4 mb-1">Apri un ticket</h1>
                 <p class="text-muted mb-0">Segnala problemi tecnici al portale, richieste informative o supporto generale.</p>
             </div>
-            <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/tickets.php'); ?>">
+            <a class="btn btn-outline-secondary" href="<?php echo opportunities_collaborator_url('tickets'); ?>">
                 <i class="fa-solid fa-arrow-left me-2"></i>Indietro
             </a>
         </div>
@@ -310,7 +310,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </div>
 
                 <div class="d-flex justify-content-end gap-2">
-                    <a class="btn btn-outline-secondary" href="<?php echo asset('modules/opportunities/collaborator/tickets.php'); ?>">Annulla</a>
+                    <a class="btn btn-outline-secondary" href="<?php echo opportunities_collaborator_url('tickets'); ?>">Annulla</a>
                     <button class="btn btn-primary" type="submit">
                         <i class="fa-solid fa-paper-plane me-2"></i>Invia ticket
                     </button>

@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $currentUserId
         );
         add_flash($result['success'] ? 'success' : 'warning', $result['message']);
-        header('Location: stock.php');
+        header('Location: ' . express_module_url('stock'));
         exit;
     }
 
@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             add_flash('danger', 'Errore interno durante l\'importazione dello stock.');
         }
 
-        header('Location: stock.php');
+        header('Location: ' . express_module_url('stock'));
         exit;
     }
 }
@@ -411,7 +411,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                         <div class="express-stock-toolbar-actions">
                             <button class="btn btn-warning px-4" type="submit">Filtra</button>
-                            <a class="btn btn-outline-secondary px-4" href="stock.php">Reset</a>
+                            <a class="btn btn-outline-secondary px-4" href="<?php echo sanitize_output(express_module_url('stock')); ?>">Reset</a>
                         </div>
                     </form>
 
@@ -464,7 +464,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         </td>
                                         <td>
                                             <?php if (!empty($row['vendita_id'])): ?>
-                                                <a href="view_sale.php?id=<?php echo (int) $row['vendita_id']; ?>" class="fw-semibold text-decoration-none">#<?php echo (int) $row['vendita_id']; ?></a>
+                                                <a href="<?php echo sanitize_output(express_module_url('view_sale', ['id' => (int) $row['vendita_id']])); ?>" class="fw-semibold text-decoration-none">#<?php echo (int) $row['vendita_id']; ?></a>
                                             <?php else: ?>
                                                 <span class="text-muted">—</span>
                                             <?php endif; ?>

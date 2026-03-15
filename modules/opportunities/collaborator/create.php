@@ -89,12 +89,12 @@ if ($isEditingOpportunity) {
     $existingOpportunity = $opportunityService->findById($editOpportunityId);
     if ($existingOpportunity === null || (int) ($existingOpportunity['collaborator_id'] ?? 0) !== $collaboratorId) {
         add_flash('warning', 'Opportunity non trovata o non di tua proprietà.');
-        header('Location: list.php');
+        header('Location: ' . opportunities_collaborator_url('list'));
         exit;
     }
     if (($existingOpportunity['status_code'] ?? '') !== 'in_verifica') {
         add_flash('warning', 'La opportunity non è modificabile in questo stato.');
-        header('Location: view.php?id=' . $editOpportunityId);
+        header('Location: ' . opportunities_collaborator_url('view', ['id' => $editOpportunityId]));
         exit;
     }
     $existingMetadata = [];
@@ -284,7 +284,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         add_flash('success', 'Opportunity registrata. Riceverai aggiornamenti dal team.');
-        header('Location: list.php');
+        header('Location: ' . opportunities_collaborator_url('list'));
         exit;
     } catch (RuntimeException $exception) {
         $errors[] = $exception->getMessage();
@@ -337,7 +337,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
 
             </div>
-            <a class="btn btn-outline-secondary" href="<?php echo $isEditingOpportunity ? asset('modules/opportunities/collaborator/view.php?id=' . $editOpportunityId) : asset('modules/opportunities/collaborator/list.php'); ?>">
+            <a class="btn btn-outline-secondary" href="<?php echo $isEditingOpportunity ? opportunities_collaborator_url('view', ['id' => $editOpportunityId]) : opportunities_collaborator_url('list'); ?>">
                 <i class="fa-solid fa-arrow-left me-2"></i>Torna alla lista
             </a>
         </div>
@@ -352,7 +352,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     if ($isEditingOpportunity) {
                         $opportunity = $opportunityService->updateOpportunityByCollaborator($editOpportunityId, $collaboratorId, $_POST, $_FILES['documents'] ?? []);
                         add_flash('success', 'Opportunity aggiornata e rimessa in verifica.');
-                        header('Location: view.php?id=' . $editOpportunityId);
+                        header('Location: ' . opportunities_collaborator_url('view', ['id' => $editOpportunityId]));
                         exit;
                     }
                     <p class="mb-0">Aggiorna i dati segnalati e salva: l'admin riesaminerà la pratica dopo l'invio.</p>
@@ -389,7 +389,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         Ricorda di caricare nuovamente gli allegati.
                     </p>
                 </div>
-                <a class="btn btn-outline-secondary btn-sm" href="<?php echo asset('modules/opportunities/collaborator/create.php'); ?>">
+                <a class="btn btn-outline-secondary btn-sm" href="<?php echo opportunities_collaborator_url('create'); ?>">
                     <i class="fa-solid fa-arrow-rotate-left me-1"></i>Annulla duplicazione
                 </a>
             </div>
@@ -2658,7 +2658,7 @@ window.CIEIstatLookupConfig = {
         setLookupLoading(true);
         showLookupMessage('Ricerca del cliente in corso…');
         try {
-            const response = await fetch('<?php echo asset('modules/opportunities/collaborator/customer_lookup.php'); ?>', {
+            const response = await fetch('<?php echo opportunities_collaborator_url('customer_lookup'); ?>', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {

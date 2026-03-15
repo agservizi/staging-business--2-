@@ -51,10 +51,10 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <a class="btn btn-outline-warning" href="https://www.anagrafenazionale.interno.it/servizi-al-cittadino/" target="_blank" rel="noopener">
                     <i class="fa-solid fa-up-right-from-square me-2"></i>Portale ANPR
                 </a>
-                <a class="btn btn-outline-warning" href="certificate_archive.php">
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('certificate_archive')); ?>">
                     <i class="fa-solid fa-box-archive me-2"></i>Archivio certificati
                 </a>
-                <a class="btn btn-warning text-dark" href="add_request.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova pratica</a>
+                <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(anpr_module_url('add_request')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova pratica</a>
             </div>
         </div>
         <div class="card ag-card mb-4">
@@ -62,7 +62,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <h2 class="h5 mb-0">Filtri pratiche</h2>
             </div>
             <div class="card-body">
-                <form class="row g-3 align-items-end" method="get" action="index.php">
+                <form class="row g-3 align-items-end" method="get" action="<?php echo sanitize_output(anpr_module_url('index')); ?>">
                     <div class="col-sm-6 col-lg-3">
                         <label class="form-label" for="stato">Stato</label>
                         <select class="form-select" id="stato" name="stato">
@@ -148,16 +148,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                         </td>
                                         <td class="text-end">
                                             <div class="d-inline-flex align-items-center justify-content-end gap-2 flex-wrap" role="group">
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="view_request.php?id=<?php echo (int) $pratica['id']; ?>" title="Dettagli">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(anpr_module_url('view_request', ['id' => (int) $pratica['id']])); ?>" title="Dettagli">
                                                     <i class="fa-solid fa-eye"></i>
                                                 </a>
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="edit_request.php?id=<?php echo (int) $pratica['id']; ?>" title="Modifica">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(anpr_module_url('edit_request', ['id' => (int) $pratica['id']])); ?>" title="Modifica">
                                                     <i class="fa-solid fa-pen"></i>
                                                 </a>
-                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="upload_certificate.php?id=<?php echo (int) $pratica['id']; ?>" title="Carica certificato">
+                                                <a class="btn btn-icon btn-soft-accent btn-sm" href="<?php echo sanitize_output(anpr_module_url('upload_certificate', ['id' => (int) $pratica['id']])); ?>" title="Carica certificato">
                                                     <i class="fa-solid fa-file-arrow-up"></i>
                                                 </a>
-                                                <form method="post" action="delete_request.php" class="d-inline"
+                                                <form method="post" action="<?php echo sanitize_output(anpr_module_url('delete_request')); ?>" class="d-inline"
                                                     data-confirm="Confermi eliminazione della pratica?"
                                                     data-confirm-title="Elimina pratica"
                                                     data-confirm-confirm-label="Elimina"
@@ -247,7 +247,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 </div>
                             </li>
                         </ul>
-                        <a class="btn btn-outline-warning" href="add_request.php" title="Crea subito una richiesta ANPR">Crea una nuova pratica</a>
+                        <a class="btn btn-outline-warning" href="<?php echo sanitize_output(anpr_module_url('add_request')); ?>" title="Crea subito una richiesta ANPR">Crea una nuova pratica</a>
                     </div>
                 </div>
             </div>

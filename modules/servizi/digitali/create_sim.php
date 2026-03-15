@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../includes/helpers.php';
 
 require_role('Admin', 'Operatore', 'Manager');
 
-header('Location: ' . base_url('modules/servizi/express/create_sale.php'));
+header('Location: ' . express_module_url('create_sale'));
 exit;
 
 $pageTitle = 'Nuova vendita SIM';
@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = json_decode($response, true);
             if ($result['success']) {
                 add_flash('success', 'Vendita SIM registrata con successo.');
-                header('Location: index.php?created=1');
+                header('Location: ' . digitali_module_url('index', ['created' => 1]));
                 exit;
             } else {
                 $errors[] = $result['error'] ?? 'Errore durante la registrazione.';
@@ -99,7 +99,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <?php require_once __DIR__ . '/../../includes/topbar.php'; ?>
     <main class="content-wrapper">
         <div class="mb-4">
-            <a class="btn btn-outline-primary" href="index.php"><i class="fa-solid fa-arrow-left"></i> Torna alle vendite SIM</a>
+            <a class="btn btn-outline-primary" href="<?php echo sanitize_output(digitali_module_url('index')); ?>"><i class="fa-solid fa-arrow-left"></i> Torna alle vendite SIM</a>
         </div>
         <div class="card ag-card">
             <div class="card-header bg-transparent border-0">
@@ -154,7 +154,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         </div>
                     </div>
                     <div class="d-flex justify-content-end gap-2 mt-4">
-                        <a class="btn btn-secondary" href="index.php">Annulla</a>
+                        <a class="btn btn-secondary" href="<?php echo sanitize_output(digitali_module_url('index')); ?>">Annulla</a>
                         <button class="btn btn-primary" type="submit">Registra vendita</button>
                     </div>
                 </form>

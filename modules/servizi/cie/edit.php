@@ -14,14 +14,14 @@ require_role('Admin', 'Operatore', 'Manager');
 $bookingId = (int) ($_GET['id'] ?? 0);
 if ($bookingId <= 0) {
     add_flash('warning', 'Prenotazione CIE non valida.');
-    header('Location: index.php');
+    header('Location: ' . cie_module_url('index'));
     exit;
 }
 
 $booking = cie_fetch_booking($pdo, $bookingId);
 if ($booking === null) {
     add_flash('warning', 'Prenotazione CIE non trovata.');
-    header('Location: index.php');
+    header('Location: ' . cie_module_url('index'));
     exit;
 }
 
@@ -197,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             add_flash('success', 'Prenotazione CIE aggiornata correttamente.');
-            header('Location: view.php?id=' . $bookingId);
+            header('Location: ' . cie_module_url('view', ['id' => $bookingId]));
             exit;
         } catch (Throwable $exception) {
             error_log('Errore aggiornamento prenotazione CIE #' . $bookingId . ': ' . $exception->getMessage());
@@ -226,9 +226,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 </p>
             </div>
             <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-light" href="view.php?id=<?php echo (int) $booking['id']; ?>"><i class="fa-solid fa-arrow-left me-2"></i>Dettaglio</a>
-                <a class="btn btn-outline-warning" href="open_portal.php?id=<?php echo (int) $booking['id']; ?>" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square me-2"></i>Portale CIE</a>
-                <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
+                <a class="btn btn-outline-light" href="<?php echo sanitize_output(cie_module_url('view', ['id' => (int) $booking['id']])); ?>"><i class="fa-solid fa-arrow-left me-2"></i>Dettaglio</a>
+                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(cie_module_url('open_portal', ['id' => (int) $booking['id']])); ?>" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square me-2"></i>Portale CIE</a>
+                <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(cie_module_url('create')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
             </div>
         </div>
 
@@ -451,7 +451,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
 
                     <div class="col-12 d-flex justify-content-end gap-2">
-                        <a class="btn btn-outline-light" href="view.php?id=<?php echo (int) $booking['id']; ?>">Annulla</a>
+                        <a class="btn btn-outline-light" href="<?php echo sanitize_output(cie_module_url('view', ['id' => (int) $booking['id']])); ?>">Annulla</a>
                         <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Aggiorna prenotazione</button>
                     </div>
                 </form>

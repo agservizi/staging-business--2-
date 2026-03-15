@@ -329,7 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             add_flash('success', 'Dati aziendali aggiornati con successo.');
-            header('Location: index.php');
+            header('Location: ' . impostazioni_module_url('index'));
             exit;
         }
 
@@ -353,7 +353,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $result = $settingsService->generateBackup((int) ($_SESSION['user_id'] ?? 0));
         if ($result['success']) {
             add_flash('success', 'Backup generato correttamente: ' . $result['file']);
-            header('Location: index.php');
+            header('Location: ' . impostazioni_module_url('index'));
             exit;
         }
 
@@ -375,7 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($result['success']) {
             add_flash('success', 'Backup eliminato correttamente.');
-            header('Location: index.php?page_backup=' . $backupPage);
+            header('Location: ' . impostazioni_module_url('index', ['page_backup' => $backupPage]));
             exit;
         }
 
@@ -389,7 +389,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result['success']) {
             $removed = (int) ($result['removed'] ?? 0);
             add_flash('success', $removed > 0 ? sprintf('%d backup eliminati.', $removed) : 'Nessun backup da eliminare.');
-            header('Location: index.php?page_backup=' . $backupPage);
+            header('Location: ' . impostazioni_module_url('index', ['page_backup' => $backupPage]));
             exit;
         }
 
@@ -412,7 +412,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Tema interfaccia aggiornato con successo.');
-            header('Location: index.php#appearance-settings');
+            header('Location: ' . impostazioni_module_url('index') . '#appearance-settings');
             exit;
         }
 
@@ -450,7 +450,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($result['success']) {
             add_flash('success', 'Impostazioni email marketing aggiornate con successo.');
-            header('Location: index.php#email-marketing-settings');
+            header('Location: ' . impostazioni_module_url('index') . '#email-marketing-settings');
             exit;
         }
 
@@ -485,7 +485,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($sent) {
                 add_flash('success', 'Email di test inviata a ' . $testEmail . '.');
-                header('Location: index.php#email-marketing-tools');
+                header('Location: ' . impostazioni_module_url('index') . '#email-marketing-tools');
                 exit;
             }
 
@@ -514,7 +514,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             add_flash('success', 'Descrizioni movimenti aggiornate con successo.');
-            header('Location: index.php#movement-descriptions');
+            header('Location: ' . impostazioni_module_url('index') . '#movement-descriptions');
             exit;
         }
 
@@ -555,7 +555,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             add_flash('success', 'Tipologie appuntamenti aggiornate con successo.');
-            header('Location: index.php#appointment-types');
+            header('Location: ' . impostazioni_module_url('index') . '#appointment-types');
             exit;
         }
 
@@ -613,7 +613,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             add_flash('success', 'Stati appuntamenti aggiornati con successo.');
-            header('Location: index.php#appointment-statuses');
+            header('Location: ' . impostazioni_module_url('index') . '#appointment-statuses');
             exit;
         }
 
@@ -657,7 +657,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             add_flash('success', 'Tipologie ACI aggiornate con successo.');
-            header('Location: index.php#aci-types');
+            header('Location: ' . impostazioni_module_url('index') . '#aci-types');
             exit;
         }
 
@@ -699,7 +699,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             add_flash('success', 'Stati ACI aggiornati con successo.');
-            header('Location: index.php#aci-statuses');
+            header('Location: ' . impostazioni_module_url('index') . '#aci-statuses');
             exit;
         }
 
@@ -761,7 +761,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             add_flash('success', 'Costi predefiniti ACI aggiornati con successo.');
-            header('Location: index.php#aci-pricing');
+            header('Location: ' . impostazioni_module_url('index') . '#aci-pricing');
             exit;
         }
 
@@ -805,7 +805,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Tipologie CAF & Patronato aggiornate con successo.');
-            header('Location: index.php#caf-patronato-types');
+            header('Location: ' . impostazioni_module_url('index') . '#caf-patronato-types');
             exit;
         }
 
@@ -850,7 +850,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Stati pratiche CAF & Patronato aggiornati con successo.');
-            header('Location: index.php#caf-patronato-statuses');
+            header('Location: ' . impostazioni_module_url('index') . '#caf-patronato-statuses');
             exit;
         }
 
@@ -896,7 +896,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Servizi richiesti aggiornati con successo.');
-            header('Location: index.php#caf-patronato-services');
+            header('Location: ' . impostazioni_module_url('index') . '#caf-patronato-services');
             exit;
         }
 
@@ -934,7 +934,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             add_flash('success', 'Servizi richiesti importati dalle pratiche.');
-            header('Location: index.php#caf-patronato-services');
+            header('Location: ' . impostazioni_module_url('index') . '#caf-patronato-services');
             exit;
         }
 
@@ -964,7 +964,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($result['success']) {
             add_flash('success', 'Tariffe BRT aggiornate con successo.');
-            header('Location: index.php#portal-brt-pricing');
+            header('Location: ' . impostazioni_module_url('index') . '#portal-brt-pricing');
             exit;
         }
 
@@ -1007,7 +1007,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             add_flash('success', 'Listini servizi e prodotti aggiornati con successo.');
-            header('Location: index.php#service-pricing');
+            header('Location: ' . impostazioni_module_url('index') . '#service-pricing');
             exit;
         }
 
@@ -1049,7 +1049,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result['success']) {
             $expressModuleSettings = $result['settings'];
             add_flash('success', 'Impostazioni modulo Express aggiornate con successo.');
-            header('Location: index.php#express-module-settings');
+            header('Location: ' . impostazioni_module_url('index') . '#express-module-settings');
             exit;
         }
 
@@ -1178,9 +1178,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <p class="text-muted mb-0">Configura utenti, azienda, backup e preferenze.</p>
             </div>
             <div class="toolbar-actions">
-                <a class="btn btn-soft-accent" href="logs.php"><i class="fa-solid fa-scroll me-2"></i>Registro attività</a>
-                <a class="btn btn-warning" href="users.php"><i class="fa-solid fa-users-gear me-2"></i>Gestione utenti</a>
-                <a class="btn btn-outline-danger" href="system-health.php"><i class="fa-solid fa-heart-pulse me-2"></i>Diagnostica sistema</a>
+                <a class="btn btn-soft-accent" href="<?php echo impostazioni_module_url('logs'); ?>"><i class="fa-solid fa-scroll me-2"></i>Registro attività</a>
+                <a class="btn btn-warning" href="<?php echo impostazioni_module_url('users'); ?>"><i class="fa-solid fa-users-gear me-2"></i>Gestione utenti</a>
+                <a class="btn btn-outline-danger" href="<?php echo impostazioni_module_url('system-health'); ?>"><i class="fa-solid fa-heart-pulse me-2"></i>Diagnostica sistema</a>
             </div>
         </div>
         <?php foreach ($alerts as $alert): ?>
@@ -1530,14 +1530,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             $backupQuery = $_GET;
                                             unset($backupQuery['export']);
                                             $backupQuery['page_backup'] = max(1, $backupPage - 1);
-                                            $prevBackupUrl = 'index.php?' . http_build_query($backupQuery);
+                                            $prevBackupUrl = impostazioni_module_url('index', $backupQuery);
                                         ?>
                                         <li class="page-item <?php echo $backupPage <= 1 ? 'disabled' : ''; ?>">
                                             <a class="page-link" href="<?php echo sanitize_output($prevBackupUrl); ?>" aria-label="Precedente">&laquo;</a>
                                         </li>
                                         <?php for ($page = 1; $page <= $backupPages; $page++):
                                             $backupQuery['page_backup'] = $page;
-                                            $backupPageUrl = 'index.php?' . http_build_query($backupQuery);
+                                            $backupPageUrl = impostazioni_module_url('index', $backupQuery);
                                         ?>
                                             <li class="page-item <?php echo $page === $backupPage ? 'active' : ''; ?>">
                                                 <a class="page-link" href="<?php echo sanitize_output($backupPageUrl); ?>"><?php echo $page; ?></a>
@@ -1545,7 +1545,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <?php endfor; ?>
                                         <?php
                                             $backupQuery['page_backup'] = min($backupPages, $backupPage + 1);
-                                            $nextBackupUrl = 'index.php?' . http_build_query($backupQuery);
+                                            $nextBackupUrl = impostazioni_module_url('index', $backupQuery);
                                         ?>
                                         <li class="page-item <?php echo $backupPage >= $backupPages ? 'disabled' : ''; ?>">
                                             <a class="page-link" href="<?php echo sanitize_output($nextBackupUrl); ?>" aria-label="Successivo">&raquo;</a>
@@ -2444,7 +2444,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <button class="btn btn-warning" type="submit">
                                     <i class="fa-solid fa-save me-2"></i>Salva impostazioni Express
                                 </button>
-                                <a class="btn btn-outline-secondary" href="<?php echo base_url('modules/servizi/express/index.php'); ?>">
+                                <a class="btn btn-outline-secondary" href="<?php echo express_module_url('index'); ?>">
                                     <i class="fa-solid fa-up-right-from-square me-2"></i>Apri modulo
                                 </a>
                             </div>
@@ -2461,7 +2461,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         $logsExportQuery = $_GET;
                         unset($logsExportQuery['export']);
                         $logsExportQuery['export'] = 'logs';
-                        $logsExportUrl = 'index.php?' . http_build_query($logsExportQuery);
+                        $logsExportUrl = impostazioni_module_url('index', $logsExportQuery);
                     ?>
                     <a class="btn btn-soft-accent btn-sm" href="<?php echo sanitize_output($logsExportUrl); ?>">
                         <i class="fa-solid fa-file-csv me-1"></i>Esporta CSV
@@ -2525,7 +2525,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 $logsQuery = $_GET;
                                 unset($logsQuery['export']);
                                 $logsQuery['page_log'] = max(1, $logPage - 1);
-                                $prevLogsUrl = 'index.php?' . http_build_query($logsQuery);
+                                $prevLogsUrl = impostazioni_module_url('index', $logsQuery);
                                 $windowSize = 5;
                                 $halfWindow = (int) floor($windowSize / 2);
                                 $startPage = max(1, $logPage - $halfWindow);
@@ -2539,7 +2539,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </li>
                             <?php if ($startPage > 1):
                                 $logsQuery['page_log'] = 1;
-                                $firstPageUrl = 'index.php?' . http_build_query($logsQuery);
+                                $firstPageUrl = impostazioni_module_url('index', $logsQuery);
                             ?>
                                 <li class="page-item">
                                     <a class="page-link" href="<?php echo sanitize_output($firstPageUrl); ?>">1</a>
@@ -2550,7 +2550,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <?php endif; ?>
                             <?php for ($page = $startPage; $page <= $endPage; $page++):
                                 $logsQuery['page_log'] = $page;
-                                $logsPageUrl = 'index.php?' . http_build_query($logsQuery);
+                                $logsPageUrl = impostazioni_module_url('index', $logsQuery);
                             ?>
                                 <li class="page-item <?php echo $page === $logPage ? 'active' : ''; ?>">
                                     <a class="page-link" href="<?php echo sanitize_output($logsPageUrl); ?>"><?php echo $page; ?></a>
@@ -2561,7 +2561,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                     <li class="page-item disabled"><span class="page-link">…</span></li>
                                 <?php endif;
                                 $logsQuery['page_log'] = $logPages;
-                                $lastPageUrl = 'index.php?' . http_build_query($logsQuery);
+                                $lastPageUrl = impostazioni_module_url('index', $logsQuery);
                             ?>
                                 <li class="page-item">
                                     <a class="page-link" href="<?php echo sanitize_output($lastPageUrl); ?>"><?php echo $logPages; ?></a>
@@ -2569,7 +2569,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             <?php endif; ?>
                             <?php
                                 $logsQuery['page_log'] = min($logPages, $logPage + 1);
-                                $nextLogsUrl = 'index.php?' . http_build_query($logsQuery);
+                                $nextLogsUrl = impostazioni_module_url('index', $logsQuery);
                             ?>
                             <li class="page-item <?php echo $logPage >= $logPages ? 'disabled' : ''; ?>">
                                 <a class="page-link" href="<?php echo sanitize_output($nextLogsUrl); ?>" aria-label="Successivo">&raquo;</a>

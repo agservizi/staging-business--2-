@@ -7,5 +7,5 @@ require_once __DIR__ . '/../../../includes/helpers.php';
 require_role('Admin', 'Operatore', 'Manager', 'Patronato');
 
 add_flash('info', 'La gestione appuntamenti per il modulo CAF & Patronato è stata dismessa.');
-header('Location: index.php');
+header('Location: ' . caf_patronato_module_url('index'));
 exit;
