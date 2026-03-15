@@ -107,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                 $_SESSION['mfa_challenge'] = array_merge($pendingLogin, [
                     'expires_at' => time() + 300,
                 ]);
-                header('Location: mfa-verify.php');
+                header('Location: ' . base_url('mfa-verify.php'));
                 exit;
             }
 
@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$errors) {
                 'expires_at' => time() + 900,
             ]);
 
-            header('Location: mfa-setup.php');
+            header('Location: ' . base_url('mfa-setup.php'));
             exit;
         }
     }

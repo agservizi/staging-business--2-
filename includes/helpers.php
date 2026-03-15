@@ -31,16 +31,16 @@ function redirect_by_role(string $role): void
         case 'Admin':
         case 'Operatore':
         case 'Manager':
-            header('Location: dashboard.php');
+            header('Location: ' . base_url('dashboard.php'));
             break;
         case 'Patronato':
-            header('Location: modules/servizi/caf-patronato/index.php');
+            header('Location: ' . base_url('modules/servizi/caf-patronato/index.php'));
             break;
         case 'Cliente':
-            header('Location: dashboard.php?view=cliente');
+            header('Location: ' . base_url('dashboard.php?view=cliente'));
             break;
         default:
-            header('Location: dashboard.php');
+            header('Location: ' . base_url('dashboard.php'));
     }
 }
 
@@ -126,13 +126,6 @@ function app_base_path(): string
                 }
             }
 
-            if (!str_contains(basename($path), '.')) {
-                $base = rtrim($path, '/');
-                if ($base !== '') {
-                    $cached = $base;
-                    return $cached;
-                }
-            }
         }
     }
 
