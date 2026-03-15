@@ -42,6 +42,8 @@ $movementPresets = [
 	'Entrata' => !empty($storedDescriptions['entrate']) ? $storedDescriptions['entrate'] : $fallbackDescriptions['Entrata'],
 	'Uscita' => !empty($storedDescriptions['uscite']) ? $storedDescriptions['uscite'] : $fallbackDescriptions['Uscita'],
 ];
+$currentMovementDate = new DateTimeImmutable('today');
+$currentMovementDateDisplay = $currentMovementDate->format('d/m/Y');
 
 foreach ($movementPresets as $key => $values) {
 	$movementPresets[$key] = array_values(array_unique(array_map('trim', $values)));
@@ -55,7 +57,7 @@ $unitPriceFromDb = isset($data['prezzo_unitario']) ? (float) $data['prezzo_unita
 $data['prezzo_unitario'] = number_format($unitPriceFromDb, 2, '.', '');
 $data['importo'] = number_format((float) $data['importo'], 2, '.', '');
 $data['data_scadenza'] = !empty($data['data_scadenza']) ? date('d/m/Y', strtotime($data['data_scadenza'])) : '';
-$data['data_pagamento'] = !empty($data['data_pagamento']) ? date('d/m/Y', strtotime($data['data_pagamento'])) : '';
+$data['data_pagamento'] = $currentMovementDateDisplay;
 $data['descrizione'] = trim((string) ($data['descrizione'] ?? ''));
 $currentOptions = $movementPresets[$data['tipo_movimento']] ?? [];
 $data['descrizione_option'] = in_array($data['descrizione'], $currentOptions, true) ? $data['descrizione'] : '__custom__';
@@ -97,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	foreach ($fields as $field) {
 		$data[$field] = trim($_POST[$field] ?? '');
 	}
+	$data['data_pagamento'] = $currentMovementDateDisplay;
 
 	$data['quantita'] = trim($_POST['quantita'] ?? '1');
 	$data['prezzo_unitario'] = trim($_POST['prezzo_unitario'] ?? '');
@@ -232,17 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		}
 	}
 
-	$pagamentoForDb = null;
-	if ($data['data_pagamento'] === '') {
-		$errors[] = 'Specifica la data in cui stai registrando o aggiornando il movimento.';
-	} else {
-		$pagamentoDate = DateTimeImmutable::createFromFormat('d/m/Y', $data['data_pagamento']);
-		if (!$pagamentoDate || $pagamentoDate->format('d/m/Y') !== $data['data_pagamento']) {
-			$errors[] = 'La data del movimento non è valida (usa il formato gg/mm/aaaa).';
-		} else {
-			$pagamentoForDb = $pagamentoDate->format('Y-m-d');
-		}
-	}
+	$pagamentoForDb = $currentMovementDate->format('Y-m-d');
 
 	$newPath = $pagamento['allegato_path'] ?? null;
 	$newHash = $pagamento['allegato_hash'] ?? null;
@@ -521,7 +514,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 					</div>
 					<div class="col-md-4">
 						<label class="form-label" for="data_pagamento">Data movimento</label>
-						<input class="form-control" id="data_pagamento" name="data_pagamento" type="text" inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}" placeholder="gg/mm/aaaa" value="<?php echo sanitize_output((string) $data['data_pagamento']); ?>">
+						<input class="form-control" id="data_pagamento" name="data_pagamento" type="text" value="<?php echo sanitize_output((string) $data['data_pagamento']); ?>" readonly>
+						<small class="text-muted">Aggiornata automaticamente alla data odierna al salvataggio.</small>
 						<small class="text-muted">Formato richiesto: gg/mm/aaaa.</small>
 					</div>
 					<div class="col-12">

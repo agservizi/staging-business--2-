@@ -158,6 +158,10 @@ $sidebarHomeHref = $isCollaborator
     ? opportunities_collaborator_url('index')
     : dashboard_url();
 $appVersion = env('APP_VERSION', '1.0.0');
+$userDisplayName = function_exists('current_user_display_name')
+    ? current_user_display_name()
+    : (string) ($_SESSION['username'] ?? 'Utente');
+$profileHref = impostazioni_module_url('profile');
 ?>
 <nav id="sidebarMenu" class="sidebar border-end" aria-label="Menu principale">
     <div class="px-3 py-4 sidebar-inner">
@@ -176,7 +180,8 @@ $appVersion = env('APP_VERSION', '1.0.0');
                 </span>
             </a>
         </div>
-        <ul class="nav nav-pills flex-column gap-1" role="list">
+        <div class="sidebar-menu-scroll">
+        <ul class="nav nav-pills flex-column gap-1 sidebar-nav" role="list">
             <?php if ($isCollaborator): ?>
                 <?php
                     $collabDashboardActive = nav_active('modules/opportunities/collaborator/index', $currentPath);
@@ -190,6 +195,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     $collabCommissionActive = nav_active('modules/opportunities/collaborator/commissions', $currentPath);
                     $collabTicketsActive = nav_active('modules/opportunities/collaborator/tickets', $currentPath);
                 ?>
+                <li class="sidebar-section-label">Workspace</li>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center <?php echo $collabDashboardActive; ?>" href="<?php echo opportunities_collaborator_url('index'); ?>" aria-label="Dashboard opportunity" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Dashboard opportunity"<?php echo $collabDashboardActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="indigo" aria-hidden="true">
@@ -206,6 +212,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                         <span class="nav-label">Elenco OP</span>
                     </a>
                 </li>
+                <li class="sidebar-section-label">Relazioni</li>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center <?php echo $collabCustomersActive; ?>" href="<?php echo opportunities_collaborator_url('customers'); ?>" aria-label="Clienti" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Clienti"<?php echo $collabCustomersActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="emerald" aria-hidden="true">
@@ -222,6 +229,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                         <span class="nav-label">Guida</span>
                     </a>
                 </li>
+                <li class="sidebar-section-label">Strumenti</li>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center <?php echo $collabFilesActive; ?>" href="<?php echo opportunities_collaborator_url('promotions'); ?>" aria-label="File promo" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="File promo"<?php echo $collabFilesActive ? ' aria-current="page"' : ''; ?>>
                         <span class="nav-icon" data-color="amber" aria-hidden="true">
@@ -247,6 +255,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                     </a>
                 </li>
                 <?php if (!$hideCollaboratorIliad): ?>
+                    <li class="sidebar-section-label">Credenziali</li>
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/iliad', $currentPath); ?>" href="<?php echo iliad_module_url('index'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="blue" aria-hidden="true">
@@ -270,6 +279,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                 </li>
             <?php else: ?>
             <?php if (!$isPatronato): ?>
+                <li class="sidebar-section-label">Workspace</li>
                 <?php $dashboardActive = (nav_active('dashboard', $currentPath) === 'active' || nav_active('dashboard.php', $currentPath) === 'active') ? 'active' : ''; ?>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center <?php echo $dashboardActive; ?>" href="<?php echo dashboard_url(); ?>" aria-label="Dashboard" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Dashboard"<?php echo $dashboardActive ? ' aria-current="page"' : ''; ?>>
@@ -283,6 +293,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
 
             <?php if ($role !== 'Cliente'): ?>
                 <?php if ($isPatronato): ?>
+                    <li class="sidebar-section-label">Servizi</li>
                     <?php $cafActive = nav_active('modules/servizi/caf-patronato', $currentPath); ?>
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center <?php echo $cafActive; ?>" href="<?php echo caf_patronato_module_url('index'); ?>" aria-label="CAF &amp; Patronato" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="CAF &amp; Patronato"<?php echo $cafActive ? ' aria-current="page"' : ''; ?>>
@@ -293,6 +304,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                         </a>
                     </li>
                 <?php else: ?>
+                    <li class="sidebar-section-label">CRM</li>
                     <?php $clientiActive = nav_active('modules/clienti', $currentPath); ?>
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center <?php echo $clientiActive; ?>" href="<?php echo clienti_module_url('index'); ?>" aria-label="Clienti" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Clienti"<?php echo $clientiActive ? ' aria-current="page"' : ''; ?>>
@@ -305,6 +317,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                 <?php endif; ?>
 
                 <?php if (!$isPatronato && $serviziItems): ?>
+                    <li class="sidebar-section-label">Servizi</li>
                     <?php $serviziMenuOpen = false; ?>
                     <?php foreach ($serviziItems as $item) {
                         if (nav_is_active($item['needle'], $currentPath)) {
@@ -342,6 +355,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                 <?php endif; ?>
 
                 <?php if (!$isPatronato): ?>
+                    <li class="sidebar-section-label">Commerciale</li>
                     <?php
                         $opportunityActive = nav_active('modules/opportunities', $currentPath);
                         $opportunityHref = $role === 'Collaboratore'
@@ -357,6 +371,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                         </a>
                     </li>
 
+                    <li class="sidebar-section-label">Toolbox</li>
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center <?php echo nav_active('modules/iliad', $currentPath); ?>" href="<?php echo iliad_module_url('index'); ?>" aria-label="Credenziali Iliad" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Credenziali Iliad"<?php echo nav_active('modules/iliad', $currentPath) ? ' aria-current="page"' : ''; ?>>
                             <span class="nav-icon" data-color="blue" aria-hidden="true">
@@ -380,6 +395,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
                 <?php endif; ?>
 
                 <?php if (!$isPatronato): ?>
+                    <li class="sidebar-section-label">Supporto</li>
                     <?php $ticketActive = nav_active('modules/ticket', $currentPath); ?>
                     <li class="nav-item">
                         <a class="nav-link d-flex align-items-center <?php echo $ticketActive; ?>" href="<?php echo ticket_module_url('index'); ?>" aria-label="Ticket" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Ticket"<?php echo $ticketActive ? ' aria-current="page"' : ''; ?>>
@@ -403,6 +419,7 @@ $appVersion = env('APP_VERSION', '1.0.0');
             <?php endif; ?>
 
             <?php if (!$isPatronato && current_user_has_capability('settings.manage', 'settings.view')): ?>
+                <li class="sidebar-section-label">Sistema</li>
                 <?php $settingsActive = nav_active('modules/impostazioni', $currentPath); ?>
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center <?php echo $settingsActive; ?>" href="<?php echo impostazioni_module_url('index'); ?>" aria-label="Impostazioni" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-trigger="hover focus" data-bs-title="Impostazioni"<?php echo $settingsActive ? ' aria-current="page"' : ''; ?>>
@@ -415,8 +432,25 @@ $appVersion = env('APP_VERSION', '1.0.0');
             <?php endif; ?>
             <?php endif; ?>
         </ul>
+        </div>
+        <div class="sidebar-usercard" aria-label="Profilo utente">
+            <div class="sidebar-usercard-meta">
+                <span class="sidebar-usercard-name"><?php echo htmlspecialchars($userDisplayName, ENT_QUOTES, 'UTF-8'); ?></span>
+                <span class="sidebar-usercard-role"><?php echo htmlspecialchars((string) $role, ENT_QUOTES, 'UTF-8'); ?></span>
+            </div>
+            <div class="sidebar-usercard-actions">
+                <a class="sidebar-usercard-btn" href="<?php echo $profileHref; ?>">
+                    <i class="fa-solid fa-id-badge"></i>
+                    <span>Profilo</span>
+                </a>
+                <a class="sidebar-usercard-btn sidebar-usercard-btn-danger" href="<?php echo logout_url(); ?>">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
         <div class="sidebar-footer" aria-label="Versione applicazione">
-            v. <?php echo htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8'); ?>
+            Coresuite · v. <?php echo htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8'); ?>
         </div>
     </div>
 </nav>

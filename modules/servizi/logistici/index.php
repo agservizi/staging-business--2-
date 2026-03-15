@@ -432,22 +432,184 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 <div class="flex-grow-1 d-flex flex-column min-vh-100 pickup-module">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
-        <div class="page-toolbar mb-4">
-            <div>
-                <h1 class="h3 mb-0">Servizio Pickup</h1>
-                <p class="text-muted mb-0">Monitoraggio pacchi, notifiche clienti e archivio ritiri.</p>
+        <style>
+            .pickup-shell {
+                display: grid;
+                gap: 1.5rem;
+            }
+
+            .pickup-hero {
+                position: relative;
+                overflow: hidden;
+                border: 1px solid rgba(58, 123, 213, 0.14);
+                background:
+                    radial-gradient(circle at top left, rgba(58, 123, 213, 0.16), transparent 34%),
+                    radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 26%),
+                    #fff;
+            }
+
+            .pickup-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.45rem 0.85rem;
+                border-radius: 999px;
+                background: rgba(58, 123, 213, 0.10);
+                color: #2154d7;
+                font-size: 0.72rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            .pickup-hero-kpis {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 1rem;
+            }
+
+            .pickup-hero-kpi {
+                border: 1px solid rgba(15, 23, 42, 0.08);
+                border-radius: 1.15rem;
+                padding: 1rem 1.1rem;
+                background: rgba(255, 255, 255, 0.88);
+                box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
+            }
+
+            .pickup-hero-kpi-label {
+                display: block;
+                margin-bottom: 0.4rem;
+                color: #64748b;
+                font-size: 0.76rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            .pickup-hero-kpi-value {
+                display: block;
+                color: #0f172a;
+                font-size: 1.85rem;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .pickup-hero-kpi-note {
+                display: block;
+                margin-top: 0.45rem;
+                color: #64748b;
+                font-size: 0.86rem;
+            }
+
+            .pickup-panel {
+                border: 1px solid rgba(15, 23, 42, 0.08);
+                border-radius: 1.3rem;
+                background: #fff;
+                box-shadow: 0 18px 44px rgba(15, 23, 42, 0.05);
+            }
+
+            .pickup-table-card-body {
+                padding: 1.25rem 1.25rem 1.4rem !important;
+            }
+
+            .pickup-table-card-body .table-responsive {
+                border: 1px solid rgba(15, 23, 42, 0.06);
+                border-radius: 1rem;
+                overflow: hidden;
+            }
+
+            .pickup-table {
+                --bs-table-bg: transparent;
+                --bs-table-hover-bg: rgba(37, 99, 235, 0.04);
+                margin-bottom: 0;
+            }
+
+            .pickup-table thead th {
+                border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+                color: #64748b;
+                font-size: 0.76rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                white-space: nowrap;
+            }
+
+            .pickup-table td {
+                padding-top: 1rem;
+                padding-bottom: 1rem;
+                border-color: rgba(15, 23, 42, 0.06);
+                vertical-align: middle;
+            }
+
+            @media (max-width: 1199.98px) {
+                .pickup-hero-kpis {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+            }
+
+            @media (max-width: 767.98px) {
+                .pickup-hero-kpis {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+        <div class="pickup-shell">
+        <section class="card pickup-hero">
+            <div class="card-body p-4 p-xl-5">
+                <div class="row g-4 align-items-start">
+                    <div class="col-12 col-xl-7">
+                        <span class="pickup-pill"><i class="fa-solid fa-boxes-stacked"></i>Pickup operativo</span>
+                        <h1 class="mt-3 mb-2 fw-bold" style="max-width: 12ch;">Servizio Pickup più chiaro per giacenze, ritiri e notifiche.</h1>
+                        <p class="text-muted mb-0" style="max-width: 70ch;">
+                            Monitora pacchi, punti ritiro e segnalazioni clienti in un’unica regia, con una lettura più ordinata di stati, consegne e comunicazioni.
+                        </p>
+                    </div>
+                    <div class="col-12 col-xl-5">
+                        <div class="pickup-hero-kpis">
+                            <div class="pickup-hero-kpi">
+                                <span class="pickup-hero-kpi-label">Attivi</span>
+                                <span class="pickup-hero-kpi-value"><?php echo (int) ($statusCounts['totale'] ?? 0); ?></span>
+                                <span class="pickup-hero-kpi-note">Pacchi visibili in dashboard</span>
+                            </div>
+                            <div class="pickup-hero-kpi">
+                                <span class="pickup-hero-kpi-label">In giacenza</span>
+                                <span class="pickup-hero-kpi-value"><?php echo (int) ($dashboardCounters['storage'] ?? 0); ?></span>
+                                <span class="pickup-hero-kpi-note">Pacchi pronti al ritiro</span>
+                            </div>
+                            <div class="pickup-hero-kpi">
+                                <span class="pickup-hero-kpi-label">Scaduti</span>
+                                <span class="pickup-hero-kpi-value"><?php echo (int) ($dashboardCounters['expired'] ?? 0); ?></span>
+                                <span class="pickup-hero-kpi-note">Richiedono attenzione</span>
+                            </div>
+                            <div class="pickup-hero-kpi">
+                                <span class="pickup-hero-kpi-label">Ritirati oggi</span>
+                                <span class="pickup-hero-kpi-value"><?php echo (int) ($dashboardCounters['picked_today'] ?? 0); ?></span>
+                                <span class="pickup-hero-kpi-note">Check-in confermati oggi</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="toolbar-actions d-flex flex-wrap gap-2">
-                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('reports')); ?>"><i class="fa-solid fa-inbox me-2"></i>Segnalazioni portal</a>
-                <button class="btn btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#pickupCheckinModal"><i class="fa-solid fa-qrcode me-2"></i>Ritiro con codice</button>
-                <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(logistici_module_url('create')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo pickup</a>
-                <a class="btn btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('index')); ?>"><i class="fa-solid fa-rotate"></i></a>
-            </div>
-        </div>
+        </section>
+
+        <section class="card pickup-panel">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+                    <div>
+                        <h2 class="h5 mb-1">Filtri e azioni pickup</h2>
+                        <p class="text-muted small mb-0">Raffina il registro per tracking, stato, corriere, punto ritiro e intervallo temporale.</p>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a class="btn btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('reports')); ?>"><i class="fa-solid fa-inbox me-2"></i>Segnalazioni portal</a>
+                        <button class="btn btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#pickupCheckinModal"><i class="fa-solid fa-qrcode me-2"></i>Ritiro con codice</button>
+                        <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(logistici_module_url('create')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo pickup</a>
+                        <a class="btn btn-outline-warning" href="<?php echo sanitize_output(logistici_module_url('index')); ?>"><i class="fa-solid fa-rotate"></i></a>
+                    </div>
+                </div>
 
         <div class="row g-4">
             <div class="col-xxl-9">
-                <div class="card ag-card mb-4">
+                <div class="card pickup-panel mb-4">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <div>
                             <h2 class="h5 mb-0">Situazione attuale</h2>
@@ -486,7 +648,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
 
-                <div class="card ag-card mb-4">
+                <div class="card pickup-panel mb-4">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <div>
                             <h2 class="h5 mb-0">Andamento <?php echo sanitize_output($currentStatsLabel); ?></h2>
@@ -521,7 +683,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
 
-                <div class="card ag-card mb-4">
+                <div class="card pickup-panel mb-4">
                     <div class="card-header bg-transparent border-0">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                             <h2 class="h5 mb-0">Filtri</h2>
@@ -600,14 +762,14 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
 
-                <div class="card ag-card">
+                <div class="card pickup-panel">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
                         <h2 class="h5 mb-0">Elenco pickup</h2>
                         <span class="text-muted small">Risultati: <?php echo count($packages); ?></span>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body pickup-table-card-body">
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle">
+                            <table class="table table-hover align-middle pickup-table">
                                 <thead>
                                     <tr>
                                         <th>Tracking</th>
@@ -696,7 +858,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
 
             <div class="col-xxl-3">
-                <div class="card ag-card mb-4" data-checkin-qr-container>
+                <div class="card pickup-panel mb-4" data-checkin-qr-container>
                     <div class="card-header bg-transparent border-0">
                         <h2 class="h5 mb-0">QR check-in</h2>
                     </div>
@@ -727,7 +889,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                     </div>
                 </div>
-                <div class="card ag-card mb-4">
+                <div class="card pickup-panel mb-4">
                     <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-start">
                         <div>
                             <h2 class="h5 mb-0">Segnalazioni clienti</h2>
@@ -785,7 +947,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
 
-                <div class="card ag-card mb-4">
+                <div class="card pickup-panel mb-4">
                     <div class="card-header bg-transparent border-0">
                         <h2 class="h5 mb-0">Invia notifica</h2>
                     </div>
@@ -854,7 +1016,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
 
-                <div class="card ag-card">
+                <div class="card pickup-panel">
                     <div class="card-header bg-transparent border-0">
                         <h2 class="h5 mb-0">Ultime notifiche</h2>
                     </div>
@@ -878,6 +1040,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </div>
             </div>
+        </div>
         </div>
     </main>
 </div>

@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toastContainer = document.getElementById('csToastContainer');
     const initialFlashes = Array.isArray(window.CS_INITIAL_FLASHES) ? window.CS_INITIAL_FLASHES : [];
     const SIDEBAR_HOVER_CLASS = 'hover-expand';
+    const SIDEBAR_STORAGE_KEY = 'csSidebarV2';
     let sidebarHoverTimer = null;
 
     const toastVariants = {
@@ -958,7 +959,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!sidebar) {
             return;
         }
-        const shouldCollapse = localStorage.getItem('csSidebar') === 'collapsed';
+        const shouldCollapse = localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'collapsed';
         sidebar.classList.remove(SIDEBAR_HOVER_CLASS);
         if (mobileBreakpoint.matches) {
             sidebar.classList.remove('collapsed');
@@ -1025,7 +1026,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.classList.remove(SIDEBAR_HOVER_CLASS);
         const shouldCollapse = !sidebar.classList.contains('collapsed');
         sidebar.classList.toggle('collapsed', shouldCollapse);
-        localStorage.setItem('csSidebar', shouldCollapse ? 'collapsed' : 'expanded');
+        localStorage.setItem(SIDEBAR_STORAGE_KEY, shouldCollapse ? 'collapsed' : 'expanded');
         sidebarToggle?.setAttribute('aria-expanded', String(!shouldCollapse));
         if (sidebar.classList.contains('collapsed')) {
             closeSidebarSubmenus();

@@ -47,6 +47,25 @@ $stmt->execute($params);
 $records = $stmt->fetchAll();
 
 $statuses = ['Bozza', 'Pubblicato', 'Archiviato'];
+$curriculumSummary = [
+    'total' => count($records),
+    'draft' => 0,
+    'published' => 0,
+    'generated' => 0,
+];
+
+foreach ($records as $record) {
+    $statusValue = (string) ($record['status'] ?? '');
+    if ($statusValue === 'Bozza') {
+        $curriculumSummary['draft']++;
+    } elseif ($statusValue === 'Pubblicato') {
+        $curriculumSummary['published']++;
+    }
+
+    if (!empty($record['generated_file']) || !empty($record['last_generated_at'])) {
+        $curriculumSummary['generated']++;
+    }
+}
 
 $csrfToken = csrf_token();
 
@@ -56,20 +75,201 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
-        <div class="page-toolbar mb-4">
-            <div>
-                <h1 class="h3 mb-0">Gestione Curriculum</h1>
-                <p class="text-muted mb-0">Progetta, compila e genera curriculum Europass per i tuoi clienti.</p>
+        <style>
+            .curriculum-shell {
+                display: grid;
+                gap: 1.5rem;
+            }
+
+            .curriculum-hero {
+                position: relative;
+                overflow: hidden;
+                border: 1px solid rgba(58, 123, 213, 0.14);
+                background:
+                    radial-gradient(circle at top left, rgba(58, 123, 213, 0.16), transparent 34%),
+                    radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 26%),
+                    #fff;
+            }
+
+            .curriculum-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.45rem 0.85rem;
+                border-radius: 999px;
+                background: rgba(58, 123, 213, 0.10);
+                color: #2154d7;
+                font-size: 0.72rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            .curriculum-kpis {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 1rem;
+            }
+
+            .curriculum-kpi {
+                border: 1px solid rgba(15, 23, 42, 0.08);
+                border-radius: 1.15rem;
+                padding: 1rem 1.1rem;
+                background: rgba(255, 255, 255, 0.88);
+                box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
+            }
+
+            .curriculum-kpi-label {
+                display: block;
+                margin-bottom: 0.4rem;
+                color: #64748b;
+                font-size: 0.76rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            .curriculum-kpi-value {
+                display: block;
+                color: #0f172a;
+                font-size: 1.85rem;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .curriculum-kpi-note {
+                display: block;
+                margin-top: 0.45rem;
+                color: #64748b;
+                font-size: 0.86rem;
+            }
+
+            .curriculum-panel {
+                border: 1px solid rgba(15, 23, 42, 0.08);
+                border-radius: 1.3rem;
+                background: #fff;
+                box-shadow: 0 18px 44px rgba(15, 23, 42, 0.05);
+            }
+
+            .curriculum-table-card-body {
+                padding: 1.25rem 1.25rem 1.4rem !important;
+            }
+
+            .curriculum-table-card-body .table-responsive {
+                border: 1px solid rgba(15, 23, 42, 0.06);
+                border-radius: 1rem;
+                overflow: hidden;
+            }
+
+            .curriculum-table-card-body .dt-container .dt-layout-row:not(.dt-layout-table) {
+                margin: 0;
+                padding-inline: 0.15rem;
+            }
+
+            .curriculum-table-card-body .dt-container .dt-layout-row:first-child {
+                padding-bottom: 1rem;
+            }
+
+            .curriculum-table-card-body .dt-container .dt-layout-row:last-child {
+                padding-top: 1rem;
+            }
+
+            .curriculum-table {
+                --bs-table-bg: transparent;
+                --bs-table-hover-bg: rgba(37, 99, 235, 0.04);
+                margin-bottom: 0;
+            }
+
+            .curriculum-table thead th {
+                border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+                color: #64748b;
+                font-size: 0.76rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                white-space: nowrap;
+            }
+
+            .curriculum-table td {
+                padding-top: 1rem;
+                padding-bottom: 1rem;
+                border-color: rgba(15, 23, 42, 0.06);
+                vertical-align: middle;
+            }
+
+            .curriculum-id {
+                display: inline-flex;
+                padding: 0.42rem 0.68rem;
+                border-radius: 0.8rem;
+                background: #f8fafc;
+                color: #0f172a;
+                font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+                font-size: 0.8rem;
+                font-weight: 700;
+            }
+
+            @media (max-width: 1199.98px) {
+                .curriculum-kpis {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+            }
+
+            @media (max-width: 767.98px) {
+                .curriculum-kpis {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+        <div class="curriculum-shell">
+        <section class="card curriculum-hero">
+            <div class="card-body p-4 p-xl-5">
+                <div class="row g-4 align-items-start">
+                    <div class="col-12 col-xl-7">
+                        <span class="curriculum-pill"><i class="fa-solid fa-file-lines"></i>Documenti professionali</span>
+                        <h1 class="mt-3 mb-2 fw-bold" style="max-width: 12ch;">Curriculum più chiari per bozze, pubblicazioni e PDF pronti.</h1>
+                        <p class="text-muted mb-0" style="max-width: 70ch;">
+                            Organizza i curriculum dei clienti, filtra rapidamente per stato e mantieni una vista ordinata su bozze, documenti generati e aggiornamenti recenti.
+                        </p>
+                    </div>
+                    <div class="col-12 col-xl-5">
+                        <div class="curriculum-kpis">
+                            <div class="curriculum-kpi">
+                                <span class="curriculum-kpi-label">Curriculum</span>
+                                <span class="curriculum-kpi-value"><?php echo (int) $curriculumSummary['total']; ?></span>
+                                <span class="curriculum-kpi-note">Risultati del filtro attivo</span>
+                            </div>
+                            <div class="curriculum-kpi">
+                                <span class="curriculum-kpi-label">Bozze</span>
+                                <span class="curriculum-kpi-value"><?php echo (int) $curriculumSummary['draft']; ?></span>
+                                <span class="curriculum-kpi-note">Ancora in lavorazione</span>
+                            </div>
+                            <div class="curriculum-kpi">
+                                <span class="curriculum-kpi-label">Pubblicati</span>
+                                <span class="curriculum-kpi-value"><?php echo (int) $curriculumSummary['published']; ?></span>
+                                <span class="curriculum-kpi-note">Pronti per uso o consegna</span>
+                            </div>
+                            <div class="curriculum-kpi">
+                                <span class="curriculum-kpi-label">PDF generati</span>
+                                <span class="curriculum-kpi-value"><?php echo (int) $curriculumSummary['generated']; ?></span>
+                                <span class="curriculum-kpi-note">Documenti già prodotti</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="toolbar-actions">
-                <a class="btn btn-warning text-dark" href="<?php echo curriculum_module_url('wizard'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo curriculum</a>
-            </div>
-        </div>
-        <div class="card ag-card mb-4">
-            <div class="card-header bg-transparent border-0">
-                <h2 class="card-title h5 mb-0">Filtri</h2>
-            </div>
-            <div class="card-body">
+        </section>
+        <section class="card curriculum-panel">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+                    <div>
+                        <h2 class="h5 mb-1">Filtri curriculum</h2>
+                        <p class="text-muted small mb-0">Raffina l’archivio per cliente e stato del documento.</p>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a class="btn btn-outline-warning" href="<?php echo dashboard_url(); ?>"><i class="fa-solid fa-gauge-high me-2"></i>Dashboard</a>
+                        <a class="btn btn-warning text-dark" href="<?php echo curriculum_module_url('wizard'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo curriculum</a>
+                    </div>
+                </div>
                 <form class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label" for="cliente">Cliente</label>
@@ -92,12 +292,16 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </form>
             </div>
-        </div>
+        </section>
 
-        <div class="card ag-card">
-            <div class="card-body">
+        <section class="card curriculum-panel">
+            <div class="card-header bg-transparent border-0 px-4 pt-4 pb-0">
+                <h2 class="h5 mb-1">Archivio curriculum</h2>
+                <p class="text-muted small mb-0">Elenco operativo dei documenti con stato, ultima generazione e azioni rapide.</p>
+            </div>
+            <div class="card-body curriculum-table-card-body">
                 <div class="table-responsive">
-                    <table class="table table-dark table-hover" data-datatable="true">
+                    <table class="table table-hover curriculum-table" data-datatable="true">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -113,7 +317,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         <tbody>
                             <?php foreach ($records as $cv): ?>
                                 <tr>
-                                    <td>#<?php echo (int) $cv['id']; ?></td>
+                                    <td><span class="curriculum-id">#<?php echo (int) $cv['id']; ?></span></td>
                                     <td><?php echo sanitize_output(trim(($cv['cognome'] ?? '') . ' ' . ($cv['nome'] ?? '')) ?: 'N/D'); ?></td>
                                     <td><?php echo sanitize_output($cv['titolo']); ?></td>
                                     <td>
@@ -168,6 +372,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </table>
                 </div>
             </div>
+        </section>
         </div>
     </main>
 </div>

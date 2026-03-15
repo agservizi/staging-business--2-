@@ -27,6 +27,8 @@ $movementPresets = [
 	'Entrata' => !empty($storedDescriptions['entrate']) ? $storedDescriptions['entrate'] : $fallbackDescriptions['Entrata'],
 	'Uscita' => !empty($storedDescriptions['uscite']) ? $storedDescriptions['uscite'] : $fallbackDescriptions['Uscita'],
 ];
+$currentMovementDate = new DateTimeImmutable('today');
+$currentMovementDateDisplay = $currentMovementDate->format('d/m/Y');
 
 foreach ($movementPresets as $key => $values) {
 	$movementPresets[$key] = array_values(array_unique(array_map('trim', $values)));
@@ -46,7 +48,7 @@ $data = [
 	'prezzo_unitario' => '0.01',
 	'importo' => '0.01',
 	'data_scadenza' => '',
-	'data_pagamento' => date('d/m/Y'),
+	'data_pagamento' => $currentMovementDateDisplay,
 	'note' => '',
 	'service_pricing_id' => '',
 	'listino_voce' => '',
@@ -79,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	foreach ($fields as $field) {
 		$data[$field] = trim($_POST[$field] ?? '');
 	}
+	$data['data_pagamento'] = $currentMovementDateDisplay;
 
 		$clienteId = null;
 		if ($data['cliente_id'] === '') {
@@ -210,17 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		}
 	}
 
-	$pagamentoForDb = null;
-	if ($data['data_pagamento'] === '') {
-		$errors[] = 'Specifica la data in cui stai registrando il movimento.';
-	} else {
-		$pagamentoDate = DateTimeImmutable::createFromFormat('d/m/Y', $data['data_pagamento']);
-		if (!$pagamentoDate || $pagamentoDate->format('d/m/Y') !== $data['data_pagamento']) {
-			$errors[] = 'La data del movimento non è valida (usa il formato gg/mm/aaaa).';
-		} else {
-			$pagamentoForDb = $pagamentoDate->format('Y-m-d');
-		}
-	}
+	$pagamentoForDb = $currentMovementDate->format('Y-m-d');
 
 	$uploadPath = null;
 	$uploadHash = null;
@@ -537,7 +530,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 								<div class="row g-3">
 									<div class="col-12">
 										<label class="form-label" for="data_pagamento">Data movimento</label>
-										<input class="form-control" id="data_pagamento" name="data_pagamento" type="text" inputmode="numeric" pattern="\d{2}/\d{2}/\d{4}" placeholder="gg/mm/aaaa" value="<?php echo sanitize_output((string) $data['data_pagamento']); ?>" required>
+										<input class="form-control" id="data_pagamento" name="data_pagamento" type="text" value="<?php echo sanitize_output((string) $data['data_pagamento']); ?>" readonly>
+										<small class="text-muted">Impostata automaticamente alla data odierna.</small>
 										<small class="text-muted">Imposta la giornata di registrazione nel formato gg/mm/aaaa.</small>
 									</div>
 									<div class="col-12">

@@ -44,88 +44,374 @@ foreach ($statuses as $key => $config) {
     ];
 }
 
+$cieSummary = [
+    'total' => count($bookings),
+    'scheduled' => 0,
+    'waiting' => 0,
+    'portal_ready' => 0,
+    'docs_missing' => 0,
+];
+
+foreach ($bookings as $booking) {
+    if (!empty($booking['appuntamento_data'])) {
+        $cieSummary['scheduled']++;
+    } else {
+        $cieSummary['waiting']++;
+    }
+
+    if (!empty($booking['portal_opened_at']) || !empty($booking['appuntamento_data'])) {
+        $cieSummary['portal_ready']++;
+    }
+
+    if (empty($booking['documento_identita_path']) && empty($booking['ricevuta_pagamento_path'])) {
+        $cieSummary['docs_missing']++;
+    }
+}
+
 require_once __DIR__ . '/../../../includes/header.php';
 require_once __DIR__ . '/../../../includes/sidebar.php';
 ?>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
+    <?php render_module_hub_styles(); ?>
+    <style>
+        .cie-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .cie-hero {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(37, 99, 235, 0.16);
+            border-radius: 28px;
+            padding: 2rem;
+            background:
+                radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 34%),
+                radial-gradient(circle at top right, rgba(245, 158, 11, 0.16), transparent 30%),
+                linear-gradient(135deg, #ffffff 0%, #f8fbff 54%, #eef5ff 100%);
+            box-shadow: 0 28px 60px rgba(15, 23, 42, 0.10);
+        }
+
+        .cie-hero::after {
+            content: "";
+            position: absolute;
+            inset: auto -90px -120px auto;
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            background: rgba(37, 99, 235, 0.08);
+            filter: blur(12px);
+        }
+
+        .cie-hero-grid {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .cie-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.45rem 0.85rem;
+            border-radius: 999px;
+            background: rgba(37, 99, 235, 0.10);
+            color: #1d4ed8;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .cie-hero h1 {
+            margin: 1rem 0 0.75rem;
+            font-size: clamp(2rem, 3vw, 2.7rem);
+            line-height: 1.05;
+            font-weight: 800;
+            color: #172033;
+            max-width: 11ch;
+        }
+
+        .cie-hero p {
+            margin: 0;
+            max-width: 62ch;
+            color: #52607a;
+            font-size: 1rem;
+        }
+
+        .cie-hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.85rem;
+            margin-top: 1.5rem;
+        }
+
+        .cie-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .cie-kpi-card {
+            border-radius: 22px;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            background: rgba(255, 255, 255, 0.92);
+            padding: 1.15rem 1.2rem;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+        }
+
+        .cie-kpi-card span {
+            display: block;
+            margin-bottom: 0.45rem;
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #607089;
+        }
+
+        .cie-kpi-card strong {
+            display: block;
+            font-size: 2rem;
+            line-height: 1;
+            color: #172033;
+        }
+
+        .cie-kpi-card small {
+            display: block;
+            margin-top: 0.45rem;
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+
+        .cie-panel {
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 24px;
+            background: #fff;
+            box-shadow: 0 22px 45px rgba(15, 23, 42, 0.07);
+        }
+
+        .cie-panel-header {
+            padding: 1.35rem 1.5rem 0;
+        }
+
+        .cie-panel-title {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #172033;
+        }
+
+        .cie-panel-subtitle {
+            margin: 0.35rem 0 0;
+            color: #64748b;
+            font-size: 0.92rem;
+        }
+
+        .cie-filter-form {
+            padding: 1.35rem 1.5rem 1.5rem;
+        }
+
+        .cie-filter-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .cie-field label {
+            display: block;
+            margin-bottom: 0.45rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #52607a;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .cie-field .form-control,
+        .cie-field .form-select {
+            min-height: 48px;
+            border-radius: 15px;
+            border-color: #d7dfeb;
+            box-shadow: none;
+        }
+
+        .cie-filter-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            margin-top: 1rem;
+        }
+
+        .cie-table-wrap {
+            padding: 1.25rem 1.5rem 1.5rem;
+        }
+
+        .cie-table-shell {
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 20px;
+            overflow: hidden;
+            background: linear-gradient(180deg, rgba(248, 250, 252, 0.7), rgba(255, 255, 255, 0.98));
+        }
+
+        .cie-table-shell .table {
+            margin-bottom: 0;
+        }
+
+        .cie-table-shell thead th {
+            border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+            background: rgba(248, 250, 252, 0.95);
+            color: #52607a;
+            font-size: 0.77rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .cie-code-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.38rem 0.7rem;
+            border-radius: 999px;
+            background: rgba(37, 99, 235, 0.10);
+            color: #1d4ed8;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+
+        .cie-empty {
+            padding: 2rem 1.5rem;
+            color: #64748b;
+        }
+
+        @media (max-width: 1199.98px) {
+            .cie-hero-grid,
+            .cie-filter-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .cie-hero,
+            .cie-filter-form,
+            .cie-table-wrap {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .cie-kpi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
     <main class="content-wrapper">
-        <div class="page-toolbar mb-4 d-flex justify-content-between align-items-start flex-wrap gap-3">
-            <div>
-                <h1 class="h3 mb-1">Prenotazione Carta d'Identità Elettronica</h1>
-                <p class="text-muted mb-0">Gestisci le richieste dei cittadini, monitora gli appuntamenti e conserva la documentazione allegata.</p>
-            </div>
-            <div class="toolbar-actions d-flex gap-2">
-                <a class="btn btn-outline-warning" href="https://www.prenotazionicie.interno.gov.it/cittadino/n/sc/wizardAppuntamentoCittadino/sceltaComune" target="_blank" rel="noopener"><i class="fa-solid fa-id-card me-2"></i>Portale CIE</a>
-                <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(cie_module_url('create')); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta</a>
-            </div>
-        </div>
-        <section class="mb-4">
-            <div class="row g-3 row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-6">
-                <?php foreach ($summaryCards as $card): ?>
-                    <div class="col d-flex">
-                        <div class="card ag-card text-center w-100 h-100">
-                            <div class="card-body">
-                                <p class="text-muted mb-1"><?php echo sanitize_output($card['label']); ?></p>
-                                <h3 class="fw-bold mb-0"><?php echo (int) $card['value']; ?></h3>
-                            </div>
+        <div class="module-hub-shell cie-shell">
+            <section class="cie-hero">
+                <div class="cie-hero-grid">
+                    <div>
+                        <span class="cie-eyebrow"><i class="fa-solid fa-id-card"></i> Carta d'identita'</span>
+                        <h1>Una cabina di regia piu' chiara per prenotazioni, appuntamenti e documenti.</h1>
+                        <p>Monitora le richieste CIE, isola quelle in attesa, verifica gli slot gia' fissati e tieni allineati portale, documentazione e stato pratica in un'unica vista.</p>
+                        <div class="cie-hero-actions">
+                            <a class="btn btn-outline-warning" href="https://www.prenotazionicie.interno.gov.it/cittadino/n/sc/wizardAppuntamentoCittadino/sceltaComune" target="_blank" rel="noopener">
+                                <i class="fa-solid fa-up-right-from-square me-2"></i>Portale CIE
+                            </a>
+                            <a class="btn btn-warning text-dark" href="<?php echo sanitize_output(cie_module_url('create')); ?>">
+                                <i class="fa-solid fa-circle-plus me-2"></i>Nuova richiesta
+                            </a>
                         </div>
                     </div>
-                <?php endforeach; ?>
-            </div>
-        </section>
+                    <div class="cie-kpi-grid">
+                        <article class="cie-kpi-card">
+                            <span>Richieste visibili</span>
+                            <strong><?php echo number_format($cieSummary['total'], 0, ',', '.'); ?></strong>
+                            <small>Prenotazioni presenti nel perimetro filtrato</small>
+                        </article>
+                        <article class="cie-kpi-card">
+                            <span>Appuntamenti fissati</span>
+                            <strong><?php echo number_format($cieSummary['scheduled'], 0, ',', '.'); ?></strong>
+                            <small>Richieste gia' convertite in slot confermato</small>
+                        </article>
+                        <article class="cie-kpi-card">
+                            <span>In attesa</span>
+                            <strong><?php echo number_format($cieSummary['waiting'], 0, ',', '.'); ?></strong>
+                            <small>Pratiche ancora senza appuntamento assegnato</small>
+                        </article>
+                        <article class="cie-kpi-card">
+                            <span>Documenti mancanti</span>
+                            <strong><?php echo number_format($cieSummary['docs_missing'], 0, ',', '.'); ?></strong>
+                            <small>Richieste da completare lato allegati</small>
+                        </article>
+                    </div>
+                </div>
+            </section>
 
-        <section class="card ag-card mb-4">
-            <div class="card-body">
-                <form class="row g-3 align-items-end" method="get">
-                    <div class="col-md-3">
-                        <label class="form-label" for="search">Ricerca</label>
-                        <input class="form-control" id="search" name="search" placeholder="Codice, cittadino, comune" value="<?php echo sanitize_output($filters['search']); ?>">
+            <section class="cie-panel">
+                <div class="cie-panel-header">
+                    <h2 class="cie-panel-title">Filtri operativi</h2>
+                    <p class="cie-panel-subtitle">Riduci la vista per stato, cittadino o intervallo temporale per lavorare piu' velocemente sulle richieste aperte.</p>
+                </div>
+                <form class="cie-filter-form" method="get">
+                    <div class="cie-filter-grid">
+                        <div class="cie-field">
+                            <label for="search">Ricerca</label>
+                            <input class="form-control" id="search" name="search" placeholder="Codice, cittadino, comune" value="<?php echo sanitize_output($filters['search']); ?>">
+                        </div>
+                        <div class="cie-field">
+                            <label for="stato">Stato</label>
+                            <select class="form-select" id="stato" name="stato">
+                                <option value="">Tutti</option>
+                                <?php foreach ($statuses as $key => $config): ?>
+                                    <option value="<?php echo sanitize_output($key); ?>" <?php echo $filters['stato'] === $key ? 'selected' : ''; ?>><?php echo sanitize_output($config['label']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="cie-field">
+                            <label for="cliente_id">Cliente</label>
+                            <select class="form-select" id="cliente_id" name="cliente_id">
+                                <option value="">Tutti</option>
+                                <?php foreach ($clients as $client): ?>
+                                    <?php $clientId = (int) ($client['id'] ?? 0); ?>
+                                    <option value="<?php echo $clientId; ?>" <?php echo ($filters['cliente_id'] ?? 0) === $clientId ? 'selected' : ''; ?>>
+                                        <?php echo sanitize_output(trim(($client['cognome'] ?? '') . ' ' . ($client['nome'] ?? ''))); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="cie-field">
+                            <label for="created_from">Dal</label>
+                            <input class="form-control" type="date" id="created_from" name="created_from" value="<?php echo sanitize_output($filters['created_from']); ?>">
+                        </div>
+                        <div class="cie-field">
+                            <label for="created_to">Al</label>
+                            <input class="form-control" type="date" id="created_to" name="created_to" value="<?php echo sanitize_output($filters['created_to']); ?>">
+                        </div>
                     </div>
-                    <div class="col-md-2">
-                        <label class="form-label" for="stato">Stato</label>
-                        <select class="form-select" id="stato" name="stato">
-                            <option value="">Tutti</option>
-                            <?php foreach ($statuses as $key => $config): ?>
-                                <option value="<?php echo sanitize_output($key); ?>" <?php echo $filters['stato'] === $key ? 'selected' : ''; ?>><?php echo sanitize_output($config['label']); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="cliente_id">Cliente</label>
-                        <select class="form-select" id="cliente_id" name="cliente_id">
-                            <option value="">Tutti</option>
-                            <?php foreach ($clients as $client): ?>
-                                <?php $clientId = (int) ($client['id'] ?? 0); ?>
-                                <option value="<?php echo $clientId; ?>" <?php echo ($filters['cliente_id'] ?? 0) === $clientId ? 'selected' : ''; ?>>
-                                    <?php echo sanitize_output(trim(($client['cognome'] ?? '') . ' ' . ($client['nome'] ?? ''))); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label" for="created_from">Dal</label>
-                        <input class="form-control" type="date" id="created_from" name="created_from" value="<?php echo sanitize_output($filters['created_from']); ?>">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label" for="created_to">Al</label>
-                        <input class="form-control" type="date" id="created_to" name="created_to" value="<?php echo sanitize_output($filters['created_to']); ?>">
-                    </div>
-                    <div class="col-md-12 d-flex gap-2">
+                    <div class="cie-filter-actions">
                         <button class="btn btn-warning text-dark" type="submit"><i class="fa-solid fa-filter me-2"></i>Filtra</button>
-                        <a class="btn btn-outline-light" href="<?php echo sanitize_output(cie_module_url('index')); ?>"><i class="fa-solid fa-eraser me-2"></i>Pulisci</a>
+                        <a class="btn btn-outline-secondary" href="<?php echo sanitize_output(cie_module_url('index')); ?>"><i class="fa-solid fa-eraser me-2"></i>Pulisci</a>
                     </div>
                 </form>
-            </div>
-        </section>
+            </section>
 
-        <section class="card ag-card">
-            <div class="card-body">
+            <section class="cie-panel">
+                <div class="cie-panel-header">
+                    <h2 class="cie-panel-title">Prenotazioni registrate</h2>
+                    <p class="cie-panel-subtitle">Vista ordinata di cittadini, comune, disponibilita' e appuntamenti per intervenire subito sulle pratiche in corso.</p>
+                </div>
+                <div class="cie-table-wrap">
                 <?php if (!$bookings): ?>
-                    <p class="text-muted mb-0">Nessuna prenotazione presente. Crea una nuova richiesta per iniziare.</p>
+                    <div class="cie-empty">Nessuna prenotazione presente. Crea una nuova richiesta per iniziare.</div>
                 <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="table table-dark table-hover align-middle">
+                    <div class="cie-table-shell table-responsive">
+                        <table class="table table-hover align-middle module-hub-table">
                             <thead>
                                 <tr>
                                     <th>Codice</th>
@@ -142,7 +428,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <?php foreach ($bookings as $booking): ?>
                                     <tr>
                                         <td>
-                                            <strong><?php echo sanitize_output((string) ($booking['booking_code'] ?? cie_booking_code($booking))); ?></strong><br>
+                                            <span class="cie-code-badge"><?php echo sanitize_output((string) ($booking['booking_code'] ?? cie_booking_code($booking))); ?></span><br>
                                             <small class="text-muted">Creato il <?php echo sanitize_output(format_datetime_locale((string) ($booking['created_at'] ?? ''))); ?></small>
                                         </td>
                                         <td>
@@ -206,8 +492,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </table>
                     </div>
                 <?php endif; ?>
-            </div>
-        </section>
+                </div>
+            </section>
+        </div>
     </main>
 </div>
 <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

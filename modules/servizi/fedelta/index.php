@@ -192,20 +192,217 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
-        <div class="page-toolbar mb-4">
-            <div>
-                <h1 class="h3 mb-0">Programma Fedeltà</h1>
-                <p class="text-muted mb-0">Monitoraggio dei movimenti punti tra accumulo e riscatti.</p>
+        <style>
+            .fedelta-shell {
+                display: grid;
+                gap: 1.5rem;
+            }
+
+            .fedelta-hero {
+                position: relative;
+                overflow: hidden;
+                border: 1px solid rgba(58, 123, 213, 0.14);
+                background:
+                    radial-gradient(circle at top left, rgba(58, 123, 213, 0.16), transparent 34%),
+                    radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 26%),
+                    #fff;
+            }
+
+            .fedelta-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.45rem 0.85rem;
+                border-radius: 999px;
+                background: rgba(58, 123, 213, 0.10);
+                color: #2154d7;
+                font-size: 0.72rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            .fedelta-kpis {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 1rem;
+            }
+
+            .fedelta-kpi {
+                border: 1px solid rgba(15, 23, 42, 0.08);
+                border-radius: 1.15rem;
+                padding: 1rem 1.1rem;
+                background: rgba(255, 255, 255, 0.88);
+                box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
+            }
+
+            .fedelta-kpi-label {
+                display: block;
+                margin-bottom: 0.4rem;
+                color: #64748b;
+                font-size: 0.76rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            .fedelta-kpi-value {
+                display: block;
+                color: #0f172a;
+                font-size: 1.85rem;
+                font-weight: 800;
+                line-height: 1;
+            }
+
+            .fedelta-kpi-note {
+                display: block;
+                margin-top: 0.45rem;
+                color: #64748b;
+                font-size: 0.86rem;
+            }
+
+            .fedelta-panel {
+                border: 1px solid rgba(15, 23, 42, 0.08);
+                border-radius: 1.3rem;
+                background: #fff;
+                box-shadow: 0 18px 44px rgba(15, 23, 42, 0.05);
+            }
+
+            .fedelta-summary-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 1rem;
+            }
+
+            .fedelta-summary-card {
+                border: 1px solid rgba(15, 23, 42, 0.07);
+                border-radius: 1.1rem;
+                padding: 1rem 1.1rem;
+                background: linear-gradient(180deg, rgba(248,250,252,0.96), rgba(255,255,255,0.98));
+            }
+
+            .fedelta-table-card-body {
+                padding: 1.25rem 1.25rem 1.4rem !important;
+            }
+
+            .fedelta-table-card-body .table-responsive {
+                border: 1px solid rgba(15, 23, 42, 0.06);
+                border-radius: 1rem;
+                overflow: hidden;
+            }
+
+            .fedelta-table-card-body .dt-container .dt-layout-row:not(.dt-layout-table) {
+                margin: 0;
+                padding-inline: 0.15rem;
+            }
+
+            .fedelta-table-card-body .dt-container .dt-layout-row:first-child {
+                padding-bottom: 1rem;
+            }
+
+            .fedelta-table-card-body .dt-container .dt-layout-row:last-child {
+                padding-top: 1rem;
+            }
+
+            .fedelta-table {
+                --bs-table-bg: transparent;
+                --bs-table-hover-bg: rgba(37, 99, 235, 0.04);
+                margin-bottom: 0;
+            }
+
+            .fedelta-table thead th {
+                border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+                color: #64748b;
+                font-size: 0.76rem;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                white-space: nowrap;
+            }
+
+            .fedelta-table td {
+                padding-top: 1rem;
+                padding-bottom: 1rem;
+                border-color: rgba(15, 23, 42, 0.06);
+                vertical-align: middle;
+            }
+
+            .fedelta-id {
+                display: inline-flex;
+                padding: 0.42rem 0.68rem;
+                border-radius: 0.8rem;
+                background: #f8fafc;
+                color: #0f172a;
+                font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+                font-size: 0.8rem;
+                font-weight: 700;
+            }
+
+            @media (max-width: 1199.98px) {
+                .fedelta-kpis,
+                .fedelta-summary-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+            }
+
+            @media (max-width: 767.98px) {
+                .fedelta-kpis,
+                .fedelta-summary-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+        <div class="fedelta-shell">
+        <section class="card fedelta-hero">
+            <div class="card-body p-4 p-xl-5">
+                <div class="row g-4 align-items-start">
+                    <div class="col-12 col-xl-7">
+                        <span class="fedelta-pill"><i class="fa-solid fa-gift"></i>Loyalty operativa</span>
+                        <h1 class="mt-3 mb-2 fw-bold" style="max-width: 12ch;">Programma fedeltà più chiaro per punti, premi e movimenti.</h1>
+                        <p class="text-muted mb-0" style="max-width: 70ch;">
+                            Controlla accrediti e riscatti, filtra rapidamente per cliente o periodo e mantieni una vista ordinata sul saldo punti attivo.
+                        </p>
+                    </div>
+                    <div class="col-12 col-xl-5">
+                        <div class="fedelta-kpis">
+                            <div class="fedelta-kpi">
+                                <span class="fedelta-kpi-label">Punti attivi</span>
+                                <span class="fedelta-kpi-value"><?php echo loyalty_format_points((int) $filteredStats['totale']); ?></span>
+                                <span class="fedelta-kpi-note">Saldo del filtro attivo</span>
+                            </div>
+                            <div class="fedelta-kpi">
+                                <span class="fedelta-kpi-label">Accumulati</span>
+                                <span class="fedelta-kpi-value">+<?php echo loyalty_format_points((int) $filteredStats['accumulati']); ?></span>
+                                <span class="fedelta-kpi-note">Punti caricati nel periodo</span>
+                            </div>
+                            <div class="fedelta-kpi">
+                                <span class="fedelta-kpi-label">Riscattati</span>
+                                <span class="fedelta-kpi-value">-<?php echo loyalty_format_points((int) $filteredStats['riscattati']); ?></span>
+                                <span class="fedelta-kpi-note">Premi e storni registrati</span>
+                            </div>
+                            <div class="fedelta-kpi">
+                                <span class="fedelta-kpi-label">Movimenti</span>
+                                <span class="fedelta-kpi-value"><?php echo (int) count($movements); ?></span>
+                                <span class="fedelta-kpi-note"><?php echo $filtersApplied ? 'Risultati filtrati' : 'Storico disponibile'; ?></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="toolbar-actions">
-                <a class="btn btn-warning text-dark" href="<?php echo fedelta_module_url('create'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo movimento</a>
-            </div>
-        </div>
-        <div class="card ag-card mb-4">
-            <div class="card-header bg-transparent border-0">
-                <h2 class="h5 mb-0">Filtri</h2>
-            </div>
-            <div class="card-body">
+        </section>
+
+        <section class="card fedelta-panel">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+                    <div>
+                        <h2 class="h5 mb-1">Filtri movimenti</h2>
+                        <p class="text-muted small mb-0">Raffina il registro punti per cliente, tipologia, direzione, periodo o contenuto testuale.</p>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a class="btn btn-outline-warning" href="<?php echo dashboard_url(); ?>"><i class="fa-solid fa-gauge-high me-2"></i>Dashboard</a>
+                        <a class="btn btn-warning text-dark" href="<?php echo fedelta_module_url('create'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo movimento</a>
+                    </div>
+                </div>
                 <form class="row g-3 align-items-end" method="get">
                     <div class="col-12 col-md-6 col-lg-3">
                         <label class="form-label" for="filter_cliente">Cliente</label>
@@ -259,46 +456,42 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 </form>
             </div>
-        </div>
-        <div class="card ag-card mb-4">
-            <div class="card-header bg-transparent border-0">
-                <h2 class="h5 mb-0">Sintesi punti</h2>
+        </section>
+        <section class="card fedelta-panel">
+            <div class="card-header bg-transparent border-0 px-4 pt-4 pb-0">
+                <h2 class="h5 mb-1">Sintesi punti</h2>
+                <p class="text-muted small mb-0">Bilanciamento del programma fedeltà tra saldo attivo, accumuli e riscatti.</p>
             </div>
             <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="border border-dark-subtle rounded-3 px-3 py-3 h-100">
+                <div class="fedelta-summary-grid">
+                    <div class="fedelta-summary-card">
                             <div class="text-muted text-uppercase small mb-1">Punti attivi</div>
                             <div class="fs-3 fw-semibold"><?php echo loyalty_format_points((int) $filteredStats['totale']); ?> pt</div>
                             <?php if ($filtersApplied): ?>
                                 <div class="text-muted small mt-2">Totale complessivo: <?php echo loyalty_format_points((int) $globalStats['totale']); ?> pt</div>
                             <?php endif; ?>
-                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="border border-dark-subtle rounded-3 px-3 py-3 h-100">
+                    <div class="fedelta-summary-card">
                             <div class="text-muted text-uppercase small mb-1">Punti accumulati</div>
                             <div class="fs-3 fw-semibold text-success">+<?php echo loyalty_format_points((int) $filteredStats['accumulati']); ?> pt</div>
-                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="border border-dark-subtle rounded-3 px-3 py-3 h-100">
+                    <div class="fedelta-summary-card">
                             <div class="text-muted text-uppercase small mb-1">Punti riscattati</div>
                             <div class="fs-3 fw-semibold text-danger">-<?php echo loyalty_format_points((int) $filteredStats['riscattati']); ?> pt</div>
-                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="card ag-card">
-            <div class="card-header bg-transparent border-0">
-                <h2 class="h5 mb-0">Storico movimenti</h2>
+        <section class="card fedelta-panel">
+            <div class="card-header bg-transparent border-0 px-4 pt-4 pb-0">
+                <h2 class="h5 mb-1">Storico movimenti</h2>
+                <p class="text-muted small mb-0">Elenco operativo di accrediti e riscatti con saldo, premio e operatore responsabile.</p>
             </div>
-            <div class="card-body">
+            <div class="card-body fedelta-table-card-body">
                 <?php if ($movements): ?>
                     <div class="table-responsive">
-                        <table class="table table-dark table-hover align-middle" data-datatable="true">
+                    <table class="table table-hover align-middle fedelta-table" data-datatable="true">
                             <thead>
                                 <tr>
                                     <th>ID</th>
@@ -317,7 +510,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                 <?php foreach ($movements as $movement): ?>
                                     <?php $isCredit = ((int) $movement['punti']) >= 0; ?>
                                     <tr>
-                                        <td>#<?php echo (int) $movement['id']; ?></td>
+                                        <td><span class="fedelta-id">#<?php echo (int) $movement['id']; ?></span></td>
                                         <td><?php echo sanitize_output(trim(($movement['cognome'] ?? '') . ' ' . ($movement['nome'] ?? '')) ?: 'N/D'); ?></td>
                                         <td>
                                             <span class="badge ag-badge text-uppercase <?php echo $isCredit ? 'bg-success text-dark' : 'bg-danger'; ?>">
@@ -373,6 +566,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 <?php endif; ?>
             </div>
+        </section>
         </div>
     </main>
 </div>

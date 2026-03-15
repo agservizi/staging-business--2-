@@ -474,20 +474,76 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once __DIR__ . '/../../../includes/topbar.php'; ?>
     <main class="content-wrapper">
-        <div class="page-toolbar mb-4">
-            <div>
-                <h1 class="h3 mb-0">Spedizioni BRT</h1>
-                <p class="text-muted mb-0">Gestione spedizioni, etichette e tracking tramite webservice BRT.</p>
+        <style>
+            .brt-shell { display:grid; gap:1.5rem; }
+            .brt-shell > * + * { margin-top: 1.5rem; }
+            .brt-hero {
+                position: relative; overflow: hidden; border:1px solid rgba(58,123,213,.14);
+                background: radial-gradient(circle at top left, rgba(58,123,213,.16), transparent 34%),
+                            radial-gradient(circle at top right, rgba(16,185,129,.12), transparent 26%), #fff;
+            }
+            .brt-pill {
+                display:inline-flex; align-items:center; gap:.5rem; padding:.45rem .85rem; border-radius:999px;
+                background:rgba(58,123,213,.10); color:#2154d7; font-size:.72rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+            }
+            .brt-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; }
+            .brt-kpi {
+                border:1px solid rgba(15,23,42,.08); border-radius:1.15rem; padding:1rem 1.1rem;
+                background:rgba(255,255,255,.88); box-shadow:0 16px 36px rgba(15,23,42,.05);
+            }
+            .brt-kpi-label { display:block; margin-bottom:.4rem; color:#64748b; font-size:.76rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+            .brt-kpi-value { display:block; color:#0f172a; font-size:1.85rem; font-weight:800; line-height:1; }
+            .brt-kpi-note { display:block; margin-top:.45rem; color:#64748b; font-size:.86rem; }
+            .brt-panel { border:1px solid rgba(15,23,42,.08); border-radius:1.3rem; background:#fff; box-shadow:0 18px 44px rgba(15,23,42,.05); }
+            .brt-table-card-body { padding:1.25rem 1.25rem 1.4rem !important; }
+            .brt-table-card-body .table-responsive { border:1px solid rgba(15,23,42,.06); border-radius:1rem; overflow:hidden; }
+            .brt-table { --bs-table-bg:transparent; --bs-table-hover-bg:rgba(37,99,235,.04); margin-bottom:0; }
+            .brt-table thead th { border-bottom:1px solid rgba(15,23,42,.08); color:#64748b; font-size:.76rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; }
+            .brt-table td { padding-top:1rem; padding-bottom:1rem; border-color:rgba(15,23,42,.06); vertical-align:middle; }
+            .brt-id {
+                display:inline-flex; padding:.42rem .68rem; border-radius:.8rem; background:#f8fafc; color:#0f172a;
+                font-family:"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size:.8rem; font-weight:700;
+            }
+            @media (max-width:1199.98px) { .brt-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+            @media (max-width:767.98px) {
+                .brt-kpis { grid-template-columns:1fr; }
+                .brt-shell > * + * { margin-top: 1rem; }
+            }
+        </style>
+        <div class="brt-shell">
+        <section class="card brt-hero">
+            <div class="card-body p-4 p-xl-5">
+                <div class="row g-4 align-items-start">
+                    <div class="col-12 col-xl-7">
+                        <span class="brt-pill"><i class="fa-solid fa-truck-fast"></i>Logistica corriere</span>
+                        <h1 class="mt-3 mb-2 fw-bold" style="max-width:12ch;">Spedizioni BRT più chiare per tracking, borderò e ritiri.</h1>
+                        <p class="text-muted mb-0" style="max-width:70ch;">Controlla spedizioni, borderò e ordini di ritiro in un’unica regia, con una lettura più ordinata dello stato operativo e dei documenti generati.</p>
+                    </div>
+                    <div class="col-12 col-xl-5">
+                        <div class="brt-kpis">
+                            <div class="brt-kpi"><span class="brt-kpi-label">Spedizioni</span><span class="brt-kpi-value"><?php echo (int) $totalShipments; ?></span><span class="brt-kpi-note">Totale del filtro attivo</span></div>
+                            <div class="brt-kpi"><span class="brt-kpi-label">Borderò</span><span class="brt-kpi-value"><?php echo (int) $totalManifests; ?></span><span class="brt-kpi-note">Manifest disponibili</span></div>
+                            <div class="brt-kpi"><span class="brt-kpi-label">ORM recenti</span><span class="brt-kpi-value"><?php echo (int) count($recentOrmRequests); ?></span><span class="brt-kpi-note">Ordini di ritiro visibili</span></div>
+                            <div class="brt-kpi"><span class="brt-kpi-label">Conferma auto</span><span class="brt-kpi-value"><?php echo $autoConfirmEnabled ? 'ON' : 'OFF'; ?></span><span class="brt-kpi-note">Stato del flusso automatico</span></div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="toolbar-actions d-flex align-items-center gap-2">
-                <a class="btn btn-warning text-dark" href="<?php echo brt_module_url('create'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova spedizione</a>
-                <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('orm'); ?>"><i class="fa-solid fa-truck-ramp-box me-2"></i>Ordine ritiro (ORM)</a>
-                <a class="btn btn-outline-secondary" href="<?php echo brt_module_url('log'); ?>"><i class="fa-solid fa-clipboard-list me-2"></i>Log attività</a>
-            </div>
-        </div>
+        </section>
 
-        <div class="card ag-card mb-4">
-            <div class="card-body">
+        <section class="card brt-panel">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+                    <div>
+                        <h2 class="h5 mb-1">Filtri spedizioni</h2>
+                        <p class="text-muted small mb-0">Raffina il registro per stato e ricerca libera su destinatario, parcel ID o riferimenti mittente.</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <a class="btn btn-warning text-dark" href="<?php echo brt_module_url('create'); ?>"><i class="fa-solid fa-circle-plus me-2"></i>Nuova spedizione</a>
+                        <a class="btn btn-outline-warning" href="<?php echo brt_module_url('orm'); ?>"><i class="fa-solid fa-truck-ramp-box me-2"></i>Ordine ritiro</a>
+                        <a class="btn btn-outline-warning" href="<?php echo brt_module_url('log'); ?>"><i class="fa-solid fa-clipboard-list me-2"></i>Log attività</a>
+                    </div>
+                </div>
                 <form class="row g-3 align-items-end" method="get">
                     <div class="col-md-4">
                         <label class="form-label" for="status">Stato spedizione</label>
@@ -516,7 +572,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
             </div>
         <?php endif; ?>
 
-        <div class="card ag-card mb-5">
+        <section class="card brt-panel">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h2 class="card-title h5 mb-0">Ultime spedizioni</h2>
                 <?php if ($totalShipments > 0): ?>
@@ -527,7 +583,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <span class="text-muted small">Nessuna spedizione trovata</span>
                 <?php endif; ?>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body brt-table-card-body">
                 <?php if (!$shipments): ?>
                     <div class="p-4 text-center text-muted">Nessuna spedizione registrata.</div>
                 <?php else: ?>
@@ -542,7 +598,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                         </div>
                     </form>
                     <div class="table-responsive">
-                        <table class="table table-dark table-hover align-middle mb-0">
+                        <table class="table table-hover align-middle mb-0 brt-table">
                             <thead>
                                 <tr>
                                     <th scope="col" class="text-center">Sel.</th>
@@ -583,7 +639,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                                 form="manifest-form"<?php echo $canSelectForManifest ? '' : ' disabled'; ?><?php echo $canSelectForManifest ? '' : ' title="La spedizione deve essere confermata e non già inclusa in un borderò."'; ?>
                                             >
                                         </td>
-                                        <td class="fw-semibold">#<?php echo (int) $shipment['id']; ?></td>
+                                        <td><span class="brt-id">#<?php echo (int) $shipment['id']; ?></span></td>
                                         <td>
                                             <div><span class="text-muted">Mittente:</span> <?php echo sanitize_output($shipment['sender_customer_code']); ?></div>
                                             <div><span class="text-muted">Ref. numerico:</span> <?php echo sanitize_output((string) $shipment['numeric_sender_reference']); ?></div>
@@ -822,9 +878,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <?php endif; ?>
                 <?php endif; ?>
             </div>
-        </div>
+        </section>
 
-        <div class="card ag-card mb-5">
+        <section class="card brt-panel">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h2 class="card-title h5 mb-0">Borderò generati</h2>
                 <?php if ($totalManifests > 0): ?>
@@ -835,12 +891,12 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <span class="text-muted small">Nessun borderò disponibile</span>
                 <?php endif; ?>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body brt-table-card-body">
                 <?php if (!$recentManifests): ?>
                     <div class="p-4 text-center text-muted">Nessun borderò generato finora.</div>
                 <?php else: ?>
                     <div class="table-responsive">
-                        <table class="table table-striped align-middle mb-0">
+                        <table class="table table-striped align-middle mb-0 brt-table">
                             <thead>
                                 <tr>
                                     <th scope="col">Borderò</th>
@@ -934,19 +990,19 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     <?php endif; ?>
                 <?php endif; ?>
             </div>
-        </div>
+        </section>
 
-        <div class="card ag-card mb-5">
+        <section class="card brt-panel">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h2 class="card-title h5 mb-0">Ordini di ritiro (ORM) recenti</h2>
                 <a class="btn btn-outline-secondary btn-sm" href="<?php echo brt_module_url('orm'); ?>"><i class="fa-solid fa-truck-ramp-box me-2"></i>Gestisci ORM</a>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body brt-table-card-body">
                 <?php if (!$recentOrmRequests): ?>
                     <div class="p-4 text-center text-muted">Nessun ordine di ritiro registrato.</div>
                 <?php else: ?>
                     <div class="table-responsive">
-                        <table class="table table-striped align-middle mb-0">
+                        <table class="table table-striped align-middle mb-0 brt-table">
                             <thead>
                                 <tr>
                                     <th scope="col">#</th>
@@ -975,6 +1031,7 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                     </div>
                 <?php endif; ?>
             </div>
+        </section>
         </div>
     </main>
     <?php require_once __DIR__ . '/../../../includes/footer.php'; ?>

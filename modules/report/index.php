@@ -344,46 +344,313 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 ?>
 <div class="flex-grow-1 d-flex flex-column min-vh-100">
     <?php require_once __DIR__ . '/../../includes/topbar.php'; ?>
+    <?php render_module_hub_styles(); ?>
+    <style>
+        .report-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .report-hero {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(37, 99, 235, 0.16);
+            border-radius: 28px;
+            padding: 2rem;
+            background:
+                radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 34%),
+                radial-gradient(circle at top right, rgba(16, 185, 129, 0.14), transparent 30%),
+                linear-gradient(135deg, #ffffff 0%, #f8fbff 54%, #eef5ff 100%);
+            box-shadow: 0 28px 60px rgba(15, 23, 42, 0.10);
+        }
+
+        .report-hero::after {
+            content: "";
+            position: absolute;
+            inset: auto -90px -120px auto;
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            background: rgba(37, 99, 235, 0.08);
+            filter: blur(12px);
+        }
+
+        .report-hero-grid {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .report-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.45rem 0.85rem;
+            border-radius: 999px;
+            background: rgba(37, 99, 235, 0.10);
+            color: #1d4ed8;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .report-hero h1 {
+            margin: 1rem 0 0.75rem;
+            font-size: clamp(2rem, 3vw, 2.7rem);
+            line-height: 1.05;
+            font-weight: 800;
+            color: #172033;
+            max-width: 11ch;
+        }
+
+        .report-hero p {
+            margin: 0;
+            max-width: 62ch;
+            color: #52607a;
+            font-size: 1rem;
+        }
+
+        .report-hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.85rem;
+            margin-top: 1.5rem;
+        }
+
+        .report-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .report-kpi-card {
+            border-radius: 22px;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            background: rgba(255, 255, 255, 0.92);
+            padding: 1.15rem 1.2rem;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+        }
+
+        .report-kpi-card span {
+            display: block;
+            margin-bottom: 0.45rem;
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #607089;
+        }
+
+        .report-kpi-card strong {
+            display: block;
+            font-size: 2rem;
+            line-height: 1;
+            color: #172033;
+        }
+
+        .report-kpi-card small {
+            display: block;
+            margin-top: 0.45rem;
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+
+        .report-panel {
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 24px;
+            background: #fff;
+            box-shadow: 0 22px 45px rgba(15, 23, 42, 0.07);
+        }
+
+        .report-panel-header {
+            padding: 1.35rem 1.5rem 0;
+        }
+
+        .report-panel-title {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #172033;
+        }
+
+        .report-panel-subtitle {
+            margin: 0.35rem 0 0;
+            color: #64748b;
+            font-size: 0.92rem;
+        }
+
+        .report-panel-body {
+            padding: 1.25rem 1.5rem 1.5rem;
+        }
+
+        .report-filter-form {
+            padding: 1.35rem 1.5rem 1.5rem;
+        }
+
+        .report-filter-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .report-field label {
+            display: block;
+            margin-bottom: 0.45rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #52607a;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .report-field .form-control,
+        .report-field .form-select {
+            min-height: 48px;
+            border-radius: 15px;
+            border-color: #d7dfeb;
+            box-shadow: none;
+        }
+
+        .report-filter-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            margin-top: 1rem;
+        }
+
+        .report-grid-cards {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .report-overview-card {
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 20px;
+            padding: 1.15rem;
+            background: linear-gradient(180deg, rgba(248, 250, 252, 0.75), rgba(255, 255, 255, 0.98));
+            height: 100%;
+        }
+
+        .report-overview-card .display-6 {
+            font-size: 2rem;
+        }
+
+        .report-table-shell {
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 20px;
+            overflow: hidden;
+            background: linear-gradient(180deg, rgba(248, 250, 252, 0.7), rgba(255, 255, 255, 0.98));
+        }
+
+        .report-table-shell .table {
+            margin-bottom: 0;
+        }
+
+        .report-table-shell thead th {
+            border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+            background: rgba(248, 250, 252, 0.95);
+            color: #52607a;
+            font-size: 0.77rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .report-id-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.38rem 0.7rem;
+            border-radius: 999px;
+            background: rgba(37, 99, 235, 0.10);
+            color: #1d4ed8;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+
+        .report-pagination {
+            padding-top: 1rem;
+        }
+
+        @media (max-width: 1199.98px) {
+            .report-hero-grid,
+            .report-filter-grid,
+            .report-grid-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .report-hero,
+            .report-filter-form,
+            .report-panel-body {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .report-kpi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
     <main class="content-wrapper">
-        <div class="row g-4 mb-4">
-            <div class="col-lg-4 col-md-6">
-                <div class="card ag-card h-100">
-                    <div class="card-body">
-                        <div class="card-title">Clienti attivi</div>
-                        <div class="fs-2 fw-bold"><?php echo number_format($summary['clients']); ?></div>
+        <div class="module-hub-shell report-shell">
+        <section class="report-hero">
+            <div class="report-hero-grid">
+                <div>
+                    <span class="report-eyebrow"><i class="fa-solid fa-chart-column"></i> Business insight</span>
+                    <h1>Una vista piu' chiara su numeri, flussi e report del periodo.</h1>
+                    <p>Analizza clienti, ticket, saldo economico e servizi operativi in un'unica dashboard, con filtri temporali e dettagli esportabili quando serve.</p>
+                    <div class="report-hero-actions">
+                        <a class="btn btn-outline-warning" href="<?php echo report_module_url('index'); ?>"><i class="fa-solid fa-chart-line me-2"></i>Reset vista</a>
                     </div>
                 </div>
-            </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="card ag-card h-100">
-                    <div class="card-body">
-                        <div class="card-title">Ticket aperti</div>
-                        <div class="fs-2 fw-bold"><?php echo number_format($summary['tickets']); ?></div>
-                    </div>
+                <div class="report-kpi-grid">
+                    <article class="report-kpi-card">
+                        <span>Clienti attivi</span>
+                        <strong><?php echo number_format($summary['clients']); ?></strong>
+                        <small>Base clienti registrata nel gestionale</small>
+                    </article>
+                    <article class="report-kpi-card">
+                        <span>Ticket aperti</span>
+                        <strong><?php echo number_format($summary['tickets']); ?></strong>
+                        <small>Richieste assistenza ancora in lavorazione</small>
+                    </article>
+                    <article class="report-kpi-card">
+                        <span>Saldo periodo</span>
+                        <strong><?php echo sanitize_output(format_currency($summary['revenue'])); ?></strong>
+                        <small>Entrate nette calcolate nel range selezionato</small>
+                    </article>
+                    <article class="report-kpi-card">
+                        <span>Ultimo report</span>
+                        <strong><?php echo $latestReportDate ? sanitize_output(format_date_locale((string) $latestReportDate)) : '—'; ?></strong>
+                        <small>Data piu' recente dei report giornalieri generati</small>
+                    </article>
                 </div>
             </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="card ag-card h-100">
-                    <div class="card-body">
-                        <div class="card-title">Saldo periodo</div>
-                        <div class="fs-2 fw-bold"><?php echo sanitize_output(format_currency($summary['revenue'])); ?></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </section>
 
         <?php if ($service === 'all'): ?>
-            <div class="card ag-card mb-4">
-                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">Panoramica servizi</h5>
+            <section class="report-panel">
+                <div class="report-panel-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h2 class="report-panel-title">Panoramica servizi</h2>
+                        <p class="report-panel-subtitle">Ripartizione rapida dei principali flussi gestionali nel periodo selezionato.</p>
+                    </div>
                     <span class="text-muted small">Periodo: <?php echo sanitize_output(format_date_locale($from)); ?> → <?php echo sanitize_output(format_date_locale($to)); ?></span>
                 </div>
-                <div class="card-body">
+                <div class="report-panel-body">
                     <?php if ($overview): ?>
-                        <div class="row g-3">
+                        <div class="report-grid-cards">
                             <?php foreach ($overview as $entry): ?>
-                                <div class="col-lg-4 col-md-6">
-                                    <div class="border rounded-3 p-3 h-100 d-flex flex-column justify-content-between">
+                                    <div class="report-overview-card d-flex flex-column justify-content-between">
                                         <div>
                                             <span class="text-muted text-uppercase small"><?php echo sanitize_output($entry['label']); ?></span>
                                             <div class="display-6 fw-semibold mt-2"><?php echo number_format((int) $entry['count'], 0, ',', '.'); ?></div>
@@ -405,32 +672,32 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                             </a>
                                         </div>
                                     </div>
-                                </div>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>
                         <div class="alert alert-info mb-0">Nessun dato trovato per il periodo selezionato.</div>
                     <?php endif; ?>
                 </div>
-            </div>
+            </section>
         <?php endif; ?>
 
-        <div class="card ag-card mb-4">
-            <div class="card-header bg-transparent border-0">
-                <h5 class="card-title mb-0">Filtri report</h5>
+        <section class="report-panel">
+            <div class="report-panel-header">
+                <h2 class="report-panel-title">Filtri report</h2>
+                <p class="report-panel-subtitle">Seleziona periodo, servizio e responsabile per ottenere una lettura piu' mirata dei dati.</p>
             </div>
-            <div class="card-body">
-                <form class="row g-3 align-items-end" method="get">
-                    <div class="col-md-3">
-                        <label class="form-label" for="from">Dal</label>
+            <form class="report-filter-form" method="get">
+                <div class="report-filter-grid">
+                    <div class="report-field">
+                        <label for="from">Dal</label>
                         <input class="form-control" id="from" type="date" name="from" value="<?php echo sanitize_output($from); ?>">
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="to">Al</label>
+                    <div class="report-field">
+                        <label for="to">Al</label>
                         <input class="form-control" id="to" type="date" name="to" value="<?php echo sanitize_output($to); ?>">
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label" for="service">Servizio</label>
+                    <div class="report-field">
+                        <label for="service">Servizio</label>
                         <select class="form-select" id="service" name="service">
                             <option value="all" <?php echo $service === 'all' ? 'selected' : ''; ?>>Tutti</option>
                             <?php foreach ($serviceMap as $key => $config): ?>
@@ -439,8 +706,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         </select>
                     </div>
                     <?php if ($service === 'appuntamenti'): ?>
-                        <div class="col-md-3">
-                            <label class="form-label" for="responsabile">Responsabile</label>
+                        <div class="report-field">
+                            <label for="responsabile">Responsabile</label>
                             <select class="form-select" id="responsabile" name="responsabile">
                                 <option value="">Tutti</option>
                                 <?php foreach ($owners as $responsabile): ?>
@@ -449,31 +716,32 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             </select>
                         </div>
                     <?php endif; ?>
-                    <div class="col-md-3">
-                        <button class="btn btn-warning text-dark w-100" type="submit">Applica filtri</button>
-                    </div>
+                </div>
+                <div class="report-filter-actions">
+                    <button class="btn btn-warning text-dark" type="submit">Applica filtri</button>
                     <?php if ($current): ?>
-                        <div class="col-md-3">
-                            <button class="btn btn-outline-warning w-100" type="submit" name="export" value="csv"><i class="fa-solid fa-file-csv me-2"></i>Esportazione CSV</button>
-                        </div>
+                        <button class="btn btn-outline-warning" type="submit" name="export" value="csv"><i class="fa-solid fa-file-csv me-2"></i>Esportazione CSV</button>
                     <?php endif; ?>
-                </form>
-            </div>
-        </div>
+                </div>
+            </form>
+        </section>
 
-        <div class="card ag-card mb-4">
-                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Report finanziari giornalieri</h5>
+        <section class="report-panel">
+            <div class="report-panel-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h2 class="report-panel-title">Report finanziari giornalieri</h2>
+                    <p class="report-panel-subtitle">Storico dei report economici automatici con anteprima e download diretto.</p>
+                </div>
                 <?php if ($dailyTotal > 0): ?>
                     <span class="text-muted small">Ultimo report: <?php echo sanitize_output(format_date_locale((string) $latestReportDate)); ?></span>
                 <?php else: ?>
                     <span class="text-muted small">Nessun report generato</span>
                 <?php endif; ?>
             </div>
-            <div class="card-body">
+            <div class="report-panel-body">
                 <?php if ($dailyReports): ?>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
+                    <div class="report-table-shell table-responsive">
+                        <table class="table table-hover align-middle module-hub-table">
                             <thead>
                                 <tr>
                                     <th>Data</th>
@@ -496,7 +764,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         $previewUrl = report_module_url('download_daily_report', ['id' => $reportId, 'mode' => 'inline']);
                                     ?>
                                     <tr>
-                                        <td><?php echo sanitize_output($reportDate ? format_date_locale((string) $reportDate) : '—'); ?></td>
+                                        <td><span class="report-id-badge"><?php echo sanitize_output($reportDate ? format_date_locale((string) $reportDate) : '—'); ?></span></td>
                                         <td><?php echo sanitize_output(format_currency((float) ($report['total_entrate'] ?? 0))); ?></td>
                                         <td><?php echo sanitize_output(format_currency((float) ($report['total_uscite'] ?? 0))); ?></td>
                                         <td class="<?php echo $saldoClass; ?>"><?php echo sanitize_output(format_currency($saldoValue)); ?></td>
@@ -515,7 +783,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         </table>
                     </div>
                         <?php if ($dailyPages > 1): ?>
-                            <nav aria-label="Paginazione report giornalieri" class="mt-3">
+                            <nav aria-label="Paginazione report giornalieri" class="report-pagination">
                                 <ul class="pagination">
                                     <?php
                                         $baseQuery = $_GET;
@@ -550,12 +818,15 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </div>
                 <?php endif; ?>
             </div>
-        </div>
+        </section>
 
         <?php if ($current): ?>
-            <div class="card ag-card">
-                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">Risultati</h5>
+            <section class="report-panel">
+                <div class="report-panel-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h2 class="report-panel-title">Risultati</h2>
+                        <p class="report-panel-subtitle">Estratto dettagliato del servizio selezionato, con valori già pronti per analisi o export.</p>
+                    </div>
                     <div class="d-flex align-items-center gap-2">
                         <span class="text-muted small"><?php echo count($dataset); ?> record</span>
                         <?php if ($datasetLimitReached && !empty($current['limit'])): ?>
@@ -563,10 +834,10 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <?php endif; ?>
                     </div>
                 </div>
-                <div class="card-body">
+                <div class="report-panel-body">
                     <?php if ($dataset): ?>
-                        <div class="table-responsive">
-                            <table class="table table-dark table-hover" data-datatable="true">
+                        <div class="report-table-shell table-responsive">
+                            <table class="table table-hover module-hub-table" data-datatable="true">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
@@ -579,7 +850,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 <tbody>
                                     <?php foreach ($dataset as $row): ?>
                                         <tr>
-                                            <td>#<?php echo (int) $row['id']; ?></td>
+                                            <td><span class="report-id-badge">#<?php echo (int) $row['id']; ?></span></td>
                                             <?php foreach ($current['columns'] as $col): ?>
                                                 <td><?php echo sanitize_output(report_format_value($current, $row, $col)); ?></td>
                                             <?php endforeach; ?>
@@ -596,8 +867,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <p class="text-muted small mb-0 mt-3"><i class="fa-solid fa-circle-info me-1"></i>Mostrati i primi <?php echo (int) $current['limit']; ?> record. Affina i filtri per ridurre la quantità di dati.</p>
                     <?php endif; ?>
                 </div>
-            </div>
+            </section>
         <?php endif; ?>
+        </div>
     </main>
 </div>
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
