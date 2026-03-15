@@ -4,12 +4,12 @@ RewriteEngine On
 RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
 RewriteCond %{THE_REQUEST} \s/+(.+?)\.php(?:[\s?]|$) [NC]
 RewriteCond %1 !^index$
-RewriteRule ^ /%1 [R=301,L,NE]
+RewriteRule ^ %1 [R=301,L,NE]
 
 # Normalise /index.php to /
 RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
 RewriteCond %{THE_REQUEST} \s/+index\.php(?:[\s?]|$) [NC]
-RewriteRule ^index\.php$ / [R=301,L]
+RewriteRule ^index\.php$ ./ [R=301,L]
 
 # Serve existing files and directories as-is.
 RewriteCond %{REQUEST_FILENAME} -f [OR]
@@ -17,9 +17,9 @@ RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
 # Resolve clean URLs to PHP files when they exist.
-RewriteCond %{DOCUMENT_ROOT}/$1.php -f
+RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^(.+?)/?$ $1.php [L,QSA]
 
 # Resolve clean directory URLs to their index.php.
-RewriteCond %{DOCUMENT_ROOT}/$1/index.php -f
+RewriteCond %{REQUEST_FILENAME}/index.php -f
 RewriteRule ^(.+?)/?$ $1/index.php [L,QSA]
