@@ -188,6 +188,7 @@ $appointmentStatuses = $settingsService->getAppointmentStatuses();
 $aciTypes = $settingsService->getAciTypes();
 $aciStatuses = $settingsService->getAciStatuses();
 $aciPricing = $settingsService->getAciPricing($aciTypes);
+$expressModuleSettings = $settingsService->getExpressModuleSettings();
 $servicePricing = $settingsService->getServicePricing();
 
 $opportunityService = new OpportunityService($pdo);
@@ -1028,6 +1029,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
     }
+
+    if ($action === 'express_module_settings') {
+        $paymentMethodsPayload = preg_split('/\r\n|\r|\n/', (string) ($_POST['payment_methods_text'] ?? '')) ?: [];
+
+        try {
+            $result = $settingsService->saveExpressModuleSettings([
+                'default_vat' => $_POST['default_vat'] ?? 22,
+                'stock_alert_threshold' => $_POST['stock_alert_threshold'] ?? 10,
+                'payment_methods' => $paymentMethodsPayload,
+                'default_payment_method' => $_POST['default_payment_method'] ?? '',
+                'allow_negative_margin' => isset($_POST['allow_negative_margin']) ? 1 : 0,
+            ], $currentUserId);
+        } catch (Throwable $exception) {
+            error_log('Errore salvataggio impostazioni Express: ' . $exception->getMessage());
+            $result = ['success' => false, 'errors' => ['Errore interno del server. Controlla i log per dettagli.']];
+        }
+
+        if ($result['success']) {
+            $expressModuleSettings = $result['settings'];
+            add_flash('success', 'Impostazioni modulo Express aggiornate con successo.');
+            header('Location: index.php#express-module-settings');
+            exit;
+        }
+
+        foreach ($result['errors'] as $error) {
+            $alerts[] = ['type' => 'danger', 'text' => $error];
+        }
+
+        if (isset($result['settings']) && is_array($result['settings'])) {
+            $expressModuleSettings = $result['settings'];
+        }
+    }
 }
 
 // Assicura che i dati ACI siano valorizzati anche su richieste GET
@@ -1185,6 +1218,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="opportunities" type="button">Opportunity</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" data-section-target="express" type="button">Express Telefonia</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-section-target="pricing" type="button">Listini</button>
@@ -2362,6 +2398,57 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 </td>
                             </tr>
                         </template>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xxl-5" data-section="express">
+                <div class="card ag-card h-100" id="express-module-settings">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Modulo Express Telefonia</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">Parametri locali per il modulo nativo single-tenant dedicato a stock ICCID e vendite telefonia.</p>
+                        <form method="post">
+                            <input type="hidden" name="action" value="express_module_settings">
+                            <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label" for="express_default_vat">IVA predefinita</label>
+                                    <input class="form-control" id="express_default_vat" name="default_vat" type="number" min="0" max="100" step="0.01" value="<?php echo sanitize_output(number_format((float) ($expressModuleSettings['default_vat'] ?? 22), 2, '.', '')); ?>">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="express_stock_alert_threshold">Soglia alert stock</label>
+                                    <input class="form-control" id="express_stock_alert_threshold" name="stock_alert_threshold" type="number" min="1" max="500" step="1" value="<?php echo (int) ($expressModuleSettings['stock_alert_threshold'] ?? 10); ?>">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="express_default_payment_method">Metodo predefinito</label>
+                                    <select class="form-select" id="express_default_payment_method" name="default_payment_method">
+                                        <?php foreach (($expressModuleSettings['payment_methods'] ?? []) as $method): ?>
+                                            <option value="<?php echo sanitize_output((string) $method); ?>"<?php echo $method === ($expressModuleSettings['default_payment_method'] ?? '') ? ' selected' : ''; ?>><?php echo sanitize_output((string) $method); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="express_payment_methods_text">Metodi di pagamento disponibili</label>
+                                    <textarea class="form-control" id="express_payment_methods_text" name="payment_methods_text" rows="5" placeholder="Un metodo per riga"><?php echo sanitize_output(implode("\n", $expressModuleSettings['payment_methods'] ?? [])); ?></textarea>
+                                    <div class="form-text">Inserisci un metodo per riga. Il modulo vendite userà questo elenco per il form di registrazione.</div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" id="express_allow_negative_margin" name="allow_negative_margin" type="checkbox" value="1"<?php echo !empty($expressModuleSettings['allow_negative_margin']) ? ' checked' : ''; ?>>
+                                        <label class="form-check-label" for="express_allow_negative_margin">Consenti margine negativo nelle vendite manuali</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 d-flex gap-2 flex-wrap">
+                                <button class="btn btn-warning" type="submit">
+                                    <i class="fa-solid fa-save me-2"></i>Salva impostazioni Express
+                                </button>
+                                <a class="btn btn-outline-secondary" href="<?php echo base_url('modules/servizi/express/index.php'); ?>">
+                                    <i class="fa-solid fa-up-right-from-square me-2"></i>Apri modulo
+                                </a>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>

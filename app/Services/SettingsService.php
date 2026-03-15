@@ -22,6 +22,7 @@ class SettingsService
     private const UI_THEME_KEY = 'ui_theme';
     private const EMAIL_MARKETING_SETTINGS_KEY = 'email_marketing_settings';
     private const SERVICE_PRICING_KEY = 'service_pricing';
+    private const EXPRESS_MODULE_SETTINGS_KEY = 'servizi_express_settings';
     public const PORTAL_BRT_PRICING_KEY = 'portal_brt_pricing';
     public const CAF_PATRONATO_STATUS_CATEGORIES = [
         'pending' => 'Da lavorare / In attesa',
@@ -3176,6 +3177,143 @@ class SettingsService
         }
 
         return [];
+    }
+
+    /**
+     * @return array{default_vat: float, stock_alert_threshold: int, payment_methods: array<int, string>, default_payment_method: string, allow_negative_margin: bool}
+     */
+    public function getExpressModuleSettings(): array
+    {
+        $defaults = [
+            'default_vat' => 22.0,
+            'stock_alert_threshold' => 10,
+            'payment_methods' => ['Contanti', 'Carta', 'POS', 'Bonifico'],
+            'default_payment_method' => 'Contanti',
+            'allow_negative_margin' => false,
+        ];
+
+        try {
+            $stmt = $this->pdo->prepare('SELECT valore FROM configurazioni WHERE chiave = :chiave LIMIT 1');
+            $stmt->execute([':chiave' => self::EXPRESS_MODULE_SETTINGS_KEY]);
+            $value = $stmt->fetchColumn();
+
+            if ($value === false || $value === null || $value === '') {
+                return $defaults;
+            }
+
+            $decoded = json_decode((string) $value, true);
+            if (!is_array($decoded)) {
+                return $defaults;
+            }
+
+            $paymentMethods = [];
+            foreach (($decoded['payment_methods'] ?? []) as $method) {
+                $method = trim((string) $method);
+                if ($method !== '' && !in_array($method, $paymentMethods, true)) {
+                    $paymentMethods[] = $method;
+                }
+            }
+
+            if ($paymentMethods === []) {
+                $paymentMethods = $defaults['payment_methods'];
+            }
+
+            $settings = [
+                'default_vat' => isset($decoded['default_vat']) ? (float) $decoded['default_vat'] : $defaults['default_vat'],
+                'stock_alert_threshold' => isset($decoded['stock_alert_threshold']) ? max(1, (int) $decoded['stock_alert_threshold']) : $defaults['stock_alert_threshold'],
+                'payment_methods' => $paymentMethods,
+                'default_payment_method' => trim((string) ($decoded['default_payment_method'] ?? $defaults['default_payment_method'])),
+                'allow_negative_margin' => !empty($decoded['allow_negative_margin']),
+            ];
+
+            if (!in_array($settings['default_payment_method'], $paymentMethods, true)) {
+                $settings['default_payment_method'] = $paymentMethods[0];
+            }
+
+            return $settings;
+        } catch (Throwable $exception) {
+            error_log('SettingsService::getExpressModuleSettings - ' . $exception->getMessage());
+            return $defaults;
+        }
+    }
+
+    /**
+     * @param array{default_vat?: mixed, stock_alert_threshold?: mixed, payment_methods?: array<int, mixed>, default_payment_method?: mixed, allow_negative_margin?: mixed} $settings
+     * @return array{success: bool, errors: array<int, string>, settings?: array{default_vat: float, stock_alert_threshold: int, payment_methods: array<int, string>, default_payment_method: string, allow_negative_margin: bool}}
+     */
+    public function saveExpressModuleSettings(array $settings, int $userId): array
+    {
+        $errors = [];
+
+        $defaultVat = round((float) ($settings['default_vat'] ?? 22), 2);
+        if ($defaultVat < 0 || $defaultVat > 100) {
+            $errors[] = 'L\'aliquota IVA predefinita deve essere compresa tra 0 e 100.';
+        }
+
+        $threshold = (int) ($settings['stock_alert_threshold'] ?? 10);
+        if ($threshold < 1 || $threshold > 500) {
+            $errors[] = 'La soglia di alert magazzino deve essere compresa tra 1 e 500.';
+        }
+
+        $paymentMethods = [];
+        foreach (($settings['payment_methods'] ?? []) as $method) {
+            $method = trim((string) $method);
+            if ($method === '') {
+                continue;
+            }
+            if (mb_strlen($method, 'UTF-8') > 60) {
+                $errors[] = 'Un metodo di pagamento supera i 60 caratteri consentiti.';
+                continue;
+            }
+            if (!in_array($method, $paymentMethods, true)) {
+                $paymentMethods[] = $method;
+            }
+        }
+
+        if ($paymentMethods === []) {
+            $errors[] = 'Inserisci almeno un metodo di pagamento valido per il modulo Express.';
+        }
+
+        $defaultPaymentMethod = trim((string) ($settings['default_payment_method'] ?? ''));
+        if ($defaultPaymentMethod === '' && $paymentMethods !== []) {
+            $defaultPaymentMethod = $paymentMethods[0];
+        }
+        if ($defaultPaymentMethod !== '' && !in_array($defaultPaymentMethod, $paymentMethods, true)) {
+            $errors[] = 'Il metodo di pagamento predefinito deve essere incluso nell\'elenco dei metodi disponibili.';
+        }
+
+        if ($errors) {
+            return ['success' => false, 'errors' => $errors];
+        }
+
+        $normalized = [
+            'default_vat' => $defaultVat,
+            'stock_alert_threshold' => $threshold,
+            'payment_methods' => $paymentMethods,
+            'default_payment_method' => $defaultPaymentMethod,
+            'allow_negative_margin' => !empty($settings['allow_negative_margin']),
+        ];
+
+        try {
+            $stmt = $this->pdo->prepare('INSERT INTO configurazioni (chiave, valore) VALUES (:chiave, :valore) ON DUPLICATE KEY UPDATE valore = VALUES(valore)');
+            $stmt->execute([
+                ':chiave' => self::EXPRESS_MODULE_SETTINGS_KEY,
+                ':valore' => json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ]);
+
+            $this->logActivity($userId, 'Aggiornamento impostazioni modulo Express', [
+                'default_vat' => $normalized['default_vat'],
+                'stock_alert_threshold' => $normalized['stock_alert_threshold'],
+                'payment_methods_count' => count($normalized['payment_methods']),
+                'default_payment_method' => $normalized['default_payment_method'],
+                'allow_negative_margin' => $normalized['allow_negative_margin'],
+            ]);
+
+            return ['success' => true, 'errors' => [], 'settings' => $normalized];
+        } catch (Throwable $exception) {
+            error_log('SettingsService::saveExpressModuleSettings - ' . $exception->getMessage());
+            return ['success' => false, 'errors' => ['Errore interno del server.']];
+        }
     }
 
     /**

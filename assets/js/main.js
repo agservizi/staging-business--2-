@@ -1175,13 +1175,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('resize', scheduleTableStacking);
 
+    const isExpressModulePage = window.location.pathname.includes('/modules/servizi/express/');
+    const expressTablePageSize = 10;
+
     document.querySelectorAll('[data-datatable="true"]').forEach((table) => {
-        // eslint-disable-next-line no-undef
-        const dataTableInstance = new DataTable(table, {
+        const configuredPageLength = Number.parseInt(table.dataset.pageLength || '', 10);
+        const effectivePageLength = Number.isInteger(configuredPageLength) && configuredPageLength > 0
+            ? configuredPageLength
+            : (isExpressModulePage ? expressTablePageSize : null);
+        const dataTableOptions = {
             language: {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/it-IT.json'
             }
-        });
+        };
+
+        if (Number.isInteger(effectivePageLength) && effectivePageLength > 0) {
+            dataTableOptions.paging = true;
+            dataTableOptions.pageLength = effectivePageLength;
+            dataTableOptions.lengthChange = false;
+        }
+
+        // eslint-disable-next-line no-undef
+        const dataTableInstance = new DataTable(table, dataTableOptions);
         if (dataTableInstance && typeof dataTableInstance.on === 'function') {
             dataTableInstance.on('draw', applyMobileTableStacking);
         } else {

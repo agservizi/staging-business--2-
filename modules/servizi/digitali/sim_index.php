@@ -5,6 +5,9 @@ require_once __DIR__ . '/../../includes/helpers.php';
 
 require_role('Admin', 'Operatore', 'Manager');
 
+header('Location: ' . base_url('modules/servizi/express/index.php'));
+exit;
+
 $pageTitle = 'Vendite SIM';
 
 require_once __DIR__ . '/../../includes/header.php';

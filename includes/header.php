@@ -53,12 +53,13 @@ if (!headers_sent()) {
     header('Strict-Transport-Security: max-age=63072000; includeSubDomains; preload');
     $cspReportEndpoint = base_url('api/csp-report.php');
     $csp = [
-        "default-src 'self' data: blob: https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com",
-        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com",
-        "img-src 'self' data: blob: https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com",
+        "default-src 'self' data: blob: https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com https://code.jquery.com https://cdn.jsdelivr.net https://code.highcharts.com https://acrobatservices.adobe.com https://documentcloud.adobe.com",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com https://code.jquery.com https://cdn.jsdelivr.net https://code.highcharts.com https://acrobatservices.adobe.com",
+        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com https://cdn.jsdelivr.net https://code.highcharts.com https://documentcloud.adobe.com",
+        "img-src 'self' data: blob: https://cdnjs.cloudflare.com https://cdn.datatables.net https://unpkg.com https://cdn.jsdelivr.net https://code.highcharts.com https://documentcloud.adobe.com",
         "font-src 'self' data: https://cdnjs.cloudflare.com",
-        "connect-src 'self' https://cdn.datatables.net https://unpkg.com",
+        "connect-src 'self' https://cdn.datatables.net https://unpkg.com https://code.jquery.com https://cdn.jsdelivr.net https://code.highcharts.com https://acrobatservices.adobe.com https://documentcloud.adobe.com",
+        "frame-src 'self' blob: https://acrobatservices.adobe.com https://documentcloud.adobe.com",
         "frame-ancestors 'self'",
         "report-uri {$cspReportEndpoint}"
     ];

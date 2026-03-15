@@ -113,6 +113,14 @@ $serviziItems = [
         'color' => 'crimson',
     ],
     [
+        'needle' => 'modules/servizi/express',
+        'label' => 'Express Telefonia',
+        'icon' => 'fa-solid fa-sim-card',
+        'href' => base_url('modules/servizi/express/index.php'),
+        'color' => 'amber',
+        'roles' => ['Admin', 'Manager'],
+    ],
+    [
         'needle' => 'modules/servizi/anpr',
         'label' => 'Servizi ANPR',
         'icon' => 'fa-solid fa-id-card-clip',

@@ -97,3 +97,5 @@
 [2025-11-30 17:29:06] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
 [2025-11-30 17:29:06] [DEBUG] Database connection established for portal {"mode":"shared"}
 [2025-11-30 17:29:12] [DEBUG] Bootstrap autoloader resolved {"path":"\/home\/u427445037\/domains\/coresuite.it\/public_html\/business\/bootstrap\/autoload.php"}
+[2026-03-13 21:42:05] [DEBUG] Bootstrap autoloader resolved {"path":"\/Users\/carminecavaliere\/Desktop\/staging-business--2-\/bootstrap\/autoload.php"}
+[2026-03-13 21:42:06] [DEBUG] Database connection established for portal {"mode":"shared"}

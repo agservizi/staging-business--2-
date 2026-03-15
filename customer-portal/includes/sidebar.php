@@ -1,6 +1,14 @@
 <?php
 $currentPage = basename($_SERVER['PHP_SELF'] ?? '');
 $brtPages = ['brt-shipments.php', 'brt-shipment-create.php'];
+$expressPages = ['express-dashboard.php', 'express-sales.php', 'express-sale.php', 'express-payments.php', 'express-support.php'];
+
+$expressBusinessCustomer = null;
+if (isset($customer) && is_array($customer)) {
+    require_once __DIR__ . '/express_service.php';
+    $expressSidebarService = new ExpressPortalService();
+    $expressBusinessCustomer = $expressSidebarService->resolveBusinessCustomer($customer);
+}
 ?>
 <aside id="sidebarMenu" class="sidebar">
     <div class="sidebar-inner p-4">
@@ -40,6 +48,30 @@ $brtPages = ['brt-shipments.php', 'brt-shipment-create.php'];
                 <span class="notification-count-sidebar badge bg-danger ms-auto" style="display: none;">0</span>
             </a>
         </nav>
+
+        <?php if ($expressBusinessCustomer !== null): ?>
+            <div class="sidebar-section mt-4 pt-3 border-top border-light">
+                <span class="sidebar-section-label text-uppercase small text-white">Express</span>
+                <nav class="nav flex-column mt-3 sidebar-account-nav">
+                    <a class="nav-link <?= $currentPage === 'express-dashboard.php' ? 'active' : '' ?>" href="express-dashboard.php" title="Dashboard Express">
+                        <span class="nav-icon" data-color="crimson"><i class="fa-solid fa-sim-card"></i></span>
+                        <span class="nav-label">Dashboard Express</span>
+                    </a>
+                    <a class="nav-link <?= in_array($currentPage, ['express-sales.php', 'express-sale.php'], true) ? 'active' : '' ?>" href="express-sales.php" title="Le mie attivazioni">
+                        <span class="nav-icon" data-color="emerald"><i class="fa-solid fa-file-invoice"></i></span>
+                        <span class="nav-label">Attivazioni e ordini</span>
+                    </a>
+                    <a class="nav-link <?= $currentPage === 'express-payments.php' ? 'active' : '' ?>" href="express-payments.php" title="Pagamenti Express">
+                        <span class="nav-icon" data-color="amber"><i class="fa-solid fa-wallet"></i></span>
+                        <span class="nav-label">Pagamenti</span>
+                    </a>
+                    <a class="nav-link <?= $currentPage === 'express-support.php' ? 'active' : '' ?>" href="express-support.php" title="Assistenza Express">
+                        <span class="nav-icon" data-color="sky"><i class="fa-solid fa-headset"></i></span>
+                        <span class="nav-label">Richieste Express</span>
+                    </a>
+                </nav>
+            </div>
+        <?php endif; ?>
 
         <div class="sidebar-section mt-4 pt-3 border-top border-light">
             <span class="sidebar-section-label text-uppercase small text-white">Account</span>

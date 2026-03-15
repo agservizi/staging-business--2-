@@ -5,6 +5,9 @@ require_once __DIR__ . '/../../includes/helpers.php';
 
 require_role('Admin', 'Operatore', 'Manager');
 
+header('Location: ' . base_url('modules/servizi/express/create_sale.php'));
+exit;
+
 $pageTitle = 'Nuova vendita SIM';
 
 $clients = $pdo->query('SELECT id, nome, cognome, email, telefono FROM clienti ORDER BY cognome, nome')->fetchAll();
