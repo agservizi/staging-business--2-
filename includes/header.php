@@ -75,6 +75,7 @@ if (!headers_sent()) {
     <meta name="theme-color" content="<?php echo sanitize_output($themeAccent); ?>">
     <title><?php echo sanitize_output($pageTitle); ?> | Coresuite Business</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' ry='3' fill='%230b2f6b'/%3E%3Ctext x='8' y='11' font-family='Arial' font-size='7' font-weight='bold' text-anchor='middle' fill='white'%3ECB%3C/text%3E%3C/svg%3E">
+    <link rel="shortcut icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' ry='3' fill='%230b2f6b'/%3E%3Ctext x='8' y='11' font-family='Arial' font-size='7' font-weight='bold' text-anchor='middle' fill='white'%3ECB%3C/text%3E%3C/svg%3E">
     <link href="<?php echo asset('assets/vendor/bootstrap/css/bootstrap.min.css'); ?>" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" referrerpolicy="no-referrer" />
     <link href="https://cdn.datatables.net/v/bs5/dt-1.13.8/datatables.min.css" rel="stylesheet">

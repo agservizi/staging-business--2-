@@ -2,14 +2,14 @@ RewriteEngine On
 
 # Redirect visible .php URLs to clean paths for safe browser navigations only.
 RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
-RewriteCond %{THE_REQUEST} \s/+(.+?)\.php(?:[\s?]|$) [NC]
-RewriteCond %1 !^index$
+RewriteCond %{REQUEST_URI} ^(.+)\.php$ [NC]
+RewriteCond %1 !/index$ [NC]
 RewriteRule ^ %1 [R=301,L,NE]
 
 # Normalise /index.php to /
 RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
-RewriteCond %{THE_REQUEST} \s/+index\.php(?:[\s?]|$) [NC]
-RewriteRule ^index\.php$ ./ [R=301,L]
+RewriteCond %{REQUEST_URI} ^(.*/)?index\.php$ [NC]
+RewriteRule ^ %1 [R=301,L,NE]
 
 # Serve existing files and directories as-is.
 RewriteCond %{REQUEST_FILENAME} -f [OR]
