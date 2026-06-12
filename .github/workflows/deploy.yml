@@ -29,33 +29,3 @@ jobs:
             **/backups/**
             **/storage/**
             **/.phpunit.result.cache
-
-  deploy-docker:
-    name: Docker Carmine (automa)
-    runs-on: ubuntu-latest
-    if: ${{ secrets.DOCKER_SSH_HOST != '' }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DOCKER_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p ${{ secrets.DOCKER_SSH_PORT || '22' }} ${{ secrets.DOCKER_SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
-
-      - name: Sync and start Docker
-        run: |
-          rsync -avz --delete \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='node_modules' \
-            --exclude='vendor' \
-            --exclude='.env' \
-            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.DOCKER_SSH_PORT || '22' }} -o StrictHostKeyChecking=no" \
-            ./ \
-            ${{ secrets.DOCKER_SSH_USER }}@${{ secrets.DOCKER_SSH_HOST }}:${{ vars.DOCKER_APP_DIR || '/opt/coresuite/business' }}/
-
-          ssh -i ~/.ssh/deploy_key -p ${{ secrets.DOCKER_SSH_PORT || '22' }} -o StrictHostKeyChecking=no \
-            ${{ secrets.DOCKER_SSH_USER }}@${{ secrets.DOCKER_SSH_HOST }} \
-            "cd ${{ vars.DOCKER_APP_DIR || '/opt/coresuite/business' }} && docker compose up -d --build"
