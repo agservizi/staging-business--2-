@@ -1,0 +1,8 @@
+business.coresuite.it punta a:
+
+  domains/coresuite.it/public_html/business/
+
+NON usare demobusiness/ (è un altro sito).
+
+In hPanel Git Deploy imposta "Root directory" su:
+  domains/coresuite.it/public_html/business

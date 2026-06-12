@@ -93,7 +93,7 @@ def main() -> int:
             "key": key,
             "commands": [
                 "hostname",
-                f"ls -la {env.get('HOSTINGER_DEPLOY_PATH', '/home/u427445037/domains/coresuite.it/public_html/demobusiness')} | head -5",
+                f"ls -la {env.get('HOSTINGER_DEPLOY_PATH', '/home/u427445037/domains/coresuite.it/public_html/business')} | head -5",
             ],
         },
     ]
