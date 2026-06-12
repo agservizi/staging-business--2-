@@ -1,5 +1,5 @@
 param(
-    [string]$Host = "Carmine@192.168.1.50",
+    [string]$RemoteHost = "Carmine@192.168.1.50",
     [string]$AppDir = "/opt/coresuite/business",
     [string]$IdentityFile = "$env:USERPROFILE\.ssh\id_ed25519_coresuite"
 )
@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 
-Write-Host "==> Deploy Coresuite Business + Automata su $Host"
+Write-Host "==> Deploy Coresuite Business + Automata su $RemoteHost"
 
 if (-not (Test-Path $IdentityFile)) {
     ssh-keygen -t ed25519 -f $IdentityFile -N '""' -q
@@ -19,7 +19,7 @@ Write-Host "Se SSH fallisce, sul server esegui UNA volta:"
 Write-Host "mkdir -p ~/.ssh && echo '$($pubKey.Trim())' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
 Write-Host ""
 
-$sshArgs = @("-i", $IdentityFile, "-o", "StrictHostKeyChecking=accept-new", $Host)
+$sshArgs = @("-i", $IdentityFile, "-o", "StrictHostKeyChecking=accept-new", $RemoteHost)
 
 & ssh @sshArgs "mkdir -p $AppDir"
 
@@ -30,7 +30,7 @@ Push-Location $ProjectRoot
 & git archive --format=tar -o $tarPath HEAD
 Pop-Location
 
-& scp -i $IdentityFile -o StrictHostKeyChecking=accept-new $tarPath "${Host}:/tmp/coresuite-deploy.tar"
+& scp -i $IdentityFile -o StrictHostKeyChecking=accept-new $tarPath "${RemoteHost}:/tmp/coresuite-deploy.tar"
 & ssh @sshArgs "cd $AppDir && tar -xf /tmp/coresuite-deploy.tar && rm -f /tmp/coresuite-deploy.tar"
 & ssh @sshArgs @"
 set -e
