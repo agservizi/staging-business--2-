@@ -92,6 +92,11 @@ try {
         case 'stats':
             require_once __DIR__ . '/stats.php';
             break;
+
+        case 'hub.php':
+        case 'hub':
+            require_once __DIR__ . '/hub.php';
+            break;
             
         case 'notifications.php':
         case 'notifications':

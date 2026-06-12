@@ -168,6 +168,8 @@ SQL;
         }
 
         $pdf->Ln(4);
+        $this->appendOperationalSummary($pdf, $date);
+
     $pdf->SetFont('DejaVu Sans', 'B', 11);
         $pdf->Cell(60, 7, $this->pdfText('Totale Entrate'), 0, 0, 'L');
     $pdf->SetFont('DejaVu Sans', '', 11);
@@ -308,5 +310,31 @@ SQL;
     private function pdfText(string $value): string
     {
         return $value;
+    }
+
+    private function appendOperationalSummary(object $pdf, DateTimeImmutable $date): void
+    {
+        $reportDate = $date->format('Y-m-d');
+        $pickup = $this->countByQuery('SELECT COUNT(*) FROM pickup_packages WHERE DATE(updated_at) = :d AND status = "ritirato"', $reportDate);
+        $caf = $this->countByQuery('SELECT COUNT(*) FROM pratiche WHERE DATE(data_creazione) = :d', $reportDate);
+        $brt = $this->countByQuery('SELECT COUNT(*) FROM brt_shipments WHERE DATE(created_at) = :d', $reportDate);
+        $visure = $this->countByQuery('SELECT COUNT(*) FROM servizi_visure WHERE DATE(updated_at) = :d', $reportDate);
+
+        $pdf->SetFont('DejaVu Sans', 'B', 12);
+        $pdf->Cell(0, 8, $this->pdfText('Riepilogo operativo'), 0, 1, 'L');
+        $pdf->SetFont('DejaVu Sans', '', 10);
+        $pdf->Cell(0, 6, $this->pdfText(sprintf('Ritiri pickup: %d · Nuove pratiche CAF: %d · Spedizioni BRT: %d · Visure aggiornate: %d', $pickup, $caf, $brt, $visure)), 0, 1, 'L');
+        $pdf->Ln(2);
+    }
+
+    private function countByQuery(string $sql, string $reportDate): int
+    {
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([':d' => $reportDate]);
+            return (int) ($stmt->fetchColumn() ?: 0);
+        } catch (PDOException) {
+            return 0;
+        }
     }
 }

@@ -18,6 +18,11 @@
     const codeEl = document.getElementById('cafTrackingCodeLabel');
     const timelineContainer = document.getElementById('cafTrackingTimeline');
     const emptyTimeline = document.getElementById('cafTrackingTimelineEmpty');
+    const uploadSection = document.getElementById('cafTrackingUploadSection');
+    const uploadForm = document.getElementById('cafTrackingUploadForm');
+    const uploadTokenInput = document.getElementById('cafUploadToken');
+    const uploadCodeInput = document.getElementById('cafUploadTrackingCode');
+    const uploadFeedback = document.getElementById('cafUploadFeedback');
 
     const config = window.CAFTrackingConfig || {};
     const endpoint = typeof config.endpoint === 'string' && config.endpoint !== ''
@@ -99,6 +104,60 @@
         }
 
         renderTimeline(steps);
+        prepareUpload(code);
+    }
+
+    async function prepareUpload(code) {
+        if (!uploadSection || !uploadTokenInput || !uploadCodeInput) {
+            return;
+        }
+        const tokenEndpoint = config.uploadTokenEndpoint || 'api/caf-patronato/public-upload-token.php';
+        try {
+            const response = await fetch(`${tokenEndpoint}?code=${encodeURIComponent(code)}`, {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+            });
+            const payload = await parseJson(response);
+            if (!response.ok || !payload?.upload_token) {
+                uploadSection.hidden = true;
+                return;
+            }
+            uploadTokenInput.value = payload.upload_token;
+            uploadCodeInput.value = code;
+            uploadSection.hidden = false;
+        } catch (error) {
+            uploadSection.hidden = true;
+        }
+    }
+
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const uploadEndpoint = config.uploadEndpoint || 'api/caf-patronato/public-upload.php';
+            const formData = new FormData(uploadForm);
+            if (uploadFeedback) {
+                uploadFeedback.textContent = 'Caricamento in corso...';
+            }
+            try {
+                const response = await fetch(uploadEndpoint, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin',
+                });
+                const payload = await parseJson(response);
+                if (!response.ok) {
+                    throw new Error(payload?.error || 'Upload non riuscito.');
+                }
+                if (uploadFeedback) {
+                    uploadFeedback.innerHTML = '<span class="text-success">Documento inviato correttamente.</span>';
+                }
+                uploadForm.reset();
+            } catch (error) {
+                if (uploadFeedback) {
+                    uploadFeedback.innerHTML = `<span class="text-danger">${escapeHtml(error.message || 'Errore upload')}</span>`;
+                }
+            }
+        });
     }
 
     function renderTimeline(steps) {

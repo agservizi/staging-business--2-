@@ -45,6 +45,17 @@ $role = $_SESSION['role'] ?? '';
                         </ul>
                     </div>
                 <?php endif; ?>
+                <?php if ($role !== 'Cliente'): ?>
+                    <div class="dropdown" id="staffNotificationsRoot" data-feed-url="<?php echo sanitize_output(base_url('api/notifications.php')); ?>" data-since-id="0">
+                        <button class="btn topbar-btn topbar-btn-icon position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifiche operative">
+                            <i class="fa-solid fa-bell" aria-hidden="true"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="staffNotificationsBadge">0</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow" id="staffNotificationsList" style="min-width:320px;max-height:360px;overflow:auto;">
+                            <li class="dropdown-item text-muted small">Caricamento notifiche...</li>
+                        </ul>
+                    </div>
+                <?php endif; ?>
                 <div class="dropdown">
                     <button class="btn topbar-btn topbar-btn-user dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fa-solid fa-user-circle topbar-btn-icon-lead" aria-hidden="true"></i>

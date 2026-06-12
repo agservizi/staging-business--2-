@@ -193,6 +193,9 @@ $cafPatronatoServicesForm = settings_build_service_form($cafPatronatoTypes, $caf
 $cafPatronatoServiceSuggestions = $settingsService->suggestCafPatronatoServices();
 $cafPatronatoServiceSuggestions = settings_filter_service_suggestions($cafPatronatoServices, $cafPatronatoServiceSuggestions);
 
+$automataConfigured = trim((string) env('AUTOMATA_API_KEY', '')) !== '';
+$automataBaseUrl = trim((string) env('AUTOMATA_BASE_URL', 'https://automata.coresuite.it'));
+
 $cafPatronatoEncryptionConfigured = false;
 $encryptionKeyRaw = env('CAF_PATRONATO_ENCRYPTION_KEY') ?: '';
 if (is_string($encryptionKeyRaw) && trim($encryptionKeyRaw) !== '') {
@@ -1408,6 +1411,29 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 Senza questa chiave non è possibile caricare allegati nelle pratiche CAF &amp; Patronato.
                             </div>
                         <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-xxl-6" data-section="automata">
+                <div class="card ag-card h-100" id="automata-settings">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Automata AI</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Assistente AI centralizzato su <code><?php echo sanitize_output($automataBaseUrl); ?></code> per checklist CAF, codici HS BRT, stime pratiche e bozze messaggi.</p>
+                        <?php if ($automataConfigured): ?>
+                            <div class="alert alert-success mb-3">
+                                <i class="fa-solid fa-robot me-2"></i><code>AUTOMATA_API_KEY</code> configurata. Modello: <code><?php echo sanitize_output((string) env('AUTOMATA_MODEL', 'automata-default')); ?></code>
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-warning mb-3">
+                                Imposta <code>AUTOMATA_BASE_URL</code> e <code>AUTOMATA_API_KEY</code> nel file <code>.env</code> o nel container Docker <code>automata</code>.
+                            </div>
+                        <?php endif; ?>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-outline-primary btn-sm" href="/api/automata/index.php?action=health" target="_blank" rel="noopener">Verifica health API</a>
+                            <span class="small text-muted align-self-center">Deploy Docker: <code>docker compose up -d</code> su server con dominio automata.coresuite.it</span>
+                        </div>
                     </div>
                 </div>
             </div>

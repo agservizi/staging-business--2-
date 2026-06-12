@@ -2058,6 +2058,9 @@ function notify_customer_event(int $packageId, string $eventType, array $context
 
     if (in_array('whatsapp', $channels, true) && !empty($package['customer_phone'])) {
         $message = pickup_render_template($templates['whatsapp_body'], $data);
+        if (!empty($data['qr_url'])) {
+            $GLOBALS['pickup_whatsapp_image_url'] = (string) $data['qr_url'];
+        }
         $normalizedPhone = preg_replace('/[^0-9+]/', '', $package['customer_phone']);
         $sent = false;
         $fallback = null;
@@ -2080,6 +2083,7 @@ function notify_customer_event(int $packageId, string $eventType, array $context
             'fallback_url' => $fallback,
         ];
 
+        unset($GLOBALS['pickup_whatsapp_image_url']);
         log_notification($packageId, 'whatsapp', $fallback ? 'manuale' : ($sent ? 'inviata' : 'errore'), $message, [
             'recipient' => $normalizedPhone,
             'event' => $eventType,
@@ -2218,6 +2222,7 @@ function confirm_pickup_with_otp(int $packageId, string $otp): array
     ]);
 
     notify_customer_event($packageId, 'picked_up');
+    pickup_award_loyalty_if_applicable($packageId);
 
     return [
         'status' => $statusDetails,
@@ -2240,10 +2245,39 @@ function confirm_pickup_with_qr(int $packageId): array
     track_package_history($packageId, 'qr_confirmed', $previousStatus, $statusDetails['status'] ?? 'ritirato', []);
 
     notify_customer_event($packageId, 'picked_up');
+    pickup_award_loyalty_if_applicable($packageId);
 
     return [
         'status' => $statusDetails,
     ];
+}
+
+function pickup_award_loyalty_if_applicable(int $packageId): void
+{
+    try {
+        $package = get_package_details($packageId);
+        if (!$package) {
+            return;
+        }
+        $email = strtolower(trim((string) ($package['customer_email'] ?? '')));
+        if ($email === '') {
+            return;
+        }
+        global $pdo;
+        if (!isset($pdo) || !($pdo instanceof PDO)) {
+            return;
+        }
+        $clienteStmt = $pdo->prepare('SELECT id FROM clienti WHERE LOWER(email) = :email LIMIT 1');
+        $clienteStmt->execute([':email' => $email]);
+        $clienteId = (int) ($clienteStmt->fetchColumn() ?: 0);
+        if ($clienteId <= 0) {
+            return;
+        }
+        $loyalty = new \App\Services\Loyalty\LoyaltyAutomationService($pdo);
+        $loyalty->awardForPickupCompleted($clienteId, $packageId, (string) ($package['tracking_code'] ?? ('#' . $packageId)));
+    } catch (Throwable $exception) {
+        error_log('Pickup loyalty award failed: ' . $exception->getMessage());
+    }
 }
 
 function check_storage_expiration(int $graceDays = PICKUP_DEFAULT_STORAGE_GRACE_DAYS, array $options = []): array
@@ -2833,6 +2867,9 @@ function send_notification_whatsapp(string $phone, string $message): bool
         'to' => $phone,
         'message' => $message,
     ];
+    if (!empty($GLOBALS['pickup_whatsapp_image_url'])) {
+        $payload['image_url'] = (string) $GLOBALS['pickup_whatsapp_image_url'];
+    }
 
     try {
         $json = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);

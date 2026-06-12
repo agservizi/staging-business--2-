@@ -347,6 +347,13 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <span>Prezzo consigliato</span>
                             <span class="fw-semibold" data-service-price>—</span>
                         </div>
+                        <div class="mt-3 border rounded-3 p-3 bg-light" data-caf-automata-checklist>
+                            <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                                <span class="fw-semibold small"><i class="fa-solid fa-robot me-1"></i>Checklist documenti (Automata)</span>
+                                <button type="button" class="btn btn-sm btn-outline-warning" data-caf-checklist-refresh>Aggiorna</button>
+                            </div>
+                            <div class="small text-muted" data-caf-checklist-body>Seleziona tipologia e servizio per ottenere i documenti consigliati.</div>
+                        </div>
                     </div>
 
                     <div class="col-lg-6">
@@ -1011,6 +1018,53 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
         initClientLookup();
     } else {
         window.addEventListener('load', initClientLookup, { once: true });
+    }
+
+    const checklistBody = document.querySelector('[data-caf-checklist-body]');
+    const checklistRefresh = document.querySelector('[data-caf-checklist-refresh]');
+    const automataBase = '/api/automata/index.php';
+
+    const renderChecklist = function (items) {
+        if (!checklistBody) {
+            return;
+        }
+        if (!Array.isArray(items) || !items.length) {
+            checklistBody.textContent = 'Nessun documento suggerito per questa combinazione.';
+            return;
+        }
+        checklistBody.innerHTML = '<ul class="mb-0 ps-3">' + items.map(function (item) {
+            const required = item.required ? ' <span class="badge text-bg-warning text-dark">obbligatorio</span>' : '';
+            return '<li>' + (item.label || item.key || 'Documento') + required + '</li>';
+        }).join('') + '</ul>';
+    };
+
+    const loadAutomataChecklist = function () {
+        if (!checklistBody || !typeSelect || !input) {
+            return;
+        }
+        const tipo = typeSelect.value || 'CAF';
+        const servizio = (input.value || '').trim();
+        if (servizio === '') {
+            checklistBody.textContent = 'Indica il servizio richiesto per la checklist AI.';
+            return;
+        }
+        checklistBody.textContent = 'Automata sta analizzando i documenti consigliati…';
+        const params = new URLSearchParams({ action: 'caf_checklist', tipo: tipo, servizio: servizio });
+        fetch(automataBase + '?' + params.toString(), { headers: { Accept: 'application/json' } })
+            .then(function (response) { return response.json(); })
+            .then(function (payload) { renderChecklist(payload.items || []); })
+            .catch(function () { checklistBody.textContent = 'Checklist Automata non disponibile al momento.'; });
+    };
+
+    if (checklistRefresh) {
+        checklistRefresh.addEventListener('click', loadAutomataChecklist);
+    }
+    if (input) {
+        input.addEventListener('change', loadAutomataChecklist);
+        input.addEventListener('blur', loadAutomataChecklist);
+    }
+    if (typeSelect) {
+        typeSelect.addEventListener('change', loadAutomataChecklist);
     }
 })();
 </script>

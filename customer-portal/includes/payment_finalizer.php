@@ -14,6 +14,37 @@ require_once __DIR__ . '/brt_service.php';
  * @param array<string,mixed> $paymentRow
  * @return array{status:string,payment:array<string,mixed>,shipment:array<string,mixed>|null,message:?string}
  */
+function portal_award_brt_loyalty(int $customerId, int $shipmentId): void
+{
+    if ($customerId <= 0 || $shipmentId <= 0) {
+        return;
+    }
+
+    try {
+        require_once dirname(__DIR__, 2) . '/includes/db_connect.php';
+        global $pdo;
+        if (!isset($pdo) || !($pdo instanceof PDO)) {
+            return;
+        }
+        $emailStmt = $pdo->prepare('SELECT email FROM pickup_customers WHERE id = :id LIMIT 1');
+        $emailStmt->execute([':id' => $customerId]);
+        $email = strtolower(trim((string) ($emailStmt->fetchColumn() ?: '')));
+        if ($email === '') {
+            return;
+        }
+        $clienteStmt = $pdo->prepare('SELECT id FROM clienti WHERE LOWER(email) = :email LIMIT 1');
+        $clienteStmt->execute([':email' => $email]);
+        $clienteId = (int) ($clienteStmt->fetchColumn() ?: 0);
+        if ($clienteId <= 0) {
+            return;
+        }
+        $loyalty = new \App\Services\Loyalty\LoyaltyAutomationService($pdo);
+        $loyalty->awardForBrtPayment($clienteId, $shipmentId);
+    } catch (Throwable $exception) {
+        portal_error_log('BRT loyalty award failed', ['error' => $exception->getMessage()]);
+    }
+}
+
 function portal_finalize_payment(array $paymentRow, int $customerId): array
 {
     $manager = new PickupPortalPaymentManager();
@@ -118,6 +149,8 @@ function portal_finalize_payment(array $paymentRow, int $customerId): array
     $coreShipmentId = (int) ($shipment['core_id'] ?? 0);
 
     $manager->markPaid($paymentId, $portalShipmentId, $coreShipmentId, $paymentIntentId);
+
+    portal_award_brt_loyalty($customerId, $coreShipmentId > 0 ? $coreShipmentId : $portalShipmentId);
 
     $updated = $manager->findById($paymentId) ?? $paymentRow;
 

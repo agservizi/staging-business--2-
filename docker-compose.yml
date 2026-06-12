@@ -1,0 +1,59 @@
+services:
+  automata:
+    image: ghcr.io/coresuite/automata:latest
+    container_name: coresuite-automata
+    restart: unless-stopped
+    environment:
+      AUTOMATA_API_KEY: ${AUTOMATA_API_KEY:-change-me}
+      AUTOMATA_MODEL: ${AUTOMATA_MODEL:-automata-default}
+      AUTOMATA_ALLOWED_ORIGINS: https://automata.coresuite.it,https://business.coresuite.it
+    ports:
+      - "8787:8080"
+    networks:
+      - coresuite-net
+
+  business:
+    image: php:8.4-apache
+    container_name: coresuite-business
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./deploy/apache/vhost.conf:/etc/apache2/sites-available/000-default.conf
+    environment:
+      AUTOMATA_BASE_URL: http://automata:8080
+      AUTOMATA_API_KEY: ${AUTOMATA_API_KEY:-change-me}
+      CAF_PATRONATO_ENCRYPTION_KEY: ${CAF_PATRONATO_ENCRYPTION_KEY:-}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_DATABASE: ${DB_DATABASE:-coresuite}
+      DB_USERNAME: ${DB_USERNAME:-coresuite}
+      DB_PASSWORD: ${DB_PASSWORD:-coresuite}
+    ports:
+      - "8080:80"
+    depends_on:
+      - automata
+      - db
+    networks:
+      - coresuite-net
+
+  db:
+    image: mariadb:11
+    container_name: coresuite-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE:-coresuite}
+      MARIADB_USER: ${DB_USERNAME:-coresuite}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-coresuite}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - coresuite-net
+
+networks:
+  coresuite-net:
+    driver: bridge
+
+volumes:
+  db_data:

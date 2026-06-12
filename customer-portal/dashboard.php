@@ -114,6 +114,20 @@ $pageTitle = 'Dashboard';
                 </div>
             </section>
 
+            <section class="card ag-card dashboard-card portal-unified-hub">
+                <div class="card-header border-0 pb-0">
+                    <div class="dashboard-panel-header">
+                        <div>
+                            <h2 class="h5 mb-1">Area Cliente Unica</h2>
+                            <p class="text-muted mb-0 small">Pacchi, BRT, CAF/Patronato, fedeltà e appuntamenti in un colpo d'occhio.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body" data-unified-hub>
+                    <div class="text-muted small">Caricamento area unica…</div>
+                </div>
+            </section>
+
             <section class="card ag-card dashboard-card portal-actions">
                 <div class="card-header border-0 pb-0">
                     <div class="dashboard-panel-header">

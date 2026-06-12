@@ -12,6 +12,7 @@ if (file_exists($autoloadPath)) {
 }
 require_once __DIR__ . '/functions.php';
 
+use App\Services\Automata\AutomataService;
 use App\Services\Customs\HsCodeLookupException;
 use App\Services\Customs\HsCodeLookupService;
 use Throwable;
@@ -61,8 +62,42 @@ try {
             'descriptions' => $item['descriptions'] ?? [],
             'breadcrumbs' => $item['breadcrumbs'] ?? [],
             'taric' => $item['taric'] ?? null,
+            'source' => 'lookup',
         ];
     }, $results);
+
+    if (count($responseResults) < 3) {
+        $automata = new AutomataService();
+        $suggestions = $automata->suggestHsCodes($query, (string) ($_GET['country'] ?? 'IT'));
+        foreach ($suggestions as $suggestion) {
+            $code = (string) ($suggestion['code'] ?? '');
+            if ($code === '') {
+                continue;
+            }
+            $exists = false;
+            foreach ($responseResults as $existing) {
+                if (($existing['code'] ?? '') === $code) {
+                    $exists = true;
+                    break;
+                }
+            }
+            if ($exists) {
+                continue;
+            }
+            $responseResults[] = [
+                'code' => $code,
+                'description' => (string) ($suggestion['label'] ?? ''),
+                'descriptions' => [],
+                'breadcrumbs' => [],
+                'taric' => null,
+                'source' => 'automata',
+                'score' => (float) ($suggestion['score'] ?? 0),
+            ];
+            if (count($responseResults) >= $limit) {
+                break;
+            }
+        }
+    }
 
     echo json_encode([
         'success' => true,

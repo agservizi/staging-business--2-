@@ -1,0 +1,9 @@
+Aggiungi questa chiave su Carmine@192.168.1.50 (una sola volta):
+
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPwIHjfyjqS2iWGdZhX9PH+90qzn8+Lkqa1YeQV2l0XO carva@Carmine
+
+Comando sul server:
+mkdir -p ~/.ssh && echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPwIHjfyjqS2iWGdZhX9PH+90qzn8+Lkqa1YeQV2l0XO carva@Carmine' >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys
+
+Poi da Windows:
+powershell -ExecutionPolicy Bypass -File deploy/deploy-windows.ps1

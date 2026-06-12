@@ -228,6 +228,21 @@ SQL;
         if ($details) {
             $contentSections[] = '<ul style="padding-left:18px; margin-top:12px;">' . implode('', $details) . '</ul>';
         }
+
+        $appointmentId = (int) ($appointment['id'] ?? 0);
+        if ($appointmentId > 0 && function_exists('base_url')) {
+            $secret = env('APP_KEY', env('CAF_PATRONATO_ENCRYPTION_KEY', 'coresuite'));
+            $confirmToken = $appointmentId . '.' . hash_hmac('sha256', $appointmentId . ':confirm', (string) $secret);
+            $rescheduleToken = $appointmentId . '.' . hash_hmac('sha256', $appointmentId . ':reschedule', (string) $secret);
+            $confirmUrl = base_url('api/appointments/public-action.php?action=confirm&token=' . rawurlencode($confirmToken));
+            $rescheduleUrl = base_url('api/appointments/public-action.php?action=reschedule&token=' . rawurlencode($rescheduleToken));
+            $contentSections[] = sprintf(
+                '<p style="margin-top:16px;"><a href="%s" style="display:inline-block;padding:10px 16px;background:#0b2f6b;color:#fff;text-decoration:none;border-radius:6px;margin-right:8px;">Conferma appuntamento</a> <a href="%s" style="display:inline-block;padding:10px 16px;background:#f8f9fa;color:#0b2f6b;text-decoration:none;border-radius:6px;border:1px solid #dee2e6;">Riprogramma</a></p>',
+                htmlspecialchars($confirmUrl, ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($rescheduleUrl, ENT_QUOTES, 'UTF-8')
+            );
+        }
+
         $contentSections[] = '<p>Per eventuali modifiche o necessit&agrave; puoi rispondere a questa email o contattare il tuo referente.</p>';
 
         $htmlBody = render_mail_template(

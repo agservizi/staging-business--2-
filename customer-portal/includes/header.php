@@ -54,7 +54,9 @@ $staticBaseUrl = ($baseForAssets === '' ? '' : $baseForAssets) . '/assets/';
     <meta name="description" content="Gestisci i tuoi ritiri con il Pickup Portal di Coresuite Business">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#0b2f6b">
+    <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' ry='3' fill='%230b2f6b'/%3E%3Ctext x='8' y='11' font-family='Arial' font-size='7' font-weight='bold' text-anchor='middle' fill='white'%3ECP%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='24' fill='%230b2f6b'/%3E%3Ctext x='90' y='108' font-family='Arial' font-size='64' font-weight='bold' text-anchor='middle' fill='white'%3ECP%3C/text%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">

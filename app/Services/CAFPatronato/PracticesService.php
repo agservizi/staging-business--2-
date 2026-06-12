@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Services\CAFPatronato;
 
+use App\Services\Loyalty\LoyaltyAutomationService;
 use DateTimeImmutable;
 use PDO;
 use RuntimeException;
@@ -1806,7 +1807,51 @@ SQL;
             }
         }
 
-        return $this->getPractice($practiceId, $canManageAll, $operatorId);
+        $updated = $this->getPractice($practiceId, $canManageAll, $operatorId);
+        $this->handleStatusAutomation($updated, $status['codice']);
+
+        return $updated;
+    }
+
+    /**
+     * @param array<string,mixed> $practice
+     */
+    private function handleStatusAutomation(array $practice, string $statusCode): void
+    {
+        $practiceId = (int) ($practice['id'] ?? 0);
+        $clienteId = (int) ($practice['cliente_id'] ?? ($practice['cliente']['id'] ?? 0));
+        if ($practiceId <= 0) {
+            return;
+        }
+
+        if ($statusCode === 'completata' && $clienteId > 0) {
+            try {
+                (new LoyaltyAutomationService($this->pdo))->awardForCompletedPractice(
+                    $clienteId,
+                    $practiceId,
+                    (string) ($practice['titolo'] ?? 'Pratica')
+                );
+            } catch (Throwable $exception) {
+                error_log('Loyalty automation CAF: ' . $exception->getMessage());
+            }
+        }
+
+        if ($statusCode === 'sospesa') {
+            try {
+                $stmt = $this->pdo->prepare("SELECT id FROM ticket WHERE titolo LIKE :title AND stato IN ('Aperto','In corso') LIMIT 1");
+                $stmt->execute([':title' => '%Pratica #' . $practiceId . '%']);
+                if (!$stmt->fetchColumn()) {
+                    $insert = $this->pdo->prepare("INSERT INTO ticket (titolo, descrizione, stato, cliente_id, created_at, updated_at) VALUES (:titolo, :descrizione, 'Aperto', :cliente_id, NOW(), NOW())");
+                    $insert->execute([
+                        ':titolo' => 'Documenti mancanti pratica #' . $practiceId,
+                        ':descrizione' => 'Ticket automatico: pratica in attesa documenti.',
+                        ':cliente_id' => $clienteId > 0 ? $clienteId : null,
+                    ]);
+                }
+            } catch (Throwable $exception) {
+                error_log('Auto-ticket CAF: ' . $exception->getMessage());
+            }
+        }
     }
 
     /**

@@ -93,6 +93,24 @@ $assetVersion = defined('APP_VERSION') ? (string) constant('APP_VERSION') : '1.0
                         Nessun aggiornamento pubblico disponibile al momento. Verifica più tardi o contatta il tuo operatore di riferimento.
                     </div>
                 </div>
+
+                <div class="tracking-upload mt-4" id="cafTrackingUploadSection" hidden>
+                    <h3 class="h5 mb-2"><i class="fa-solid fa-cloud-arrow-up me-2"></i>Carica un documento</h3>
+                    <p class="text-muted small mb-3">Puoi inviare PDF o immagini direttamente alla tua pratica senza passare in sede.</p>
+                    <form id="cafTrackingUploadForm" enctype="multipart/form-data">
+                        <input type="hidden" name="tracking_code" id="cafUploadTrackingCode" value="">
+                        <input type="hidden" name="upload_token" id="cafUploadToken" value="">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-8">
+                                <input class="form-control" type="file" name="documento" accept=".pdf,.jpg,.jpeg,.png,.webp" required>
+                            </div>
+                            <div class="col-md-4 d-grid">
+                                <button class="btn btn-outline-primary" type="submit">Invia documento</button>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="cafUploadFeedback" class="mt-2 small"></div>
+                </div>
             </article>
         </section>
     </main>
@@ -103,7 +121,9 @@ $assetVersion = defined('APP_VERSION') ? (string) constant('APP_VERSION') : '1.0
 
     <script>
         window.CAFTrackingConfig = {
-            endpoint: '<?= htmlspecialchars($apiEndpoint, ENT_QUOTES, 'UTF-8'); ?>'
+            endpoint: '<?= htmlspecialchars($apiEndpoint, ENT_QUOTES, 'UTF-8'); ?>',
+            uploadTokenEndpoint: '<?= htmlspecialchars(base_url('api/caf-patronato/public-upload-token.php'), ENT_QUOTES, 'UTF-8'); ?>',
+            uploadEndpoint: '<?= htmlspecialchars(base_url('api/caf-patronato/public-upload.php'), ENT_QUOTES, 'UTF-8'); ?>'
         };
     </script>
     <script src="<?= asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js'); ?>"></script>

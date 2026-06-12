@@ -854,12 +854,31 @@ class VisureService
             }
         }
 
+        if ($downloaded) {
+            $this->awardLoyaltyForReadyVisura($visuraId);
+        }
+
         return [
             'visura_id' => $visuraId,
             'created' => $upsert['created'],
             'updated' => $upsert['updated'],
             'downloaded' => $downloaded,
         ];
+    }
+
+    private function awardLoyaltyForReadyVisura(string $visuraId): void
+    {
+        try {
+            $record = $this->getRecord($visuraId);
+            $clienteId = (int) ($record['cliente_id'] ?? 0);
+            if ($clienteId <= 0) {
+                return;
+            }
+            $loyalty = new \App\Services\Loyalty\LoyaltyAutomationService($this->pdo);
+            $loyalty->awardForVisuraReady($clienteId, $visuraId);
+        } catch (Throwable $exception) {
+            error_log('Visura loyalty award failed: ' . $exception->getMessage());
+        }
     }
 }
 

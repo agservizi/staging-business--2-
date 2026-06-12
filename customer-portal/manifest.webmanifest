@@ -1,0 +1,11 @@
+{
+  "name": "Coresuite Pickup Portal",
+  "short_name": "Pickup",
+  "description": "Ritiro express, pacchi e servizi Coresuite",
+  "start_url": "./dashboard.php",
+  "display": "standalone",
+  "background_color": "#0b2f6b",
+  "theme_color": "#0b2f6b",
+  "lang": "it",
+  "icons": []
+}

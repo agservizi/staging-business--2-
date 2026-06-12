@@ -376,6 +376,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                 <p class="text-muted mb-0">Monitoraggio pacchi, notifiche clienti e archivio ritiri.</p>
             </div>
             <div class="toolbar-actions d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-primary" href="live-board.php">
+                    <i class="fa-solid fa-tower-broadcast me-2"></i>Live board
+                </a>
                 <a class="btn btn-outline-warning" href="reports.php"><i class="fa-solid fa-inbox me-2"></i>Segnalazioni portal</a>
                 <button class="btn btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#pickupCheckinModal"><i class="fa-solid fa-qrcode me-2"></i>Ritiro con codice</button>
                 <a class="btn btn-warning text-dark" href="create.php"><i class="fa-solid fa-circle-plus me-2"></i>Nuovo pickup</a>
