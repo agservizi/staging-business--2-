@@ -6,26 +6,20 @@ on:
     branches: [main]
 
 jobs:
-  deploy-ftp:
-    name: Hostinger FTP
+  deploy-sftp:
+    name: Hostinger SFTP
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: FTP Deploy
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: SFTP Deploy
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
           server: ${{ secrets.FTP_HOST }}
+          port: 65002
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASS }}
-          server-dir: ${{ vars.FTP_SERVER_DIR || './' }}
-          exclude: |
-            **/.git*
-            **/.github/**
-            **/node_modules/**
-            **/vendor/**
-            **/.env
-            **/uploads/**
-            **/backups/**
-            **/storage/**
-            **/.phpunit.result.cache
+          local_path: ./*
+          remote_path: /${{ vars.FTP_SERVER_DIR }}
+          sftp_only: true
+          delete_remote_files: false
