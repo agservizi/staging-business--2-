@@ -13,7 +13,7 @@ final class AutomataClient
 
     public function __construct(?string $baseUrl = null, ?string $apiKey = null, int $timeoutSeconds = 45)
     {
-        $resolvedBase = $baseUrl ?? (string) (function_exists('env') ? env('AUTOMATA_BASE_URL', 'https://automata.coresuite.it') : 'https://automata.coresuite.it');
+        $resolvedBase = $baseUrl ?? (string) (function_exists('env') ? env('AUTOMATA_BASE_URL', 'https://automa.coresuite.it') : 'https://automa.coresuite.it');
         $this->baseUrl = rtrim(trim($resolvedBase), '/');
         $this->apiKey = trim((string) ($apiKey ?? (function_exists('env') ? env('AUTOMATA_API_KEY', '') : '')));
         $this->timeoutSeconds = max(5, $timeoutSeconds);

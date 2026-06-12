@@ -26,7 +26,7 @@ DB_PASSWORD=
 DB_CHARSET=utf8mb4
 DB_COLLATION=utf8mb4_unicode_ci
 
-AUTOMATA_BASE_URL=https://automata.coresuite.it
+AUTOMATA_BASE_URL=https://automa.coresuite.it
 AUTOMATA_API_KEY=
 AUTOMATA_MODEL=automata-default
 

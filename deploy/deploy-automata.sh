@@ -3,7 +3,7 @@ set -euo pipefail
 
 HOST="${DEPLOY_HOST:-Carmine@192.168.1.50}"
 APP_DIR="${DEPLOY_DIR:-/opt/coresuite/business}"
-AUTOMATA_DOMAIN="${AUTOMATA_DOMAIN:-automata.coresuite.it}"
+AUTOMATA_DOMAIN="${AUTOMATA_DOMAIN:-automa.coresuite.it}"
 
 echo "==> Deploy Coresuite Business + Automata su ${HOST}"
 

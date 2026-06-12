@@ -22,7 +22,7 @@ try {
         case 'health':
             echo json_encode([
                 'enabled' => $service->isEnabled(),
-                'base_url' => env('AUTOMATA_BASE_URL', 'https://automata.coresuite.it'),
+                'base_url' => env('AUTOMATA_BASE_URL', 'https://automa.coresuite.it'),
             ]);
             break;
 

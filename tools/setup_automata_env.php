@@ -11,7 +11,7 @@ if (!is_file($envPath)) {
 
 $content = (string) file_get_contents($envPath);
 $vars = [
-    'AUTOMATA_BASE_URL' => 'https://automata.coresuite.it',
+    'AUTOMATA_BASE_URL' => 'https://automa.coresuite.it',
     'AUTOMATA_MODEL' => 'automata-default',
     'AUTOMATA_FALLBACK_OPENROUTER' => 'true',
 ];

@@ -194,7 +194,7 @@ $cafPatronatoServiceSuggestions = $settingsService->suggestCafPatronatoServices(
 $cafPatronatoServiceSuggestions = settings_filter_service_suggestions($cafPatronatoServices, $cafPatronatoServiceSuggestions);
 
 $automataConfigured = trim((string) env('AUTOMATA_API_KEY', '')) !== '';
-$automataBaseUrl = trim((string) env('AUTOMATA_BASE_URL', 'https://automata.coresuite.it'));
+$automataBaseUrl = trim((string) env('AUTOMATA_BASE_URL', 'https://automa.coresuite.it'));
 
 $cafPatronatoEncryptionConfigured = false;
 $encryptionKeyRaw = env('CAF_PATRONATO_ENCRYPTION_KEY') ?: '';
@@ -1432,7 +1432,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                         <?php endif; ?>
                         <div class="d-flex flex-wrap gap-2">
                             <a class="btn btn-outline-primary btn-sm" href="/api/automata/index.php?action=health" target="_blank" rel="noopener">Verifica health API</a>
-                            <span class="small text-muted align-self-center">Deploy Docker: <code>docker compose up -d</code> su server con dominio automata.coresuite.it</span>
+                            <span class="small text-muted align-self-center">Deploy Docker: <code>docker compose up -d</code> su server con dominio automa.coresuite.it</span>
                         </div>
                     </div>
                 </div>

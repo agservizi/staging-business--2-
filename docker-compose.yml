@@ -6,7 +6,7 @@ services:
     environment:
       AUTOMATA_API_KEY: ${AUTOMATA_API_KEY:-change-me}
       AUTOMATA_MODEL: ${AUTOMATA_MODEL:-automata-default}
-      AUTOMATA_ALLOWED_ORIGINS: https://automata.coresuite.it,https://business.coresuite.it
+      AUTOMATA_ALLOWED_ORIGINS: https://automa.coresuite.it,https://business.coresuite.it
     ports:
       - "8787:8080"
     networks:
