@@ -53,10 +53,13 @@ if (!function_exists('settings_filter_service_suggestions')) {
             }
 
             foreach ($suggestionList as $suggestion) {
-                if (!is_string($suggestion)) {
+                if (is_array($suggestion)) {
+                    $trimmed = trim((string) ($suggestion['name'] ?? ''));
+                } elseif (is_string($suggestion)) {
+                    $trimmed = trim($suggestion);
+                } else {
                     continue;
                 }
-                $trimmed = trim($suggestion);
                 if ($trimmed === '') {
                     continue;
                 }
@@ -189,6 +192,18 @@ $cafPatronatoServicesForm = settings_build_service_form($cafPatronatoTypes, $caf
 
 $cafPatronatoServiceSuggestions = $settingsService->suggestCafPatronatoServices();
 $cafPatronatoServiceSuggestions = settings_filter_service_suggestions($cafPatronatoServices, $cafPatronatoServiceSuggestions);
+
+$cafPatronatoEncryptionConfigured = false;
+$encryptionKeyRaw = env('CAF_PATRONATO_ENCRYPTION_KEY') ?: '';
+if (is_string($encryptionKeyRaw) && trim($encryptionKeyRaw) !== '') {
+    if (preg_match('/^[A-Fa-f0-9]{64}$/', trim($encryptionKeyRaw)) === 1) {
+        $decodedKey = hex2bin(trim($encryptionKeyRaw));
+        $cafPatronatoEncryptionConfigured = $decodedKey !== false && strlen($decodedKey) === 32;
+    } else {
+        $decodedKey = base64_decode(trim($encryptionKeyRaw), true);
+        $cafPatronatoEncryptionConfigured = $decodedKey !== false && strlen($decodedKey) === 32;
+    }
+}
 
 $backupPerPage = 10;
 $backupPage = max(1, (int) ($_GET['page_backup'] ?? 1));
@@ -1376,6 +1391,26 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </div>
                 </div>
             </div>
+            <div class="col-12" data-section="caf-patronato">
+                <div class="card ag-card" id="caf-patronato-security">
+                    <div class="card-header bg-transparent border-0">
+                        <h5 class="card-title mb-0">Sicurezza allegati CAF &amp; Patronato</h5>
+                    </div>
+                    <div class="card-body">
+                        <?php if ($cafPatronatoEncryptionConfigured): ?>
+                            <div class="alert alert-success mb-0">
+                                <i class="fa-solid fa-shield-halved me-2"></i>Chiave di cifratura <code>CAF_PATRONATO_ENCRYPTION_KEY</code> configurata correttamente (32 byte).
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-warning mb-0">
+                                <strong>Chiave di cifratura mancante o non valida.</strong>
+                                Imposta la variabile d'ambiente <code>CAF_PATRONATO_ENCRYPTION_KEY</code> con una chiave da 32 byte (es. 64 caratteri esadecimali o stringa base64).
+                                Senza questa chiave non è possibile caricare allegati nelle pratiche CAF &amp; Patronato.
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
             <div class="col-12 col-xxl-6" data-section="caf-patronato">
                 <div class="card ag-card h-100" id="caf-patronato-services">
                     <div class="card-header bg-transparent border-0">
@@ -1383,10 +1418,10 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                     </div>
                     <div class="card-body">
                         <p class="text-muted">Definisci l'elenco dei servizi richiesti più comuni da associare alle pratiche. L'elenco alimenta il campo suggerito nel modulo di creazione.</p>
-                        <form method="post" data-ajax="settings" data-ajax-section="caf-patronato-services">
+                        <form method="post" data-ajax="settings" data-ajax-section="caf-patronato-services" data-caf-service-types='<?php echo sanitize_output(json_encode($cafPatronatoTypes, JSON_UNESCAPED_UNICODE)); ?>'>
                             <input type="hidden" name="action" value="caf_patronato_services">
                             <input type="hidden" name="_token" value="<?php echo $csrfToken; ?>">
-                            <div class="d-flex flex-column gap-4">
+                            <div class="d-flex flex-column gap-4" data-caf-services-container>
                                 <?php foreach ($cafPatronatoTypes as $typeIndex => $type): ?>
                                     <?php
                                         $typeKey = strtoupper((string) ($type['key'] ?? ''));
@@ -2301,6 +2336,65 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
 
+    const renderCafPatronatoServices = (formElement, servicesByType) => {
+        const container = formElement.querySelector('[data-caf-services-container]');
+        if (!container) {
+            return;
+        }
+
+        let types = [];
+        try {
+            types = JSON.parse(formElement.getAttribute('data-caf-service-types') || '[]');
+        } catch (parseError) {
+            console.warn('Impossibile analizzare le tipologie CAF/Patronato:', parseError);
+            types = [];
+        }
+
+        container.innerHTML = '';
+
+        types.forEach((type) => {
+            const typeKey = typeof type.key === 'string' ? type.key.toUpperCase() : '';
+            if (!typeKey) {
+                return;
+            }
+            const typeLabel = typeof type.label === 'string' && type.label !== '' ? type.label : typeKey;
+            const serviceEntries = Array.isArray(servicesByType?.[typeKey]) ? servicesByType[typeKey] : [];
+            const rows = serviceEntries.length ? serviceEntries.slice() : [{ name: '', price: null }];
+            rows.push({ name: '', price: null });
+
+            const section = document.createElement('div');
+            section.className = 'border border-dark-subtle rounded-3 p-3';
+
+            const header = document.createElement('div');
+            header.className = 'd-flex justify-content-between align-items-start flex-wrap gap-2 mb-3';
+            header.innerHTML = `<div><span class="fw-semibold text-uppercase small">${typeLabel}</span><span class="badge bg-secondary ms-2">${typeKey}</span></div><small class="text-muted">Le righe vuote vengono ignorate.</small>`;
+            section.appendChild(header);
+
+            const tableWrap = document.createElement('div');
+            tableWrap.className = 'table-responsive';
+            const table = document.createElement('table');
+            table.className = 'table table-dark table-sm align-middle mb-2';
+            table.innerHTML = '<thead><tr><th style="width:60px;">#</th><th>Servizio</th><th style="width:200px;">Prezzo consigliato (€)</th></tr></thead>';
+            const tbody = document.createElement('tbody');
+
+            rows.forEach((entry, rowIndex) => {
+                const tr = document.createElement('tr');
+                const name = typeof entry?.name === 'string' ? entry.name : '';
+                const price = entry?.price !== null && entry?.price !== undefined && entry?.price !== '' ? String(entry.price) : '';
+
+                tr.innerHTML = `<td class="text-muted">#${rowIndex + 1}</td>
+                    <td><input class="form-control form-control-sm" name="services[${typeKey}][${rowIndex}][name]" maxlength="120" value="${name.replace(/"/g, '&quot;')}" placeholder="Es. ISEE, NASpI, 730"></td>
+                    <td><input class="form-control form-control-sm text-end" name="services[${typeKey}][${rowIndex}][price]" type="number" min="0" step="0.01" value="${price.replace(/"/g, '&quot;')}" placeholder="0.00"></td>`;
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            tableWrap.appendChild(table);
+            section.appendChild(tableWrap);
+            container.appendChild(section);
+        });
+    };
+
     const renderCafPatronatoStatuses = (formElement, entries) => {
         const tbody = formElement.querySelector('tbody');
         if (!tbody) {
@@ -2516,6 +2610,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         renderCafPatronatoStatuses(form, data);
                     }
 
+                    if (section === 'caf-patronato-services' && data && typeof data === 'object') {
+                        renderCafPatronatoServices(form, data);
+                    }
+
                     form.classList.remove('was-validated');
                     showToast(payload.message || 'Impostazioni aggiornate con successo.');
                 })
@@ -2567,6 +2665,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                         if (section === 'caf-patronato-statuses' && Array.isArray(data)) {
                             renderCafPatronatoStatuses(form, data);
+                        }
+                        if (section === 'caf-patronato-services' && data && typeof data === 'object') {
+                            renderCafPatronatoServices(form, data);
                         }
                     }
 

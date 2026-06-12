@@ -90,7 +90,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <p>Le informazioni sono trattate dal personale autorizzato di AG Servizi e da fornitori esterni nominati responsabili del trattamento, ad esempio:</p>
                     <ul>
                         <li>provider di hosting e infrastruttura cloud che ospitano il portale e i database;</li>
-                        <li>servizi di invio comunicazioni (email, SMS, WhatsApp) dedicati alle notifiche operative;</li>
+                        <li>servizi di invio comunicazioni email dedicate alle notifiche operative;</li>
                         <li>partner logistici e corrieri nazionali/internazionali coinvolti nella gestione delle spedizioni, inclusa BRT S.p.A.;</li>
                         <li>consulenti amministrativi e tecnici che supportano AG Servizi nei propri processi.</li>
                     </ul>

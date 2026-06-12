@@ -2505,54 +2505,68 @@ function generate_package_receipt(int $packageId): string
         throw new RuntimeException('Pacco non trovato.');
     }
 
-    require_once pickup_root_path() . '/lib/fpdf/fpdf.php';
-    if (!class_exists('FPDF')) {
-        throw new RuntimeException('Libreria FPDF non disponibile.');
+    $mpdfClass = '\\Mpdf\\Mpdf';
+    if (!class_exists($mpdfClass)) {
+        $autoload = pickup_root_path() . '/vendor/autoload.php';
+        if (is_file($autoload)) {
+            require_once $autoload;
+        }
+    }
+    if (!class_exists($mpdfClass)) {
+        throw new RuntimeException('Libreria mPDF non disponibile. Esegui composer install.');
     }
 
     pickup_ensure_directory(PICKUP_RECEIPT_DIR);
 
-    $pdfClass = 'FPDF';
-    /** @var object $pdf */
-    $pdf = new $pdfClass();
-    $pdf->AddPage();
-    $pdf->SetFont('Arial', 'B', 16);
-    $pdf->Cell(0, 10, 'Ricevuta ritiro pacco', 0, 1, 'C');
+    /** @var \Mpdf\Mpdf $pdf */
+    $pdf = new $mpdfClass([
+        'format' => 'A4',
+        'margin_left' => 15,
+        'margin_right' => 15,
+        'margin_top' => 15,
+        'margin_bottom' => 20,
+    ]);
 
-    $pdf->SetFont('Arial', '', 12);
-    $pdf->Ln(4);
-    $pdf->Cell(0, 8, 'Tracking: ' . ($package['tracking'] ?? ''), 0, 1);
-    $pdf->Cell(0, 8, 'Cliente: ' . ($package['customer_name'] ?? ''), 0, 1);
-    $pdf->Cell(0, 8, 'Telefono: ' . ($package['customer_phone'] ?? ''), 0, 1);
+    $html = '<h2 style="text-align:center;">Ricevuta ritiro pacco</h2>';
+    $html .= '<table style="width:100%;font-size:12px;line-height:1.6;">';
+    $rows = [
+        'Tracking' => (string) ($package['tracking'] ?? ''),
+        'Cliente' => (string) ($package['customer_name'] ?? ''),
+        'Telefono' => (string) ($package['customer_phone'] ?? ''),
+        'Corriere' => (string) ($package['courier_name'] ?? 'N/D'),
+        'Stato' => pickup_status_label($package['status'] ?? ''),
+        'Punto ritiro' => (string) ($package['location_name'] ?? 'N/D'),
+        'Data' => format_datetime_locale(date('Y-m-d H:i:s')),
+    ];
     if (!empty($package['customer_email'])) {
-        $pdf->Cell(0, 8, 'Email: ' . $package['customer_email'], 0, 1);
+        $rows['Email'] = (string) $package['customer_email'];
     }
-    $pdf->Cell(0, 8, 'Corriere: ' . ($package['courier_name'] ?? 'N/D'), 0, 1);
-    $pdf->Cell(0, 8, 'Stato: ' . pickup_status_label($package['status'] ?? ''), 0, 1);
-    $pdf->Cell(0, 8, 'Punto ritiro: ' . ($package['location_name'] ?? 'N/D'), 0, 1);
-    $pdf->Cell(0, 8, 'Data: ' . format_datetime_locale(date('Y-m-d H:i:s')), 0, 1);
+    foreach ($rows as $label => $value) {
+        $html .= '<tr><th style="width:160px;text-align:left;padding:4px 8px;">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</th>';
+        $html .= '<td style="padding:4px 8px;">' . htmlspecialchars($value !== '' ? $value : 'N/D', ENT_QUOTES, 'UTF-8') . '</td></tr>';
+    }
+    $html .= '</table>';
 
     if (!empty($package['qr_code_path'])) {
-        $qrPath = pickup_root_path() . '/' . ltrim($package['qr_code_path'], '/');
+        $qrPath = pickup_root_path() . '/' . ltrim((string) $package['qr_code_path'], '/');
         if (is_file($qrPath)) {
-            $pdf->Ln(4);
-            $pdf->Image($qrPath, $pdf->GetX(), $pdf->GetY(), 30, 30);
+            $html .= '<p style="margin-top:16px;"><img src="' . htmlspecialchars($qrPath, ENT_QUOTES, 'UTF-8') . '" style="width:90px;height:90px;" alt="QR code"></p>';
         }
     }
 
     if (!empty($package['signature_path'])) {
-        $signaturePath = pickup_root_path() . '/' . ltrim($package['signature_path'], '/');
+        $signaturePath = pickup_root_path() . '/' . ltrim((string) $package['signature_path'], '/');
         if (is_file($signaturePath)) {
-            $pdf->Ln(36);
-            $pdf->SetFont('Arial', 'I', 10);
-            $pdf->Cell(0, 6, 'Firma digitale cliente:', 0, 1);
-            $pdf->Image($signaturePath, $pdf->GetX(), $pdf->GetY(), 50, 20);
+            $html .= '<p style="margin-top:16px;font-style:italic;">Firma digitale cliente:</p>';
+            $html .= '<p><img src="' . htmlspecialchars($signaturePath, ENT_QUOTES, 'UTF-8') . '" style="width:180px;height:72px;" alt="Firma cliente"></p>';
         }
     }
 
+    $pdf->WriteHTML($html);
+
     $fileName = 'receipt_' . $packageId . '_' . time() . '.pdf';
     $destPath = PICKUP_RECEIPT_DIR . '/' . $fileName;
-    $pdf->Output('F', $destPath);
+    $pdf->Output($destPath, \Mpdf\Output\Destination::FILE);
 
     $relative = pickup_relative_path($destPath);
 

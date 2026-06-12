@@ -46,9 +46,9 @@ $faqItems = [
         'keywords' => 'riepilogo email, giacenza, promemoria'
     ],
     [
-        'question' => 'Non ricevo più aggiornamenti via SMS: cosa posso fare?',
-        'answer' => 'Verifica che il numero di telefono nel profilo sia corretto e che gli SMS siano abilitati nelle impostazioni. Se il problema persiste contattaci tramite questo form allegando l’ora dell’ultimo aggiornamento ricevuto.',
-        'keywords' => 'sms, notifiche, problemi'
+        'question' => 'Non ricevo più aggiornamenti via email: cosa posso fare?',
+        'answer' => 'Verifica che l\'indirizzo email nel profilo sia corretto e che le notifiche email siano abilitate nelle impostazioni. Controlla anche la cartella spam. Se il problema persiste contattaci tramite questo form allegando l\'ora dell\'ultimo aggiornamento ricevuto.',
+        'keywords' => 'email, notifiche, problemi'
     ],
 ];
 
@@ -246,7 +246,7 @@ $pageTitle = 'Supporto';
 
                             <div>
                                 <label class="form-label" for="support-subject">Oggetto</label>
-                                <input class="form-control form-control-lg" id="support-subject" name="subject" value="<?= htmlspecialchars($supportForm['subject']) ?>" placeholder="Es. Mancano notifiche via SMS">
+                                <input class="form-control form-control-lg" id="support-subject" name="subject" value="<?= htmlspecialchars($supportForm['subject']) ?>" placeholder="Es. Mancano notifiche via email">
                             </div>
 
                             <div class="row g-3">

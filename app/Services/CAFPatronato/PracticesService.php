@@ -9,8 +9,11 @@ use RuntimeException;
 use Throwable;
 use function caf_patronato_build_download_url;
 use function caf_patronato_encrypt_uploaded_file;
+use function caf_patronato_ensure_legacy_status;
+use function caf_patronato_ensure_legacy_type;
 use function caf_patronato_generate_standard_filename;
 use function caf_patronato_get_encryption_key;
+use function caf_patronato_map_status_to_legacy;
 use const CAF_PATRONATO_ENCRYPTION_SUFFIX;
 
 final class PracticesService
@@ -1500,6 +1503,205 @@ SQL;
         return $practice;
     }
 
+    /**
+     * Crea una pratica dal modulo web unificato (tabella pratiche come unica sorgente).
+     *
+     * @param array<string,mixed> $formData
+     * @param array<int,array{name:string,tmp_name:string,size:int,mime:string,cleanup?:bool}> $processedUploads
+     * @param array<string,mixed> $options
+     * @return array<string,mixed>
+     */
+    public function createFromWebForm(array $formData, array $processedUploads, int $userId, ?int $operatorId = null, array $options = []): array
+    {
+        $tipoKey = strtoupper(trim((string) ($formData['tipo_pratica'] ?? 'CAF')));
+        $categoria = strcasecmp($tipoKey, 'Patronato') === 0 ? 'Patronato' : 'CAF';
+        $typeId = caf_patronato_ensure_legacy_type($this->pdo, $categoria);
+
+        $settingsStatus = (string) ($formData['stato'] ?? 'Da lavorare');
+        $statusInfo = caf_patronato_map_status_to_legacy($settingsStatus);
+        $statusCode = caf_patronato_ensure_legacy_status($this->pdo, $statusInfo);
+
+        $nominativo = trim((string) ($formData['nominativo'] ?? ''));
+        if ($nominativo === '') {
+            throw new RuntimeException('Inserisci il nominativo del cliente o assistito.');
+        }
+
+        $servizio = trim((string) ($formData['servizio'] ?? ''));
+        $titleParts = array_filter([$nominativo, $servizio !== '' ? $servizio : ($categoria === 'Patronato' ? 'Patronato' : 'CAF')]);
+        $titolo = trim(implode(' - ', $titleParts));
+        if (mb_strlen($titolo) > 200) {
+            $titolo = mb_substr($titolo, 0, 200);
+        }
+
+        $descriptionLines = [];
+        if ($servizio !== '') {
+            $descriptionLines[] = 'Servizio richiesto: ' . $servizio;
+        }
+        $telefono = trim((string) ($formData['telefono'] ?? ''));
+        if ($telefono !== '') {
+            $descriptionLines[] = 'Telefono: ' . $telefono;
+        }
+        $email = trim((string) ($formData['email'] ?? ''));
+        if ($email !== '') {
+            $descriptionLines[] = 'Email: ' . $email;
+        }
+        $codiceFiscale = strtoupper(trim((string) ($formData['codice_fiscale'] ?? '')));
+        if ($codiceFiscale !== '') {
+            $descriptionLines[] = 'Codice fiscale: ' . $codiceFiscale;
+        }
+        $descriptionLines[] = 'Pratica registrata dal modulo CAF & Patronato.';
+        $descrizione = implode("\n", $descriptionLines);
+
+        $clienteId = isset($formData['cliente_id']) ? (int) $formData['cliente_id'] : 0;
+        $clienteId = $clienteId > 0 ? $clienteId : null;
+
+        $scadenza = null;
+        $scadenzaRaw = trim((string) ($formData['scadenza_at'] ?? $formData['scadenza'] ?? ''));
+        if ($scadenzaRaw !== '') {
+            $date = DateTimeImmutable::createFromFormat('Y-m-d', $scadenzaRaw)
+                ?: DateTimeImmutable::createFromFormat('d/m/Y', $scadenzaRaw);
+            if (!$date) {
+                throw new RuntimeException('La scadenza indicata non è valida.');
+            }
+            $scadenza = $date->format('Y-m-d');
+        }
+
+        $priorita = isset($formData['priorita']) ? (int) $formData['priorita'] : 0;
+        $settingsStatusLabel = trim((string) ($formData['stato'] ?? ''));
+
+        $metadati = array_filter([
+            'nominativo' => $nominativo,
+            'servizio' => $servizio !== '' ? $servizio : null,
+            'telefono' => $telefono !== '' ? $telefono : null,
+            'email' => $email !== '' ? $email : null,
+            'codice_fiscale' => $codiceFiscale !== '' ? $codiceFiscale : null,
+            'priorita' => $priorita,
+            'stato_etichetta' => $settingsStatusLabel !== '' ? $settingsStatusLabel : null,
+            'tipo_pratica' => $tipoKey,
+        ], static fn($value) => $value !== null && $value !== '');
+
+        $payload = [
+            'titolo' => $titolo,
+            'descrizione' => $descrizione,
+            'tipo_pratica' => $typeId,
+            'categoria' => $categoria,
+            'stato' => $statusCode,
+            'note' => trim((string) ($formData['note_interne'] ?? '')) ?: null,
+            'scadenza' => $scadenza,
+            'cliente_id' => $clienteId,
+            'metadati' => $metadati,
+            '_preserve_metadati' => true,
+        ];
+
+        $data = $this->validatePracticePayload($payload, true);
+        $data['id_admin'] = $userId;
+
+        $trackingCode = $this->generateTrackingCode($categoria);
+        $initialTimelineStep = $this->buildTrackingStep('Pratica registrata nel sistema.', 'admin', null, true);
+        $trackingStepsPayload = json_encode([$initialTimelineStep], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        $this->pdo->beginTransaction();
+        try {
+            $stmt = $this->pdo->prepare('INSERT INTO pratiche (titolo, descrizione, tipo_pratica, categoria, stato, data_creazione, data_aggiornamento, id_admin, id_utente_caf_patronato, tracking_code, tracking_steps, allegati, note, metadati, scadenza, cliente_id)
+                VALUES (:titolo, :descrizione, :tipo_pratica, :categoria, :stato, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, :id_admin, :id_operatore, :tracking_code, :tracking_steps, :allegati, :note, :metadati, :scadenza, :cliente_id)');
+            $stmt->execute([
+                ':titolo' => $data['titolo'],
+                ':descrizione' => $data['descrizione'] ?? null,
+                ':tipo_pratica' => $data['tipo_pratica'],
+                ':categoria' => $data['categoria'],
+                ':stato' => $data['stato'],
+                ':id_admin' => $data['id_admin'],
+                ':id_operatore' => $operatorId,
+                ':tracking_code' => $trackingCode,
+                ':tracking_steps' => $trackingStepsPayload,
+                ':allegati' => json_encode([], JSON_THROW_ON_ERROR),
+                ':note' => $data['note'] ?? null,
+                ':metadati' => json_encode($data['metadati'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+                ':scadenza' => $data['scadenza'] ?? null,
+                ':cliente_id' => $data['cliente_id'] ?? null,
+            ]);
+            $practiceId = (int) $this->pdo->lastInsertId();
+
+            $isPatronatoOperator = (bool) ($options['is_patronato_operator'] ?? false);
+            foreach ($processedUploads as $upload) {
+                $this->addDocumentFromTemp($practiceId, $upload, $userId, $operatorId, $isPatronatoOperator);
+            }
+
+            $this->recordEvent($practiceId, 'creazione', 'Pratica creata dall\'utente #' . $userId, ['stato' => $data['stato']], $userId, $operatorId);
+            $this->pdo->commit();
+        } catch (Throwable $exception) {
+            $this->pdo->rollBack();
+            throw new RuntimeException('Impossibile creare la pratica: ' . $exception->getMessage(), (int) $exception->getCode(), $exception);
+        }
+
+        $practice = $this->getPractice($practiceId, true, $operatorId);
+
+        $sendCustomerMail = (bool) ($options['send_customer_mail'] ?? true);
+        if ($sendCustomerMail) {
+            try {
+                $this->sendCustomerCreationMail($practice, $userId, $email !== '' ? $email : null);
+            } catch (Throwable $exception) {
+                error_log('CAF/Patronato customer mail warning: ' . $exception->getMessage());
+            }
+        }
+
+        return $practice;
+    }
+
+    /**
+     * @param array{name:string,tmp_name:string,size:int,mime:string,cleanup?:bool} $fileInfo
+     */
+    public function addDocumentFromTemp(int $practiceId, array $fileInfo, int $requestUserId, ?int $operatorId, bool $useStandardPdfName = false): void
+    {
+        $tmpPath = (string) ($fileInfo['tmp_name'] ?? '');
+        if ($tmpPath === '' || !is_file($tmpPath)) {
+            throw new RuntimeException('File temporaneo non valido.');
+        }
+
+        $size = (int) ($fileInfo['size'] ?? 0);
+        if ($size <= 0 || $size > 20_000_000) {
+            throw new RuntimeException('Ogni allegato deve essere compreso tra 1 byte e 20 MB.');
+        }
+
+        $detectedMime = $this->detectMime($tmpPath);
+        if (!isset($this->allowedMimeTypes[$detectedMime])) {
+            throw new RuntimeException('Formato file non supportato.');
+        }
+
+        $safeName = $this->sanitizeFileName($fileInfo['name'] ?? 'documento');
+        if ($useStandardPdfName && $detectedMime === 'application/pdf') {
+            $context = $this->resolveFilenameContext($practiceId);
+            $standardName = caf_patronato_generate_standard_filename(
+                $context['servizio'] ?? ($context['titolo'] ?? ''),
+                $context['nominativo'] ?? ($context['titolo'] ?? '')
+            );
+            if ($standardName !== null) {
+                $safeName = $standardName;
+            }
+        }
+
+        $practiceDir = $this->storagePathForPractice($practiceId);
+        caf_patronato_get_encryption_key();
+        $storedName = $this->uniqueFileName($practiceDir, $safeName . CAF_PATRONATO_ENCRYPTION_SUFFIX);
+        $destination = $practiceDir . DIRECTORY_SEPARATOR . $storedName;
+        caf_patronato_encrypt_uploaded_file($tmpPath, $destination);
+
+        $relativePath = self::STORAGE_DIR . '/' . $practiceId . '/' . $storedName;
+        $stmt = $this->pdo->prepare('INSERT INTO pratiche_documenti (pratica_id, file_name, file_path, mime_type, file_size, uploaded_by, uploaded_operatore_id, created_at) VALUES (:pratica_id, :file_name, :file_path, :mime_type, :file_size, :uploaded_by, :uploaded_operatore_id, CURRENT_TIMESTAMP)');
+        $stmt->execute([
+            ':pratica_id' => $practiceId,
+            ':file_name' => $safeName,
+            ':file_path' => $relativePath,
+            ':mime_type' => $detectedMime,
+            ':file_size' => $size,
+            ':uploaded_by' => $requestUserId ?: null,
+            ':uploaded_operatore_id' => $operatorId ?: null,
+        ]);
+
+        $this->syncAttachmentsJson($practiceId);
+        $this->recordEvent($practiceId, 'allegato', 'Caricato un nuovo documento', ['file' => $safeName], $requestUserId, $operatorId);
+    }
+
     public function sendCustomerConfirmationMail(int $practiceId, int $requestUserId, ?string $recipientOverride = null): bool
     {
         $practice = $this->getPractice($practiceId, true, null);
@@ -1804,8 +2006,15 @@ SQL;
         if (($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
             throw new RuntimeException('Errore durante l\'upload del file.');
         }
-        if (!isset($uploadedFile['tmp_name']) || !is_uploaded_file($uploadedFile['tmp_name'])) {
+        $allowTempFile = (bool) ($uploadedFile['_allow_temp_file'] ?? false);
+        if (!isset($uploadedFile['tmp_name']) || $uploadedFile['tmp_name'] === '') {
             throw new RuntimeException('File caricato non valido.');
+        }
+        if (!$allowTempFile && !is_uploaded_file($uploadedFile['tmp_name'])) {
+            throw new RuntimeException('File caricato non valido.');
+        }
+        if ($allowTempFile && !is_file($uploadedFile['tmp_name'])) {
+            throw new RuntimeException('File temporaneo non valido.');
         }
 
         $size = (int) ($uploadedFile['size'] ?? 0);
@@ -2366,7 +2575,10 @@ SQL;
         if (!is_array($metadati)) {
             throw new RuntimeException('I campi personalizzati devono essere inviati come oggetto JSON.');
         }
-        $data['metadati'] = $this->filterCustomFields($metadati, $tipo['campi_personalizzati']);
+        $preserveMetadati = !empty($payload['_preserve_metadati']);
+        $data['metadati'] = $preserveMetadati
+            ? $metadati
+            : $this->filterCustomFields($metadati, $tipo['campi_personalizzati']);
 
         $assegnatario = isset($payload['id_utente_caf_patronato']) ? (int) $payload['id_utente_caf_patronato'] : null;
         if ($assegnatario !== null && $assegnatario > 0) {

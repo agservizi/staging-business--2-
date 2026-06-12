@@ -697,8 +697,9 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                             <input class="form-control" type="email" id="alerts_email" name="alerts_email" value="<?php echo sanitize_output($data['alerts_email']); ?>" placeholder="mail@mail.it">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label" for="alerts_sms">SMS conferma (opz.)</label>
+                            <label class="form-label" for="alerts_sms">SMS BRT conferma (opz.)</label>
                             <input class="form-control" type="text" id="alerts_sms" name="alerts_sms" value="<?php echo sanitize_output($data['alerts_sms']); ?>" placeholder="es. 3331234567">
+                            <small class="text-muted">Inviato dal corriere BRT, non dal portale cliente.</small>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Orari apertura</label>

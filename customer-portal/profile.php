@@ -103,7 +103,7 @@ $pageTitle = 'Profilo';
                             <div class="col-md-6">
                                 <label class="form-label" for="profile-phone">Telefono</label>
                                 <input class="form-control form-control-lg" id="profile-phone" name="phone" value="<?= htmlspecialchars($customer['phone'] ?? '') ?>" placeholder="Formato internazionale es. +390123456789">
-                                <small class="text-muted">Richiesto per notifiche SMS. Inserire con prefisso internazionale.</small>
+                                <small class="text-muted">Facoltativo. Usato dagli operatori per eventuali contatti telefonici.</small>
                             </div>
 
                             <div class="col-12 d-flex justify-content-between align-items-center mt-3">

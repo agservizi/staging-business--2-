@@ -219,219 +219,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!$errors) {
-        $assignedCode = null;
-        $legacyAttachments = [];
         try {
-            try {
-                $temporaryCode = 'TMP-' . strtoupper(bin2hex(random_bytes(6)));
-            } catch (Throwable) {
-                $temporaryCode = 'TMP-' . strtoupper(str_replace('.', '', uniqid('', true)));
-            }
-
-            if (strlen($temporaryCode) > 40) {
-                $temporaryCode = substr($temporaryCode, 0, 40);
-            }
-
-            $pdo->beginTransaction();
-
-            $stmt = $pdo->prepare('INSERT INTO caf_patronato_pratiche (
-                    pratica_code,
-                    tipo_pratica,
-                    servizio,
-                    nominativo,
-                    codice_fiscale,
-                    telefono,
-                    email,
-                    cliente_id,
-                    stato,
-                    priorita,
-                    scadenza_at,
-                    note_interne,
-                    created_by,
-                    updated_by,
-                    created_at,
-                    updated_at
-                ) VALUES (
-                    :pratica_code,
-                    :tipo_pratica,
-                    :servizio,
-                    :nominativo,
-                    :codice_fiscale,
-                    :telefono,
-                    :email,
-                    :cliente_id,
-                    :stato,
-                    :priorita,
-                    :scadenza_at,
-                    :note_interne,
-                    :created_by,
-                    :updated_by,
-                    NOW(),
-                    NOW()
-                )');
-
-            $stmt->execute([
-                ':pratica_code' => $temporaryCode,
-                ':tipo_pratica' => $data['tipo_pratica'],
-                ':servizio' => $data['servizio'] !== '' ? $data['servizio'] : null,
-                ':nominativo' => $data['nominativo'],
-                ':codice_fiscale' => $data['codice_fiscale'] !== '' ? $data['codice_fiscale'] : null,
-                ':telefono' => $data['telefono'] !== '' ? $data['telefono'] : null,
-                ':email' => $data['email'] !== '' ? $data['email'] : null,
-                ':cliente_id' => $clienteId > 0 ? $clienteId : null,
-                ':stato' => $data['stato'],
-                ':priorita' => (int) $data['priorita'],
-                ':scadenza_at' => $scadenzaDate ? $scadenzaDate->format('Y-m-d') : null,
-                ':note_interne' => $data['note_interne'] !== '' ? $data['note_interne'] : null,
-                ':created_by' => (int) ($_SESSION['user_id'] ?? 0) ?: null,
-                ':updated_by' => (int) ($_SESSION['user_id'] ?? 0) ?: null,
-            ]);
-
-            $praticaId = (int) $pdo->lastInsertId();
-
-            if ($praticaId <= 0) {
-                throw new RuntimeException('Impossibile determinare l\'ID della pratica.');
-            }
-
-            $assignedCode = caf_patronato_build_code($praticaId, $data['tipo_pratica'], date('Y-m-d H:i:s'));
-
-            $codeStmt = $pdo->prepare('UPDATE caf_patronato_pratiche SET pratica_code = :code WHERE id = :id');
-            $codeStmt->execute([
-                ':code' => $assignedCode,
-                ':id' => $praticaId,
-            ]);
-
-            if ($processedUploads) {
-                $storageDir = public_path(CAF_PATRONATO_UPLOAD_DIR . '/' . $praticaId);
-                if (!is_dir($storageDir) && !mkdir($storageDir, 0775, true) && !is_dir($storageDir)) {
-                    throw new RuntimeException('Impossibile creare la cartella per gli allegati.');
-                }
-
-                caf_patronato_get_encryption_key();
-
-                $attachmentStmt = $pdo->prepare('INSERT INTO caf_patronato_allegati (
-                        pratica_id,
-                        file_name,
-                        file_path,
-                        mime_type,
-                        file_size,
-                        created_by,
-                        created_at
-                    ) VALUES (
-                        :pratica_id,
-                        :file_name,
-                        :file_path,
-                        :mime_type,
-                        :file_size,
-                        :created_by,
-                        NOW()
-                    )');
-
-                foreach ($processedUploads as $upload) {
-                    $original = sanitize_filename($upload['name']);
-                    $displayName = $original;
-                    if ($isPatronatoOperator && $upload['mime'] === 'application/pdf') {
-                        $standardName = caf_patronato_generate_standard_filename($data['servizio'], $data['nominativo']);
-                        if ($standardName !== null) {
-                            $displayName = $standardName;
-                        }
-                    }
-
-                    $baseName = sprintf('%s_%s_%s', $praticaId, date('YmdHis'), bin2hex(random_bytes(4)) . '_' . $original);
-                    $encryptedName = $baseName . CAF_PATRONATO_ENCRYPTION_SUFFIX;
-                    $destination = $storageDir . DIRECTORY_SEPARATOR . $encryptedName;
-                    caf_patronato_encrypt_uploaded_file($upload['tmp_name'], $destination);
-
-                    $relativePath = CAF_PATRONATO_UPLOAD_DIR . '/' . $praticaId . '/' . $encryptedName;
-
-                    $attachmentStmt->execute([
-                        ':pratica_id' => $praticaId,
-                        ':file_name' => $displayName,
-                        ':file_path' => $relativePath,
-                        ':mime_type' => $upload['mime'],
-                        ':file_size' => $upload['size'],
-                        ':created_by' => (int) ($_SESSION['user_id'] ?? 0) ?: null,
-                    ]);
-
-                    $attachmentId = (int) $pdo->lastInsertId();
-                    $legacyAttachments[] = [
-                        'id' => $attachmentId,
-                        'file_name' => $displayName,
-                        'file_path' => $relativePath,
-                        'mime_type' => $upload['mime'],
-                        'file_size' => (int) $upload['size'],
-                        'download_url' => caf_patronato_build_download_url('document', $attachmentId),
-                    ];
-
-                    if (!empty($upload['cleanup']) && isset($upload['tmp_name'])) {
-                        $tmpFile = (string) $upload['tmp_name'];
-                        if ($tmpFile !== '' && is_file($tmpFile)) {
-                            @unlink($tmpFile);
-                        }
-                        $foundIndex = array_search($tmpFile, $generatedTempFiles, true);
-                        if ($foundIndex !== false) {
-                            unset($generatedTempFiles[$foundIndex]);
-                        }
-                    }
-                }
-            }
-
-            $cleanupGeneratedTempFiles();
-
-            $legacyPayload = [
-                'tipo_pratica' => $data['tipo_pratica'],
-                'servizio' => $data['servizio'],
-                'nominativo' => $data['nominativo'],
-                'stato' => $data['stato'],
-                'note_interne' => $data['note_interne'],
-                'telefono' => $data['telefono'],
-                'email' => $data['email'],
-                'codice_fiscale' => $data['codice_fiscale'],
-                'cliente_id' => $clienteId > 0 ? $clienteId : null,
-                'scadenza' => $scadenzaDate ? $scadenzaDate->format('Y-m-d') : null,
-            ];
-
             $creatorUserId = (int) ($_SESSION['user_id'] ?? 0);
-            $legacyPracticeId = caf_patronato_sync_legacy_pratica(
-                $pdo,
-                $legacyPayload,
-                $praticaId,
-                $assignedCode,
-                $legacyAttachments,
-                $creatorUserId
+            $operatorId = null;
+            if ($isPatronatoOperator) {
+                $serviceBootstrap = new PracticesService($pdo, project_root_path());
+                $operatorId = $serviceBootstrap->findOperatorIdByUser($creatorUserId);
+            }
+
+            $formPayload = $data;
+            if ($scadenzaDate) {
+                $formPayload['scadenza_at'] = $scadenzaDate->format('Y-m-d');
+            }
+
+            $service = new PracticesService($pdo, project_root_path());
+            $practice = $service->createFromWebForm(
+                $formPayload,
+                $processedUploads,
+                $creatorUserId,
+                $operatorId,
+                [
+                    'is_patronato_operator' => $isPatronatoOperator,
+                    'send_customer_mail' => $data['email'] !== '',
+                ]
             );
 
-            $pdo->commit();
-
-            $pratica = caf_patronato_fetch_pratica($pdo, $praticaId);
-            if ($pratica && isset($pratica['pratica_code'])) {
-                $assignedCode = (string) $pratica['pratica_code'];
-            }
-            caf_patronato_log_action($pdo, 'Pratica creata', 'Pratica #' . $praticaId . ' creata: ' . $data['nominativo']);
-
-            $notificationSent = false;
-            $customerMailSent = false;
-            if ($data['send_notification'] === '1' && $pratica) {
-                $notificationSent = caf_patronato_send_notification($pratica, false);
-            }
-
-            if (!empty($legacyPracticeId) && $data['email'] !== '') {
-                try {
-                    $service = new PracticesService($pdo, project_root_path());
-                    $customerMailSent = $service->sendCustomerConfirmationMail((int) $legacyPracticeId, $creatorUserId, $data['email']);
-                } catch (Throwable $exception) {
-                    error_log('CAF/Patronato customer confirmation mail failed: ' . $exception->getMessage());
+            foreach ($processedUploads as $upload) {
+                if (!empty($upload['cleanup']) && isset($upload['tmp_name'])) {
+                    $tmpFile = (string) $upload['tmp_name'];
+                    if ($tmpFile !== '' && is_file($tmpFile)) {
+                        @unlink($tmpFile);
+                    }
                 }
             }
+            $cleanupGeneratedTempFiles();
 
+            $practiceId = (int) ($practice['id'] ?? 0);
+            caf_patronato_log_action($pdo, 'Pratica creata', 'Pratica #' . $practiceId . ' creata: ' . $data['nominativo']);
+
+            $notificationSent = false;
+            if ($data['send_notification'] === '1') {
+                $notificationSent = caf_patronato_send_notification(caf_patronato_practice_to_notification_payload($practice), false);
+            }
+
+            $assignedCode = (string) ($practice['tracking_code'] ?? '');
             $message = 'Pratica registrata correttamente.';
-            if ($assignedCode) {
+            if ($assignedCode !== '') {
                 $message .= ' Codice: ' . $assignedCode . '.';
             }
             if ($notificationSent) {
                 $message .= ' Notifica email inviata al team.';
             }
-            if (!empty($customerMailSent)) {
+            if ($data['email'] !== '') {
                 $message .= ' Email inviata al cliente.';
             }
 
@@ -439,12 +278,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: index.php');
             exit;
         } catch (Throwable $exception) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
             $cleanupGeneratedTempFiles();
             error_log('CAF/Patronato create failed: ' . $exception->getMessage());
-            $errors[] = 'Si è verificato un errore durante il salvataggio della pratica. Riprova.';
+            if (str_contains($exception->getMessage(), 'Chiave di cifratura')) {
+                $errors[] = 'Chiave di cifratura allegati non configurata. Imposta CAF_PATRONATO_ENCRYPTION_KEY nelle impostazioni di sistema.';
+            } else {
+                $errors[] = 'Si è verificato un errore durante il salvataggio della pratica. Riprova.';
+            }
         }
     }
 }

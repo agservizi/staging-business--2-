@@ -5,6 +5,21 @@ namespace {
     if (class_exists('\Mpdf\Mpdf', false)) {
         return;
     }
+
+    $autoloadCandidates = [
+        dirname(__DIR__, 3) . '/vendor/autoload.php',
+        dirname(__DIR__, 4) . '/vendor/autoload.php',
+    ];
+    foreach ($autoloadCandidates as $autoload) {
+        if (is_file($autoload)) {
+            require_once $autoload;
+            break;
+        }
+    }
+
+    if (class_exists('\Mpdf\Mpdf', false)) {
+        return;
+    }
 }
 
 namespace Mpdf {

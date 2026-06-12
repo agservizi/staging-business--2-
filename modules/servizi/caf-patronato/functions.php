@@ -174,7 +174,8 @@ function caf_patronato_decrypt_file(string $absolutePath): string
 
 function caf_patronato_build_download_url(string $source, int $id): string
 {
-    $normalizedSource = 'document';
+    $allowed = ['document', 'attachment', 'caf_allegato'];
+    $normalizedSource = in_array($source, $allowed, true) ? $source : 'document';
     return base_url('modules/servizi/caf-patronato/download.php?source=' . $normalizedSource . '&id=' . $id);
 }
 
@@ -205,7 +206,7 @@ function caf_patronato_type_config(): array
     }
 
     if (!$cache) {
-        $cache = caf_patronato_prepare_service_map(SettingsService::defaultCafPatronatoServices());
+        $cache = SettingsService::defaultCafPatronatoTypes();
     }
 
     return $cache;
@@ -1226,6 +1227,34 @@ function caf_patronato_sync_legacy_pratica(PDO $pdo, array $payload, int $cafPra
                 ':uploaded_by' => $adminId,
             ]);
         }
+
+        $snapshotStmt = $pdo->prepare('SELECT id, file_name, file_path, mime_type, file_size, created_at FROM pratiche_documenti WHERE pratica_id = :pratica_id ORDER BY id ASC');
+        if ($snapshotStmt !== false) {
+            $snapshotStmt->execute([':pratica_id' => $legacyId]);
+            $rows = $snapshotStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $snapshot = [];
+            foreach ($rows as $row) {
+                $docId = (int) ($row['id'] ?? 0);
+                $snapshot[] = [
+                    'id' => $docId,
+                    'file_name' => (string) ($row['file_name'] ?? ''),
+                    'file_path' => (string) ($row['file_path'] ?? ''),
+                    'mime_type' => (string) ($row['mime_type'] ?? 'application/octet-stream'),
+                    'file_size' => (int) ($row['file_size'] ?? 0),
+                    'created_at' => (string) ($row['created_at'] ?? ''),
+                    'download_url' => caf_patronato_build_download_url('document', $docId),
+                ];
+            }
+            if ($snapshot) {
+                $updateAllegati = $pdo->prepare('UPDATE pratiche SET allegati = :allegati WHERE id = :id');
+                if ($updateAllegati !== false) {
+                    $updateAllegati->execute([
+                        ':allegati' => json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        ':id' => $legacyId,
+                    ]);
+                }
+            }
+        }
     }
 
     $eventStmt = $pdo->prepare('INSERT INTO pratiche_eventi (
@@ -1312,17 +1341,93 @@ function caf_patronato_ensure_legacy_type(PDO $pdo, string $categoria): int
 
 function caf_patronato_map_status_to_legacy(string $status): array
 {
-    $normalized = strtoupper(trim($status));
-    $map = [
-        'DA LAVORARE' => ['code' => 'in_lavorazione', 'label' => 'In lavorazione', 'color' => 'primary', 'ordering' => 20],
-        'IN LAVORAZIONE' => ['code' => 'in_lavorazione', 'label' => 'In lavorazione', 'color' => 'primary', 'ordering' => 20],
-        'IN ATTESA DOCUMENTI' => ['code' => 'sospesa', 'label' => 'In attesa', 'color' => 'warning', 'ordering' => 30],
-        'COMPLETATA' => ['code' => 'completata', 'label' => 'Completata', 'color' => 'success', 'ordering' => 40],
-        'CHIUSA' => ['code' => 'archiviata', 'label' => 'Archiviata', 'color' => 'secondary', 'ordering' => 90],
-        'ANNULLATA' => ['code' => 'annullata', 'label' => 'Annullata', 'color' => 'danger', 'ordering' => 95],
+    $label = caf_patronato_status_label($status);
+    $category = caf_patronato_status_category($status);
+
+    $categoryMap = [
+        'pending' => ['code' => 'in_lavorazione', 'color' => 'primary', 'ordering' => 20],
+        'in_progress' => ['code' => 'in_lavorazione', 'color' => 'primary', 'ordering' => 20],
+        'waiting' => ['code' => 'sospesa', 'color' => 'warning', 'ordering' => 30],
+        'completed' => ['code' => 'completata', 'color' => 'success', 'ordering' => 40],
+        'archived' => ['code' => 'archiviata', 'color' => 'secondary', 'ordering' => 90],
+        'cancelled' => ['code' => 'annullata', 'color' => 'danger', 'ordering' => 95],
     ];
 
-    return $map[$normalized] ?? ['code' => 'in_lavorazione', 'label' => 'In lavorazione', 'color' => 'primary', 'ordering' => 20];
+    $mapped = $categoryMap[$category] ?? $categoryMap['pending'];
+
+    return [
+        'code' => $mapped['code'],
+        'label' => $label !== '' ? $label : $status,
+        'color' => $mapped['color'],
+        'ordering' => $mapped['ordering'],
+    ];
+}
+
+/**
+ * @param array<string,mixed> $practice
+ * @return array<string,mixed>
+ */
+function caf_patronato_resolve_practice_id_for_document(PDO $pdo, int $referenceId, bool $fromLegacyAttachmentTable = false): int
+{
+    if ($referenceId <= 0) {
+        return 0;
+    }
+
+    if (!$fromLegacyAttachmentTable) {
+        return $referenceId;
+    }
+
+    $direct = $pdo->prepare('SELECT id FROM pratiche WHERE id = :id LIMIT 1');
+    if ($direct !== false) {
+        $direct->execute([':id' => $referenceId]);
+        if ($direct->fetchColumn()) {
+            return $referenceId;
+        }
+    }
+
+    $meta = $pdo->prepare("SELECT id FROM pratiche WHERE JSON_UNQUOTE(JSON_EXTRACT(metadati, '$.caf_patronato_pratica_id')) = :legacy_id LIMIT 1");
+    if ($meta !== false) {
+        $meta->execute([':legacy_id' => (string) $referenceId]);
+        $resolved = (int) ($meta->fetchColumn() ?: 0);
+        if ($resolved > 0) {
+            return $resolved;
+        }
+    }
+
+    return $referenceId;
+}
+
+/**
+ * @param array<string,mixed> $practice
+ * @return array<string,mixed>
+ */
+function caf_patronato_practice_to_notification_payload(array $practice): array
+{
+    $meta = [];
+    if (isset($practice['metadati']) && is_array($practice['metadati'])) {
+        $meta = $practice['metadati'];
+    }
+
+    $statoLabel = (string) ($meta['stato_etichetta'] ?? '');
+    if ($statoLabel === '' && isset($practice['stato'])) {
+        $statoLabel = caf_patronato_status_label((string) $practice['stato']);
+    }
+
+    return [
+        'id' => (int) ($practice['id'] ?? 0),
+        'pratica_code' => (string) ($practice['tracking_code'] ?? ''),
+        'tipo_pratica' => (string) ($meta['tipo_pratica'] ?? $practice['categoria'] ?? 'CAF'),
+        'servizio' => (string) ($meta['servizio'] ?? ''),
+        'nominativo' => (string) ($meta['nominativo'] ?? $practice['titolo'] ?? ''),
+        'codice_fiscale' => (string) ($meta['codice_fiscale'] ?? ''),
+        'telefono' => (string) ($meta['telefono'] ?? ''),
+        'email' => (string) ($meta['email'] ?? ($practice['customer_email'] ?? '')),
+        'stato' => $statoLabel,
+        'scadenza_at' => $practice['scadenza'] ?? null,
+        'priorita' => (int) ($meta['priorita'] ?? 0),
+        'note_interne' => (string) ($practice['note'] ?? ''),
+        'created_at' => (string) ($practice['data_creazione'] ?? ''),
+    ];
 }
 
 function caf_patronato_ensure_legacy_status(PDO $pdo, array $status): string

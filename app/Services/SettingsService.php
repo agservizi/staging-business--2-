@@ -625,62 +625,97 @@ class SettingsService
     }
 
     /**
-     * @return array<string, array<int,string>>
+     * @return array<string, array<int, array{name:string,price:float|null}>>
      */
     public function suggestCafPatronatoServices(): array
     {
+        $existing = $this->getCafPatronatoServices();
+        $priceIndex = [];
+        foreach ($existing as $typeKey => $services) {
+            if (!is_array($services)) {
+                continue;
+            }
+            foreach ($services as $service) {
+                if (!is_array($service)) {
+                    continue;
+                }
+                $name = trim((string) ($service['name'] ?? ''));
+                if ($name === '') {
+                    continue;
+                }
+                $hash = mb_strtolower($name, 'UTF-8');
+                $priceIndex[strtoupper((string) $typeKey)][$hash] = isset($service['price']) && is_numeric($service['price'])
+                    ? round((float) $service['price'], 2)
+                    : null;
+            }
+        }
+
+        $collected = [];
+
+        $appendService = static function (string $typeKey, string $serviceName) use (&$collected): void {
+            $typeKey = strtoupper(trim($typeKey));
+            if ($typeKey === '') {
+                $typeKey = 'CAF';
+            }
+            $value = trim($serviceName);
+            if ($value === '') {
+                return;
+            }
+            $hash = mb_strtolower($value, 'UTF-8');
+            if (!isset($collected[$typeKey])) {
+                $collected[$typeKey] = [];
+            }
+            $collected[$typeKey][$hash] = mb_substr($value, 0, 120);
+        };
+
         try {
-            $stmt = $this->pdo->query(
+            $legacyStmt = $this->pdo->query(
                 "SELECT DISTINCT UPPER(COALESCE(tipo_pratica, '')) AS tipo, servizio
                  FROM caf_patronato_pratiche
                  WHERE servizio IS NOT NULL AND servizio <> ''
                  ORDER BY tipo ASC, servizio ASC"
             );
-            if ($stmt === false) {
-                return [];
+            if ($legacyStmt !== false) {
+                foreach ($legacyStmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+                    $appendService((string) ($row['tipo'] ?? 'CAF'), (string) ($row['servizio'] ?? ''));
+                }
             }
 
-            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            if (!is_array($rows)) {
-                return [];
+            $practiceStmt = $this->pdo->query(
+                "SELECT DISTINCT UPPER(COALESCE(categoria, 'CAF')) AS tipo,
+                        JSON_UNQUOTE(JSON_EXTRACT(metadati, '$.servizio')) AS servizio
+                 FROM pratiche
+                 WHERE metadati IS NOT NULL
+                   AND JSON_UNQUOTE(JSON_EXTRACT(metadati, '$.servizio')) IS NOT NULL
+                   AND JSON_UNQUOTE(JSON_EXTRACT(metadati, '$.servizio')) <> ''
+                 ORDER BY tipo ASC, servizio ASC"
+            );
+            if ($practiceStmt !== false) {
+                foreach ($practiceStmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+                    $appendService((string) ($row['tipo'] ?? 'CAF'), (string) ($row['servizio'] ?? ''));
+                }
             }
-
-            $suggestions = [];
-            foreach ($rows as $row) {
-                $typeKey = strtoupper(trim((string) ($row['tipo'] ?? '')));
-                if ($typeKey === '') {
-                    $typeKey = 'CAF';
-                }
-
-                $value = trim((string) ($row['servizio'] ?? ''));
-                if ($value === '') {
-                    continue;
-                }
-
-                $hash = mb_strtolower($value, 'UTF-8');
-                if (!isset($suggestions[$typeKey])) {
-                    $suggestions[$typeKey] = [];
-                }
-                if (isset($suggestions[$typeKey][$hash])) {
-                    continue;
-                }
-                $suggestions[$typeKey][$hash] = mb_substr($value, 0, 120);
-            }
-
-            $result = [];
-            foreach ($suggestions as $typeKey => $values) {
-                $list = array_values($values);
-                usort($list, static function (string $a, string $b): int {
-                    return strcasecmp($a, $b);
-                });
-                $result[$typeKey] = $list;
-            }
-
-            return $result;
         } catch (Throwable $exception) {
             error_log('CAF/Patronato services suggestion failed: ' . $exception->getMessage());
             return [];
         }
+
+        $result = [];
+        foreach ($collected as $typeKey => $services) {
+            $entries = [];
+            foreach ($services as $hash => $name) {
+                $entries[] = [
+                    'name' => $name,
+                    'price' => $priceIndex[$typeKey][$hash] ?? null,
+                ];
+            }
+            usort($entries, static function (array $a, array $b): int {
+                return strcasecmp((string) $a['name'], (string) $b['name']);
+            });
+            $result[$typeKey] = $entries;
+        }
+
+        return $result;
     }
 
     /**

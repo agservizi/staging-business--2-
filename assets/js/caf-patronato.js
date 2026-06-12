@@ -1786,7 +1786,9 @@ function renderPracticesTable(container, practices, options = {}) {
         const clientName = practice.cliente ? 
             (practice.cliente.ragione_sociale || `${practice.cliente.nome} ${practice.cliente.cognome}`.trim()) || 'Cliente #' + practice.cliente.id :
             'Nessun cliente';
-        const attachments = Array.isArray(practice.allegati) ? practice.allegati : [];
+        const attachments = Array.isArray(practice.documenti) && practice.documenti.length
+            ? practice.documenti
+            : (Array.isArray(practice.allegati) ? practice.allegati : []);
         const latestDocument = attachments.length > 0 ? attachments[0] : null;
         const downloadHref = latestDocument ? resolvePracticeDocumentHref(latestDocument, practice.id) : '#';
         

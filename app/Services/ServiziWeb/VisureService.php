@@ -810,6 +810,57 @@ class VisureService
         $sanitized = preg_replace('/[^a-zA-Z0-9_-]/', '_', $visuraId);
         return 'visura_' . $sanitized . '.' . $extension;
     }
+
+    /**
+     * @param array<string,mixed> $payload
+     * @return array<string,mixed>
+     */
+    public function handleInboundWebhook(OpenApiCatastoClient $client, array $payload, int $userId): array
+    {
+        $visuraId = trim((string) ($payload['id'] ?? $payload['visura_id'] ?? $payload['request_id'] ?? ''));
+        if ($visuraId === '') {
+            throw new RuntimeException('ID visura mancante nel webhook.');
+        }
+
+        $stato = strtolower(trim((string) ($payload['stato'] ?? $payload['status'] ?? 'in_erogazione')));
+        $summary = [
+            'id' => $visuraId,
+            'stato' => $stato,
+            'entita' => (string) ($payload['entita'] ?? 'immobile'),
+            'timestamp' => isset($payload['timestamp']) ? (int) $payload['timestamp'] : time(),
+            'owner' => $payload['owner'] ?? ($payload['richiedente'] ?? null),
+        ];
+
+        $upsert = $this->upsertSummary($visuraId, $summary, $userId);
+        $downloaded = false;
+
+        if ($upsert['needs_detail'] || in_array($stato, ['evasa', 'completed', 'ready'], true)) {
+            $detail = $client->getVisura($visuraId);
+            $this->storeDetail($visuraId, $detail, $userId);
+
+            $record = $this->getRecord($visuraId);
+            $documentReady = isset($detail['documento']) && $detail['documento'] !== null;
+            if ($record !== null && $documentReady && $record['documento_path'] === null) {
+                $binary = $client->downloadVisuraDocument($visuraId);
+                $this->storeDocument(
+                    $visuraId,
+                    $binary['content'],
+                    $binary['content_type'],
+                    (int) ($binary['content_length'] ?? strlen($binary['content'])),
+                    $userId,
+                    $detail
+                );
+                $downloaded = true;
+            }
+        }
+
+        return [
+            'visura_id' => $visuraId,
+            'created' => $upsert['created'],
+            'updated' => $upsert['updated'],
+            'downloaded' => $downloaded,
+        ];
+    }
 }
 
 

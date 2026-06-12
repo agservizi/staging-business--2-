@@ -181,7 +181,7 @@ $pageTitle = 'Segnala Pacco';
                                     </li>
                                     <li>
                                         <strong>3. Controlla lo stato</strong>
-                                        <p class="text-muted small mb-0">Riceverai notifiche email o SMS quando il pacco arriva o rischia di scadere.</p>
+                                        <p class="text-muted small mb-0">Riceverai notifiche email quando il pacco arriva o rischia di scadere.</p>
                                     </li>
                                 </ul>
                             </div>

@@ -522,10 +522,21 @@ final class PracticesServiceTest extends TestCase
 
     public function testListNotificationsFiltersCorrectly(): void
     {
-        // This would require creating notifications first
-        // For now, just test that the method works with empty data
         $notifications = $this->service->listNotifications(1, null, false);
         self::assertIsArray($notifications);
-        self::assertEmpty($notifications); // No notifications created yet
+        self::assertEmpty($notifications);
+    }
+
+    public function testMapStatusCategoryToLegacyCode(): void
+    {
+        if (!function_exists('caf_patronato_map_status_to_legacy')) {
+            require_once dirname(__DIR__, 3) . '/modules/servizi/caf-patronato/functions.php';
+        }
+
+        $completed = caf_patronato_map_status_to_legacy('Completata');
+        self::assertSame('completata', $completed['code']);
+
+        $waiting = caf_patronato_map_status_to_legacy('In attesa documenti');
+        self::assertSame('sospesa', $waiting['code']);
     }
 }

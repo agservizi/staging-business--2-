@@ -139,7 +139,8 @@ require_once __DIR__ . '/../../../includes/sidebar.php';
                                     <div class="row g-3 pt-1">
                                         <div class="col-lg-6">
                                             <label class="form-label" for="callback-url">Callback URL</label>
-                                            <input type="url" class="form-control" id="callback-url" name="callback_url" placeholder="https://example.com/hooks/visure">
+                                            <input type="url" class="form-control" id="callback-url" name="callback_url" placeholder="<?php echo htmlspecialchars(base_url('api/visure/webhook.php'), ENT_QUOTES, 'UTF-8'); ?>" value="<?php echo htmlspecialchars(base_url('api/visure/webhook.php'), ENT_QUOTES, 'UTF-8'); ?>">
+                                            <div class="form-text">Endpoint interno consigliato per ricevere aggiornamenti automatici da OpenAPI.</div>
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label" for="callback-method">Metodo</label>

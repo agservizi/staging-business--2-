@@ -2,8 +2,9 @@
 declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
-http_response_code(410);
 
 echo json_encode([
-    'error' => 'Le notifiche sono state disattivate.',
+    'items' => [],
+    'unread' => 0,
+    'message' => 'Le notifiche centralizzate del gestionale sono disattivate. Usa i promemoria in dashboard o il portale cliente per le notifiche pickup.',
 ]);

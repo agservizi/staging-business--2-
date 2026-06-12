@@ -48,8 +48,13 @@ try {
 $canViewAll = $canManagePractices || $canConfigure;
 
 try {
-    $payload = fetch_practice_document($pdo, $documentId);
-    $practiceId = (int) ($payload['pratica_id'] ?? 0);
+    $payload = fetch_practice_document($pdo, $documentId, $source);
+    $fromLegacyTable = $source === 'attachment' || $source === 'caf_allegato' || !isset($payload['uploaded_by']);
+    $practiceId = caf_patronato_resolve_practice_id_for_document(
+        $pdo,
+        (int) ($payload['pratica_id'] ?? 0),
+        $fromLegacyTable
+    );
     if ($practiceId <= 0) {
         abort_download(404, 'Documento non associato a una pratica valida.');
     }
@@ -125,18 +130,42 @@ function abort_download(int $status, string $message): void
     exit;
 }
 
-function fetch_practice_document(PDO $pdo, int $documentId): array
+function fetch_practice_document(PDO $pdo, int $documentId, string $source = 'document'): array
 {
+    if ($source === 'attachment' || $source === 'caf_allegato') {
+        $legacyStmt = $pdo->prepare('SELECT id, pratica_id, file_name, file_path, mime_type, file_size, created_at FROM caf_patronato_allegati WHERE id = :id LIMIT 1');
+        if ($legacyStmt !== false) {
+            $legacyStmt->execute([':id' => $documentId]);
+            $legacyRow = $legacyStmt->fetch(PDO::FETCH_ASSOC);
+            if ($legacyRow) {
+                $legacyRow['uploaded_by'] = null;
+                $legacyRow['uploaded_operatore_id'] = null;
+                return $legacyRow;
+            }
+        }
+    }
+
     $stmt = $pdo->prepare('SELECT * FROM pratiche_documenti WHERE id = :id LIMIT 1');
     if (!$stmt) {
         throw new RuntimeException('Documento non disponibile.');
     }
     $stmt->execute([':id' => $documentId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$row) {
-        throw new RuntimeException('Documento non trovato.');
+    if ($row) {
+        return $row;
     }
 
-    return $row;
+    $fallbackStmt = $pdo->prepare('SELECT id, pratica_id, file_name, file_path, mime_type, file_size, created_at FROM caf_patronato_allegati WHERE id = :id LIMIT 1');
+    if ($fallbackStmt !== false) {
+        $fallbackStmt->execute([':id' => $documentId]);
+        $legacyRow = $fallbackStmt->fetch(PDO::FETCH_ASSOC);
+        if ($legacyRow) {
+            $legacyRow['uploaded_by'] = null;
+            $legacyRow['uploaded_operatore_id'] = null;
+            return $legacyRow;
+        }
+    }
+
+    throw new RuntimeException('Documento non trovato.');
 }
 

@@ -4,7 +4,7 @@ Portale cliente per la gestione e segnalazione dei pacchi collegato al sistema p
 
 ## Caratteristiche
 
-- ✅ **Autenticazione sicura** con OTP via email/SMS
+- ✅ **Autenticazione sicura** con OTP via email
 - ✅ **Dashboard intuitiva** con statistiche in tempo reale
 - ✅ **Segnalazione pacchi** con codice tracking
 - ✅ **Notifiche automatiche** per arrivo e stato pacchi
