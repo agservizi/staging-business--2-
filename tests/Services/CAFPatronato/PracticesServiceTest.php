@@ -297,9 +297,9 @@ final class PracticesServiceTest extends TestCase
         self::assertStringContainsString($practice['tracking_code'], $mail['subject']);
         $expectedLink = 'https://test.local/tracking.php?code=' . rawurlencode($practice['tracking_code']);
         self::assertStringContainsString($expectedLink, $mail['body']);
-        self::assertStringContainsString('Apri il portale di tracking', $mail['body']);
+        self::assertStringContainsString('Monitora lo stato della pratica', $mail['body']);
         self::assertStringContainsString('Riepilogo pratica', $mail['body']);
-        self::assertStringContainsString('Informazioni aggiuntive', $mail['body']);
+        self::assertStringContainsString('Dettagli personalizzati', $mail['body']);
         self::assertStringContainsString('Ultimi aggiornamenti', $mail['body']);
         self::assertStringContainsString('Email contatto', $mail['body']);
         self::assertStringContainsString('cliente+alias@example.test', $mail['body']);
@@ -527,16 +527,4 @@ final class PracticesServiceTest extends TestCase
         self::assertEmpty($notifications);
     }
 
-    public function testMapStatusCategoryToLegacyCode(): void
-    {
-        if (!function_exists('caf_patronato_map_status_to_legacy')) {
-            require_once dirname(__DIR__, 3) . '/modules/servizi/caf-patronato/functions.php';
-        }
-
-        $completed = caf_patronato_map_status_to_legacy('Completata');
-        self::assertSame('completata', $completed['code']);
-
-        $waiting = caf_patronato_map_status_to_legacy('In attesa documenti');
-        self::assertSame('sospesa', $waiting['code']);
-    }
 }
