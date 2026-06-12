@@ -3,7 +3,7 @@ name: Deploy Coresuite Business
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, production]
 
 jobs:
   deploy-sftp:

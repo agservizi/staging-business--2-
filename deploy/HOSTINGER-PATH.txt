@@ -4,5 +4,8 @@ business.coresuite.it punta a:
 
 NON usare demobusiness/ (è un altro sito).
 
-In hPanel Git Deploy imposta "Root directory" su:
-  domains/coresuite.it/public_html/business
+In hPanel Git Deploy imposta:
+  Branch: production  (oppure main, ma production e' quello usato in live)
+  Root directory: domains/coresuite.it/public_html/business
+
+Dopo merge main -> production, clicca Redeploy in hPanel.
