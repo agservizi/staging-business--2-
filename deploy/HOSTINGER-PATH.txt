@@ -1,11 +1,12 @@
-business.coresuite.it punta a:
+business.coresuite.it (produzione):
 
-  domains/coresuite.it/public_html/business/
+  Branch Git: production
+  Cartella FTP: /public_html/business/
 
-NON usare demobusiness/ (è un altro sito).
+staging:
 
-In hPanel Git Deploy imposta:
-  Branch: production  (oppure main, ma production e' quello usato in live)
-  Root directory: domains/coresuite.it/public_html/business
+  Branch Git: staging
+  Cartella FTP: /public_html/staging-business/
 
-Dopo merge main -> production, clicca Redeploy in hPanel.
+In hPanel Git: collega il repo, branch production, root coerente con /public_html/business/
+Poi Redeploy dopo ogni push su production.

@@ -1,25 +1,44 @@
-name: Deploy Coresuite Business
+name: Deploy to Hostinger
 
 on:
   workflow_dispatch:
   push:
-    branches: [main, production]
+    branches:
+      - main
+      - staging
+      - production
 
 jobs:
-  deploy-sftp:
-    name: Hostinger SFTP
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: SFTP Deploy
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+      - name: Set target directory based on branch
+        id: vars
+        run: |
+          if [[ "${GITHUB_REF##*/}" == "staging" ]]; then
+            echo "target=/public_html/staging-business/" >> $GITHUB_OUTPUT
+          else
+            echo "target=/public_html/business/" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload files via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_HOST }}
-          port: 65002
           username: ${{ secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASS }}
-          local_path: ./*
-          remote_path: /${{ vars.FTP_SERVER_DIR }}
-          sftp_only: true
-          delete_remote_files: false
+          local-dir: ./
+          server-dir: ${{ steps.vars.outputs.target }}
+          exclude: |
+            **/.git*
+            **/.github/**
+            **/node_modules/**
+            **/vendor/**
+            **/.env
+            **/uploads/**
+            **/backups/**
+            **/storage/**
+            **/.phpunit.result.cache
