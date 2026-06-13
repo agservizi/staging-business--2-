@@ -1,0 +1,11 @@
+Chiave pubblica da aggiungere in hPanel → Avanzate → SSH Access → Aggiungi chiave SSH
+(sito business.coresuite.it / account u427445037)
+
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFfS66xhNNjbOQhfzBUErsCVvBP1krMMF6SEOrnIMyNp coresuite-business-deploy
+
+Dopo averla aggiunta, il deploy GitHub Actions (rsync porta 65002) funziona automaticamente.
+
+Git hPanel (alternativa senza SSH):
+  Sito: business.coresuite.it
+  Branch: production  (NON staging)
+  Path: domains/coresuite.it/public_html/business

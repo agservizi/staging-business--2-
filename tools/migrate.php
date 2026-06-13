@@ -2,10 +2,10 @@
 <?php
 declare(strict_types=1);
 
-use Throwable;
-
 require_once __DIR__ . '/../includes/db_connect.php';
 require_once __DIR__ . '/../includes/helpers.php';
+
+$strict = in_array('--strict', $argv, true);
 
 $pdo->exec('CREATE TABLE IF NOT EXISTS schema_migrations (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -37,13 +37,15 @@ if (!$pending) {
 }
 
 foreach ($pending as $file) {
+    $migrationName = basename($file);
     $sql = file_get_contents($file);
     if ($sql === false) {
-        fwrite(STDERR, 'Impossibile leggere la migrazione ' . basename($file) . "\n");
+        fwrite(STDERR, 'Impossibile leggere la migrazione ' . $migrationName . "\n");
         exit(1);
     }
 
     $statements = array_filter(array_map('trim', preg_split('/;\s*\r?\n/', $sql)));
+    $skippedAsApplied = false;
 
     try {
         $pdo->beginTransaction();
@@ -51,21 +53,49 @@ foreach ($pending as $file) {
             if ($statement === '') {
                 continue;
             }
-            $pdo->exec($statement);
+            try {
+                $pdo->exec($statement);
+            } catch (Throwable $statementError) {
+                if ($strict || !migration_error_is_benign($statementError)) {
+                    throw $statementError;
+                }
+                $skippedAsApplied = true;
+                fwrite(STDERR, 'Avviso ' . $migrationName . ': ' . $statementError->getMessage() . " (considerata già applicata)\n");
+            }
         }
-        $insert = $pdo->prepare('INSERT INTO schema_migrations (migration, executed_at) VALUES (:migration, NOW())');
-        $insert->execute([':migration' => basename($file)]);
+
+        $insert = $pdo->prepare('INSERT IGNORE INTO schema_migrations (migration, executed_at) VALUES (:migration, NOW())');
+        $insert->execute([':migration' => $migrationName]);
         if ($pdo->inTransaction()) {
             $pdo->commit();
         }
-        echo 'Applicata migrazione ' . basename($file) . "\n";
+
+        if ($skippedAsApplied) {
+            echo 'Migrazione già presente nel DB, registrata: ' . $migrationName . "\n";
+        } else {
+            echo 'Applicata migrazione ' . $migrationName . "\n";
+        }
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        fwrite(STDERR, 'Errore migrazione ' . basename($file) . ': ' . $e->getMessage() . "\n");
+        fwrite(STDERR, 'Errore migrazione ' . $migrationName . ': ' . $e->getMessage() . "\n");
         exit(1);
     }
 }
 
 echo "Migrazioni completate.\n";
+
+function migration_error_is_benign(Throwable $error): bool
+{
+    $message = $error->getMessage();
+
+    if (preg_match('/\b(1050|1060|1061|1091|1826)\b/', $message)) {
+        return true;
+    }
+
+    return (bool) preg_match(
+        '/(already exists|Duplicate column|Duplicate key|Duplicate entry|check that column\/key exists)/i',
+        $message
+    );
+}

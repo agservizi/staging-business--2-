@@ -1,7 +1,11 @@
 business.coresuite.it (produzione):
 
-  Branch Git: production
-  Cartella FTP: /public_html/business/
+  Branch Git: production   <<< OBBLIGATORIO (staging NON ha il codice WOW)
+  Cartella: /home/u427445037/domains/coresuite.it/public_html/business
+  Database API: u427445037_coresuitebusin
+
+  Verifica deploy OK:
+  https://business.coresuite.it/assets/js/staff-notifications.js  -> deve essere 200
 
 staging:
 
@@ -10,3 +14,18 @@ staging:
 
 In hPanel Git: collega il repo, branch production, root coerente con /public_html/business/
 Poi Redeploy dopo ogni push su production.
+
+Database (dopo redeploy):
+  NON importare pending_migrations_bundle.sql (DB già parzialmente aggiornato → errori duplicato).
+
+  phpMyAdmin:
+  1. Importa database/reconcile_schema_migrations.sql (segna migrazioni già presenti)
+  2. Poi terminale: php tools/migrate.php (applica solo quelle mancanti)
+
+  Solo terminale (consigliato):
+  cd domains/coresuite.it/public_html/business
+  php tools/migrate.php
+
+Dump locale per analisi:
+  Esporta da phpMyAdmin → salva come Business.session.sql nella root del progetto
+  php tools/db_setup.php --analyze

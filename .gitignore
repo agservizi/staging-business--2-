@@ -11,5 +11,6 @@ node_modules/
 .DS_Store
 .env
 .env.*
+deploy/hostinger_deploy_ed25519
 customer-portal/cache/
 docs/
