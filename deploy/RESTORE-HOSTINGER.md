@@ -1,47 +1,49 @@
 # Ripristino business.coresuite.it su Hostinger
 
-## Stato (2026-06-13)
+## ⚠️ Passo obbligatorio: Cloudflare DNS
 
-- **CoreHost:** website in `maintenance`, app fermata (non serve più il traffico)
-- **Hostinger:** vhost attivo su `/home/u427445037/domains/coresuite.it/public_html/business`
-- **Database Hostinger:** `u427445037_coresuitebusin` (dump originale già importato anche su CoreHost)
+Il dominio passa ancora da **Cloudflare → CoreHost** (origine in errore → **502**).
+Finché non cambi DNS, Hostinger non riceve traffico anche con codice aggiornato.
 
-## Deploy codice (automatico)
+In **Cloudflare** → `business.coresuite.it`:
 
-Push su branch `production` → GitHub Actions `deploy-hostinger` (SFTP porta 65002).
+1. Record **A** → `188.114.97.7` (IP Hostinger)
+2. **Proxy disattivato** (nuvola **grigia**, solo DNS)
+3. Elimina CNAME / tunnel verso CoreHost se presenti
+4. Attendi 2–5 minuti
 
-Secret richiesti (già presenti): `FTP_HOST`, `FTP_USER`, `FTP_PASS`
-Opzionale: `SSH_KEY` (chiave in `deploy/hostinger_deploy_ed25519`)
+Verifica: `nslookup business.coresuite.it` deve mostrare IP Hostinger **senza** proxy Cloudflare attivo sull’host.
+
+## Stato infrastruttura (2026-06-13)
+
+| Componente | Stato |
+|---|---|
+| CoreHost | Website in **manutenzione**, app fermata |
+| Hostinger vhost | Attivo: `/home/u427445037/domains/coresuite.it/public_html/business` |
+| DB Hostinger | `u427445037_coresuitebusin` |
+| GitHub Actions SFTP | **Timeout** porta 65002 (Hostinger non raggiungibile dai runner GitHub) |
+
+## Deploy codice su Hostinger (consigliato: hPanel Git)
+
+**hPanel** → sito `business.coresuite.it` → **Git**:
+
+1. Repository: `https://github.com/agservizi/staging-business--2-.git`
+2. Branch: **`production`** (NON `staging`)
+3. Percorso: `domains/coresuite.it/public_html/business`
+4. Clicca **Deploy**
+
+## Deploy automatico (quando SFTP funziona)
+
+Secret GitHub: `FTP_HOST`, `FTP_USER`, `FTP_PASS`
 
 ```bash
 gh workflow run deploy.yml -R agservizi/staging-business--2- --ref production
 ```
 
-## DNS / Cloudflare (se il sito non risponde da Hostinger)
+Se fallisce con timeout: aggiungi chiave SSH in hPanel (`deploy/SSH-SETUP.txt`) e secret `SSH_KEY`.
 
-In Cloudflare per `business.coresuite.it`:
+## Verifica post-ripristino
 
-1. Record **A** → `188.114.97.7` (o IP Hostinger attuale)
-2. **Proxy disattivato** (solo DNS, nuvola grigia) oppure origin = Hostinger
-3. Rimuovi eventuale CNAME verso tunnel CoreHost
-
-## hPanel (alternativa senza GitHub Actions)
-
-1. Sito `business.coresuite.it` → **Git** → repo GitHub `agservizi/staging-business--2-`
-2. Branch **`production`** (NON staging)
-3. Directory installazione: `domains/coresuite.it/public_html/business`
-4. **Deploy**
-
-## Verifica
-
-- https://business.coresuite.it/ → pagina login
+- https://business.coresuite.it/ → login (non 502)
 - https://business.coresuite.it/assets/js/staff-notifications.js → HTTP 200
-- Login admin funzionante (DB Hostinger `u427445037_coresuitebusin`)
-
-## Chiave SSH (se SFTP Actions fallisce)
-
-Aggiungi in hPanel → SSH Access la chiave da `deploy/SSH-SETUP.txt`, poi:
-
-```bash
-gh secret set SSH_KEY -R agservizi/staging-business--2- < deploy/hostinger_deploy_ed25519
-```
+- Login con utente `admin` (DB Hostinger)
