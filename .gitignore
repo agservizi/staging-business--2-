@@ -12,5 +12,7 @@ node_modules/
 .env
 .env.*
 deploy/hostinger_deploy_ed25519
+deploy/*.zip
+uploads/pickup/qr/*.png
 customer-portal/cache/
 docs/

@@ -1,0 +1,28 @@
+Migrazione business.coresuite.it → CoreHost Panel (panel.coresuite.it)
+
+Stato automatico (2026-06-12):
+  ✅ Sito PHP → REVERSE_PROXY: business.coresuite.it (ID cmqbddt4v078v6ht4hm8posiz)
+  ✅ App PHP: coresuite-business (ID cmqbek0kf07gt6ht4dhwubi16)
+  ✅ MySQL: coresuite_business RUNNING (host corehost-db-6ht49c20gmw3:23307)
+  ✅ Env vars app configurate (DB, CAF key, AUTOMATA)
+  ❌ Deploy codice: DNS server non risolve github.com
+  ❌ Sito/container: STOPPED (server RAM ~97%)
+
+Comandi locali:
+  php tools/corehost_finish_business.php
+  php tools/corehost_status_business.php
+
+BLOCCO SERVER (da risolvere su CoreHost/VPS):
+  Il server non risolve github.com → deploy Git fallisce.
+  Altri progetti (dentallab) usano mirror Gitea interno (giteaManaged=true).
+  Per business serve nel panel:
+    1. App coresuite-business → "Collega repository GitHub" (crea mirror Gitea)
+    2. Oppure Gitea git.coresuite.it → nuovo repo mirror staging-business--2-
+    3. Ridurre carico RAM (fermare app non critiche) → Avvia container
+    4. Deploy branch production
+    5. SSL Let's Encrypt su business.coresuite.it
+
+DNS Cloudflare (dopo deploy OK):
+  Punta business.coresuite.it al tunnel CoreHost (non Hostinger)
+
+Token API in .env: COREHOST_API_TOKEN (chk_...) — rigenerare dopo migrazione.
