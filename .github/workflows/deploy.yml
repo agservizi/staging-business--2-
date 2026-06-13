@@ -1,4 +1,4 @@
-name: Deploy to Hostinger
+name: Deploy
 
 on:
   workflow_dispatch:
@@ -9,7 +9,36 @@ on:
       - production
 
 jobs:
-  deploy:
+  deploy-corehost:
+    if: github.ref == 'refs/heads/production'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync production branch to Gitea mirror
+        env:
+          GITEA_TOKEN: ${{ secrets.COREHOST_API_TOKEN }}
+          GITEA_OWNER: Carmine
+          GITEA_REPO: coresuite-business
+        run: |
+          git fetch origin production
+          git push "https://oauth2:${GITEA_TOKEN}@git.coresuite.it/${GITEA_OWNER}/${GITEA_REPO}.git" \
+            FETCH_HEAD:refs/heads/production
+
+      - name: Trigger CoreHost deploy
+        env:
+          COREHOST_API_TOKEN: ${{ secrets.COREHOST_API_TOKEN }}
+          COREHOST_APP_ID: ${{ secrets.COREHOST_APP_ID }}
+        run: |
+          curl -fsS -X POST \
+            "https://panel.coresuite.it/api/v1/node-apps/${COREHOST_APP_ID}/deploy" \
+            -H "Authorization: Bearer ${COREHOST_API_TOKEN}" \
+            -H "Accept: application/json"
+
+  deploy-hostinger:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
