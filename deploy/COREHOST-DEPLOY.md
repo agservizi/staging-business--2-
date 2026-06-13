@@ -1,5 +1,30 @@
 # CoreHost — business.coresuite.it
 
+## Stato attuale (2026-06-13)
+
+| Risorsa | ID | Stato |
+|---|---|---|
+| Website `business.coresuite.it` | `cmqbz5nuq00ju101cegni8luy` | RUNNING, REVERSE_PROXY, SSL da riattivare |
+| App `coresuite-business-v2` | `cmqbzop1t00rk101c788vjnmd` | ERROR — serve **giteaManaged** dal pannello |
+| App precedente (funzionante) | `cmqbf9y2q07q66ht4vgas0xmg` | **eliminata** durante tentativo fix API |
+| MySQL | `cmqbdh0iw079g6ht49c20gmw3` | RUNNING |
+
+**GitHub `production`:** commit `6393df9` (CI CoreHost + `corehost-start.sh`)
+
+Il server CoreHost **non risolve github.com** → deploy solo via **Gitea** `Carmine/coresuite-business`.
+
+## Ripristino urgente (pannello CoreHost)
+
+Copia questo prompt per l'agente del pannello:
+
+> Ripristina `business.coresuite.it`:
+> 1. Elimina app duplicate in errore (`coresuite-business-v2`, vecchie `coresuite-business` se presenti)
+> 2. Crea app PHP `coresuite-business` collegata a GitHub `agservizi/staging-business--2-` branch `production` (**giteaManaged=true**, mirror `Carmine/coresuite-business`)
+> 3. Sync Gitea da GitHub fino a commit `6393df9`
+> 4. Collega website `cmqbz5nuq00ju101cegni8luy` all'app (REVERSE_PROXY, `proxyConfig` auto/null, **senza** `phpVersion`)
+> 5. `startCmd`: `php -S 0.0.0.0:80 -t .` — `nodeVersion` 8.4
+> 6. Deploy SUCCESS + SSL Let's Encrypt + verifica HTTP 200 su `/`
+
 ## Due pipeline distinte
 
 | | Pipeline A (repo GitHub) | Pipeline B (CoreHost live) |
@@ -13,7 +38,7 @@
 
 | Sorgente | Branch | Commit atteso |
 |---|---|---|
-| GitHub `production` | production | `4fe0d3d` (fix PHP 8.4 E_STRICT) |
+| GitHub `production` | production | `6393df9` (CI CoreHost + runtime fix) |
 | Gitea mirror | production | deve coincidere con GitHub |
 | CoreHost deployato | production | deve coincidere con Gitea |
 
@@ -40,7 +65,7 @@ Il workflow `.github/workflows/deploy.yml` su branch `production` ora:
 ### Secret GitHub richiesti (repo → Settings → Secrets)
 
 - `COREHOST_API_TOKEN` — token API pannello (`chk_...`)
-- `COREHOST_APP_ID` — `cmqbf9y2q07q66ht4vgas0xmg`
+- `COREHOST_APP_ID` — ID app dopo ripristino pannello (attuale provvisorio: `cmqbzop1t00rk101c788vjnmd`)
 
 Il token CoreHost **non** autentica su `git.coresuite.it` via HTTPS; per il push mirror in CI serve che il token Gitea sia configurato nel pannello o un PAT Gitea dedicato.
 
